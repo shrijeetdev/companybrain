@@ -1,3 +1,9 @@
 packages:
   - "packages/*"
   - "cli"
+
+# pnpm 11+ requires explicit approval for packages that run install scripts.
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+  protobufjs: true
