@@ -1,12 +1,4 @@
-// One definition of every domain object, shared by api / web / mobile / worker.
-
-export type Mode = 'local' | 'selfhost' | 'cloud';
-
-export function resolveMode(env: NodeJS.ProcessEnv = process.env): Mode {
-  const m = (env.COMPANYBRAIN_MODE ?? 'local').toLowerCase();
-  if (m === 'local' || m === 'selfhost' || m === 'cloud') return m;
-  throw new Error(`Invalid COMPANYBRAIN_MODE: ${m} (expected local | selfhost | cloud)`);
-}
+// One definition of every domain object, shared across the single app's packages.
 
 export type Channel = 'email' | 'slack' | 'whatsapp' | 'telegram' | 'calendar' | 'github' | 'manual';
 export type Role = 'ceo' | 'manager' | 'employee' | 'client' | 'agent';
@@ -38,6 +30,8 @@ export interface Loop {
   channel: Channel;
   /** source message/thread the loop was detected from */
   sourceRef?: string;
+  /** external address to reply on for this channel (e.g. the sender's phone for WhatsApp) */
+  replyTo?: string;
   ownerId?: string;
   dueAt?: number | null;
   createdAt: number;
@@ -86,7 +80,7 @@ export type EventType =
   | 'loop.captured' | 'loop.closed' | 'loop.snoozed' | 'loop.reopened'
   | 'task.created' | 'task.completed' | 'task.moved'
   | 'lead.created' | 'lead.advanced'
-  | 'agent.acted' | 'reminder.sent' | 'briefing.delivered';
+  | 'agent.acted' | 'reminder.sent' | 'reply.sent' | 'briefing.delivered';
 
 export interface DomainEvent {
   id: string;
@@ -102,7 +96,7 @@ export interface DomainEvent {
 }
 
 /** A unit of deferred work the queue runs (chase a loop, send a briefing…). */
-export type JobName = 'chaseLoop' | 'sendBriefing' | 'autoSweep' | 'sendReminder';
+export type JobName = 'chaseLoop' | 'replyLoop' | 'sendBriefing' | 'autoSweep' | 'sendReminder';
 
 export interface Job<T = Record<string, unknown>> {
   name: JobName;

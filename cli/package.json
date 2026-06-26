@@ -1,0 +1,17 @@
+{
+  "name": "companybrain",
+  "version": "0.1.0",
+  "description": "Run companybrain with one command.",
+  "type": "module",
+  "bin": { "companybrain": "bin/companybrain.ts" },
+  "scripts": {
+    "start": "tsx bin/companybrain.ts"
+  },
+  "dependencies": {
+    "@companybrain/types": "workspace:*",
+    "@companybrain/core": "workspace:*",
+    "@companybrain/server": "workspace:*",
+    "@companybrain/integrations": "workspace:*",
+    "tsx": "^4.19.2"
+  }
+}

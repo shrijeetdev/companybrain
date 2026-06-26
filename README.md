@@ -4,38 +4,54 @@
 
 A team operating system that watches every channel (Email, Slack, WhatsApp, Telegram, Calendar, meetings), turns anything needing a human into a tracked **open loop**, and never lets it slip. AI agents do real work alongside people; every action is **scoped, logged, and reversible**.
 
-The clickable design spec lives in the prototype (`../Liquid Glass Design System (1)/Company Brain.dc.html`). This monorepo turns it into a real product.
+The clickable design spec lives in the prototype (`../Liquid Glass Design System (1)/Company Brain.dc.html`). This repo turns it into a real product.
 
-## Try it in one command
+## One app, one command
 
 ```bash
-npx companybrain
+pnpm install
+pnpm start
 ```
 
-Creates `~/.companybrain/`, runs SQLite migrations, and boots the API + web + an **in-process worker** in a single process — no Docker, no Postgres, no Redis. Opens your browser.
+That single process is the **whole product**: it runs SQLite migrations, an **in-process worker** (real timers — chases and briefings actually fire), the API, and the web UI — all on one port. No Docker, no Postgres, no Redis, no separate frontend. Data lives in one file at `~/.companybrain/companybrain.sqlite`.
 
-## Architecture — one codebase, three modes
+## Deploy to a server (e.g. DigitalOcean)
 
-Mode is the only thing that branches, via `COMPANYBRAIN_MODE`:
+It's one container. Build and run it:
 
-| Port | `local` (npx) | `selfhost` | `cloud` |
-| --- | --- | --- | --- |
-| **db** | SQLite (file) | Postgres | Postgres + RLS |
-| **queue** | in-process | Redis + BullMQ | Redis + BullMQ |
-| **auth** | single user | org / RBAC | org / RBAC + Stripe |
+```bash
+docker build -t companybrain .
+docker run -d -p 4317:4317 \
+  -v companybrain-data:/root/.companybrain \
+  --env-file .env \
+  companybrain
+```
 
-`packages/core` (domain logic: loops, tasks, leads, agents, autonomy) never knows the mode — it depends only on the `db` / `queue` / `auth` **ports**. The in-process queue is a *real* implementation (delayed jobs fire), so chases and briefings work identically in local and prod.
+Then point your domain at the droplet on port 4317 (or put any reverse proxy in front). The mounted volume keeps your SQLite data across restarts and redeploys. No other services to provision.
+
+You can also run it without Docker on the server: `git clone`, `pnpm install`, `pnpm start` (optionally under `pm2`/`systemd`).
+
+## Architecture — one codebase, one runnable app
+
+`packages/core` (domain logic: loops, tasks, leads, agents, autonomy) depends only on three **ports** — `db`, `queue`, `auth` — each with a single embedded adapter:
+
+| Port | Implementation |
+| --- | --- |
+| **db** | SQLite (one file) |
+| **queue** | in-process (real timers) |
+| **auth** | single self-hosted user |
+
+The ports stay as interfaces, so a heavier backend could be added later without touching `core` or the routes — but nothing extra is required to run.
 
 ```
-apps/      mobile (Expo) · web (Next.js) · api (Fastify) · worker (BullMQ + Baileys)
-packages/  core · db · queue · auth · integrations · ui · types
-cli/       npx companybrain bootstrapper
+packages/  core · db · queue · auth · integrations · server · ui · types
+cli/       the one entrypoint — `pnpm start` boots everything
 ```
 
 ## Status
 
-**Milestone 1 — bootable local foundation** (in progress): monorepo skeleton, shared types, the three ports with working `local` adapters (SQLite + in-process queue + single-user auth), `core` domain logic, a Fastify API, and the `npx companybrain` bootstrapper. See [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md).
+**Milestone 1 — bootable foundation** (in progress): single-app skeleton, shared types, the three ports with embedded adapters (SQLite + in-process queue + single-user auth), `core` domain logic, a Fastify server that serves both the API and the web UI, and the one-command bootstrapper. See [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md).
 
 ## License
 
-[MIT](LICENSE) (open-core — cloud billing/control plane is a separate commercial package).
+[MIT](LICENSE)
