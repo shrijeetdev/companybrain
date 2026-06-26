@@ -4,7 +4,6 @@
   "private": true,
   "description": "Team operating system that watches every channel and never lets a loop slip.",
   "license": "MIT",
-  "packageManager": "pnpm@9.15.9",
   "engines": {
     "node": ">=20"
   },
