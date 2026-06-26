@@ -19,6 +19,11 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test packages/core/test/domain.test.ts packages/core/test/autonomy.test.ts packages/core/test/undo.test.ts packages/integrations/test/pipeline.test.ts"
   },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "npm:esbuild-wasm@0.28.1"
+    }
+  },
   "devDependencies": {
     "@types/node": "^20",
     "tsx": "^4.19.2",

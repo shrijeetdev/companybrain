@@ -5,5 +5,12 @@ packages:
 # pnpm 11+ requires explicit approval for packages that run install scripts.
 allowBuilds:
   better-sqlite3: true
-  esbuild: true
   protobufjs: true
+
+# Allow git-based transitive deps (e.g. @whiskeysockets/baileys pulls one in).
+blockExoticSubdeps: false
+
+# Replace esbuild's native binary with the WebAssembly build so it works on
+# restricted shared hosts (e.g. Hostinger) that block executing downloaded binaries.
+overrides:
+  esbuild: "npm:esbuild-wasm@0.28.1"
