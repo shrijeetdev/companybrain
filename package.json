@@ -14,6 +14,7 @@
   "scripts": {
     "dev": "tsx cli/bin/companybrain.ts",
     "start": "tsx cli/bin/companybrain.ts",
+    "build": "pnpm typecheck",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test packages/core/test/domain.test.ts packages/core/test/autonomy.test.ts packages/core/test/undo.test.ts packages/integrations/test/pipeline.test.ts"
   },
