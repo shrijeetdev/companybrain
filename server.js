@@ -1,14 +1,27 @@
-// Production entry point for hosts that expect a plain Node.js file.
-// Registers tsx so the TypeScript bootstrap can run directly.
-console.log('[server.js] starting...');
+import { appendFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const logFile = join(__dirname, 'server.log');
+
+function log(...args) {
+  const line = `[${new Date().toISOString()}] ${args.join(' ')}\n`;
+  try {
+    appendFileSync(logFile, line);
+  } catch {}
+  console.log(line.trim());
+}
+
+log('[server.js] starting...');
 
 try {
   const { register } = await import('tsx/esm/api');
-  console.log('[server.js] tsx register imported');
+  log('[server.js] tsx register imported');
   register();
-  console.log('[server.js] tsx registered, importing app...');
+  log('[server.js] tsx registered, importing app...');
   await import('./cli/bin/companybrain.ts');
 } catch (err) {
-  console.error('[server.js] fatal error:', err);
+  log('[server.js] fatal error:', err.stack || err.message || err);
   process.exit(1);
 }
