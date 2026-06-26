@@ -13,7 +13,12 @@ export function createMessenger(cfg: MessengerConfig): Messenger {
     async send(msg: OutboundMessage) {
       switch (msg.channel) {
         case 'whatsapp':
-          if (!cfg.whatsapp) throw new Error('WhatsApp not configured (set WHATSAPP_* env vars)');
+          // Graceful degradation: the loop is already captured (never forgotten). If send-
+          // credentials aren't set, log instead of throwing — no failed-job retry noise.
+          if (!cfg.whatsapp) {
+            console.log(`[messenger] WhatsApp send-credentials not set → would reply to ${msg.to}: ${msg.text}`);
+            return;
+          }
           await sendText(cfg.whatsapp, msg.to, msg.text);
           return;
         // email / slack / telegram fan in here as they're added.

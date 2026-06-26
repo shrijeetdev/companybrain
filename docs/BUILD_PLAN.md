@@ -14,10 +14,13 @@
   - [x] `packages/server` — Fastify over the ports (loops/tasks/leads routes) + serves the web UI
   - [x] `cli` — `pnpm start` boots everything (migrate + API + in-process worker + web, open browser)
   - [x] Single `Dockerfile` — one image, one process, for server deploys
-- **M2** — flesh out the web UI screens from the prototype, served straight from the app (`packages/ui` tokens)
-- **M3** — WhatsApp Cloud API end-to-end through the integration pipeline
+  - [x] Full multi-tab web UI (Loops · Tasks · Leads · Agents · Activity) served from the app
+  - [x] Full API surface (loop close/snooze, task complete/move, lead advance, lead quick-add)
+  - [x] Optional Anthropic-backed lead extraction (`ANTHROPIC_API_KEY`) with a heuristic fallback
+  - [x] Core domain tests (`pnpm test`)
+- **M3** — WhatsApp end-to-end (Cloud API webhook + in-process Baileys QR pairing)
 - **M4** — fan-in Gmail/Calendar/Slack/Telegram/GitHub onto the same pipeline
-- **M5** — real LLM extraction + autonomy actions wired into the worker
+- **M5** — autonomy actions (auto-chase/auto-reply) wired into the in-process worker
 
 ## Invariants
 - One deployable app. No separate API/web/worker services; no external DB/queue required.

@@ -89,7 +89,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     if (!b?.note?.trim()) throw badRequest('note is required');
     return core.leads.quickAddFromNote(
       { orgId: p.orgId, actorId: p.userId, phone: b.phone ?? '', note: b.note },
-      core.llm?.extractLead,
+      llm?.extractLead,
     );
   });
 
@@ -107,11 +107,34 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     return reply.type('text/plain').send(challenge);
   });
 
+  // Inbound capture does NOT require send-credentials — you can receive (and turn a
+  // message into a loop) even before WHATSAPP_ACCESS_TOKEN is set; only the reply needs it.
+  // (Production hardening TODO: verify the X-Hub-Signature-256 header here.)
   app.post('/webhooks/whatsapp', async (req, reply) => {
-    if (!wa) return reply.code(503).send('whatsapp not configured');
     const messages = whatsapp.parseInbound(LOCAL_ORG_ID, req.body);
     for (const m of messages) await ingest(core, m);
     return reply.code(200).send('ok');
+  });
+
+  // --- M4 fan-in: every other channel funnels into the SAME pipeline ---
+  // Static /webhooks/whatsapp (above) keeps its Cloud-API shape; Gmail, Calendar, Slack,
+  // Telegram and GitHub normalize to { from, text, ref } and reuse `ingest` verbatim.
+  const FANIN_CHANNELS = ['email', 'slack', 'telegram', 'github', 'calendar'] as const;
+  app.post('/webhooks/:channel', async (req, reply) => {
+    const channel = (req.params as { channel: string }).channel;
+    if (!(FANIN_CHANNELS as readonly string[]).includes(channel)) {
+      return reply.code(404).send('unknown channel');
+    }
+    const b = req.body as { from?: string; text?: string; ref?: string };
+    if (!b?.text?.trim()) throw badRequest('text is required');
+    const loopId = await ingest(core, {
+      orgId: LOCAL_ORG_ID,
+      channel: channel as (typeof FANIN_CHANNELS)[number],
+      from: b.from ?? 'unknown',
+      text: b.text,
+      ref: b.ref,
+    });
+    return reply.send({ captured: loopId });
   });
 
   // --- Embedded web UI (this app IS the website) ---

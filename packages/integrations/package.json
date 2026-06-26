@@ -9,6 +9,7 @@
   "dependencies": {
     "@companybrain/types": "workspace:*",
     "@companybrain/core": "workspace:*",
+    "@anthropic-ai/sdk": "^0.70.0",
     "@whiskeysockets/baileys": "^6.7.9",
     "qrcode-terminal": "^0.12.0"
   },

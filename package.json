@@ -16,7 +16,7 @@
     "dev": "tsx cli/bin/companybrain.ts",
     "start": "tsx cli/bin/companybrain.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --test"
+    "test": "node --import tsx --test packages/core/test/domain.test.ts"
   },
   "devDependencies": {
     "@types/node": "^20",

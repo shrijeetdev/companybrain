@@ -55,7 +55,10 @@ export function createBaileysChannel(opts: { orgId: string; authDir?: string }):
 
   async function start(core: Core): Promise<void> {
     const { state, saveCreds } = await useMultiFileAuthState(authDir);
-    sock = makeWASocket({ auth: state, logger: silentLogger, printQRInTerminal: false, browser: ['companybrain', 'Chrome', '1.0'] });
+    // Pin the current WhatsApp Web build — a stale version is the usual cause of an
+    // instant close with no QR.
+    const { version } = await fetchLatestBaileysVersion();
+    sock = makeWASocket({ version, auth: state, logger: silentLogger, printQRInTerminal: false, browser: ['companybrain', 'Chrome', '1.0'] });
 
     sock.ev.on('creds.update', saveCreds);
 
@@ -68,9 +71,11 @@ export function createBaileysChannel(opts: { orgId: string; authDir?: string }):
       if (connection === 'open') console.log('[whatsapp] connected ✓');
       if (connection === 'close') {
         const code = (lastDisconnect?.error as any)?.output?.statusCode;
+        const reason = (lastDisconnect?.error as any)?.message ?? '';
         const loggedOut = code === DisconnectReason.loggedOut;
-        console.log(`[whatsapp] connection closed${loggedOut ? ' (logged out — delete ~/.companybrain/wa to re-pair)' : ' — reconnecting…'}`);
-        if (!loggedOut) void start(core).catch((e) => console.error('[whatsapp] reconnect failed:', e));
+        console.log(`[whatsapp] connection closed (code=${code ?? '?'} ${reason})${loggedOut ? ' — logged out, delete ~/.companybrain/wa to re-pair' : ' — reconnecting in 3s…'}`);
+        // Reconnect with a delay so a failing handshake doesn't spin in a tight loop.
+        if (!loggedOut) setTimeout(() => void start(core).catch((e) => console.error('[whatsapp] reconnect failed:', e)), 3000);
       }
     });
 
