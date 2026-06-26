@@ -44,8 +44,9 @@ export async function ingest(core: Core, msg: InboundMessage): Promise<string | 
     replyTo: msg.from,
     ownerId: msg.ownerId,
   });
-  // Auto-acknowledge through the queue so it runs in the worker, respecting retries/backoff.
-  await core.ctx.queue.enqueue('replyLoop', { loopId: loop.id, orgId: msg.orgId });
+  // Auto-acknowledge — gated by the org's autonomy: auto enqueues the reply (worker sends
+  // it, respecting retries/backoff), ask queues it for approval, off stays silent.
+  await core.autonomy.gate('draftReplies', { orgId: msg.orgId, loopId: loop.id, title: `Auto-reply: ${loop.title}` });
   return loop.id;
 }
 

@@ -1,5 +1,6 @@
 import type { Loop, LoopSide, Channel } from '@companybrain/types';
 import { type Context, newId, now, record } from './context';
+import { gateAction } from './autonomy';
 
 /** how long before we auto-chase a loop that's in "their court" (local demo: 1 min) */
 const CHASE_DELAY_MS = 60_000;
@@ -55,8 +56,10 @@ export function makeLoops(ctx: Context) {
       });
 
       // If the ball is in THEIR court, we owe nothing now — but we must not let it slip.
+      // The chase is gated by the org's autonomy: auto schedules it, ask queues an
+      // approval, off does nothing.
       if (loop.side === 'theirs') {
-        await ctx.queue.enqueue('chaseLoop', { loopId: loop.id, orgId: loop.orgId }, { delayMs: CHASE_DELAY_MS });
+        await gateAction(ctx, 'chase', { orgId: loop.orgId, loopId: loop.id, title: `Chase: ${loop.title}`, delayMs: CHASE_DELAY_MS });
       }
       return loop;
     },

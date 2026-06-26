@@ -9,6 +9,8 @@ import type { Lead } from '@companybrain/types';
 export interface Llm {
   /** turn a free-text note into structured lead fields */
   extractLead(note: string): Promise<Partial<Lead>>;
+  /** write a short, friendly acknowledgement reply for an inbound message */
+  draftReply(input: { title: string; why: string; channel: string }): Promise<string>;
 }
 
 const LEAD_SCHEMA = {
@@ -62,6 +64,32 @@ export function createLlm(env: NodeJS.ProcessEnv = process.env): Llm | null {
         return { ...parsed, what: parsed.what || note };
       } catch {
         return guess(note);
+      }
+    },
+
+    async draftReply(input): Promise<string> {
+      const fallback = `Thanks — we’ve logged “${input.title}” and someone will get back to you shortly. 🤝`;
+      try {
+        const response = await client.messages.create({
+          model: 'claude-opus-4-8',
+          max_tokens: 256,
+          output_config: { effort: 'low' },
+          system:
+            'You write the first auto-acknowledgement a business sends back when a message arrives on ' +
+            'WhatsApp/SMS/email. One or two warm, professional sentences. Confirm receipt and that a human ' +
+            'will follow up. No greeting line, no signature, no placeholders. Plain text only.',
+          messages: [
+            {
+              role: 'user',
+              content: `Inbound on ${input.channel}. We logged it as: "${input.title}" (${input.why}). Write the acknowledgement reply.`,
+            },
+          ],
+        } as Anthropic.MessageCreateParamsNonStreaming);
+
+        const block = response.content.find((b) => b.type === 'text');
+        return block && block.type === 'text' ? block.text.trim() || fallback : fallback;
+      } catch {
+        return fallback;
       }
     },
   };

@@ -20,7 +20,10 @@
   - [x] Core domain tests (`pnpm test`)
 - **M3** — WhatsApp end-to-end (Cloud API webhook + in-process Baileys QR pairing)
 - **M4** — fan-in Gmail/Calendar/Slack/Telegram/GitHub onto the same pipeline
-- **M5** — autonomy actions (auto-chase/auto-reply) wired into the in-process worker
+- **M5** — autonomy control plane _(done)_: per-org off/ask/auto per action, a human
+  approval queue, and gating on the worker (auto-chase / auto-reply / reminders). Every
+  decision is logged to the audit trail. `GET/PUT /api/autonomy`, `GET /api/approvals` +
+  approve/dismiss, and an **Auto** tab in the UI.
 
 ## Invariants
 - One deployable app. No separate API/web/worker services; no external DB/queue required.

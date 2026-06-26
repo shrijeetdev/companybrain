@@ -7,6 +7,24 @@ export type Role = 'ceo' | 'manager' | 'employee' | 'client' | 'agent';
 export type Autonomy = 'off' | 'ask' | 'auto';
 export type AutonomyAction = 'createTasks' | 'sendReminders' | 'draftReplies' | 'chase' | 'joinMeetings';
 
+/** Per-org autonomy config: how the AI may act for each kind of action. */
+export type AutonomySettings = Record<AutonomyAction, Autonomy>;
+
+/** A queued AI action awaiting human approval (autonomy = 'ask'). */
+export type ApprovalStatus = 'pending' | 'approved' | 'dismissed';
+export interface Approval {
+  id: string;
+  orgId: string;
+  /** the autonomy action the AI wants to take */
+  action: AutonomyAction;
+  /** the loop this action concerns, if any */
+  loopId?: string;
+  /** human-readable summary of what will happen if approved */
+  title: string;
+  status: ApprovalStatus;
+  createdAt: number;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -80,7 +98,9 @@ export type EventType =
   | 'loop.captured' | 'loop.closed' | 'loop.snoozed' | 'loop.reopened'
   | 'task.created' | 'task.completed' | 'task.moved'
   | 'lead.created' | 'lead.advanced'
-  | 'agent.acted' | 'reminder.sent' | 'reply.sent' | 'briefing.delivered';
+  | 'agent.acted' | 'reminder.sent' | 'reply.sent' | 'briefing.delivered'
+  | 'autonomy.changed' | 'approval.created' | 'approval.approved' | 'approval.dismissed'
+  | 'event.undone';
 
 export interface DomainEvent {
   id: string;

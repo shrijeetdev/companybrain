@@ -96,6 +96,42 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   // --- AI agents + audit ---
   app.get('/api/agents', async () => core.agents.roster());
   app.get('/api/events', async (req) => core.events.list((await principalOf(req)).orgId, 50));
+  // Reverse a logged action (the "reversible" pillar): delete what was created, restore what changed.
+  app.post('/api/events/:id/undo', async (req) => { await principalOf(req); return core.events.undo(params(req).id); });
+
+  // --- Connections: what's configured vs. what needs credentials (for self-hosting) ---
+  app.get('/api/connections', async () => {
+    const env = process.env;
+    const has = (...keys: string[]) => keys.every((k) => !!env[k]);
+    return {
+      ai: { configured: !!llm, via: llm ? 'anthropic' : null },
+      whatsapp: {
+        inbound: 'webhook ready at /webhooks/whatsapp',
+        outbound: has('WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_ACCESS_TOKEN') ? 'cloud-api'
+          : env.WHATSAPP_BAILEYS === 'on' ? 'baileys-qr' : 'not configured',
+      },
+      channels: ['email', 'slack', 'telegram', 'github', 'calendar'].map((c) => ({
+        channel: c, inbound: `webhook ready at /webhooks/${c}`, outbound: 'not configured',
+      })),
+    };
+  });
+
+  // --- Autonomy (off · ask · auto) + the human approval queue ---
+  app.get('/api/autonomy', async (req) => core.autonomy.get((await principalOf(req)).orgId));
+  app.put('/api/autonomy', async (req) => {
+    const p = await principalOf(req);
+    const b = req.body as { action?: string; level?: string };
+    const actions = ['createTasks', 'sendReminders', 'draftReplies', 'chase', 'joinMeetings'];
+    const levels = ['off', 'ask', 'auto'];
+    if (!b || !actions.includes(b.action as string) || !levels.includes(b.level as string)) {
+      throw badRequest('action and level are required (action ∈ ' + actions.join('|') + ', level ∈ off|ask|auto)');
+    }
+    return core.autonomy.set(p.orgId, b.action as any, b.level as any);
+  });
+
+  app.get('/api/approvals', async (req) => core.approvals.list((await principalOf(req)).orgId, 'pending'));
+  app.post('/api/approvals/:id/approve', async (req) => { await principalOf(req); return core.approvals.approve(params(req).id); });
+  app.post('/api/approvals/:id/dismiss', async (req) => { await principalOf(req); return core.approvals.dismiss(params(req).id); });
 
   // --- WhatsApp webhook (the one integration wired end-to-end) ---
   const wa = whatsapp.whatsappConfigFromEnv();

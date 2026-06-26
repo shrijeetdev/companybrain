@@ -26,11 +26,27 @@ export const consoleMessenger: Messenger = {
   },
 };
 
+/**
+ * Reply-drafting port. The app injects an LLM-backed drafter (server-side); core never
+ * imports the LLM (which would be circular). The default writes a fixed template so the
+ * pipeline works with zero AI configured.
+ */
+export interface Drafter {
+  draftReply(input: { title: string; why: string; channel: Channel }): Promise<string>;
+}
+
+export const templateDrafter: Drafter = {
+  async draftReply({ title }) {
+    return `Thanks — we’ve logged “${title}” and someone will get back to you shortly. 🤝`;
+  },
+};
+
 export interface Context {
   db: Database;
   queue: Queue;
   auth: Auth;
   messenger: Messenger;
+  drafter: Drafter;
 }
 
 export const newId = (prefix: string): string => `${prefix}_${randomUUID().slice(0, 8)}`;

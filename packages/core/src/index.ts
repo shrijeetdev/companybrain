@@ -5,15 +5,19 @@ import { createDatabase, type Database, type DbOptions } from '@companybrain/db'
 import { createQueue, type Queue } from '@companybrain/queue';
 import { createAuth, type Auth } from '@companybrain/auth';
 
-import { type Context, type Messenger, consoleMessenger } from './context';
+import { type Context, type Messenger, type Drafter, consoleMessenger, templateDrafter } from './context';
 import { makeLoops } from './loops';
 import { makeTasks } from './tasks';
 import { makeLeads } from './leads';
 import { makeAgents } from './agents';
+import { makeAutonomy, makeApprovals } from './autonomy';
+import { undoEvent, type UndoResult } from './undo';
 import { registerWorkers } from './workers';
 
 export * from './context';
 export * from './agents';
+export * from './autonomy';
+export * from './undo';
 export { registerWorkers } from './workers';
 export { seedIfEmpty } from './seed';
 export type { CaptureLoopInput } from './loops';
@@ -26,21 +30,34 @@ export interface Core {
   tasks: ReturnType<typeof makeTasks>;
   leads: ReturnType<typeof makeLeads>;
   agents: ReturnType<typeof makeAgents>;
-  events: { list: Context['db']['events']['list'] };
+  autonomy: ReturnType<typeof makeAutonomy>;
+  approvals: ReturnType<typeof makeApprovals>;
+  events: { list: Context['db']['events']['list']; undo: (eventId: string) => Promise<UndoResult> };
   /** Optional server-side LLM injection point (wired in M5); when undefined, leads fall back to heuristics. */
   llm?: { extractLead?: (note: string) => Promise<Partial<import('@companybrain/types').Lead>> };
 }
 
 /** Build core from already-constructed ports (used when you want to inject test doubles). */
-export function createCoreFromPorts(ports: { db: Database; queue: Queue; auth: Auth; messenger?: Messenger }): Core {
-  const ctx: Context = { ...ports, messenger: ports.messenger ?? consoleMessenger };
+export function createCoreFromPorts(ports: { db: Database; queue: Queue; auth: Auth; messenger?: Messenger; drafter?: Drafter }): Core {
+  const ctx: Context = {
+    db: ports.db,
+    queue: ports.queue,
+    auth: ports.auth,
+    messenger: ports.messenger ?? consoleMessenger,
+    drafter: ports.drafter ?? templateDrafter,
+  };
   return {
     ctx,
     loops: makeLoops(ctx),
     tasks: makeTasks(ctx),
     leads: makeLeads(ctx),
     agents: makeAgents(),
-    events: { list: (orgId: string, limit?: number) => ctx.db.events.list(orgId, limit) },
+    autonomy: makeAutonomy(ctx),
+    approvals: makeApprovals(ctx),
+    events: {
+      list: (orgId: string, limit?: number) => ctx.db.events.list(orgId, limit),
+      undo: (eventId: string) => undoEvent(ctx, eventId),
+    },
   };
 }
 
@@ -48,6 +65,8 @@ export interface BootstrapOptions {
   db?: DbOptions;
   /** outbound sender injected by the app (e.g. WhatsApp). Defaults to a logging no-op. */
   messenger?: Messenger;
+  /** reply drafter injected by the app (LLM-backed). Defaults to a fixed template. */
+  drafter?: Drafter;
 }
 
 export interface Bootstrap {
@@ -74,7 +93,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<Bootstrap>
   await queue.init();
   await auth.init();
 
-  const core = createCoreFromPorts({ db, queue, auth, messenger: opts.messenger });
+  const core = createCoreFromPorts({ db, queue, auth, messenger: opts.messenger, drafter: opts.drafter });
   registerWorkers(core.ctx);
 
   return {

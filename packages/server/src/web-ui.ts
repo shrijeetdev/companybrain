@@ -44,6 +44,9 @@ export function renderUi(): string {
   .btn.ghost { background:#eef0f3; color:var(--ink); }
   .btn.blue { background:var(--blue); color:#fff; }
   .emoji { font-size:20px; line-height:1; flex:0 0 auto; }
+  .lvls { display:flex; gap:0; background:#eef0f3; padding:3px; border-radius:10px; flex:0 0 auto; }
+  .lvl { border:0; background:transparent; padding:6px 10px; border-radius:8px; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer; }
+  .lvl.on { background:#fff; color:var(--blue); box-shadow:0 1px 2px rgba(0,0,0,.06); }
   .stat { display:flex; gap:14px; margin:2px 0 6px; }
   .stat .n { font-weight:700; } .stat .l { color:var(--muted); font-size:12px; }
   .bar { position:fixed; left:50%; transform:translateX(-50%); bottom:70px; width:398px; max-width:calc(100% - 32px); display:flex; gap:8px; }
@@ -71,6 +74,7 @@ export function renderUi(): string {
     { id:'tasks',  ic:'\\u2705',     label:'Tasks' },
     { id:'leads',  ic:'\\u{1F91D}', label:'Leads' },
     { id:'agents', ic:'\\u{1F916}', label:'Agents' },
+    { id:'auto',   ic:'\\u2699\\uFE0F', label:'Auto' },
     { id:'events', ic:'\\u{1F4DC}', label:'Activity' },
   ];
   var SUBS = {
@@ -78,6 +82,7 @@ export function renderUi(): string {
     tasks:'Your tasks, grouped by day.',
     leads:'Pipeline — drag a lead forward.',
     agents:'Your AI workforce and what they handle.',
+    auto:'What the AI may do on its own — and what needs your nod.',
     events:'Everything that happened — scoped, logged, reversible.'
   };
   var list = document.getElementById('list');
@@ -88,7 +93,7 @@ export function renderUi(): string {
 
   function esc(s){ return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
   function api(path, opts){ return fetch(path, opts).then(function(r){ return r.json().catch(function(){return null;}); }); }
-  function post(path, body){ return api(path, { method:'POST', headers:{'content-type':'application/json'}, body: body?JSON.stringify(body):undefined }); }
+  function post(path, body, method){ return api(path, { method: method||'POST', headers:{'content-type':'application/json'}, body: body?JSON.stringify(body):undefined }); }
 
   nav.innerHTML = TABS.map(function(t){
     return '<button data-tab="'+t.id+'"><span class="ic">'+t.ic+'</span>'+t.label+'</button>';
@@ -121,7 +126,44 @@ export function renderUi(): string {
     if (tab==='tasks') return loadTasks();
     if (tab==='leads') return loadLeads();
     if (tab==='agents') return loadAgents();
+    if (tab==='auto') return loadAuto();
     if (tab==='events') return loadEvents();
+  }
+
+  var ACTIONS = [
+    { k:'draftReplies', label:'Draft replies', desc:'Acknowledge inbound messages' },
+    { k:'chase', label:'Chase loops', desc:'Nudge when the ball is in their court' },
+    { k:'sendReminders', label:'Send reminders', desc:'Remind on snoozed loops' },
+    { k:'createTasks', label:'Create tasks', desc:'Turn asks into tasks' },
+    { k:'joinMeetings', label:'Join meetings', desc:'Attend + take notes' }
+  ];
+  function loadAuto(){
+    Promise.all([ api('/api/autonomy'), api('/api/approvals') ]).then(function(res){
+      var settings = res[0]||{}, approvals = res[1]||[];
+      var levels = [['off','Off'],['ask','Ask'],['auto','Auto']];
+      var rows = ACTIONS.map(function(a){
+        var cur = settings[a.k] || 'off';
+        var seg = levels.map(function(lv){
+          return '<button class="lvl'+(lv[0]===cur?' on':'')+'" data-act="'+a.k+'" data-lvl="'+lv[0]+'">'+lv[1]+'</button>';
+        }).join('');
+        return '<div class="card"><div class="grow"><div class="t">'+a.label+'</div><div class="w">'+a.desc+'</div></div>'
+          + '<div class="lvls">'+seg+'</div></div>';
+      }).join('');
+      var head = approvals.length
+        ? '<div class="w" style="margin:4px 0 8px">'+approvals.length+' awaiting your approval</div>'
+          + approvals.map(function(ap){
+              return '<div class="card"><div class="grow"><div class="t">'+esc(ap.title)+'</div>'
+                + '<div class="w mono">'+esc(ap.action)+'</div></div>'
+                + '<button class="btn blue" data-approve="'+ap.id+'">Approve</button>'
+                + '<button class="btn ghost" data-dismiss="'+ap.id+'">Dismiss</button></div>';
+            }).join('')
+          + '<div class="w" style="margin:14px 0 8px">Autonomy</div>'
+        : '<div class="w" style="margin:4px 0 8px">Nothing waiting. Autonomy</div>';
+      list.innerHTML = head + rows;
+      list.querySelectorAll('.lvl').forEach(function(b){ b.onclick=function(){ post('/api/autonomy',{action:b.dataset.act,level:b.dataset.lvl}, 'PUT').then(loadAuto); }; });
+      list.querySelectorAll('[data-approve]').forEach(function(b){ b.onclick=function(){ post('/api/approvals/'+b.dataset.approve+'/approve').then(loadAuto); }; });
+      list.querySelectorAll('[data-dismiss]').forEach(function(b){ b.onclick=function(){ post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(loadAuto); }; });
+    });
   }
 
   function loadLoops(){
@@ -192,10 +234,12 @@ export function renderUi(): string {
       if(!events.length){ list.innerHTML = '<div class="empty">No activity yet.</div>'; return; }
       list.innerHTML = events.map(function(e){
         var when = new Date(e.at).toLocaleString();
+        var canUndo = e.reversible && e.undo;
         return '<div class="card"><div class="grow"><div class="t mono">'+esc(e.type)+'</div>'
           + '<div class="w">'+esc(e.actorId)+(e.channel?' \\u00b7 '+esc(e.channel):'')+' \\u00b7 '+esc(when)+'</div></div>'
-          + (e.reversible?'<span class="pill blue">reversible</span>':'')+'</div>';
+          + (canUndo?'<button class="btn ghost" data-undo="'+e.id+'">Undo</button>':e.reversible?'<span class="pill blue">reversible</span>':'')+'</div>';
       }).join('');
+      list.querySelectorAll('[data-undo]').forEach(function(b){ b.onclick=function(){ post('/api/events/'+b.dataset.undo+'/undo').then(loadEvents); }; });
     });
   }
 

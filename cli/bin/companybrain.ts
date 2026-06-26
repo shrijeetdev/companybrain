@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process';
 import { platform } from 'node:os';
 import { bootstrap, seedIfEmpty } from '@companybrain/core';
 import { buildServer } from '@companybrain/server';
-import { whatsapp, createMessenger, createBaileysChannel } from '@companybrain/integrations';
+import { whatsapp, createMessenger, createBaileysChannel, createLlm } from '@companybrain/integrations';
 
 const port = Number(process.env.COMPANYBRAIN_PORT ?? process.env.PORT ?? 4317);
 const host = process.env.COMPANYBRAIN_HOST ?? '0.0.0.0';
@@ -19,7 +19,10 @@ const baileys = process.env.WHATSAPP_BAILEYS === 'on' ? createBaileysChannel({ o
 const wa = whatsapp.whatsappConfigFromEnv();
 const messenger = baileys ? baileys.messenger : createMessenger({ whatsapp: wa ?? undefined });
 
-const boot = await bootstrap({ messenger });
+// If ANTHROPIC_API_KEY is set, replies are AI-written; otherwise a fixed template is used.
+const drafter = createLlm() ?? undefined;
+
+const boot = await bootstrap({ messenger, drafter });
 await seedIfEmpty(boot.core);
 
 // In-process worker: timers fire chases/briefings inside this same process.

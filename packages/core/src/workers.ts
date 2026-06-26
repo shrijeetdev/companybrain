@@ -19,7 +19,8 @@ export function registerWorkers(ctx: Context): void {
       console.warn(`[worker] replyLoop ${loopId}: no replyTo address — skipping send`);
       return;
     }
-    const text = `Thanks — we’ve logged “${loop.title}” and someone will get back to you shortly. 🤝`;
+    // AI-written when an LLM is configured; a fixed template otherwise.
+    const text = await ctx.drafter.draftReply({ title: loop.title, why: loop.why, channel: loop.channel });
     await ctx.messenger.send({ channel: loop.channel, to: loop.replyTo, text });
     await record(ctx, { orgId, type: 'reply.sent', entityId: loopId, actorId: 'agent_scout', channel: loop.channel });
     console.log(`[worker] replied to ${loop.replyTo} for loop ${loopId}`);
