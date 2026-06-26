@@ -1,0 +1,22 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# build
+dist/
+.turbo/
+*.tsbuildinfo
+.next/
+
+# local data (SQLite, secrets)
+.companybrain/
+*.sqlite
+*.sqlite-journal
+.env
+.env.local
+
+# os / editor
+.DS_Store
+.vscode/
+.idea/
+*.log
