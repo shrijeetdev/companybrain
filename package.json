@@ -14,18 +14,22 @@
   ],
   "scripts": {
     "dev": "tsx cli/bin/companybrain.ts",
-    "start": "tsx cli/bin/companybrain.ts",
-    "build": "pnpm typecheck",
+    "start": "node dist/server.js",
+    "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test packages/core/test/domain.test.ts packages/core/test/autonomy.test.ts packages/core/test/undo.test.ts packages/integrations/test/pipeline.test.ts"
   },
-  "pnpm": {
-    "overrides": {
-      "esbuild": "npm:esbuild-wasm@0.28.1"
-    }
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "better-sqlite3": "^11.3.0",
+    "@anthropic-ai/sdk": "^0.70.0",
+    "@whiskeysockets/baileys": "^6.7.9",
+    "qrcode-terminal": "^0.12.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^20",
+    "esbuild": "^0.25.0",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }

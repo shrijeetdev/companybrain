@@ -2,8 +2,8 @@
 node_modules/
 .pnpm-store/
 
-# build
-dist/
+# build (dist/server.js is committed — Hostinger runs it directly)
+dist/*.map
 .turbo/
 *.tsbuildinfo
 .next/
