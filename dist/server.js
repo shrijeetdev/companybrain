@@ -1196,6 +1196,11 @@ button{cursor:pointer;}
 </div>
 <script>
 (function(){
+  function showErr(e){
+    var m=e&&e.message?e.message:String(e);
+    document.getElementById('view').innerHTML='<div style="padding:24px;color:#ff6b6b;font-family:monospace;font-size:13px;white-space:pre-wrap">JS error: '+m+'</div>';
+  }
+  try {
   var tab = 'loops', side = 'yours', taskDay = 'today', leadView = 'all';
 
   var TABS = [
@@ -1316,7 +1321,7 @@ button{cursor:pointer;}
       view.querySelectorAll('[data-snooze]').forEach(function(b){b.onclick=function(){post('/api/loops/'+b.dataset.snooze+'/snooze',{hours:24}).then(loadLoops);};});
       var sw=document.getElementById('sweep-btn');
       if(sw) sw.onclick=function(){sw.disabled=true;loadLoops();};
-    });
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load loops: '+(e&&e.message||e)+'</div>';});
   }
   function loopCol(label,hint,dotColor,items){
     var cards = items.length ? items.map(function(l){
@@ -1335,7 +1340,7 @@ button{cursor:pointer;}
         +'<span style="flex:1"></span>'
         +'<span class="age-pill '+cls+'">'+ageStr+'</span>'
         +'</div></div></div>';
-    }).join('') : '<div class="empty-dashed">'+(label==='Your court'?'Nothing in your court. Clean board.':'No one's keeping you waiting.')+'</div>';
+    }).join('') : '<div class="empty-dashed">'+(label==='Your court'?'Nothing in your court. Clean board.':'No one&#39;s keeping you waiting.')+'</div>';
 
     return '<div>'
       +'<div class="col-head"><span class="col-dot" style="background:'+dotColor+'"></span>'
@@ -1350,37 +1355,9 @@ button{cursor:pointer;}
     api('/api/tasks').then(function(tasks){
       tasks=tasks||[];
       var filtered=tasks.filter(function(t){return t.day===taskDay;});
-      var seg=segBar([{v:'today',label:'Today'},{v:'tomorrow',label:'Tomorrow'},{v:'upcoming',label:'Upcoming'}],taskDay,function(v){taskDay=v;loadTasks();});
-      var html='<div class="sec-head"><div><div class="sec-title">Tasks</div>'
-        +'<div class="sec-sub">Your tasks \u2014 capture anything, complete what matters.</div></div></div>';
-      var el=document.createElement('div');
-      el.innerHTML=html;
-      el.insertBefore(seg,null);
-
-      var cards = filtered.length ? filtered.map(function(t){
-        var pr = t.priority==='high'?'<span class="auto-badge auto-ask" style="margin-left:auto">HIGH</span>'
-                :t.priority==='med'?'<span class="auto-badge" style="margin-left:auto;background:var(--blueSoft);color:var(--blue)">MED</span>':'';
-        return '<div class="item-card gc">'
-          +'<button class="check-btn" data-done="'+t.id+'" title="Complete"></button>'
-          +'<div class="emoji-ic">'+esc(t.emoji||'\u2705')+'</div>'
-          +'<div class="loop-info"><div class="item-title">'+esc(t.title)+'</div>'
-          +'<div class="item-sub">'+esc(t.list||'Inbox')+'</div></div>'
-          +pr+'</div>';
-      }).join('') : '<div class="empty-dashed">No tasks for '+taskDay+'. Time to plan ahead.</div>';
-
-      el.innerHTML += '<div class="seg-wrapper"></div>'+cards;
-      view.innerHTML='';
-      var segWrap=document.createElement('div');
-      segWrap.appendChild(seg);
-      view.appendChild(document.createElement('div')).innerHTML=html;
-      view.firstChild.parentNode.insertBefore(segWrap,view.firstChild.nextSibling);
-      view.innerHTML='';
-
-      // simpler approach: build directly
       view.innerHTML='<div class="sec-head"><div><div class="sec-title">Tasks</div>'
         +'<div class="sec-sub">Your tasks \u2014 capture anything, complete what matters.</div></div></div>';
-      var segEl=segBar([{v:'today',label:'Today'},{v:'tomorrow',label:'Tomorrow'},{v:'upcoming',label:'Upcoming'}],taskDay,function(v){taskDay=v;loadTasks();});
-      view.appendChild(segEl);
+      view.appendChild(segBar([{v:'today',label:'Today'},{v:'tomorrow',label:'Tomorrow'},{v:'upcoming',label:'Upcoming'}],taskDay,function(v){taskDay=v;loadTasks();}));
       var cardWrap=document.createElement('div');
       cardWrap.innerHTML = filtered.length ? filtered.map(function(t){
         var pr = t.priority==='high'?'<span class="auto-badge auto-ask" style="margin-left:auto">HIGH</span>'
@@ -1393,9 +1370,8 @@ button{cursor:pointer;}
           +pr+'</div>';
       }).join('') : '<div class="empty-dashed">No tasks for '+taskDay+'.</div>';
       view.appendChild(cardWrap);
-
       view.querySelectorAll('[data-done]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.done+'/complete').then(loadTasks);};});
-    });
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load tasks: '+(e&&e.message||e)+'</div>';});
   }
 
   // \u2500\u2500 leads \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1426,7 +1402,7 @@ button{cursor:pointer;}
       }).join('') : '<div class="empty-dashed">No leads yet. Add one below.</div>';
       view.appendChild(cardWrap);
       view.querySelectorAll('[data-advance]').forEach(function(b){b.onclick=function(){post('/api/leads/'+b.dataset.advance+'/advance').then(loadLeads);};});
-    });
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load leads: '+(e&&e.message||e)+'</div>';});
   }
 
   // \u2500\u2500 agents \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1450,7 +1426,7 @@ button{cursor:pointer;}
           +'</div></div>';
       }).join('') : '<div class="empty-dashed">No agents configured yet.</div>';
       view.appendChild(wrap);
-    });
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load agents: '+(e&&e.message||e)+'</div>';});
   }
 
   // \u2500\u2500 autonomy \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1462,7 +1438,7 @@ button{cursor:pointer;}
 
       if(approvals.length){
         var apWrap=document.createElement('div');
-        apWrap.innerHTML='<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);letter-spacing:.5px;margin:0 0 10px;">PENDING APPROVALS</div>'
+        apWrap.innerHTML='<div style="font-family:&#39;JetBrains Mono&#39;,monospace;font-size:10px;color:var(--faint);letter-spacing:.5px;margin:0 0 10px;">PENDING APPROVALS</div>'
           +approvals.map(function(ap){
             return '<div class="approve-card gc">'
               +'<div style="flex:1;min-width:0;"><div class="approve-title">'+esc(ap.title)+'</div>'
@@ -1476,7 +1452,7 @@ button{cursor:pointer;}
       }
 
       var autoWrap=document.createElement('div');
-      autoWrap.innerHTML='<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);letter-spacing:.5px;margin:18px 0 10px;">AUTONOMY SETTINGS</div>'
+      autoWrap.innerHTML='<div style="font-family:&#39;JetBrains Mono&#39;,monospace;font-size:10px;color:var(--faint);letter-spacing:.5px;margin:18px 0 10px;">AUTONOMY SETTINGS</div>'
         +ACTIONS.map(function(a){
           var cur=settings[a.k]||'off';
           var lvls=['off','ask','auto'].map(function(lv){
@@ -1486,7 +1462,7 @@ button{cursor:pointer;}
         }).join('');
       autoWrap.querySelectorAll('.lvl').forEach(function(b){b.onclick=function(){post('/api/autonomy',{action:b.dataset.act,level:b.dataset.lvl},'PUT').then(loadAuto);};});
       view.appendChild(autoWrap);
-    });
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load autonomy: '+(e&&e.message||e)+'</div>';});
   }
 
   // \u2500\u2500 events \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1508,7 +1484,7 @@ button{cursor:pointer;}
       }).join('') : '<div class="empty-dashed">No activity yet. Start capturing loops.</div>';
       view.appendChild(wrap);
       view.querySelectorAll('[data-undo]').forEach(function(b){b.onclick=function(){post('/api/events/'+b.dataset.undo+'/undo').then(loadEvents);};});
-    });
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load events: '+(e&&e.message||e)+'</div>';});
   }
 
   // \u2500\u2500 quick-add \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1527,6 +1503,7 @@ button{cursor:pointer;}
   // \u2500\u2500 boot \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   buildNav();
   render();
+  } catch(e) { showErr(e); }
 })();
 </script>
 </body>
