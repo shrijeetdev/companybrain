@@ -42,6 +42,8 @@ export function makeLoops(ctx: Context) {
         replyTo: input.replyTo,
         ownerId: input.ownerId,
         dueAt: input.dueAt ?? null,
+        createdBy: input.actorId,
+        assignedTo: input.ownerId ? [input.ownerId] : [input.actorId],
         createdAt: now(),
         updatedAt: now(),
       };

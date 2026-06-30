@@ -50,7 +50,12 @@ export interface Loop {
   sourceRef?: string;
   /** external address to reply on for this channel (e.g. the sender's phone for WhatsApp) */
   replyTo?: string;
+  /** who is responsible for the next move */
   ownerId?: string;
+  /** who created the loop */
+  createdBy: string;
+  /** assignees accountable for this loop */
+  assignedTo: string[];
   dueAt?: number | null;
   createdAt: number;
   updatedAt: number;
@@ -71,6 +76,10 @@ export interface Task {
   recur?: 'Daily' | 'Weekly' | 'Monthly' | null;
   assignees: string[];
   createdBy: string;
+  /** optional subtasks */
+  subtasks?: { id: string; title: string; done: boolean }[];
+  /** comments / activity notes */
+  comments?: { id: string; text: string; by: string; at: number }[];
   dueAt?: number | null;
   createdAt: number;
 }

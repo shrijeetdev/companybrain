@@ -25,8 +25,15 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   // Single self-hosted app: one user, one org. Every request is the local principal.
   const principalOf = (_req: FastifyRequest) => auth.current();
   const params = (req: FastifyRequest) => req.params as { id: string };
+  const query = (req: FastifyRequest) => req.query as Record<string, string | undefined>;
 
   app.get('/health', async () => ({ ok: true }));
+
+  // --- Current user (for accountability UI) ---
+  app.get('/api/me', async (req) => {
+    const p = await principalOf(req);
+    return { userId: p.userId, orgId: p.orgId, role: p.role, name: 'You', initials: 'YO' };
+  });
 
   // --- Open Loops ---
   app.get('/api/loops', async (req) => {
@@ -57,6 +64,14 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     return core.loops.snooze(params(req).id, p.userId, untilAt);
   });
 
+  app.post('/api/loops/:id/assign', async (req) => {
+    const p = await principalOf(req);
+    const b = (req.body ?? {}) as { userIds?: string[] };
+    const loop = await core.ctx.db.loops.get(params(req).id);
+    if (!loop) throw badRequest('loop not found');
+    return core.ctx.db.loops.update(loop.id, { assignedTo: b.userIds ?? [p.userId] });
+  });
+
   // --- Tasks ---
   app.get('/api/tasks', async (req) => core.tasks.list((await principalOf(req)).orgId));
   app.post('/api/tasks', async (req) => {
@@ -72,6 +87,14 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     return core.tasks.move(params(req).id, b.day ?? 'today', p.userId);
   });
 
+  app.post('/api/tasks/:id/assign', async (req) => {
+    const p = await principalOf(req);
+    const b = (req.body ?? {}) as { userIds?: string[] };
+    const task = await core.ctx.db.tasks.get(params(req).id);
+    if (!task) throw badRequest('task not found');
+    return core.ctx.db.tasks.update(task.id, { assignees: b.userIds ?? [p.userId] });
+  });
+
   // --- Leads ---
   app.get('/api/leads', async (req) => core.leads.list((await principalOf(req)).orgId));
   app.post('/api/leads', async (req) => {
@@ -81,6 +104,14 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     return core.leads.create({ orgId: p.orgId, actorId: p.userId, ...b });
   });
   app.post('/api/leads/:id/advance', async (req) => core.leads.advance(params(req).id, (await principalOf(req)).userId));
+
+  app.post('/api/leads/:id/assign', async (req) => {
+    const p = await principalOf(req);
+    const b = (req.body ?? {}) as { userIds?: string[] };
+    const lead = await core.ctx.db.leads.get(params(req).id);
+    if (!lead) throw badRequest('lead not found');
+    return core.ctx.db.leads.update(lead.id, { assignedTo: b.userIds ?? [p.userId] });
+  });
 
   // Quick-add a lead from a phone + a rough note — the LLM (if configured) structures it.
   app.post('/api/leads/quick-add', async (req) => {
@@ -95,7 +126,13 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
 
   // --- AI agents + audit ---
   app.get('/api/agents', async () => core.agents.roster());
-  app.get('/api/events', async (req) => core.events.list((await principalOf(req)).orgId, 50));
+  app.get('/api/events', async (req) => {
+    const p = await principalOf(req);
+    const q = query(req);
+    const events = await core.events.list(p.orgId, 200);
+    if (q.entityId) return events.filter((e) => e.entityId === q.entityId);
+    return events.slice(0, 50);
+  });
   // Reverse a logged action (the "reversible" pillar): delete what was created, restore what changed.
   app.post('/api/events/:id/undo', async (req) => { await principalOf(req); return core.events.undo(params(req).id); });
 
