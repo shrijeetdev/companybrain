@@ -1265,7 +1265,6 @@ button{cursor:pointer;}
     });
 
     var bn = document.getElementById('botnav');
-    bn.style.display='flex';
     bn.innerHTML = TABS.map(function(t){
       return '<button data-tab="'+t.id+'" class="'+(t.id===tab?'on':'') +'"><span class="bn-ic">'+t.ic+'</span>'+t.label+'</button>';
     }).join('');
