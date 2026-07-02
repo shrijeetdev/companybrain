@@ -18,6 +18,16 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   const { core, auth } = deps;
   const app = Fastify({ logger: false });
 
+  // SSE client registry
+  const sseClients = new Set<import('node:http').ServerResponse>();
+  function broadcast(event: Record<string, unknown>) {
+    const line = 'data: ' + JSON.stringify(event) + '\n\n';
+    for (const res of sseClients) {
+      try { res.write(line); }
+      catch { sseClients.delete(res); }
+    }
+  }
+
   // Optional AI: real Anthropic-backed extraction if ANTHROPIC_API_KEY is set, else null
   // (the domain falls back to a heuristic). Built once per server.
   const llm = createLlm();
@@ -28,6 +38,24 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   const query = (req: FastifyRequest) => req.query as Record<string, string | undefined>;
 
   app.get('/health', async () => ({ ok: true }));
+
+  // --- SSE stream ---
+  app.get('/api/stream', async (req, reply) => {
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    reply.raw.write(': connected\n\n');
+    sseClients.add(reply.raw);
+    const ping = setInterval(() => {
+      try { reply.raw.write(': ping\n\n'); }
+      catch { clearInterval(ping); }
+    }, 25000);
+    req.raw.once('close', () => { clearInterval(ping); sseClients.delete(reply.raw); });
+    await new Promise<void>(resolve => req.raw.once('close', resolve));
+  });
 
   // --- Current user (for accountability UI) ---
   app.get('/api/me', async (req) => {
@@ -46,22 +74,28 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const p = await principalOf(req);
     const b = req.body as { title: string; why?: string; side?: 'yours' | 'theirs'; channel?: any };
     if (!b?.title?.trim()) throw badRequest('title is required');
-    return core.loops.capture({
+    const result = await core.loops.capture({
       orgId: p.orgId, actorId: p.userId,
       title: b.title, why: b.why ?? '', side: b.side ?? 'yours', channel: b.channel ?? 'manual',
     });
+    broadcast({ type: 'loop.created', orgId: p.orgId });
+    return result;
   });
 
   app.post('/api/loops/:id/close', async (req) => {
     const p = await principalOf(req);
-    return core.loops.close(params(req).id, p.userId);
+    const result = await core.loops.close(params(req).id, p.userId);
+    broadcast({ type: 'loop.closed' });
+    return result;
   });
 
   app.post('/api/loops/:id/snooze', async (req) => {
     const p = await principalOf(req);
     const b = (req.body ?? {}) as { hours?: number };
     const untilAt = Date.now() + Math.max(1, b.hours ?? 24) * 60 * 60 * 1000;
-    return core.loops.snooze(params(req).id, p.userId, untilAt);
+    const result = await core.loops.snooze(params(req).id, p.userId, untilAt);
+    broadcast({ type: 'loop.snoozed' });
+    return result;
   });
 
   app.post('/api/loops/:id/assign', async (req) => {
@@ -78,13 +112,21 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const p = await principalOf(req);
     const b = req.body as { title: string; emoji?: string; day?: any; priority?: any };
     if (!b?.title?.trim()) throw badRequest('title is required');
-    return core.tasks.create({ orgId: p.orgId, actorId: p.userId, ...b });
+    const result = await core.tasks.create({ orgId: p.orgId, actorId: p.userId, ...b });
+    broadcast({ type: 'task.created' });
+    return result;
   });
-  app.post('/api/tasks/:id/complete', async (req) => core.tasks.complete(params(req).id, (await principalOf(req)).userId));
+  app.post('/api/tasks/:id/complete', async (req) => {
+    const result = await core.tasks.complete(params(req).id, (await principalOf(req)).userId);
+    broadcast({ type: 'task.completed' });
+    return result;
+  });
   app.post('/api/tasks/:id/move', async (req) => {
     const p = await principalOf(req);
     const b = (req.body ?? {}) as { day?: 'today' | 'tomorrow' | 'upcoming' };
-    return core.tasks.move(params(req).id, b.day ?? 'today', p.userId);
+    const result = await core.tasks.move(params(req).id, b.day ?? 'today', p.userId);
+    broadcast({ type: 'task.moved' });
+    return result;
   });
 
   app.post('/api/tasks/:id/assign', async (req) => {
@@ -101,9 +143,15 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const p = await principalOf(req);
     const b = req.body as { name: string; company?: string; phone?: string; email?: string; what?: string };
     if (!b?.name?.trim()) throw badRequest('name is required');
-    return core.leads.create({ orgId: p.orgId, actorId: p.userId, ...b });
+    const result = await core.leads.create({ orgId: p.orgId, actorId: p.userId, ...b });
+    broadcast({ type: 'lead.created' });
+    return result;
   });
-  app.post('/api/leads/:id/advance', async (req) => core.leads.advance(params(req).id, (await principalOf(req)).userId));
+  app.post('/api/leads/:id/advance', async (req) => {
+    const result = await core.leads.advance(params(req).id, (await principalOf(req)).userId);
+    broadcast({ type: 'lead.advanced' });
+    return result;
+  });
 
   app.post('/api/leads/:id/assign', async (req) => {
     const p = await principalOf(req);
@@ -118,10 +166,46 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const p = await principalOf(req);
     const b = req.body as { phone?: string; note: string };
     if (!b?.note?.trim()) throw badRequest('note is required');
-    return core.leads.quickAddFromNote(
+    const result = await core.leads.quickAddFromNote(
       { orgId: p.orgId, actorId: p.userId, phone: b.phone ?? '', note: b.note },
       llm?.extractLead,
     );
+    broadcast({ type: 'lead.created' });
+    return result;
+  });
+
+  // Extract contact info from a business card image or text using AI
+  app.post('/api/leads/extract-card', async (req) => {
+    const b = req.body as { imageBase64?: string; text?: string };
+    if (!b?.imageBase64 && !b?.text) throw badRequest('imageBase64 or text required');
+
+    if (llm && b.text) {
+      const extracted = await llm.extractLead(b.text);
+      return extracted;
+    }
+
+    if (b.imageBase64 && process.env.ANTHROPIC_API_KEY) {
+      const { Anthropic } = await import('@anthropic-ai/sdk');
+      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const msg = await client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 512,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b.imageBase64 } },
+            { type: 'text', text: 'Extract the contact info from this business card. Reply with JSON only: { "name": "", "title": "", "company": "", "email": "", "phone": "" }' }
+          ]
+        }]
+      });
+      try {
+        const text = (msg.content[0] as any).text;
+        const json = text.match(/\{[\s\S]*\}/)?.[0] ?? '{}';
+        return JSON.parse(json);
+      } catch { return {}; }
+    }
+
+    return { name: '', title: '', company: '', email: '', phone: '' };
   });
 
   // --- AI agents + audit ---
@@ -167,8 +251,8 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   app.get('/api/approvals', async (req) => core.approvals.list((await principalOf(req)).orgId, 'pending'));
-  app.post('/api/approvals/:id/approve', async (req) => { await principalOf(req); return core.approvals.approve(params(req).id); });
-  app.post('/api/approvals/:id/dismiss', async (req) => { await principalOf(req); return core.approvals.dismiss(params(req).id); });
+  app.post('/api/approvals/:id/approve', async (req) => { await principalOf(req); const r = await core.approvals.approve(params(req).id); broadcast({ type: 'agent.action' }); return r; });
+  app.post('/api/approvals/:id/dismiss', async (req) => { await principalOf(req); const r = await core.approvals.dismiss(params(req).id); broadcast({ type: 'agent.action' }); return r; });
 
   // --- WhatsApp webhook (the one integration wired end-to-end) ---
   const wa = whatsapp.whatsappConfigFromEnv();
@@ -186,6 +270,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   app.post('/webhooks/whatsapp', async (req, reply) => {
     const messages = whatsapp.parseInbound(LOCAL_ORG_ID, req.body);
     for (const m of messages) await ingest(core, m);
+    if (messages.length) broadcast({ type: 'loop.created' });
     return reply.code(200).send('ok');
   });
 
@@ -207,6 +292,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
       text: b.text,
       ref: b.ref,
     });
+    broadcast({ type: 'loop.created' });
     return reply.send({ captured: loopId });
   });
 
