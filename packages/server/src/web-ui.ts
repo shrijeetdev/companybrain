@@ -369,6 +369,32 @@ button{cursor:pointer;}
   .bento-hero{grid-column:span 1;}
 }
 @media(min-width:900px){.bento-grid{grid-template-columns:repeat(3,1fr);}}
+
+/* drag-and-drop + project/agent extras */
+.kanban-task-card[draggable="true"]{cursor:grab;}
+.kanban-task-card.dragging{opacity:.4;}
+.kanban-col-body.drag-over{background:var(--accentSoft);border-radius:12px;outline:2px dashed var(--accent);outline-offset:-2px;}
+.pipeline-lead-card[draggable="true"]{cursor:grab;}
+.pipeline-lead-card.dragging{opacity:.4;}
+.pipeline-col-body.drag-over{background:var(--accentSoft);border-radius:12px;outline:2px dashed var(--accent);outline-offset:-2px;}
+.proj-color-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.proj-color-swatch{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .12s;}
+.proj-color-swatch:hover{transform:scale(1.12);}
+.proj-color-swatch.on{border-color:var(--text);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent);}
+.proj-upload-row{display:flex;align-items:center;gap:10px;}
+.proj-upload-preview{width:52px;height:52px;border-radius:12px;background-size:cover;background-position:center;border:1px solid var(--glassBorder);flex-shrink:0;background-color:var(--bg2);}
+.proj-detail-hero{border-radius:16px;padding:22px;min-height:110px;display:flex;flex-direction:column;justify-content:flex-end;margin-bottom:14px;position:relative;}
+.proj-detail-emoji{font-size:30px;margin-bottom:8px;}
+.proj-detail-name{font-size:19px;font-weight:700;color:#fff;}
+.proj-detail-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.proj-stepper-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--glassBorder);background:var(--bg2);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;min-height:28px;}
+.proj-stepper-btn:hover{background:var(--accentSoft);color:var(--accent);border-color:rgba(62,123,250,.3);}
+.agent-card.custom{border-left:3px solid var(--accent);}
+.agent-remove-btn{margin-left:auto;background:transparent;border:none;color:var(--faint);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:6px;flex-shrink:0;}
+.agent-remove-btn:hover{color:var(--red);background:var(--redSoft);}
+.emoji-pick-row{display:flex;gap:6px;flex-wrap:wrap;}
+.emoji-pick-btn{width:34px;height:34px;border-radius:9px;border:1.5px solid var(--glassBorder);background:var(--bg2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;min-height:34px;transition:all .12s;}
+.emoji-pick-btn.on{border-color:var(--accent);background:var(--accentSoft);}
 </style>
 </head>
 <body>
@@ -482,9 +508,37 @@ button{cursor:pointer;}
 
   <div class="modal-backdrop" id="proj-modal">
     <div class="modal-box">
-      <div class="modal-head"><span style="font-size:20px;">📦</span><span class="modal-title">New project</span><button class="modal-close" id="proj-modal-close">×</button></div>
-      <div class="modal-body"><div class="modal-field"><label class="modal-label">Choose a template</label><div id="proj-template-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;"></div></div><div class="modal-field"><label class="modal-label">Project name</label><input class="modal-input" id="proj-modal-name" placeholder="My new project" autocomplete="off"/></div><div class="modal-field"><label class="modal-label">Description (optional)</label><textarea class="modal-input" id="proj-modal-desc" rows="2" placeholder="What is this project about?" style="resize:vertical;"></textarea></div></div>
-      <div class="modal-foot"><button class="btn-ghost" id="proj-modal-cancel">Cancel</button><button class="btn-primary" id="proj-modal-save">Create project</button></div>
+      <div class="modal-head"><span style="font-size:20px;" id="proj-modal-icon">📦</span><span class="modal-title" id="proj-modal-title">New project</span><button class="modal-close" id="proj-modal-close">×</button></div>
+      <div class="modal-body">
+        <div class="modal-field"><label class="modal-label">Choose a template</label><div id="proj-template-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;"></div></div>
+        <div class="modal-field"><label class="modal-label">Or pick a custom color</label><div class="proj-color-row" id="proj-color-row"></div></div>
+        <div class="modal-field"><label class="modal-label">Or upload a custom image</label><div class="proj-upload-row"><div class="proj-upload-preview" id="proj-upload-preview"></div><input type="file" id="proj-image-file" accept="image/*" style="display:none;"/><button class="btn-ghost" id="proj-image-btn" type="button">Upload image</button><button class="btn-ghost" id="proj-image-clear" type="button" style="display:none;">Remove</button></div></div>
+        <div class="modal-field"><label class="modal-label">Emoji</label><div class="emoji-pick-row" id="proj-emoji-row"></div></div>
+        <div class="modal-field"><label class="modal-label">Project name</label><input class="modal-input" id="proj-modal-name" placeholder="My new project" autocomplete="off"/></div>
+        <div class="modal-field"><label class="modal-label">Description (optional)</label><textarea class="modal-input" id="proj-modal-desc" rows="2" placeholder="What is this project about?" style="resize:vertical;"></textarea></div>
+      </div>
+      <div class="modal-foot"><button class="btn-danger" id="proj-modal-delete" style="display:none;margin-right:auto;">Delete</button><button class="btn-ghost" id="proj-modal-cancel">Cancel</button><button class="btn-primary" id="proj-modal-save">Create project</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="proj-detail-modal">
+    <div class="modal-box">
+      <div class="modal-head"><span class="modal-title">Project</span><button class="modal-close" id="proj-detail-close">×</button></div>
+      <div class="modal-body" id="proj-detail-body"></div>
+      <div class="modal-foot"><button class="btn-danger" id="proj-detail-delete" style="margin-right:auto;">Delete</button><button class="btn-ghost" id="proj-detail-edit">Edit</button><button class="btn-primary" id="proj-detail-close-btn">Close</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="agent-modal">
+    <div class="modal-box">
+      <div class="modal-head"><span style="font-size:20px;">🤖</span><span class="modal-title" id="agent-modal-title">Hire a new agent</span><button class="modal-close" id="agent-modal-close">×</button></div>
+      <div class="modal-body">
+        <div class="modal-field"><label class="modal-label">Emoji</label><div class="emoji-pick-row" id="agent-emoji-row"></div></div>
+        <div class="modal-field"><label class="modal-label">Agent name</label><input class="modal-input" id="agent-modal-name" placeholder="e.g. Nova" autocomplete="off"/></div>
+        <div class="modal-field"><label class="modal-label">Role / what it does</label><input class="modal-input" id="agent-modal-role" placeholder="e.g. Drafts weekly reports"/></div>
+        <div class="modal-field"><label class="modal-label">Autonomy</label><div class="lvls" id="agent-modal-autonomy"><button type="button" class="lvl" data-lvl="off">Off</button><button type="button" class="lvl" data-lvl="ask">Ask</button><button type="button" class="lvl" data-lvl="auto">Auto</button></div></div>
+      </div>
+      <div class="modal-foot"><button class="btn-danger" id="agent-modal-delete" style="display:none;margin-right:auto;">Remove</button><button class="btn-ghost" id="agent-modal-cancel">Cancel</button><button class="btn-primary" id="agent-modal-save">Hire agent</button></div>
     </div>
   </div>
 
@@ -1051,6 +1105,7 @@ button{cursor:pointer;}
       ['today','tomorrow','upcoming'].forEach(function(d){var btn=document.getElementById('kadd-'+d);if(btn)btn.onclick=function(){openNewTaskModal(d);};});
       view.querySelectorAll('[data-done]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.done+'/complete').then(function(){toast('Task completed');loadTasks();});};});
       view.querySelectorAll('[data-move]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.move+'/move',{day:b.dataset.day}).then(function(){toast('Task moved');loadTasks();});};});
+      wireTaskDragAndDrop();
     }).catch(function(e){view.innerHTML='<div class="empty">Failed to load tasks: '+(e&&e.message||e)+'</div>';});
   }
   function kanbanCol(label,dotColor,items,colDay){
@@ -1058,9 +1113,41 @@ button{cursor:pointer;}
       var od=t.day&&t.day<todayStr();
       var ds=!od&&isDueSoon(t);
       var pr=t.priority==='high'?'<span class="priority-pill priority-high">HIGH</span>':t.priority==='med'?'<span class="priority-pill priority-med">MED</span>':t.priority==='low'?'<span class="priority-pill priority-low">LOW</span>':'';
-      return '<div class="kanban-task-card gc'+(od?' overdue':ds?' due-soon':'')+'"><div class="kanban-task-row"><button class="kanban-check" data-done="'+t.id+'"></button><span class="kanban-task-emoji">'+esc(t.emoji||'📝')+'</span><div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title)+'</div><div class="kanban-task-sub">'+esc(t.list||'Inbox')+'</div></div></div><div class="kanban-task-foot">'+pr+(colDay!=='today'?'<button class="btn-ghost" data-move="'+t.id+'" data-day="today" style="font-size:10px;padding:3px 8px;min-height:24px;">→ Today</button>':'')+'</div></div>';
+      return '<div class="kanban-task-card gc'+(od?' overdue':ds?' due-soon':'')+'" draggable="true" data-task-id="'+t.id+'"><div class="kanban-task-row"><button class="kanban-check" data-done="'+t.id+'"></button><span class="kanban-task-emoji">'+esc(t.emoji||'📝')+'</span><div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title)+'</div><div class="kanban-task-sub">'+esc(t.list||'Inbox')+'</div></div></div><div class="kanban-task-foot">'+pr+(colDay!=='today'?'<button class="btn-ghost" data-move="'+t.id+'" data-day="today" style="font-size:10px;padding:3px 8px;min-height:24px;">→ Today</button>':'')+'</div></div>';
     }).join(''):'<div class="empty-dashed" style="font-size:11px;padding:16px 12px;">No tasks for '+label.toLowerCase()+'.</div>';
-    return '<div class="kanban-col"><div class="kanban-col-head"><span class="kanban-col-dot" style="background:'+dotColor+'"></span><span class="kanban-col-label">'+label+'</span><span class="kanban-col-count">'+items.length+'</span></div><div class="kanban-col-body">'+cards+'<button class="kanban-add-btn" id="kadd-'+colDay+'">+ Add</button></div></div>';
+    return '<div class="kanban-col"><div class="kanban-col-head"><span class="kanban-col-dot" style="background:'+dotColor+'"></span><span class="kanban-col-label">'+label+'</span><span class="kanban-col-count">'+items.length+'</span></div><div class="kanban-col-body" data-col-day="'+colDay+'">'+cards+'<button class="kanban-add-btn" id="kadd-'+colDay+'">+ Add</button></div></div>';
+  }
+  function wireTaskDragAndDrop(){
+    var dragged=null;
+    view.querySelectorAll('.kanban-task-card').forEach(function(card){
+      card.addEventListener('dragstart',function(e){
+        dragged=card;
+        card.classList.add('dragging');
+        try{e.dataTransfer.setData('text/plain',card.dataset.taskId);}catch(err){}
+        e.dataTransfer.effectAllowed='move';
+      });
+      card.addEventListener('dragend',function(){
+        card.classList.remove('dragging');
+        view.querySelectorAll('.kanban-col-body.drag-over').forEach(function(c){c.classList.remove('drag-over');});
+        dragged=null;
+      });
+    });
+    view.querySelectorAll('.kanban-col-body').forEach(function(col){
+      col.addEventListener('dragover',function(e){
+        e.preventDefault();
+        e.dataTransfer.dropEffect='move';
+        col.classList.add('drag-over');
+      });
+      col.addEventListener('dragleave',function(){col.classList.remove('drag-over');});
+      col.addEventListener('drop',function(e){
+        e.preventDefault();
+        col.classList.remove('drag-over');
+        var taskId=dragged?dragged.dataset.taskId:(e.dataTransfer?e.dataTransfer.getData('text/plain'):null);
+        var day=col.dataset.colDay;
+        if(!taskId||!day)return;
+        post('/api/tasks/'+taskId+'/move',{day:day}).then(function(){toast('Task moved');loadTasks();});
+      });
+    });
   }
   function isDueSoon(t){return t.dueAt&&t.dueAt>Date.now()&&t.dueAt<Date.now()+86400e3;}
 
@@ -1070,10 +1157,43 @@ button{cursor:pointer;}
     api('/api/leads').then(function(leads){
       leads=leads||[];
       view.innerHTML='<div class="sec-head"><div><div class="sec-title">Leads</div><div class="sec-sub">Pipeline — move each contact toward a close.</div></div><div class="head-actions"><button class="btn-primary" id="new-lead-btn">+ New lead</button></div></div><div class="pipeline-board">'
-        +LEAD_STAGES.map(function(stage){var stageLeads=leads.filter(function(l){return(l.stage||'new')===stage.id;});return '<div class="pipeline-col"><div class="pipeline-col-head"><span class="pipeline-stage-dot" style="background:'+stage.dot+'"></span><span class="pipeline-stage-label">'+stage.label+'</span><span class="pipeline-col-count">'+stageLeads.length+'</span></div><div class="pipeline-col-body">'+(stageLeads.length?stageLeads.map(function(l){var initials=(l.name||'?').trim().split(/\s+/).slice(0,2).map(function(w){return w[0].toUpperCase();}).join('');var hue=((l.name||'A').charCodeAt(0)*37)%360;var canAdv=stage.id!=='won'&&stage.id!=='lost';return '<div class="pipeline-lead-card gc" data-lead-id="'+l.id+'"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><div class="pipeline-lead-avatar" style="background:hsl('+hue+',35%,52%)">'+initials+'</div><div style="flex:1;min-width:0;"><div class="pipeline-lead-name">'+esc(l.name)+'</div>'+(l.company?'<div class="pipeline-lead-sub">'+esc(l.company)+'</div>':'')+'</div></div><div class="pipeline-lead-foot">'+(canAdv?'<button class="plead-adv-btn" data-advance="'+l.id+'">Advance →</button>':'<span class="stage-pill lead-stage-'+stage.id+'">'+stage.label+'</span>')+(l.phone?'<a class="plead-adv-btn" href="https://wa.me/'+esc(l.phone.replace(/[^0-9]/g,''))+'" target="_blank" onclick="event.stopPropagation()">WA</a>':'')+'</div></div>';}).join(''):'<div style="font-size:11px;color:var(--faint);padding:10px 2px;">No leads here.</div>')+'</div></div>';}).join('')+'</div>';
+        +LEAD_STAGES.map(function(stage){var stageLeads=leads.filter(function(l){return(l.stage||'new')===stage.id;});return '<div class="pipeline-col"><div class="pipeline-col-head"><span class="pipeline-stage-dot" style="background:'+stage.dot+'"></span><span class="pipeline-stage-label">'+stage.label+'</span><span class="pipeline-col-count">'+stageLeads.length+'</span></div><div class="pipeline-col-body" data-stage="'+stage.id+'">'+(stageLeads.length?stageLeads.map(function(l){var initials=(l.name||'?').trim().split(/\s+/).slice(0,2).map(function(w){return w[0].toUpperCase();}).join('');var hue=((l.name||'A').charCodeAt(0)*37)%360;var canAdv=stage.id!=='won'&&stage.id!=='lost';return '<div class="pipeline-lead-card gc" draggable="true" data-lead-id="'+l.id+'"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><div class="pipeline-lead-avatar" style="background:hsl('+hue+',35%,52%)">'+initials+'</div><div style="flex:1;min-width:0;"><div class="pipeline-lead-name">'+esc(l.name)+'</div>'+(l.company?'<div class="pipeline-lead-sub">'+esc(l.company)+'</div>':'')+'</div></div><div class="pipeline-lead-foot">'+(canAdv?'<button class="plead-adv-btn" data-advance="'+l.id+'">Advance →</button>':'<span class="stage-pill lead-stage-'+stage.id+'">'+stage.label+'</span>')+(l.phone?'<a class="plead-adv-btn" href="https://wa.me/'+esc(l.phone.replace(/[^0-9]/g,''))+'" target="_blank" onclick="event.stopPropagation()">WA</a>':'')+'</div></div>';}).join(''):'<div style="font-size:11px;color:var(--faint);padding:10px 2px;">No leads here.</div>')+'</div></div>';}).join('')+'</div>';
       document.getElementById('new-lead-btn').onclick=function(){openNewLeadModal();};
       view.querySelectorAll('[data-advance]').forEach(function(b){b.onclick=function(e){e.stopPropagation();post('/api/leads/'+b.dataset.advance+'/advance').then(function(){toast('Advanced');loadLeads();});};});
+      wireLeadDragAndDrop();
     }).catch(function(e){view.innerHTML='<div class="empty">Failed to load leads: '+(e&&e.message||e)+'</div>';});
+  }
+  function wireLeadDragAndDrop(){
+    var dragged=null;
+    view.querySelectorAll('.pipeline-lead-card').forEach(function(card){
+      card.addEventListener('dragstart',function(e){
+        dragged=card;
+        card.classList.add('dragging');
+        try{e.dataTransfer.setData('text/plain',card.dataset.leadId);}catch(err){}
+        e.dataTransfer.effectAllowed='move';
+      });
+      card.addEventListener('dragend',function(){
+        card.classList.remove('dragging');
+        view.querySelectorAll('.pipeline-col-body.drag-over').forEach(function(c){c.classList.remove('drag-over');});
+        dragged=null;
+      });
+    });
+    view.querySelectorAll('.pipeline-col-body').forEach(function(col){
+      col.addEventListener('dragover',function(e){
+        e.preventDefault();
+        e.dataTransfer.dropEffect='move';
+        col.classList.add('drag-over');
+      });
+      col.addEventListener('dragleave',function(){col.classList.remove('drag-over');});
+      col.addEventListener('drop',function(e){
+        e.preventDefault();
+        col.classList.remove('drag-over');
+        var leadId=dragged?dragged.dataset.leadId:(e.dataTransfer?e.dataTransfer.getData('text/plain'):null);
+        var stage=col.dataset.stage;
+        if(!leadId||!stage)return;
+        post('/api/leads/'+leadId+'/stage',{stage:stage},'PUT').then(function(){toast('Lead moved');loadLeads();});
+      });
+    });
   }
   function loadLeadTimeline(leadId,containerId){
     var c=document.getElementById(containerId);
@@ -1091,35 +1211,84 @@ button{cursor:pointer;}
     }).catch(function(){c.innerHTML='<div class="lead-tl-item"><div class="lead-tl-text" style="color:var(--faint)">Could not load timeline.</div></div>';});
   }
 
-  // ── projects ──────────────────────────────────────────────────────────────
-  var PROJECT_PALETTES=['linear-gradient(135deg,#3e7bfa,#7c3aed)','linear-gradient(135deg,#10b981,#14b8a6)','linear-gradient(135deg,#f59e0b,#ef4444)','linear-gradient(135deg,#6366f1,#ec4899)','linear-gradient(135deg,#0ea5e9,#06b6d4)','linear-gradient(135deg,#8b5cf6,#d946ef)'];
-  var PROJECT_TEMPLATES=[{name:'Blank',emoji:'📄',bg:'linear-gradient(135deg,#6b7280,#374151)'},{name:'Social Media',emoji:'📱',bg:'linear-gradient(135deg,#ec4899,#8b5cf6)'},{name:'Product Launch',emoji:'🚀',bg:'linear-gradient(135deg,#3e7bfa,#7c3aed)'},{name:'Content Cal.',emoji:'📅',bg:'linear-gradient(135deg,#f59e0b,#ef4444)'},{name:'Client Onboard',emoji:'🤝',bg:'linear-gradient(135deg,#10b981,#0ea5e9)'},{name:'Event',emoji:'🎉',bg:'linear-gradient(135deg,#d946ef,#f59e0b)'}];
-
-
-
   // ── agents ────────────────────────────────────────────────────────────────
+  var AGENT_EMOJIS=['🤖','🔭','🗺️','📒','🧭','🛰️','🧠','⚡','🔔','🧩','🕵️','📡'];
+  var agentEmojiPick='🤖';
+  var editingAgentId=null;
+  function customAgents(){
+    try{return JSON.parse(localStorage.getItem('cb-custom-agents')||'[]');}catch(e){return [];}
+  }
+  function saveCustomAgents(list){
+    localStorage.setItem('cb-custom-agents',JSON.stringify(list));
+  }
   function loadAgents(){
     api('/api/agents').then(function(agents){
       agents=agents||[];
+      var custom=customAgents();
       view.innerHTML='<div class="sec-head"><div><div class="sec-title">AI Agents</div>'
         +'<div class="sec-sub">Your autonomous workforce — scoped, logged, fully reversible.</div></div></div>';
       var wrap=document.createElement('div');
-      var cards=agents.length?agents.map(function(a){
+      function agentCardHtml(a,isCustom){
         var done=a.done||0,pending=a.pending||0,total=done+pending;
-        return '<div class="agent-card gc">'
+        return '<div class="agent-card gc'+(isCustom?' custom':'')+'"'+(isCustom?' data-agent-id="'+a.id+'" style="cursor:pointer;"':'')+'>'
           +'<div style="display:flex;align-items:center;gap:13px;">'
           +'<div style="width:42px;height:42px;flex-shrink:0;border-radius:13px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 6px 16px var(--accentGlow);">'+esc(a.emoji||'🤖')+'</div>'
           +'<div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:8px;"><span class="agent-name">'+esc(a.name)+'</span>'+autoBadge(a.autonomy)+'</div>'
           +'<div class="agent-role">'+esc(a.role)+'</div></div>'
-          +'<span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:var(--green);flex-shrink:0;">'
-          +'<span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(55,192,138,.18);"></span>online</span>'
+          +(isCustom?'<button class="agent-remove-btn" data-remove-agent="'+a.id+'" title="Remove agent">✕</button>':'<span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:var(--green);flex-shrink:0;"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(55,192,138,.18);"></span>online</span>')
           +'</div>'+progBar(done,total)+'</div>';
-      }).join(''):'<div class="empty-dashed">No agents configured yet.</div>';
-      cards+='<button class="hire-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Hire a new agent — connect a skill or MCP tool</button>';
+      }
+      var cards=agents.map(function(a){return agentCardHtml(a,false);}).join('');
+      cards+=custom.map(function(a){return agentCardHtml(a,true);}).join('');
+      if(!agents.length&&!custom.length) cards='<div class="empty-dashed">No agents configured yet.</div>';
+      cards+='<button class="hire-btn" id="hire-agent-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Hire a new agent</button>';
       wrap.innerHTML=cards;
       view.appendChild(wrap);
-      wrap.querySelector('.hire-btn').onclick=function(){toast('Agent hiring coming soon — configure in Settings.');};
+      wrap.querySelector('#hire-agent-btn').onclick=function(){openAgentModal();};
+      wrap.querySelectorAll('[data-agent-id]').forEach(function(el){
+        el.onclick=function(e){
+          if(e.target.closest('[data-remove-agent]'))return;
+          openAgentModal(el.dataset.agentId);
+        };
+      });
+      wrap.querySelectorAll('[data-remove-agent]').forEach(function(b){
+        b.onclick=function(e){
+          e.stopPropagation();
+          var list=customAgents().filter(function(a){return a.id!==b.dataset.removeAgent;});
+          saveCustomAgents(list);
+          toast('Agent removed');
+          loadAgents();
+        };
+      });
     }).catch(function(e){view.innerHTML='<div class="empty">Failed to load agents: '+(e&&e.message||e)+'</div>';});
+  }
+  function openAgentModal(agentId){
+    var m=document.getElementById('agent-modal');
+    if(!m)return;
+    editingAgentId=agentId||null;
+    var existing=agentId?customAgents().find(function(a){return a.id===agentId;}):null;
+    document.getElementById('agent-modal-title').textContent=existing?'Edit agent':'Hire a new agent';
+    document.getElementById('agent-modal-name').value=existing?existing.name:'';
+    document.getElementById('agent-modal-role').value=existing?existing.role:'';
+    document.getElementById('agent-modal-save').textContent=existing?'Save agent':'Hire agent';
+    document.getElementById('agent-modal-delete').style.display=existing?'':'none';
+    agentEmojiPick=existing?(existing.emoji||'🤖'):'🤖';
+    renderAgentEmojiRow();
+    var lvl=existing?(existing.autonomy||'ask'):'ask';
+    m.querySelectorAll('#agent-modal-autonomy .lvl').forEach(function(b){b.classList.toggle('on',b.dataset.lvl===lvl);});
+    m.classList.add('open');
+    document.getElementById('agent-modal-name').focus();
+  }
+  function closeAgentModal(){
+    var m=document.getElementById('agent-modal');
+    if(m)m.classList.remove('open');
+    editingAgentId=null;
+  }
+  function renderAgentEmojiRow(){
+    var g=document.getElementById('agent-emoji-row');
+    if(!g)return;
+    g.innerHTML=AGENT_EMOJIS.map(function(em){return '<button type="button" class="emoji-pick-btn'+(em===agentEmojiPick?' on':'')+'" data-em="'+em+'">'+em+'</button>';}).join('');
+    g.querySelectorAll('.emoji-pick-btn').forEach(function(b){b.onclick=function(){agentEmojiPick=b.dataset.em;renderAgentEmojiRow();};});
   }
 
   // ── autonomy ──────────────────────────────────────────────────────────────
@@ -1317,42 +1486,170 @@ button{cursor:pointer;}
       }catch(e){}
     };
   }
+  var PROJECT_EMOJIS=['\u{1F4E6}','\u{1F4C4}','\u{1F4F1}','\u{1F680}','\u{1F4C5}','\u{1F91D}','\u{1F389}','\u{1F4BC}','\u{1F3AF}','\u{1F3A8}','\u{1F6E0}\uFE0F','\u{1F4CA}'];
+  var PROJECT_COLORS=['#3e7bfa','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#6b7280','#14b8a6','#d946ef'];
   var selectedTemplate=0;
+  var selectedColor=null;
+  var selectedImage=null;
+  var selectedEmoji=null;
+  var editingProjectId=null;
+  var viewingProjectId=null;
+  function getProjects(){
+    try{return JSON.parse(localStorage.getItem('cb-projects')||'[]');}catch(e){return [];}
+  }
+  function saveProjects(list){
+    localStorage.setItem('cb-projects',JSON.stringify(list));
+  }
+  function projectCardBg(p){
+    if(p.img) return 'url('+p.img+') center/cover no-repeat';
+    return p.bg||PROJECT_PALETTES[0];
+  }
   function loadProjects(){
-    var projects=JSON.parse(localStorage.getItem('cb-projects')||'[]');
+    var projects=getProjects();
     var html='<div class="sec-head"><div><div class="sec-title">Projects</div><div class="sec-sub">Everything your team is building.</div></div><div class="head-actions"><button class="btn-primary" id="new-proj-btn">+ New project</button></div></div><div class="bento-grid">';
     projects.forEach(function(p,i){
-      var bg=p.bg||PROJECT_PALETTES[i%PROJECT_PALETTES.length];
+      var bg=projectCardBg(p);
       var done=p.done||0;var total=p.total||0;
       var pct=total>0?Math.round(done/total*100):0;
-      html+='<div class="bento-card'+(i===0?' bento-hero':'')+'" style="background:'+bg+';"><div class="bento-card-emoji">'+esc(p.emoji||'\u{1F4E6}')+'</div><div class="bento-card-name">'+esc(p.name)+'</div>'+(p.desc?'<div class="bento-card-desc">'+esc(p.desc)+'</div>':'')+'<div class="bento-card-foot">'+(total?'<div class="bento-prog-bar"><div class="bento-prog-fill" style="width:'+pct+'%"></div></div><span class="bento-pct">'+pct+'%</span>':'')+'<span class="bento-status">'+esc(p.status||'active')+'</span></div></div>';
+      html+='<div class="bento-card'+(i===0?' bento-hero':'')+'" data-project-id="'+p.id+'" style="background:'+bg+';"><div class="bento-card-emoji">'+esc(p.emoji||'\u{1F4E6}')+'</div><div class="bento-card-name">'+esc(p.name)+'</div>'+(p.desc?'<div class="bento-card-desc">'+esc(p.desc)+'</div>':'')+'<div class="bento-card-foot">'+(total?'<div class="bento-prog-bar"><div class="bento-prog-fill" style="width:'+pct+'%"></div></div><span class="bento-pct">'+pct+'%</span>':'')+'<span class="bento-status">'+esc(p.status||'active')+'</span></div></div>';
     });
     html+='<button class="bento-new-card" id="bento-new-card-btn"><div style="font-size:28px;">+</div><div style="font-size:13px;font-weight:600;">New project</div></button></div>';
     view.innerHTML=html;
     var nbtn=document.getElementById('new-proj-btn');
     var nbtn2=document.getElementById('bento-new-card-btn');
-    if(nbtn)nbtn.onclick=openNewProjectModal;
-    if(nbtn2)nbtn2.onclick=openNewProjectModal;
+    if(nbtn)nbtn.onclick=function(){openNewProjectModal();};
+    if(nbtn2)nbtn2.onclick=function(){openNewProjectModal();};
+    view.querySelectorAll('[data-project-id]').forEach(function(el){
+      el.onclick=function(){openProjectDetail(el.dataset.projectId);};
+    });
   }
-  function openNewProjectModal(){
-    selectedTemplate=0;
+  function openNewProjectModal(existingId){
     var m=document.getElementById('proj-modal');
     if(!m)return;
-    document.getElementById('proj-modal-name').value='';
-    document.getElementById('proj-modal-desc').value='';
+    editingProjectId=existingId||null;
+    var existing=existingId?getProjects().find(function(p){return p.id===existingId;}):null;
+    document.getElementById('proj-modal-title').textContent=existing?'Edit project':'New project';
+    document.getElementById('proj-modal-save').textContent=existing?'Save changes':'Create project';
+    document.getElementById('proj-modal-delete').style.display=existing?'':'none';
+    document.getElementById('proj-modal-name').value=existing?existing.name:'';
+    document.getElementById('proj-modal-desc').value=existing?(existing.desc||''):'';
+    selectedTemplate=0;
+    selectedColor=existing&&existing.color?existing.color:null;
+    selectedImage=existing&&existing.img?existing.img:null;
+    selectedEmoji=existing?(existing.emoji||null):null;
     renderTemplateGrid();
+    renderProjColorRow();
+    renderProjEmojiRow();
+    updateProjImagePreview();
     m.classList.add('open');
     document.getElementById('proj-modal-name').focus();
   }
   function closeNewProjectModal(){
     var m=document.getElementById('proj-modal');
     if(m)m.classList.remove('open');
+    editingProjectId=null;
   }
   function renderTemplateGrid(){
     var g=document.getElementById('proj-template-grid');
     if(!g)return;
-    g.innerHTML=PROJECT_TEMPLATES.map(function(t,i){return '<div class="proj-tmpl-card'+(i===selectedTemplate?' on':'')+'" data-ti="'+i+'" style="aspect-ratio:3/2;border-radius:10px;display:flex;align-items:flex-end;padding:8px;cursor:pointer;border:2px solid '+(i===selectedTemplate?'var(--accent)':'transparent')+';background:'+t.bg+';transition:all .15s;"><span style="font-size:10.5px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.4);">'+t.emoji+' '+t.name+'</span></div>';}).join('');
-    g.querySelectorAll('.proj-tmpl-card').forEach(function(el){el.onclick=function(){selectedTemplate=parseInt(el.dataset.ti);renderTemplateGrid();};});
+    g.innerHTML=PROJECT_TEMPLATES.map(function(t,i){return '<div class="proj-tmpl-card" data-ti="'+i+'" style="aspect-ratio:3/2;border-radius:10px;display:flex;align-items:flex-end;padding:8px;cursor:pointer;border:2px solid transparent;background:'+t.bg+';transition:all .15s;"><span style="font-size:10.5px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.4);">'+t.emoji+' '+t.name+'</span></div>';}).join('');
+    g.querySelectorAll('.proj-tmpl-card').forEach(function(el){
+      el.onclick=function(){
+        selectedTemplate=parseInt(el.dataset.ti);
+        selectedColor=null;
+        selectedImage=null;
+        selectedEmoji=null;
+        renderTemplateGrid();
+        renderProjColorRow();
+        renderProjEmojiRow();
+        updateProjImagePreview();
+      };
+      el.classList.toggle('on',!selectedColor&&!selectedImage&&parseInt(el.dataset.ti)===selectedTemplate);
+      el.style.borderColor=(!selectedColor&&!selectedImage&&parseInt(el.dataset.ti)===selectedTemplate)?'var(--accent)':'transparent';
+    });
+  }
+  function renderProjColorRow(){
+    var g=document.getElementById('proj-color-row');
+    if(!g)return;
+    g.innerHTML=PROJECT_COLORS.map(function(c){return '<div class="proj-color-swatch'+(selectedColor===c?' on':'')+'" data-c="'+c+'" style="background:'+c+';"></div>';}).join('');
+    g.querySelectorAll('.proj-color-swatch').forEach(function(el){
+      el.onclick=function(){
+        selectedColor='linear-gradient(135deg,'+el.dataset.c+','+el.dataset.c+'cc)';
+        selectedImage=null;
+        renderTemplateGrid();
+        renderProjColorRow();
+        updateProjImagePreview();
+      };
+    });
+  }
+  function renderProjEmojiRow(){
+    var g=document.getElementById('proj-emoji-row');
+    if(!g)return;
+    var cur=selectedEmoji||(PROJECT_TEMPLATES[selectedTemplate]&&PROJECT_TEMPLATES[selectedTemplate].emoji)||PROJECT_EMOJIS[0];
+    g.innerHTML=PROJECT_EMOJIS.map(function(em){return '<button type="button" class="emoji-pick-btn'+(em===cur?' on':'')+'" data-em="'+em+'">'+em+'</button>';}).join('');
+    g.querySelectorAll('.emoji-pick-btn').forEach(function(b){b.onclick=function(){selectedEmoji=b.dataset.em;renderProjEmojiRow();};});
+  }
+  function updateProjImagePreview(){
+    var p=document.getElementById('proj-upload-preview');
+    var clearBtn=document.getElementById('proj-image-clear');
+    if(!p)return;
+    if(selectedImage){
+      p.style.backgroundImage='url('+selectedImage+')';
+      if(clearBtn)clearBtn.style.display='';
+    }else{
+      p.style.backgroundImage='';
+      if(clearBtn)clearBtn.style.display='none';
+    }
+  }
+  function currentProjectBgForSave(){
+    if(selectedColor) return selectedColor;
+    return PROJECT_TEMPLATES[selectedTemplate].bg;
+  }
+  function openProjectDetail(id){
+    var projects=getProjects();
+    var p=projects.find(function(x){return x.id===id;});
+    if(!p)return;
+    viewingProjectId=id;
+    var m=document.getElementById('proj-detail-modal');
+    if(!m)return;
+    var bg=projectCardBg(p);
+    var done=p.done||0,total=p.total||0;
+    var body=document.getElementById('proj-detail-body');
+    body.innerHTML='<div class="proj-detail-hero" style="background:'+bg+';"><div class="proj-detail-emoji">'+esc(p.emoji||'\u{1F4E6}')+'</div><div class="proj-detail-name">'+esc(p.name)+'</div></div>'
+      +(p.desc?'<div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5;">'+esc(p.desc)+'</div>':'')
+      +'<div class="proj-detail-row"><span style="font-size:11px;font-weight:700;color:var(--muted);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;">STATUS</span><select class="modal-select" id="proj-detail-status" style="width:auto;flex:1;"><option value="active"'+(p.status==='active'?' selected':'')+'>Active</option><option value="paused"'+(p.status==='paused'?' selected':'')+'>Paused</option><option value="done"'+(p.status==='done'?' selected':'')+'>Done</option></select></div>'
+      +'<div class="proj-detail-row"><span style="font-size:11px;font-weight:700;color:var(--muted);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;">PROGRESS</span><button class="proj-stepper-btn" id="proj-detail-total-minus">−</button><span style="font-family:&quot;JetBrains Mono&quot;,monospace;font-size:13px;font-weight:600;min-width:56px;text-align:center;" id="proj-detail-progress-label">'+done+' / '+total+'</span><button class="proj-stepper-btn" id="proj-detail-total-plus">+</button></div>'
+      +'<div class="proj-detail-row"><span style="font-size:11px;font-weight:700;color:var(--muted);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;">DONE STEPS</span><button class="proj-stepper-btn" id="proj-detail-done-minus">−</button><button class="proj-stepper-btn" id="proj-detail-done-plus">+</button></div>'
+      +'<div style="font-size:10.5px;color:var(--faint);">Created '+new Date(p.createdAt||Date.now()).toLocaleDateString()+'</div>';
+    function refreshProgress(){
+      var cur=getProjects().find(function(x){return x.id===id;});
+      if(!cur)return;
+      document.getElementById('proj-detail-progress-label').textContent=(cur.done||0)+' / '+(cur.total||0);
+    }
+    function updateProject(patch){
+      var list=getProjects();
+      var idx=list.findIndex(function(x){return x.id===id;});
+      if(idx<0)return;
+      list[idx]=Object.assign({},list[idx],patch);
+      saveProjects(list);
+      refreshProgress();
+    }
+    document.getElementById('proj-detail-status').onchange=function(e){updateProject({status:e.target.value});};
+    document.getElementById('proj-detail-total-plus').onclick=function(){var cur=getProjects().find(function(x){return x.id===id;});updateProject({total:(cur.total||0)+1});};
+    document.getElementById('proj-detail-total-minus').onclick=function(){var cur=getProjects().find(function(x){return x.id===id;});updateProject({total:Math.max(cur.done||0,(cur.total||0)-1)});};
+    document.getElementById('proj-detail-done-plus').onclick=function(){var cur=getProjects().find(function(x){return x.id===id;});updateProject({done:Math.min(cur.total||0,(cur.done||0)+1)});};
+    document.getElementById('proj-detail-done-minus').onclick=function(){var cur=getProjects().find(function(x){return x.id===id;});updateProject({done:Math.max(0,(cur.done||0)-1)});};
+    m.classList.add('open');
+  }
+  function closeProjectDetail(){
+    var m=document.getElementById('proj-detail-modal');
+    if(m)m.classList.remove('open');
+    loadProjects();
+    viewingProjectId=null;
+  }
+  function deleteProject(id){
+    var list=getProjects().filter(function(p){return p.id!==id;});
+    saveProjects(list);
   }
   function openNewTaskModal(day){
     var m=document.getElementById('task-modal');
@@ -1448,16 +1745,106 @@ button{cursor:pointer;}
       document.getElementById('proj-modal-close').onclick=closeNewProjectModal;
       document.getElementById('proj-modal-cancel').onclick=closeNewProjectModal;
       mp.onclick=function(e){if(e.target===mp)closeNewProjectModal();};
+      var projImgBtn=document.getElementById('proj-image-btn');
+      var projImgFile=document.getElementById('proj-image-file');
+      var projImgClear=document.getElementById('proj-image-clear');
+      if(projImgBtn&&projImgFile){
+        projImgBtn.onclick=function(){projImgFile.click();};
+        projImgFile.onchange=function(){
+          var file=projImgFile.files&&projImgFile.files[0];
+          if(!file)return;
+          var reader=new FileReader();
+          reader.onload=function(e){
+            selectedImage=e.target.result;
+            selectedColor=null;
+            updateProjImagePreview();
+            renderTemplateGrid();
+            renderProjColorRow();
+          };
+          reader.readAsDataURL(file);
+        };
+      }
+      if(projImgClear) projImgClear.onclick=function(){selectedImage=null;projImgFile.value='';updateProjImagePreview();};
+      document.getElementById('proj-modal-delete').onclick=function(){
+        if(!editingProjectId)return;
+        deleteProject(editingProjectId);
+        closeNewProjectModal();
+        toast('Project deleted');
+        loadProjects();
+      };
       document.getElementById('proj-modal-save').onclick=function(){
         var name=document.getElementById('proj-modal-name').value.trim();
         if(!name)return;
-        var tmpl=PROJECT_TEMPLATES[selectedTemplate];
-        var projects=JSON.parse(localStorage.getItem('cb-projects')||'[]');
-        projects.unshift({id:Date.now().toString(),name:name,desc:document.getElementById('proj-modal-desc').value.trim(),emoji:tmpl.emoji,bg:tmpl.bg,status:'active',done:0,total:0,createdAt:Date.now()});
-        localStorage.setItem('cb-projects',JSON.stringify(projects));
+        var desc=document.getElementById('proj-modal-desc').value.trim();
+        var emoji=selectedEmoji||PROJECT_TEMPLATES[selectedTemplate].emoji;
+        var bg=currentProjectBgForSave();
+        var projects=getProjects();
+        if(editingProjectId){
+          var idx=projects.findIndex(function(p){return p.id===editingProjectId;});
+          if(idx>=0){
+            projects[idx]=Object.assign({},projects[idx],{name:name,desc:desc,emoji:emoji,bg:bg,color:selectedColor,img:selectedImage});
+          }
+          toast('Project updated');
+        }else{
+          projects.unshift({id:Date.now().toString(),name:name,desc:desc,emoji:emoji,bg:bg,color:selectedColor,img:selectedImage,status:'active',done:0,total:0,createdAt:Date.now()});
+          toast('Project created');
+        }
+        saveProjects(projects);
         closeNewProjectModal();
-        toast('Project created');
         loadProjects();
+      };
+    }
+    var pdm=document.getElementById('proj-detail-modal');
+    if(pdm){
+      document.getElementById('proj-detail-close').onclick=closeProjectDetail;
+      document.getElementById('proj-detail-close-btn').onclick=closeProjectDetail;
+      pdm.onclick=function(e){if(e.target===pdm)closeProjectDetail();};
+      document.getElementById('proj-detail-edit').onclick=function(){
+        var id=viewingProjectId;
+        closeProjectDetail();
+        openNewProjectModal(id);
+      };
+      document.getElementById('proj-detail-delete').onclick=function(){
+        if(!viewingProjectId)return;
+        deleteProject(viewingProjectId);
+        closeProjectDetail();
+        toast('Project deleted');
+      };
+    }
+    var agm=document.getElementById('agent-modal');
+    if(agm){
+      document.getElementById('agent-modal-close').onclick=closeAgentModal;
+      document.getElementById('agent-modal-cancel').onclick=closeAgentModal;
+      agm.onclick=function(e){if(e.target===agm)closeAgentModal();};
+      agm.querySelectorAll('#agent-modal-autonomy .lvl').forEach(function(b){
+        b.onclick=function(){agm.querySelectorAll('#agent-modal-autonomy .lvl').forEach(function(x){x.classList.remove('on');});b.classList.add('on');};
+      });
+      document.getElementById('agent-modal-delete').onclick=function(){
+        if(!editingAgentId)return;
+        var list=customAgents().filter(function(a){return a.id!==editingAgentId;});
+        saveCustomAgents(list);
+        closeAgentModal();
+        toast('Agent removed');
+        loadAgents();
+      };
+      document.getElementById('agent-modal-save').onclick=function(){
+        var name=document.getElementById('agent-modal-name').value.trim();
+        if(!name)return;
+        var role=document.getElementById('agent-modal-role').value.trim()||'Custom agent';
+        var lvlBtn=agm.querySelector('#agent-modal-autonomy .lvl.on');
+        var autonomy=lvlBtn?lvlBtn.dataset.lvl:'ask';
+        var list=customAgents();
+        if(editingAgentId){
+          var idx=list.findIndex(function(a){return a.id===editingAgentId;});
+          if(idx>=0) list[idx]=Object.assign({},list[idx],{name:name,role:role,emoji:agentEmojiPick,autonomy:autonomy});
+          toast('Agent updated');
+        }else{
+          list.push({id:'agent_custom_'+Date.now(),name:name,role:role,emoji:agentEmojiPick,autonomy:autonomy,done:0,pending:0});
+          toast('Agent hired');
+        }
+        saveCustomAgents(list);
+        closeAgentModal();
+        loadAgents();
       };
     }
     var am=document.getElementById('auth-modal');

@@ -28,6 +28,11 @@ This checklist is based on a full repo sweep of:
 - [x] Added login rate-limit guard on `/api/auth/login`
 - [x] Updated startup logs to show auth mode
 - [x] Restored clean `typecheck` by adding `googleapis` + strict typing in Gmail/Calendar integrations
+- [x] Tasks board: real drag-and-drop between Today/Tomorrow/Upcoming (uses existing `/api/tasks/:id/move`)
+- [x] Leads pipeline: real drag-and-drop between stages (added `PUT /api/leads/:id/stage` + `core.leads.setStage`)
+- [x] Projects are now clickable — opens a working detail view (status, progress steppers, edit, delete)
+- [x] Projects support custom color picker and custom image upload (data URL), in addition to templates
+- [x] Agents: "Hire a new agent" is now fully functional — create/edit/remove custom agents with emoji + autonomy level, persisted client-side alongside the built-in roster
 - [x] Updated docs (`README.md`, `docs/BUILD_PLAN.md`)
 
 ## ✅ Validation run

@@ -53,6 +53,17 @@ export function makeLeads(ctx: Context) {
       return lead;
     },
 
+    /** Move a lead directly to any stage — used by pipeline drag-and-drop. */
+    async setStage(id: string, stage: LeadStage, actorId: string): Promise<Lead> {
+      const cur = await ctx.db.leads.get(id);
+      if (!cur) throw new Error(`lead ${id} not found`);
+      if (!STAGE_ORDER.includes(stage)) throw new Error(`invalid stage ${stage}`);
+      if (cur.stage === stage) return cur;
+      const lead = await ctx.db.leads.update(id, { stage });
+      await record(ctx, { orgId: lead.orgId, type: 'lead.advanced', entityId: id, actorId, undo: { restoreStage: cur.stage } });
+      return lead;
+    },
+
     /**
      * "Quick-add from a phone number + rough note" → a structured lead.
      * The AI extraction is stubbed here; the server injects the real LLM call server-side.

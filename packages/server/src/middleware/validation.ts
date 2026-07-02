@@ -81,6 +81,10 @@ export const CreateLeadSchema = z.object({
   source: z.enum(['email', 'slack', 'whatsapp', 'telegram', 'calendar', 'github', 'manual']).optional().default('manual'),
 });
 
+export const SetLeadStageSchema = z.object({
+  stage: z.enum(['new', 'contacted', 'meeting', 'proposal', 'won', 'lost']),
+});
+
 export const QuickAddLeadSchema = z.object({
   phone: z.string().trim().max(50).optional().default(''),
   note: z.string().trim().min(1, 'note is required').max(2000),

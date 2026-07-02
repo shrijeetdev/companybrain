@@ -333,6 +333,16 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     return result;
   });
 
+  app.put('/api/leads/:id/stage', {
+    preHandler: validateBody(schemas.SetLeadStageSchema),
+  }, async (req) => {
+    const p = await principalOf(req);
+    const b = (req as any).validatedBody;
+    const result = await core.leads.setStage(params(req).id, b.stage, p.userId);
+    broadcast({ type: 'lead.advanced' });
+    return result;
+  });
+
   app.post('/api/leads/:id/assign', {
     preHandler: validateBody(schemas.AssignSchema),
   }, async (req) => {
