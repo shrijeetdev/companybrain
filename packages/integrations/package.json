@@ -5,12 +5,15 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "dependencies": {
-    "@companybrain/types": "workspace:*",
-    "@companybrain/core": "workspace:*",
     "@anthropic-ai/sdk": "^0.70.0",
+    "@companybrain/core": "workspace:*",
+    "@companybrain/types": "workspace:*",
     "@whiskeysockets/baileys": "^6.7.9",
+    "googleapis": "^173.0.0",
     "qrcode-terminal": "^0.12.0"
   },
   "devDependencies": {

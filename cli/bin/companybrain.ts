@@ -36,11 +36,13 @@ const app = buildServer({ core: boot.core, auth: boot.auth });
 await app.listen({ port, host });
 
 const shown = host === '0.0.0.0' ? `http://localhost:${port}` : `http://${host}:${port}`;
+const authMode = (boot.auth.mode ?? 'local').toUpperCase();
 console.log(`
   company\x1b[1mbrain\x1b[0m  ·  running
 
   ▸ ${shown}
   ▸ data:  ~/.companybrain/companybrain.sqlite
+  ▸ auth: ${authMode}${authMode === 'KEY' ? ' (session login enabled)' : ' (single-user local mode)'}
   ▸ single app: SQLite + in-process worker + API + web, no external services
 
   Ctrl-C to stop.

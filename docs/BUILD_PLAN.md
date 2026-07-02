@@ -9,7 +9,7 @@
   - [x] `packages/types` — one definition of Loop/Task/Lead/DomainEvent/User/Autonomy/Job
   - [x] `packages/db` — port + embedded SQLite adapter (+ migrations)
   - [x] `packages/queue` — port + **real** in-process adapter (delayed jobs fire)
-  - [x] `packages/auth` — port + single-user adapter
+  - [x] `packages/auth` — port + local adapter + key-based multi-user session adapter
   - [x] `packages/core` — loops/tasks/leads/autonomy domain over the ports
   - [x] `packages/server` — Fastify over the ports (loops/tasks/leads routes) + serves the web UI
   - [x] `cli` — `pnpm start` boots everything (migrate + API + in-process worker + web, open browser)

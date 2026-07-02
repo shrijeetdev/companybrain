@@ -1,9 +1,952 @@
 #!/usr/bin/env -S npx tsx
 var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
+
+// packages/auth/src/local.ts
+var LOCAL_ORG_ID, LOCAL_USER_ID, LocalAuth;
+var init_local = __esm({
+  "packages/auth/src/local.ts"() {
+    "use strict";
+    LOCAL_ORG_ID = "org_local";
+    LOCAL_USER_ID = "user_local";
+    LocalAuth = class {
+      mode = "local";
+      principal;
+      user;
+      constructor(role = "ceo") {
+        this.principal = { userId: LOCAL_USER_ID, orgId: LOCAL_ORG_ID, role };
+        this.user = {
+          ...this.principal,
+          name: "You",
+          email: "you@companybrain.local",
+          initials: "YO"
+        };
+      }
+      async init() {
+      }
+      async authenticate() {
+        return this.principal;
+      }
+      async current() {
+        return this.principal;
+      }
+      listUsers() {
+        return [{ ...this.user }];
+      }
+      getUser(userId) {
+        return userId === this.user.userId ? { ...this.user } : null;
+      }
+      /** single local user can do everything */
+      can(_principal, _capability) {
+        return true;
+      }
+    };
+  }
+});
+
+// packages/auth/src/key.ts
+import { randomBytes, timingSafeEqual } from "node:crypto";
+function normalizeRole(raw) {
+  const v = (raw ?? "").trim().toLowerCase();
+  if (v === "ceo") return "ceo";
+  if (v === "manager" || v === "mgr") return "manager";
+  if (v === "employee" || v === "emp" || v === "member") return "employee";
+  if (v === "client") return "client";
+  if (v === "agent" || v === "ai" || v === "ai-agent") return "agent";
+  return "employee";
+}
+function initialsFor(name) {
+  const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
+  if (!parts.length) return "US";
+  return parts.map((p) => p.charAt(0).toUpperCase()).join("");
+}
+function timingSafeMatch(input, expected) {
+  const a = Buffer.from(input);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+function parseUsers(raw, orgId) {
+  const parsed = (() => {
+    if (!raw?.trim()) return DEFAULT_USERS;
+    try {
+      const val = JSON.parse(raw);
+      if (Array.isArray(val)) return val;
+      if (val && Array.isArray(val.users)) return val.users;
+      return DEFAULT_USERS;
+    } catch {
+      return DEFAULT_USERS;
+    }
+  })();
+  const users = [];
+  const perUserKeys = /* @__PURE__ */ new Map();
+  for (const u of parsed) {
+    const id = (u.userId ?? u.id ?? "").trim() || `user_${Math.random().toString(36).slice(2, 8)}`;
+    const name = (u.name ?? id.replace(/^user_/, "").replace(/[_-]/g, " ")).trim();
+    const user = {
+      userId: id,
+      orgId: (u.orgId ?? orgId).trim() || orgId,
+      role: normalizeRole(u.role),
+      name,
+      email: u.email?.trim() || void 0,
+      initials: (u.initials?.trim() || initialsFor(name)).slice(0, 3).toUpperCase()
+    };
+    users.push(user);
+    if (typeof u.key === "string" && u.key.trim()) perUserKeys.set(user.userId, u.key.trim());
+  }
+  if (!users.length) {
+    users.push({ userId: "user_local", orgId, role: "ceo", name: "You", email: "you@companybrain.local", initials: "YO" });
+  }
+  return { users, perUserKeys };
+}
+var DEFAULT_USERS, CAPS_BY_ROLE, KeyAuth;
+var init_key = __esm({
+  "packages/auth/src/key.ts"() {
+    "use strict";
+    init_local();
+    DEFAULT_USERS = [
+      { id: "user_local", role: "ceo", name: "You", email: "you@companybrain.local", initials: "YO" },
+      { id: "user_ceo", role: "ceo", name: "James Carter", email: "james@companybrain.local", initials: "JC" },
+      { id: "user_monty", role: "manager", name: "Monty Singh", email: "monty@companybrain.local", initials: "MS" },
+      { id: "user_emp", role: "employee", name: "Alex Kumar", email: "alex@companybrain.local", initials: "AK" },
+      { id: "user_client", role: "client", name: "Dana Carter", email: "dana@client.local", initials: "DC" }
+    ];
+    CAPS_BY_ROLE = {
+      ceo: /* @__PURE__ */ new Set([
+        "loop.read",
+        "loop.write",
+        "task.read",
+        "task.write",
+        "lead.read",
+        "lead.write",
+        "autonomy.configure",
+        "killswitch.toggle",
+        "org.admin"
+      ]),
+      manager: /* @__PURE__ */ new Set([
+        "loop.read",
+        "loop.write",
+        "task.read",
+        "task.write",
+        "lead.read",
+        "lead.write",
+        "autonomy.configure",
+        "killswitch.toggle"
+      ]),
+      employee: /* @__PURE__ */ new Set([
+        "loop.read",
+        "loop.write",
+        "task.read",
+        "task.write",
+        "lead.read",
+        "lead.write"
+      ]),
+      client: /* @__PURE__ */ new Set([
+        "loop.read",
+        "task.read",
+        "lead.read"
+      ]),
+      agent: /* @__PURE__ */ new Set([
+        "loop.read",
+        "loop.write",
+        "task.read",
+        "task.write",
+        "lead.read",
+        "lead.write"
+      ])
+    };
+    KeyAuth = class {
+      mode = "key";
+      orgId;
+      globalKey;
+      sessionTtlMs;
+      users;
+      userMap;
+      userByEmail;
+      perUserKeys;
+      sessions = /* @__PURE__ */ new Map();
+      constructor() {
+        this.orgId = process.env.COMPANYBRAIN_ORG_ID?.trim() || LOCAL_ORG_ID;
+        this.globalKey = process.env.COMPANYBRAIN_ACCESS_KEY?.trim() || "";
+        const ttlHours = Number(process.env.COMPANYBRAIN_SESSION_TTL_HOURS ?? 168);
+        this.sessionTtlMs = (Number.isFinite(ttlHours) && ttlHours > 0 ? ttlHours : 168) * 60 * 60 * 1e3;
+        const parsed = parseUsers(process.env.COMPANYBRAIN_USERS, this.orgId);
+        this.users = parsed.users;
+        this.userMap = new Map(this.users.map((u) => [u.userId, u]));
+        this.userByEmail = new Map(this.users.filter((u) => !!u.email).map((u) => [String(u.email).toLowerCase(), u]));
+        this.perUserKeys = parsed.perUserKeys;
+      }
+      async init() {
+      }
+      async authenticate(token) {
+        this.cleanupExpired();
+        if (!token) return null;
+        const sess = this.sessions.get(token);
+        if (!sess) return null;
+        if (sess.expiresAt <= Date.now()) {
+          this.sessions.delete(token);
+          return null;
+        }
+        return { userId: sess.userId, orgId: sess.orgId, role: sess.role };
+      }
+      async current() {
+        const first = this.users[0] ?? { userId: "user_local", orgId: this.orgId, role: "ceo" };
+        return { userId: first.userId, orgId: first.orgId, role: first.role };
+      }
+      can(principal, capability) {
+        return CAPS_BY_ROLE[principal.role]?.has(capability) ?? false;
+      }
+      listUsers() {
+        return this.users.map((u) => ({ ...u }));
+      }
+      getUser(userId) {
+        const u = this.userMap.get(userId);
+        return u ? { ...u } : null;
+      }
+      async login(userIdOrEmail, key) {
+        this.cleanupExpired();
+        const lookup = (userIdOrEmail ?? "").trim();
+        const secret = (key ?? "").trim();
+        if (!lookup || !secret) return null;
+        const byId = this.userMap.get(lookup);
+        const byEmail = this.userByEmail.get(lookup.toLowerCase());
+        const user = byId ?? byEmail ?? null;
+        if (!user) return null;
+        const expected = this.perUserKeys.get(user.userId) ?? this.globalKey;
+        if (!expected || !timingSafeMatch(secret, expected)) return null;
+        const token = randomBytes(32).toString("base64url");
+        const expiresAt = Date.now() + this.sessionTtlMs;
+        this.sessions.set(token, { token, userId: user.userId, orgId: user.orgId, role: user.role, expiresAt });
+        return {
+          token,
+          user: { ...user },
+          principal: { userId: user.userId, orgId: user.orgId, role: user.role },
+          expiresAt
+        };
+      }
+      async logout(token) {
+        if (!token) return;
+        this.sessions.delete(token);
+      }
+      cleanupExpired() {
+        const now2 = Date.now();
+        for (const [token, sess] of this.sessions) {
+          if (sess.expiresAt <= now2) this.sessions.delete(token);
+        }
+      }
+    };
+  }
+});
+
+// packages/auth/src/supabase.ts
+import { createClient as createClient2 } from "@supabase/supabase-js";
+var ROLE_CAPABILITIES, SupabaseAuth;
+var init_supabase = __esm({
+  "packages/auth/src/supabase.ts"() {
+    "use strict";
+    ROLE_CAPABILITIES = {
+      ceo: ["loop.read", "loop.write", "task.read", "task.write", "lead.read", "lead.write", "autonomy.configure", "killswitch.toggle", "org.admin"],
+      manager: ["loop.read", "loop.write", "task.read", "task.write", "lead.read", "lead.write", "autonomy.configure"],
+      employee: ["loop.read", "loop.write", "task.read", "task.write", "lead.read"],
+      client: ["loop.read", "task.read", "lead.read"],
+      agent: ["loop.read", "loop.write", "task.read", "task.write", "lead.read", "lead.write"]
+    };
+    SupabaseAuth = class {
+      client;
+      adminClient = null;
+      defaultOrgId;
+      defaultRole;
+      mode = "key";
+      constructor(opts) {
+        this.client = createClient2(opts.url, opts.anonKey);
+        this.adminClient = opts.serviceRoleKey ? createClient2(opts.url, opts.serviceRoleKey) : null;
+        this.defaultOrgId = opts.defaultOrgId ?? "org_default";
+        this.defaultRole = opts.defaultRole ?? "employee";
+      }
+      async init() {
+      }
+      async authenticate(token) {
+        if (!token) return null;
+        try {
+          const { data: { user }, error } = await this.client.auth.getUser(token);
+          if (error || !user) return null;
+          const profile = await this.getUserProfile(user.id);
+          if (!profile) {
+            return {
+              userId: user.id,
+              orgId: this.defaultOrgId,
+              role: this.defaultRole
+            };
+          }
+          return {
+            userId: profile.userId,
+            orgId: profile.orgId,
+            role: profile.role
+          };
+        } catch {
+          return null;
+        }
+      }
+      async current() {
+        return {
+          userId: "user_local",
+          orgId: "org_local",
+          role: "ceo"
+        };
+      }
+      can(principal, capability) {
+        const caps = ROLE_CAPABILITIES[principal.role] ?? [];
+        return caps.includes(capability);
+      }
+      async listUsers() {
+        if (!this.adminClient) {
+          const p = await this.current();
+          return [this.principalToUser(p)];
+        }
+        try {
+          const { data, error } = await this.adminClient.auth.admin.listUsers();
+          if (error || !data?.users) return [];
+          return data.users.map((user) => ({
+            userId: user.id,
+            orgId: this.defaultOrgId,
+            role: this.defaultRole,
+            name: user.user_metadata?.name ?? user.email?.split("@")[0] ?? user.id,
+            email: user.email,
+            initials: this.getInitials(user.user_metadata?.name ?? user.email)
+          }));
+        } catch {
+          return [];
+        }
+      }
+      async getUser(userId) {
+        const profile = await this.getUserProfile(userId);
+        if (!profile) return null;
+        return {
+          userId: profile.userId,
+          orgId: profile.orgId,
+          role: profile.role,
+          name: profile.name,
+          email: profile.email,
+          initials: this.getInitials(profile.name)
+        };
+      }
+      async login(userIdOrEmail, key) {
+        if (!this.client) return null;
+        try {
+          const { data, error } = await this.client.auth.signInWithPassword({
+            email: userIdOrEmail,
+            password: key
+          });
+          if (error || !data?.user || !data?.session) {
+            const { data: phoneData, error: phoneError } = await this.client.auth.signInWithPassword({
+              phone: userIdOrEmail,
+              password: key
+            });
+            if (phoneError || !phoneData?.user || !phoneData?.session) {
+              return null;
+            }
+            return this.createLoginResult(phoneData.user.id, phoneData.session.access_token, phoneData.session.expires_at ?? 0);
+          }
+          return this.createLoginResult(data.user.id, data.session.access_token, data.session.expires_at ?? 0);
+        } catch {
+          return null;
+        }
+      }
+      async logout(token) {
+        if (!this.client) return;
+        try {
+          await this.client.auth.admin.signOut(token);
+        } catch {
+        }
+      }
+      async createLoginResult(userId, token, expiresAt) {
+        const profile = await this.getUserProfile(userId);
+        const principal = {
+          userId,
+          orgId: profile?.orgId ?? this.defaultOrgId,
+          role: profile?.role ?? this.defaultRole
+        };
+        const user = {
+          ...principal,
+          name: profile?.name ?? userId,
+          email: profile?.email,
+          initials: this.getInitials(profile?.name)
+        };
+        return {
+          token,
+          user,
+          principal,
+          expiresAt: (expiresAt ?? 0) * 1e3
+          // Convert to milliseconds
+        };
+      }
+      async getUserProfile(userId) {
+        if (!this.adminClient) return null;
+        try {
+          const { data, error } = await this.adminClient.from("users").select("id, org_id, role, name, email").eq("id", userId).single();
+          if (error || !data) return null;
+          return {
+            userId: data.id,
+            orgId: data.org_id ?? this.defaultOrgId,
+            role: data.role ?? this.defaultRole,
+            name: data.name ?? userId,
+            email: data.email
+          };
+        } catch {
+          return null;
+        }
+      }
+      principalToUser(principal) {
+        const name = principal.userId.replace(/^user[_-]?/i, "").replace(/[_-]+/g, " ").trim() || principal.userId;
+        return {
+          userId: principal.userId,
+          orgId: principal.orgId,
+          role: principal.role,
+          name,
+          initials: this.getInitials(name)
+        };
+      }
+      getInitials(name) {
+        if (!name) return "??";
+        const parts = name.split(/\s+/).filter(Boolean).slice(0, 2);
+        if (!parts.length) return "??";
+        return parts.map((p) => (p[0] ?? "").toUpperCase()).join("");
+      }
+    };
+  }
+});
+
+// packages/auth/src/index.ts
+var src_exports = {};
+__export(src_exports, {
+  KeyAuth: () => KeyAuth,
+  LOCAL_ORG_ID: () => LOCAL_ORG_ID,
+  LOCAL_USER_ID: () => LOCAL_USER_ID,
+  LocalAuth: () => LocalAuth,
+  SupabaseAuth: () => SupabaseAuth,
+  createAuth: () => createAuth
+});
+function createAuth() {
+  const forced = (process.env.COMPANYBRAIN_AUTH_MODE ?? "").trim().toLowerCase();
+  if (forced === "local") return new LocalAuth();
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  if (supabaseUrl && supabaseAnonKey) {
+    return new SupabaseAuth({
+      url: supabaseUrl,
+      anonKey: supabaseAnonKey,
+      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY
+    });
+  }
+  if (forced === "key" || !!process.env.COMPANYBRAIN_ACCESS_KEY || !!process.env.COMPANYBRAIN_USERS) {
+    return new KeyAuth();
+  }
+  return new LocalAuth();
+}
+var init_src = __esm({
+  "packages/auth/src/index.ts"() {
+    "use strict";
+    init_local();
+    init_key();
+    init_supabase();
+    init_local();
+    init_key();
+    init_supabase();
+  }
+});
+
+// packages/server/src/middleware/validation.ts
+var validation_exports = {};
+__export(validation_exports, {
+  AssignSchema: () => AssignSchema,
+  AutonomySchema: () => AutonomySchema,
+  CreateLeadSchema: () => CreateLeadSchema,
+  CreateLoopSchema: () => CreateLoopSchema,
+  CreateTaskSchema: () => CreateTaskSchema,
+  ExtractCardSchema: () => ExtractCardSchema,
+  LoginSchema: () => LoginSchema,
+  MoveTaskSchema: () => MoveTaskSchema,
+  QuickAddLeadSchema: () => QuickAddLeadSchema,
+  SnoozeLoopSchema: () => SnoozeLoopSchema,
+  ValidationError: () => ValidationError,
+  WebhookFanInSchema: () => WebhookFanInSchema,
+  validateBody: () => validateBody,
+  validateQuery: () => validateQuery
+});
+import { z } from "zod";
+function validateBody(schema) {
+  return async (req, reply) => {
+    const result = schema.safeParse(req.body);
+    if (!result.success) {
+      const details = {};
+      for (const issue of result.error.issues) {
+        const path = issue.path.join(".");
+        details[path || "_root"] = issue.message;
+      }
+      return reply.code(400).send({ error: "Validation failed", details });
+    }
+    req.validatedBody = result.data;
+  };
+}
+function validateQuery(schema) {
+  return async (req, reply) => {
+    const result = schema.safeParse(req.query);
+    if (!result.success) {
+      const details = {};
+      for (const issue of result.error.issues) {
+        const path = issue.path.join(".");
+        details[path || "_root"] = issue.message;
+      }
+      return reply.code(400).send({ error: "Validation failed", details });
+    }
+    req.validatedQuery = result.data;
+  };
+}
+var ValidationError, CreateLoopSchema, SnoozeLoopSchema, AssignSchema, CreateTaskSchema, MoveTaskSchema, CreateLeadSchema, QuickAddLeadSchema, ExtractCardSchema, AutonomySchema, LoginSchema, WebhookFanInSchema;
+var init_validation = __esm({
+  "packages/server/src/middleware/validation.ts"() {
+    "use strict";
+    ValidationError = class extends Error {
+      statusCode = 400;
+      details;
+      constructor(details) {
+        super("Validation failed");
+        this.details = details;
+      }
+    };
+    CreateLoopSchema = z.object({
+      title: z.string().trim().min(1, "title is required").max(500),
+      why: z.string().trim().max(1e3).optional().default(""),
+      side: z.enum(["yours", "theirs"]).optional().default("yours"),
+      channel: z.enum(["email", "slack", "whatsapp", "telegram", "calendar", "github", "manual"]).optional().default("manual")
+    });
+    SnoozeLoopSchema = z.object({
+      hours: z.number().int().min(1).max(720).optional().default(24)
+    });
+    AssignSchema = z.object({
+      userIds: z.array(z.string().trim().min(1)).min(1).max(20)
+    });
+    CreateTaskSchema = z.object({
+      title: z.string().trim().min(1, "title is required").max(500),
+      emoji: z.string().max(8).optional().default(""),
+      day: z.enum(["today", "tomorrow", "upcoming"]).optional().default("today"),
+      priority: z.enum(["low", "med", "high"]).nullable().optional().default(null),
+      list: z.string().trim().max(200).optional().default("Inbox"),
+      recurring: z.boolean().optional().default(false),
+      recur: z.enum(["Daily", "Weekly", "Monthly"]).nullable().optional().default(null)
+    });
+    MoveTaskSchema = z.object({
+      day: z.enum(["today", "tomorrow", "upcoming"]).optional().default("today")
+    });
+    CreateLeadSchema = z.object({
+      name: z.string().trim().min(1, "name is required").max(200),
+      company: z.string().trim().max(200).optional().default(""),
+      title: z.string().trim().max(200).optional().default(""),
+      phone: z.string().trim().max(50).optional().default(""),
+      email: z.string().trim().email().max(200).optional().default(""),
+      what: z.string().trim().max(500).optional().default(""),
+      source: z.enum(["email", "slack", "whatsapp", "telegram", "calendar", "github", "manual"]).optional().default("manual")
+    });
+    QuickAddLeadSchema = z.object({
+      phone: z.string().trim().max(50).optional().default(""),
+      note: z.string().trim().min(1, "note is required").max(2e3)
+    });
+    ExtractCardSchema = z.object({
+      imageBase64: z.string().max(1e7).optional(),
+      text: z.string().trim().max(5e3).optional()
+    }).refine((d) => d.imageBase64 || d.text, { message: "imageBase64 or text is required" });
+    AutonomySchema = z.object({
+      action: z.enum(["createTasks", "sendReminders", "draftReplies", "chase", "joinMeetings"]),
+      level: z.enum(["off", "ask", "auto"])
+    });
+    LoginSchema = z.object({
+      userId: z.string().trim().min(1),
+      key: z.string().trim().min(1)
+    });
+    WebhookFanInSchema = z.object({
+      from: z.string().trim().max(200).optional().default("unknown"),
+      text: z.string().trim().min(1, "text is required").max(1e4),
+      ref: z.string().trim().max(500).optional()
+    });
+  }
+});
+
+// packages/server/src/middleware/rate-limit.ts
+var rateLimitConfig, webhookRateLimitConfig, authRateLimitConfig;
+var init_rate_limit = __esm({
+  "packages/server/src/middleware/rate-limit.ts"() {
+    "use strict";
+    rateLimitConfig = {
+      max: 100,
+      timeWindow: "1 minute",
+      keyGenerator: (req) => {
+        return req.ip ?? req.headers["x-forwarded-for"] ?? "unknown";
+      },
+      errorResponseBuilder: (_req, context) => ({
+        error: "Too many requests",
+        message: `Rate limit exceeded. Try again in ${Math.ceil(context.ttl / 1e3)}s.`,
+        retryAfter: Math.ceil(context.ttl / 1e3)
+      })
+    };
+    webhookRateLimitConfig = {
+      max: 30,
+      timeWindow: "1 minute",
+      keyGenerator: (req) => {
+        return req.ip ?? req.headers["x-forwarded-for"] ?? "unknown";
+      },
+      errorResponseBuilder: () => ({
+        error: "Too many webhook requests",
+        message: "Rate limit exceeded for webhook endpoint."
+      })
+    };
+    authRateLimitConfig = {
+      max: 10,
+      timeWindow: "1 minute",
+      keyGenerator: (req) => {
+        return req.ip ?? req.headers["x-forwarded-for"] ?? "unknown";
+      },
+      errorResponseBuilder: () => ({
+        error: "Too many auth attempts",
+        message: "Rate limit exceeded for authentication. Try again later."
+      })
+    };
+  }
+});
+
+// packages/server/src/middleware/webhook-verify.ts
+import { createHmac, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
+function verifyWhatsAppSignature(body, signature, appSecret) {
+  if (!signature) return false;
+  const expected = "sha256=" + createHmac("sha256", appSecret).update(body).digest("hex");
+  try {
+    return timingSafeEqual2(Buffer.from(expected), Buffer.from(signature));
+  } catch {
+    return false;
+  }
+}
+function whatsappSignatureVerify() {
+  return async (req, reply) => {
+    const appSecret = process.env.WHATSAPP_APP_SECRET;
+    if (!appSecret) return;
+    const signature = req.headers["x-hub-signature-256"];
+    if (!signature) {
+      return reply.code(401).send({ error: "Missing webhook signature" });
+    }
+    const rawBody = JSON.stringify(req.body);
+    if (!verifyWhatsAppSignature(rawBody, signature, appSecret)) {
+      return reply.code(403).send({ error: "Invalid webhook signature" });
+    }
+  };
+}
+function genericWebhookVerify(options = {}) {
+  const { headerName = "x-webhook-signature", secretEnvVar } = options;
+  return async (req, reply) => {
+    const secret = secretEnvVar ? process.env[secretEnvVar] : void 0;
+    if (!secret) return;
+    const signature = req.headers[headerName];
+    if (!signature) {
+      return reply.code(401).send({ error: "Missing webhook signature" });
+    }
+    const rawBody = JSON.stringify(req.body);
+    const expected = "sha256=" + createHmac("sha256", secret).update(rawBody).digest("hex");
+    try {
+      const valid = timingSafeEqual2(Buffer.from(expected), Buffer.from(signature));
+      if (!valid) {
+        return reply.code(403).send({ error: "Invalid webhook signature" });
+      }
+    } catch {
+      return reply.code(403).send({ error: "Invalid webhook signature" });
+    }
+  };
+}
+var init_webhook_verify = __esm({
+  "packages/server/src/middleware/webhook-verify.ts"() {
+    "use strict";
+  }
+});
+
+// packages/server/src/middleware/logger.ts
+import pino from "pino";
+function createChildLogger(name) {
+  return logger.child({ module: name });
+}
+var level, logger;
+var init_logger = __esm({
+  "packages/server/src/middleware/logger.ts"() {
+    "use strict";
+    level = process.env.COMPANYBRAIN_LOG_LEVEL ?? "info";
+    logger = pino({
+      level,
+      transport: process.env.NODE_ENV !== "production" ? { target: "pino-pretty", options: { colorize: true, translateTime: "SYS:HH:MM:ss" } } : void 0,
+      serializers: {
+        err: pino.stdSerializers.err,
+        req: pino.stdSerializers.req,
+        res: pino.stdSerializers.res
+      },
+      formatters: {
+        level: (label) => ({ level: label })
+      },
+      timestamp: pino.stdTimeFunctions.isoTime
+    });
+  }
+});
+
+// packages/server/src/middleware/rbac.ts
+function requireRole(...allowedRoles) {
+  return async (req, reply) => {
+    const principal = req.principal;
+    if (!principal) {
+      return reply.code(401).send({ error: "Authentication required" });
+    }
+    if (!allowedRoles.includes(principal.role)) {
+      return reply.code(403).send({
+        error: "Insufficient permissions",
+        required: allowedRoles,
+        current: principal.role
+      });
+    }
+  };
+}
+function requireMinRole(minRole) {
+  return async (req, reply) => {
+    const principal = req.principal;
+    if (!principal) {
+      return reply.code(401).send({ error: "Authentication required" });
+    }
+    const userLevel = ROLE_HIERARCHY[principal.role] ?? 0;
+    const requiredLevel = ROLE_HIERARCHY[minRole] ?? 0;
+    if (userLevel < requiredLevel) {
+      return reply.code(403).send({
+        error: "Insufficient permissions",
+        required: `At least ${minRole}`,
+        current: principal.role
+      });
+    }
+  };
+}
+function requireCapability(...capabilities) {
+  return async (req, reply) => {
+    const principal = req.principal;
+    if (!principal) {
+      return reply.code(401).send({ error: "Authentication required" });
+    }
+    const { createAuth: createAuth2 } = await Promise.resolve().then(() => (init_src(), src_exports));
+    const auth = createAuth2();
+    const missing = capabilities.filter((cap) => !auth.can(principal, cap));
+    if (missing.length > 0) {
+      return reply.code(403).send({
+        error: "Missing capabilities",
+        missing,
+        current: principal.role
+      });
+    }
+  };
+}
+function getPrincipal(req) {
+  return req.principal ?? null;
+}
+function isAdmin(principal) {
+  return principal.role === "ceo" || principal.role === "manager";
+}
+function canModifyUser(principal, targetUserId) {
+  if (principal.userId === targetUserId) return true;
+  return isAdmin(principal);
+}
+var ROLE_HIERARCHY;
+var init_rbac = __esm({
+  "packages/server/src/middleware/rbac.ts"() {
+    "use strict";
+    ROLE_HIERARCHY = {
+      agent: 0,
+      client: 1,
+      employee: 2,
+      manager: 3,
+      ceo: 4
+    };
+  }
+});
+
+// packages/server/src/middleware/sentry.ts
+import * as Sentry from "@sentry/node";
+function initSentry() {
+  const dsn = process.env.SENTRY_DSN;
+  if (!dsn) {
+    console.log("[sentry] SENTRY_DSN not set, error tracking disabled");
+    return;
+  }
+  if (initialized) return;
+  Sentry.init({
+    dsn,
+    environment: process.env.NODE_ENV ?? "development",
+    release: process.env.npm_package_version ?? "0.1.0",
+    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1,
+    beforeSend(event) {
+      if (process.env.NODE_ENV !== "production") {
+        return null;
+      }
+      if (event.exception?.values?.[0]?.type === "ResizeObserver loop") {
+        return null;
+      }
+      return event;
+    }
+  });
+  initialized = true;
+  console.log("[sentry] Error tracking initialized");
+}
+function captureException2(error, context) {
+  if (!initialized) return;
+  Sentry.withScope((scope) => {
+    if (context) {
+      scope.setExtras(context);
+    }
+    Sentry.captureException(error);
+  });
+}
+function captureMessage2(message, level2 = "info") {
+  if (!initialized) return;
+  Sentry.captureMessage(message, level2);
+}
+async function flushSentry() {
+  if (!initialized) return;
+  await Sentry.flush(2e3);
+}
+var initialized;
+var init_sentry = __esm({
+  "packages/server/src/middleware/sentry.ts"() {
+    "use strict";
+    initialized = false;
+  }
+});
+
+// packages/server/src/middleware/metrics.ts
+function setMetric(name, value, help = "", type = "gauge") {
+  metrics.set(name, { name, help, type, value });
+}
+function incrementMetric(name, help = "", type = "counter") {
+  const existing = metrics.get(name);
+  if (existing) {
+    existing.value++;
+  } else {
+    metrics.set(name, { name, help, type, value: 1 });
+  }
+}
+function initMetrics() {
+  if (metricsEnabled) return;
+  metricsEnabled = true;
+  setMetric("companybrain_info", 1, "Company Brain version info", "gauge");
+  setMetric("companybrain_uptime_seconds", process.uptime(), "Application uptime in seconds", "gauge");
+  setMetric("companybrain_memory_heap_used_bytes", process.memoryUsage().heapUsed, "Heap memory used in bytes", "gauge");
+  setMetric("companybrain_memory_rss_bytes", process.memoryUsage().rss, "Resident Set Size in bytes", "gauge");
+  setInterval(() => {
+    setMetric("companybrain_uptime_seconds", process.uptime());
+    setMetric("companybrain_memory_heap_used_bytes", process.memoryUsage().heapUsed);
+    setMetric("companybrain_memory_rss_bytes", process.memoryUsage().rss);
+  }, 1e4);
+  console.log("[metrics] Prometheus metrics initialized");
+}
+function recordRequest(method, path, statusCode) {
+  incrementMetric("companybrain_http_requests_total", "Total HTTP requests", "counter");
+  incrementMetric(`companybrain_http_requests_${statusCode}_total`, `HTTP ${statusCode} responses`, "counter");
+  incrementMetric(`companybrain_http_requests_${method}_total`, `HTTP ${method} requests`, "counter");
+}
+function recordLoopCreated() {
+  incrementMetric("companybrain_loops_created_total", "Total loops created", "counter");
+}
+function recordTaskCreated() {
+  incrementMetric("companybrain_tasks_created_total", "Total tasks created", "counter");
+}
+function recordLeadCreated() {
+  incrementMetric("companybrain_leads_created_total", "Total leads created", "counter");
+}
+function renderMetrics() {
+  const lines = [];
+  lines.push("# HELP companybrain_info Company Brain version info");
+  lines.push("# TYPE companybrain_info gauge");
+  lines.push("companybrain_info 1");
+  lines.push("# HELP companybrain_uptime_seconds Application uptime in seconds");
+  lines.push("# TYPE companybrain_uptime_seconds gauge");
+  lines.push(`companybrain_uptime_seconds ${process.uptime()}`);
+  lines.push("# HELP companybrain_memory_heap_used_bytes Heap memory used in bytes");
+  lines.push("# TYPE companybrain_memory_heap_used_bytes gauge");
+  lines.push(`companybrain_memory_heap_used_bytes ${process.memoryUsage().heapUsed}`);
+  lines.push("# HELP companybrain_memory_rss_bytes Resident Set Size in bytes");
+  lines.push("# TYPE companybrain_memory_rss_bytes gauge");
+  lines.push(`companybrain_memory_rss_bytes ${process.memoryUsage().rss}`);
+  lines.push("# HELP companybrain_http_requests_total Total HTTP requests");
+  lines.push("# TYPE companybrain_http_requests_total counter");
+  lines.push(`companybrain_http_requests_total ${metrics.get("companybrain_http_requests_total")?.value ?? 0}`);
+  lines.push("# HELP companybrain_loops_created_total Total loops created");
+  lines.push("# TYPE companybrain_loops_created_total counter");
+  lines.push(`companybrain_loops_created_total ${metrics.get("companybrain_loops_created_total")?.value ?? 0}`);
+  lines.push("# HELP companybrain_tasks_created_total Total tasks created");
+  lines.push("# TYPE companybrain_tasks_created_total counter");
+  lines.push(`companybrain_tasks_created_total ${metrics.get("companybrain_tasks_created_total")?.value ?? 0}`);
+  lines.push("# HELP companybrain_leads_created_total Total leads created");
+  lines.push("# TYPE companybrain_leads_created_total counter");
+  lines.push(`companybrain_leads_created_total ${metrics.get("companybrain_leads_created_total")?.value ?? 0}`);
+  return lines.join("\n") + "\n";
+}
+var metricsEnabled, metrics;
+var init_metrics = __esm({
+  "packages/server/src/middleware/metrics.ts"() {
+    "use strict";
+    metricsEnabled = false;
+    metrics = /* @__PURE__ */ new Map();
+  }
+});
+
+// packages/server/src/middleware/index.ts
+var middleware_exports = {};
+__export(middleware_exports, {
+  ValidationError: () => ValidationError,
+  authRateLimitConfig: () => authRateLimitConfig,
+  canModifyUser: () => canModifyUser,
+  captureException: () => captureException2,
+  captureMessage: () => captureMessage2,
+  createChildLogger: () => createChildLogger,
+  flushSentry: () => flushSentry,
+  genericWebhookVerify: () => genericWebhookVerify,
+  getPrincipal: () => getPrincipal,
+  initMetrics: () => initMetrics,
+  initSentry: () => initSentry,
+  isAdmin: () => isAdmin,
+  logger: () => logger,
+  rateLimitConfig: () => rateLimitConfig,
+  recordLeadCreated: () => recordLeadCreated,
+  recordLoopCreated: () => recordLoopCreated,
+  recordRequest: () => recordRequest,
+  recordTaskCreated: () => recordTaskCreated,
+  renderMetrics: () => renderMetrics,
+  requireCapability: () => requireCapability,
+  requireMinRole: () => requireMinRole,
+  requireRole: () => requireRole,
+  schemas: () => validation_exports,
+  validateBody: () => validateBody,
+  validateQuery: () => validateQuery,
+  verifyWhatsAppSignature: () => verifyWhatsAppSignature,
+  webhookRateLimitConfig: () => webhookRateLimitConfig,
+  whatsappSignatureVerify: () => whatsappSignatureVerify
+});
+var init_middleware = __esm({
+  "packages/server/src/middleware/index.ts"() {
+    "use strict";
+    init_validation();
+    init_validation();
+    init_rate_limit();
+    init_webhook_verify();
+    init_logger();
+    init_rbac();
+    init_sentry();
+    init_metrics();
+  }
+});
 
 // cli/bin/companybrain.ts
 import { spawn } from "node:child_process";
@@ -166,8 +1109,341 @@ var SqliteDatabase = class {
   }
 };
 
+// packages/db/src/supabase.ts
+import { createClient } from "@supabase/supabase-js";
+var SupabaseDatabase = class {
+  client;
+  adminClient = null;
+  loops;
+  tasks;
+  leads;
+  events;
+  settings;
+  approvals;
+  constructor(opts) {
+    this.client = createClient(opts.url, opts.anonKey);
+    this.adminClient = opts.serviceRoleKey ? createClient(opts.url, opts.serviceRoleKey) : null;
+    const db = this.adminClient ?? this.client;
+    this.loops = {
+      async list(orgId, side) {
+        let query = db.from("loops").select("*").eq("org_id", orgId);
+        if (side) query = query.eq("side", side);
+        const { data, error } = await query.order("updated_at", { ascending: false });
+        if (error) throw error;
+        return (data ?? []).map(rowToLoop);
+      },
+      async get(id) {
+        const { data, error } = await db.from("loops").select("*").eq("id", id).single();
+        if (error || !data) return null;
+        return rowToLoop(data);
+      },
+      async insert(loop) {
+        const { error } = await db.from("loops").insert(loopToRow(loop));
+        if (error) throw error;
+        return loop;
+      },
+      async update(id, patch) {
+        const current = await this.get(id);
+        if (!current) throw new Error(`loop ${id} not found`);
+        const next = { ...current, ...patch, updatedAt: Date.now() };
+        const { error } = await db.from("loops").update(loopToRow(next)).eq("id", id);
+        if (error) throw error;
+        return next;
+      },
+      async remove(id) {
+        const { error } = await db.from("loops").delete().eq("id", id);
+        if (error) throw error;
+      }
+    };
+    this.tasks = {
+      async list(orgId) {
+        const { data, error } = await db.from("tasks").select("*").eq("org_id", orgId);
+        if (error) throw error;
+        return (data ?? []).map(rowToTask);
+      },
+      async get(id) {
+        const { data, error } = await db.from("tasks").select("*").eq("id", id).single();
+        if (error || !data) return null;
+        return rowToTask(data);
+      },
+      async insert(task) {
+        const { error } = await db.from("tasks").insert(taskToRow(task));
+        if (error) throw error;
+        return task;
+      },
+      async update(id, patch) {
+        const current = await this.get(id);
+        if (!current) throw new Error(`task ${id} not found`);
+        const next = { ...current, ...patch };
+        const { error } = await db.from("tasks").update(taskToRow(next)).eq("id", id);
+        if (error) throw error;
+        return next;
+      },
+      async remove(id) {
+        const { error } = await db.from("tasks").delete().eq("id", id);
+        if (error) throw error;
+      }
+    };
+    this.leads = {
+      async list(orgId) {
+        const { data, error } = await db.from("leads").select("*").eq("org_id", orgId);
+        if (error) throw error;
+        return (data ?? []).map(rowToLead);
+      },
+      async get(id) {
+        const { data, error } = await db.from("leads").select("*").eq("id", id).single();
+        if (error || !data) return null;
+        return rowToLead(data);
+      },
+      async insert(lead) {
+        const { error } = await db.from("leads").insert(leadToRow(lead));
+        if (error) throw error;
+        return lead;
+      },
+      async update(id, patch) {
+        const current = await this.get(id);
+        if (!current) throw new Error(`lead ${id} not found`);
+        const next = { ...current, ...patch };
+        const { error } = await db.from("leads").update(leadToRow(next)).eq("id", id);
+        if (error) throw error;
+        return next;
+      },
+      async remove(id) {
+        const { error } = await db.from("leads").delete().eq("id", id);
+        if (error) throw error;
+      }
+    };
+    this.events = {
+      async append(event) {
+        const { error } = await db.from("events").insert(eventToRow(event));
+        if (error) throw error;
+        return event;
+      },
+      async list(orgId, limit = 100) {
+        const { data, error } = await db.from("events").select("*").eq("org_id", orgId).order("at", { ascending: false }).limit(limit);
+        if (error) throw error;
+        return (data ?? []).map(rowToEvent);
+      },
+      async get(id) {
+        const { data, error } = await db.from("events").select("*").eq("id", id).single();
+        if (error || !data) return null;
+        return rowToEvent(data);
+      }
+    };
+    this.settings = {
+      async getAutonomy(orgId) {
+        const { data, error } = await db.from("settings").select("*").eq("org_id", orgId).single();
+        if (error || !data) return null;
+        return JSON.parse(data.doc);
+      },
+      async setAutonomy(orgId, settings) {
+        const { error } = await db.from("settings").upsert({ org_id: orgId, doc: JSON.stringify(settings) }, { onConflict: "org_id" });
+        if (error) throw error;
+      }
+    };
+    this.approvals = {
+      async insert(approval) {
+        const { error } = await db.from("approvals").insert(approvalToRow(approval));
+        if (error) throw error;
+        return approval;
+      },
+      async list(orgId, status) {
+        let query = db.from("approvals").select("*").eq("org_id", orgId);
+        if (status) query = query.eq("status", status);
+        const { data, error } = await query.order("created_at", { ascending: false });
+        if (error) throw error;
+        return (data ?? []).map(rowToApproval);
+      },
+      async get(id) {
+        const { data, error } = await db.from("approvals").select("*").eq("id", id).single();
+        if (error || !data) return null;
+        return rowToApproval(data);
+      },
+      async update(id, patch) {
+        const current = await this.get(id);
+        if (!current) throw new Error(`approval ${id} not found`);
+        const next = { ...current, ...patch };
+        const { error } = await db.from("approvals").update(approvalToRow(next)).eq("id", id);
+        if (error) throw error;
+        return next;
+      }
+    };
+  }
+  async init() {
+  }
+  async close() {
+  }
+};
+function rowToLoop(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    title: row.title,
+    why: row.why ?? "",
+    side: row.side,
+    status: row.status,
+    channel: row.channel,
+    sourceRef: row.source_ref ?? void 0,
+    replyTo: row.reply_to ?? void 0,
+    ownerId: row.owner_id ?? void 0,
+    createdBy: row.created_by,
+    assignedTo: JSON.parse(row.assigned_to ?? "[]"),
+    dueAt: row.due_at ?? void 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+function loopToRow(loop) {
+  return {
+    id: loop.id,
+    org_id: loop.orgId,
+    title: loop.title,
+    why: loop.why,
+    side: loop.side,
+    status: loop.status,
+    channel: loop.channel,
+    source_ref: loop.sourceRef ?? null,
+    reply_to: loop.replyTo ?? null,
+    owner_id: loop.ownerId ?? null,
+    created_by: loop.createdBy,
+    assigned_to: JSON.stringify(loop.assignedTo),
+    due_at: loop.dueAt ?? null,
+    created_at: loop.createdAt,
+    updated_at: loop.updatedAt
+  };
+}
+function rowToTask(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    emoji: row.emoji ?? "",
+    title: row.title,
+    list: row.list ?? "Inbox",
+    day: row.day,
+    priority: row.priority,
+    recurring: row.recurring ?? false,
+    recur: row.recur,
+    assignees: JSON.parse(row.assignees ?? "[]"),
+    createdBy: row.created_by,
+    subtasks: JSON.parse(row.subtasks ?? "[]"),
+    comments: JSON.parse(row.comments ?? "[]"),
+    dueAt: row.due_at ?? void 0,
+    createdAt: row.created_at
+  };
+}
+function taskToRow(task) {
+  return {
+    id: task.id,
+    org_id: task.orgId,
+    emoji: task.emoji,
+    title: task.title,
+    list: task.list,
+    day: task.day,
+    priority: task.priority,
+    recurring: task.recurring,
+    recur: task.recur,
+    assignees: JSON.stringify(task.assignees),
+    created_by: task.createdBy,
+    subtasks: JSON.stringify(task.subtasks ?? []),
+    comments: JSON.stringify(task.comments ?? []),
+    due_at: task.dueAt ?? null,
+    created_at: task.createdAt
+  };
+}
+function rowToLead(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    name: row.name,
+    company: row.company ?? "",
+    title: row.title ?? "",
+    phone: row.phone ?? "",
+    email: row.email ?? "",
+    stage: row.stage,
+    source: row.source,
+    what: row.what ?? "",
+    createdBy: row.created_by,
+    assignedTo: JSON.parse(row.assigned_to ?? "[]"),
+    createdAt: row.created_at
+  };
+}
+function leadToRow(lead) {
+  return {
+    id: lead.id,
+    org_id: lead.orgId,
+    name: lead.name,
+    company: lead.company,
+    title: lead.title,
+    phone: lead.phone,
+    email: lead.email,
+    stage: lead.stage,
+    source: lead.source,
+    what: lead.what,
+    created_by: lead.createdBy,
+    assigned_to: JSON.stringify(lead.assignedTo),
+    created_at: lead.createdAt
+  };
+}
+function rowToEvent(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    type: row.type,
+    entityId: row.entity_id,
+    actorId: row.actor_id,
+    undo: row.undo ? JSON.parse(row.undo) : null,
+    reversible: row.reversible ?? true,
+    channel: row.channel ?? void 0,
+    at: row.at
+  };
+}
+function eventToRow(event) {
+  return {
+    id: event.id,
+    org_id: event.orgId,
+    type: event.type,
+    entity_id: event.entityId,
+    actor_id: event.actorId,
+    undo: event.undo ? JSON.stringify(event.undo) : null,
+    reversible: event.reversible,
+    channel: event.channel ?? null,
+    at: event.at
+  };
+}
+function rowToApproval(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    action: row.action,
+    loopId: row.loop_id ?? void 0,
+    title: row.title,
+    status: row.status,
+    createdAt: row.created_at
+  };
+}
+function approvalToRow(approval) {
+  return {
+    id: approval.id,
+    org_id: approval.orgId,
+    action: approval.action,
+    loop_id: approval.loopId ?? null,
+    title: approval.title,
+    status: approval.status,
+    created_at: approval.createdAt
+  };
+}
+
 // packages/db/src/index.ts
 function createDatabase(opts = {}) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  if (supabaseUrl && supabaseAnonKey) {
+    return new SupabaseDatabase({
+      url: supabaseUrl,
+      anonKey: supabaseAnonKey,
+      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY
+    });
+  }
   const fromEnv = process.env.COMPANYBRAIN_DB_PATH;
   const dir = join(homedir(), ".companybrain");
   mkdirSync(dir, { recursive: true });
@@ -230,32 +1506,8 @@ function createQueue() {
   return new InProcessQueue();
 }
 
-// packages/auth/src/local.ts
-var LOCAL_ORG_ID = "org_local";
-var LOCAL_USER_ID = "user_local";
-var LocalAuth = class {
-  principal;
-  constructor(role = "ceo") {
-    this.principal = { userId: LOCAL_USER_ID, orgId: LOCAL_ORG_ID, role };
-  }
-  async init() {
-  }
-  async authenticate() {
-    return this.principal;
-  }
-  async current() {
-    return this.principal;
-  }
-  /** single local user can do everything */
-  can(_principal, _capability) {
-    return true;
-  }
-};
-
-// packages/auth/src/index.ts
-function createAuth() {
-  return new LocalAuth();
-}
+// packages/core/src/index.ts
+init_src();
 
 // packages/core/src/context.ts
 import { randomUUID } from "node:crypto";
@@ -323,16 +1575,16 @@ async function queueForApproval(ctx, action, opts) {
   return approval;
 }
 async function gateAction(ctx, action, opts) {
-  const level = (await resolveAutonomy(ctx.db, opts.orgId))[action];
-  if (level === "auto") await dispatch(ctx, action, opts.loopId, opts.orgId, opts.delayMs);
-  else if (level === "ask") await queueForApproval(ctx, action, opts);
-  return level;
+  const level2 = (await resolveAutonomy(ctx.db, opts.orgId))[action];
+  if (level2 === "auto") await dispatch(ctx, action, opts.loopId, opts.orgId, opts.delayMs);
+  else if (level2 === "ask") await queueForApproval(ctx, action, opts);
+  return level2;
 }
 function makeAutonomy(ctx) {
   return {
     get: (orgId) => resolveAutonomy(ctx.db, orgId),
-    async set(orgId, action, level) {
-      const next = { ...await resolveAutonomy(ctx.db, orgId), [action]: level };
+    async set(orgId, action, level2) {
+      const next = { ...await resolveAutonomy(ctx.db, orgId), [action]: level2 };
       await ctx.db.settings.setAutonomy(orgId, next);
       await record(ctx, { orgId, type: "autonomy.changed", entityId: orgId, actorId: "user_local" });
       return next;
@@ -611,6 +1863,7 @@ function registerWorkers(ctx) {
 }
 
 // packages/core/src/seed.ts
+init_src();
 async function seedIfEmpty(core) {
   const existing = await core.loops.list(LOCAL_ORG_ID);
   if (existing.length > 0) return;
@@ -673,6 +1926,11 @@ async function bootstrap(opts = {}) {
 
 // packages/server/src/server.ts
 import Fastify from "fastify";
+import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
+import fastifyStatic from "@fastify/static";
+import { join as join3 } from "node:path";
+import { existsSync } from "node:fs";
 
 // packages/integrations/src/pipeline.ts
 function needsHuman(msg) {
@@ -923,6 +2181,9 @@ function createBaileysChannel(opts) {
   }
   return { messenger: messenger2, start, stop };
 }
+
+// packages/server/src/server.ts
+init_src();
 
 // packages/server/src/web-ui.ts
 function renderUi() {
@@ -1337,6 +2598,11 @@ button{cursor:pointer;}
           <div class="agent-dot"></div>
           <div><div class="agent-label">Agent online</div><div class="agent-sublabel">watching all channels</div></div>
         </div>
+        <div class="agent-status" id="session-user-card">
+          <div style="width:18px;height:18px;border-radius:6px;background:var(--accentSoft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:11px;font-weight:700;">\u{1F464}</div>
+          <div style="flex:1;min-width:0;"><div class="agent-label" id="session-user-name">Guest</div><div class="agent-sublabel" id="session-user-role">not signed in</div></div>
+          <button class="btn-ghost" id="logout-btn" style="padding:4px 8px;min-height:28px;font-size:10.5px;display:none;">Logout</button>
+        </div>
       </div>
     </nav>
 
@@ -1350,6 +2616,9 @@ button{cursor:pointer;}
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           <span id="notif-count"></span>
         </div>
+        <button class="topbar-dark-toggle" id="topbar-logout-btn" title="Sign out" style="display:none;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
       </div>
       <div id="content"><div id="view"><div class="spin"></div></div></div>
     </main>
@@ -1403,6 +2672,19 @@ button{cursor:pointer;}
     </div>
   </div>
 
+  <div class="modal-backdrop" id="auth-modal">
+    <div class="modal-box" style="max-width:430px;">
+      <div class="modal-head"><span style="font-size:20px;">\u{1F510}</span><span class="modal-title">Sign in to companybrain</span></div>
+      <div class="modal-body">
+        <div style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:12px;">Use your user identity + workspace access key.</div>
+        <div class="modal-field"><label class="modal-label">User</label><select class="modal-select" id="auth-user"></select></div>
+        <div class="modal-field"><label class="modal-label">Access key</label><input class="modal-input" id="auth-key" type="password" placeholder="Enter access key" autocomplete="current-password"/></div>
+        <div id="auth-error" style="display:none;font-size:12px;color:var(--red);margin-top:4px;"></div>
+      </div>
+      <div class="modal-foot"><button class="btn-primary" id="auth-login-btn">Sign in</button></div>
+    </div>
+  </div>
+
   <!-- command palette -->
   <div id="cmd-overlay">
     <div id="cmd-box">
@@ -1431,6 +2713,7 @@ button{cursor:pointer;}
   }
   try {
   var tab='loops', side='yours', taskDay='today', leadView='all', activeRole='ceo', loopCount=0;
+  var me=null, authUsers=[], appStarted=false;
   var h0=new Date().getHours();
   var briefMode=h0<12?'am':h0<17?'pm':'eve';
 
@@ -1522,7 +2805,25 @@ button{cursor:pointer;}
 
   // \u2500\u2500 helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   function esc(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-  function api(path,opts){return fetch(path,opts).then(function(r){return r.json().catch(function(){return null;});});}
+  function api(path,opts){
+    return fetch(path,opts).then(function(r){
+      return r.text().then(function(t){
+        var body=null;
+        if(t){try{body=JSON.parse(t);}catch(_e){body=null;}}
+        if(!r.ok){
+          var e=new Error(body&&body.error?body.error:('HTTP '+r.status));
+          e.status=r.status; e.body=body;
+          if(r.status===401){
+            appStarted=false;
+            applySessionUser(null);
+            openAuthModal('Session expired. Sign in again.');
+          }
+          throw e;
+        }
+        return body;
+      });
+    });
+  }
   function post(path,body,method){return api(path,{method:method||'POST',headers:{'content-type':'application/json'},body:body?JSON.stringify(body):undefined});}
   function ago(ts){
     var d=(Date.now()-ts)/1e3;
@@ -1579,6 +2880,128 @@ button{cursor:pointer;}
     t.classList.add('show');
     if(onUndo) inner.querySelector('.toast-undo').onclick=function(){onUndo();t.classList.remove('show');};
     setTimeout(function(){t.classList.remove('show');},3200);
+  }
+
+  function roleFromApi(role){
+    if(role==='manager') return 'mgr';
+    if(role==='employee') return 'emp';
+    if(role==='client') return 'client';
+    return 'ceo';
+  }
+  function roleLabel(role){
+    if(role==='manager') return 'Manager';
+    if(role==='employee') return 'Employee';
+    if(role==='client') return 'Client';
+    if(role==='agent') return 'AI Agent';
+    return 'CEO';
+  }
+  function updateSessionUi(){
+    var n=document.getElementById('session-user-name');
+    var r=document.getElementById('session-user-role');
+    var lo=document.getElementById('logout-btn');
+    var loTop=document.getElementById('topbar-logout-btn');
+    if(me){
+      if(n) n.textContent=me.name||me.userId||'User';
+      if(r) r.textContent=(roleLabel(me.role)||'Member')+(me.email?' \xB7 '+me.email:'');
+      if(lo) lo.style.display='inline-flex';
+      if(loTop) loTop.style.display='inline-flex';
+    }else{
+      if(n) n.textContent='Guest';
+      if(r) r.textContent='not signed in';
+      if(lo) lo.style.display='none';
+      if(loTop) loTop.style.display='none';
+    }
+  }
+  function applySessionUser(user){
+    me=user||null;
+    if(me&&me.role) activeRole=roleFromApi(me.role);
+    updateSessionUi();
+  }
+  function populateAuthUsers(users){
+    authUsers=users||[];
+    var sel=document.getElementById('auth-user');
+    if(!sel) return;
+    if(!authUsers.length){
+      sel.innerHTML='<option value="user_local">user_local</option>';
+      return;
+    }
+    sel.innerHTML=authUsers.map(function(u){
+      var lbl=(u.name||u.userId)+' \xB7 '+roleLabel(u.role||'employee');
+      return '<option value="'+esc(u.userId)+'">'+esc(lbl)+'</option>';
+    }).join('');
+  }
+  function openAuthModal(msg){
+    var m=document.getElementById('auth-modal');
+    if(!m) return;
+    var err=document.getElementById('auth-error');
+    if(err){
+      if(msg){err.style.display='block';err.textContent=msg;}
+      else{err.style.display='none';err.textContent='';}
+    }
+    m.classList.add('open');
+    var key=document.getElementById('auth-key');
+    if(key) setTimeout(function(){key.focus();},20);
+  }
+  function closeAuthModal(){
+    var m=document.getElementById('auth-modal');
+    if(m) m.classList.remove('open');
+    var err=document.getElementById('auth-error');
+    if(err){err.style.display='none';err.textContent='';}
+    var key=document.getElementById('auth-key');
+    if(key) key.value='';
+  }
+  function loginWithKey(){
+    var sel=document.getElementById('auth-user');
+    var key=document.getElementById('auth-key');
+    var btn=document.getElementById('auth-login-btn');
+    var uid=sel&&sel.value||'';
+    var accessKey=key&&key.value||'';
+    if(!uid){openAuthModal('Select a user');return;}
+    if(!accessKey){openAuthModal('Access key is required');return;}
+    if(btn){btn.disabled=true;btn.textContent='Signing in\u2026';}
+    post('/api/auth/login',{userId:uid,key:accessKey}).then(function(res){
+      applySessionUser(res&&res.user?res.user:null);
+      closeAuthModal();
+      startApp();
+    }).catch(function(e){
+      openAuthModal(e&&e.message?e.message:'Invalid credentials');
+    }).finally(function(){
+      if(btn){btn.disabled=false;btn.textContent='Sign in';}
+    });
+  }
+  function ensureSession(){
+    return api('/api/auth/me').then(function(s){
+      if(s&&s.authenticated&&s.user){
+        applySessionUser(s.user);
+        return true;
+      }
+      return api('/api/auth/users').then(function(info){
+        populateAuthUsers(info&&info.users||[]);
+        applySessionUser(null);
+        openAuthModal();
+        return false;
+      }).catch(function(){
+        populateAuthUsers([]);
+        applySessionUser(null);
+        openAuthModal('Could not load users. Try again.');
+        return false;
+      });
+    });
+  }
+  function startApp(){
+    if(appStarted) return;
+    appStarted=true;
+    buildNav();
+    render();
+    loadNotifications();
+    setupSSE();
+  }
+  function logoutSession(){
+    post('/api/auth/logout').catch(function(){}).then(function(){
+      appStarted=false;
+      applySessionUser(null);
+      ensureSession().then(function(ok){ if(ok) startApp(); });
+    });
   }
 
   // \u2500\u2500 theme \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1855,32 +3278,8 @@ button{cursor:pointer;}
   // \u2500\u2500 projects \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   var PROJECT_PALETTES=['linear-gradient(135deg,#3e7bfa,#7c3aed)','linear-gradient(135deg,#10b981,#14b8a6)','linear-gradient(135deg,#f59e0b,#ef4444)','linear-gradient(135deg,#6366f1,#ec4899)','linear-gradient(135deg,#0ea5e9,#06b6d4)','linear-gradient(135deg,#8b5cf6,#d946ef)'];
   var PROJECT_TEMPLATES=[{name:'Blank',emoji:'\u{1F4C4}',bg:'linear-gradient(135deg,#6b7280,#374151)'},{name:'Social Media',emoji:'\u{1F4F1}',bg:'linear-gradient(135deg,#ec4899,#8b5cf6)'},{name:'Product Launch',emoji:'\u{1F680}',bg:'linear-gradient(135deg,#3e7bfa,#7c3aed)'},{name:'Content Cal.',emoji:'\u{1F4C5}',bg:'linear-gradient(135deg,#f59e0b,#ef4444)'},{name:'Client Onboard',emoji:'\u{1F91D}',bg:'linear-gradient(135deg,#10b981,#0ea5e9)'},{name:'Event',emoji:'\u{1F389}',bg:'linear-gradient(135deg,#d946ef,#f59e0b)'}];
-  var selectedTemplate=0;
-  function loadProjects(){
-    var projects=JSON.parse(localStorage.getItem('cb-projects')||'[]');
-    var html='<div class="sec-head"><div><div class="sec-title">Projects</div><div class="sec-sub">Everything your team is building.</div></div><div class="head-actions"><button class="btn-primary" id="new-proj-btn">+ New project</button></div></div><div class="bento-grid">';
-    projects.forEach(function(p,i){var bg=p.bg||PROJECT_PALETTES[i%PROJECT_PALETTES.length];var done=p.done||0,total=p.total||0,pct=total>0?Math.round(done/total*100):0;html+='<div class="bento-card'+(i===0?' bento-hero':'')+'" style="background:'+bg+';"><div class="bento-card-emoji">'+esc(p.emoji||'\u{1F4E6}')+'</div><div class="bento-card-name">'+esc(p.name)+'</div>'+(p.desc?'<div class="bento-card-desc">'+esc(p.desc)+'</div>':'')+'<div class="bento-card-foot">'+(total?'<div class="bento-prog-bar"><div class="bento-prog-fill" style="width:'+pct+'%"></div></div><span class="bento-pct">'+pct+'%</span>':'')+'<span class="bento-status">'+esc(p.status||'active')+'</span></div></div>';});
-    html+='<button class="bento-new-card" id="bento-new-card-btn"><div style="font-size:28px;">+</div><div style="font-size:13px;font-weight:600;">New project</div></button></div>';
-    view.innerHTML=html;
-    document.getElementById('new-proj-btn').onclick=openNewProjectModal;
-    document.getElementById('bento-new-card-btn').onclick=openNewProjectModal;
-  }
 
-  // \u2500\u2500 extra views \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-  var teamView='ceo';
-  function loadTeam(){
-    var subViews=[{id:'ceo',label:'CEO'},{id:'mgr',label:'Manager'},{id:'emp',label:'Employee'},{id:'client',label:'Client'},{id:'agents',label:'AI Agents'}];
-    var html='<div class="sec-head"><div><div class="sec-title">Team</div><div class="sec-sub">Switch role to see the world from any seat.</div></div></div><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:20px;background:var(--bg2);border:1px solid var(--glassBorder);border-radius:12px;padding:3px;width:fit-content;">'+subViews.map(function(sv){return '<button class="team-sv-btn'+(sv.id===teamView?' on':'')+'" data-sv="'+sv.id+'" style="padding:7px 14px;border-radius:9px;border:none;background:'+(sv.id===teamView?'var(--surface)':'transparent')+';font-size:12.5px;font-weight:'+(sv.id===teamView?'600':'500')+';color:'+(sv.id===teamView?'var(--text)':'var(--muted)')+';min-height:36px;cursor:pointer;box-shadow:'+(sv.id===teamView?'var(--shadow-md)':'none')+';">'+sv.label+'</button>';}).join('')+'</div>';
-    if(teamView==='agents'){loadAgents();return;}
-    if(teamView==='ceo') html+='<div class="kpi-grid">'+['Revenue pipeline','Team velocity','Open loops','Agent ROI'].map(function(l,i){var vals=['\u20B924L','87%','14','4.2x'];var cols=['var(--green)','var(--accent)','var(--amber)','var(--teal)'];return '<div class="kpi-card gc"><div class="kpi-val" style="color:'+cols[i]+'">'+vals[i]+'</div><div class="kpi-lbl">'+l+'</div></div>';}).join('')+'</div><div class="gc" style="padding:18px 20px;border-radius:16px;margin-bottom:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;margin-bottom:12px;">TEAM MEMBERS</div>'+['James (CEO)','Priya (Manager)','Alex (Dev)','Sam (Design)','Dana (Client)'].map(function(m,i){var colors=['#3e7bfa','#14b8a6','#f59e0b','#ef4444','#7c3aed'];return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--glassBorder);"><div style="width:36px;height:36px;border-radius:50%;background:'+colors[i]+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">'+m.charAt(0)+'</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+m+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">'+[2,5,3,1,0][i]+' open loops</div></div><div style="font-family:&quot;JetBrains Mono&quot;,monospace;font-size:12px;font-weight:600;color:var(--accent);">'+[8,12,7,5,2][i]+' done</div></div>';}).join('')+'</div>';
-    else if(teamView==='mgr') html+='<div class="gc" style="padding:18px 20px;border-radius:16px;"><div style="font-size:14px;font-weight:700;margin-bottom:14px;">Workload overview</div>'+['Alex \u2014 7 tasks','Sam \u2014 5 tasks','Dana \u2014 3 tasks'].map(function(m,i){var pct=[70,50,30][i];return '<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span>'+m+'</span><span style="color:var(--muted);font-family:&quot;JetBrains Mono&quot;,monospace;">'+pct+'%</span></div><div style="height:5px;border-radius:5px;background:var(--bg2);overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:5px;"></div></div></div>';}).join('')+'</div>';
-    else if(teamView==='emp') html+='<div class="gc" style="padding:18px 20px;border-radius:16px;"><div style="font-size:15px;font-weight:700;margin-bottom:4px;">Your day</div><div style="font-size:12.5px;color:var(--muted);margin-bottom:16px;">3 tasks due today \xB7 1 overdue</div><div style="font-size:13px;color:var(--text);line-height:1.6;">Focus: complete overdue task first, then today&#39;s list. You&#39;re on track.</div></div>';
-    else html+='<div class="gc" style="padding:18px 20px;border-radius:16px;border-left:3px solid var(--teal);"><div style="font-size:11px;font-weight:700;color:var(--teal);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;margin-bottom:8px;">CLIENT PORTAL \u2014 READ ONLY</div><div style="font-size:15px;font-weight:700;margin-bottom:4px;">Your project</div><div style="font-size:12.5px;color:var(--muted);">3 deliverables in progress \xB7 1 ready for review</div></div>';
-    view.innerHTML=html;view.querySelectorAll('[data-sv]').forEach(function(b){b.onclick=function(){teamView=b.dataset.sv;loadTeam();};});
-  }
-  var BRAIN_ENTRIES=[{tag:'Sensitivity',text:'Stopped flagging invoice confirmation emails as open loops after 3 corrections.',when:Date.now()-86400e3*2},{tag:'Channel',text:'Linked WhatsApp group "Project Alpha" to project #P-004 based on recurring mentions.',when:Date.now()-86400e3*4},{tag:'People',text:'Recognised that "the client" in Slack usually refers to Dana Carter \u2014 auto-linking applied.',when:Date.now()-86400e3*7},{tag:'Loop pattern',text:'Emails from noreply@github.com marked as non-actionable by default.',when:Date.now()-86400e3*10},{tag:'Autonomy',text:'Confidence threshold raised from 70% to 85% for auto-creating tasks.',when:Date.now()-86400e3*14}];
-  function loadBrain(){view.innerHTML='<div class="sec-head"><div><div class="sec-title">Company Brain</div><div class="sec-sub">What the AI has learned \u2014 and why. Every change is correctable.</div></div></div><div style="position:relative;padding-left:20px;"><div style="position:absolute;left:7px;top:6px;bottom:0;width:2px;background:var(--glassBorder);border-radius:2px;"></div>'+BRAIN_ENTRIES.map(function(e){return '<div style="position:relative;padding:0 0 20px 20px;"><div style="position:absolute;left:-14px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--surface);box-shadow:0 0 0 3px var(--accentSoft);"></div><div style="display:inline-block;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--accentSoft);color:var(--accent);font-family:\\'JetBrains Mono\\',monospace;margin-bottom:5px;">'+esc(e.tag)+'</div><div style="font-size:13px;color:var(--text);line-height:1.5;">'+esc(e.text)+'</div><div style="font-size:10px;color:var(--faint);margin-top:4px;font-family:\\'JetBrains Mono\\',monospace;">'+ago(e.when)+' ago</div><button style="margin-top:6px;font-size:10.5px;color:var(--red);background:transparent;border:none;cursor:pointer;padding:0;" onclick="toast(\\'Correction saved. Brain will re-learn.\\')">\u21A9 Correct this</button></div>';}).join('')+'</div>';}
-  function loadReports(){var month=new Date().toLocaleDateString([],{month:'long',year:'numeric'});view.innerHTML='<div class="sec-head"><div><div class="sec-title">Reports</div><div class="sec-sub">Monthly recap \u2014 company, team, and agent performance.</div></div></div><div style="padding:20px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;margin-bottom:16px;"><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:10px;opacity:.8;letter-spacing:.5px;text-transform:uppercase;">'+month+'</div><div style="font-size:18px;font-weight:700;margin-top:6px;">Strong month \u2014 94% of loops closed on time.</div><div style="font-size:12.5px;opacity:.85;margin-top:4px;">Leads pipeline grew 32% \xB7 2 new agents deployed.</div></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;margin-bottom:16px;">'+[['142','Loops closed'],['38','Tasks done'],['12','Leads added'],['4.2x','Agent ROI']].map(function(s){return '<div class="gc" style="padding:14px 15px;border-radius:13px;"><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:22px;font-weight:700;color:var(--accent);">'+s[0]+'</div><div style="font-size:11px;color:var(--muted);margin-top:5px;">'+s[1]+'</div></div>';}).join('')+'</div><div class="gc" style="padding:16px 18px;border-radius:16px;"><div style="font-size:12px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">LEADERBOARD</div>'+['James','Priya','Alex','Sam'].map(function(n,i){return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--glassBorder);"><span style="font-family:\\'JetBrains Mono\\',monospace;font-size:11px;font-weight:700;color:var(--faint);min-width:18px;">'+(i+1)+'</span><span style="font-size:13px;font-weight:600;flex:1;">'+n+'</span><span style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;font-weight:600;color:var(--accent);">'+[42,38,31,26][i]+' pts</span></div>';}).join('')+'</div>';}
+
 
   // \u2500\u2500 agents \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   function loadAgents(){
@@ -1940,22 +3339,6 @@ button{cursor:pointer;}
     }).catch(function(e){view.innerHTML='<div class="empty">Failed to load autonomy: '+(e&&e.message||e)+'</div>';});
   }
 
-  function loadSettings(){
-    Promise.all([api('/api/autonomy'),api('/api/approvals'),api('/api/connections')]).then(function(res){
-      var settings=res[0]||{},approvals=(res[1]||[]).filter(function(a){return a.status==='pending';}),conns=res[2]||{};
-      var channels=[{name:'Gmail',icon:'\u{1F4E7}',status:conns.channels?'webhook ready':'not configured'},{name:'Calendar',icon:'\u{1F4C5}',status:'webhook ready'},{name:'Slack',icon:'\u{1F4AC}',status:'webhook ready'},{name:'GitHub',icon:'\u{1F419}',status:'webhook ready'},{name:'Telegram',icon:'\u2708\uFE0F',status:'webhook ready'},{name:'WhatsApp',icon:'\u{1F4F1}',status:conns.whatsapp?conns.whatsapp.outbound:'not configured'}];
-      var html='<div class="sec-head"><div><div class="sec-title">Settings</div><div class="sec-sub">Autonomy, channels, and personalisation.</div></div></div><div style="padding:16px 18px;border-radius:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);display:flex;align-items:center;gap:12px;margin-bottom:20px;"><div style="flex:1;"><div style="font-size:14px;font-weight:700;color:var(--red);">Kill switch</div><div style="font-size:12px;color:var(--red);opacity:.7;margin-top:2px;">Pause ALL autonomous actions immediately.</div></div><button class="btn-danger" onclick="toast(\\'All autonomous actions paused.\\')">Pause all</button></div>';
-      if(approvals.length) html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:8px;">PENDING APPROVALS ('+approvals.length+')</div>'+approvals.map(function(ap){return '<div class="gc" style="padding:12px 14px;border-radius:13px;display:flex;align-items:center;gap:10px;margin-bottom:7px;"><div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+esc(ap.title)+'</div><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:10.5px;color:var(--faint);margin-top:2px;">'+esc(ap.action)+'</div></div><button class="approve-btn ok" data-approve="'+ap.id+'">Approve</button><button class="approve-btn no" data-dismiss="'+ap.id+'" style="margin-left:5px;">Dismiss</button></div>';}).join('');
-      html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">AUTONOMY</div>'+ACTIONS.map(function(a){var cur=settings[a.k]||'off';return '<div class="gc auto-card"><div class="auto-info"><div class="auto-label">'+a.label+'</div><div class="auto-desc">'+a.desc+'</div></div><div class="lvls">'+['off','ask','auto'].map(function(lv){return '<button class="lvl'+(lv===cur?' on':'')+'" data-act="'+a.k+'" data-lvl="'+lv+'">'+lv.charAt(0).toUpperCase()+lv.slice(1)+'</button>';}).join('')+'</div></div>';}).join('');
-      html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">CHANNEL CONNECTIONS</div>'+channels.map(function(c){var ok=c.status&&c.status!=='not configured';return '<div class="gc" style="padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:11px;margin-bottom:7px;"><div style="width:34px;height:34px;border-radius:10px;background:var(--bg2);border:1px solid var(--glassBorder);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">'+c.icon+'</div><div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">'+c.name+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">'+esc(c.status)+'</div></div><span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:6px;background:'+(ok?'var(--greenSoft)':'var(--amberSoft)')+';color:'+(ok?'var(--green)':'var(--amber)')+';">'+(ok?'Active':'Setup needed')+'</span></div>';}).join('');
-      html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">APPEARANCE</div><div class="gc" style="padding:14px 16px;border-radius:14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;"><div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">Dark mode</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;">Switch between light and dark interface.</div></div><button class="btn-ghost" id="settings-dark-toggle">'+(darkMode?'Switch to light':'Switch to dark')+'</button></div><div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;">Wallpaper</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'+THEMES.map(function(t){return '<div style="cursor:pointer;" onclick="applyTheme(\\''+t.id+'\\')"><div style="aspect-ratio:3/2;border-radius:10px;background:'+t.swatch+';border:2px solid '+(activeTheme===t.id?'var(--accent)':'transparent')+';transition:all .15s;"></div><div style="text-align:center;font-size:10px;color:var(--muted);margin-top:4px;">'+t.label+'</div></div>';}).join('')+'</div>';
-      view.innerHTML=html;
-      var std=document.getElementById('settings-dark-toggle');if(std)std.onclick=function(){applyDark(!darkMode);loadSettings();};
-      view.querySelectorAll('.lvl').forEach(function(b){b.onclick=function(){post('/api/autonomy',{action:b.dataset.act,level:b.dataset.lvl},'PUT').then(function(){toast('Saved');loadSettings();});};});
-      view.querySelectorAll('[data-approve]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.approve+'/approve').then(function(){toast('Approved');loadSettings();});};});
-      view.querySelectorAll('[data-dismiss]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(function(){toast('Dismissed');loadSettings();});};});
-    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load settings: '+(e&&e.message||e)+'</div>';});
-  }
 
   // \u2500\u2500 events \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   function loadEvents(){
@@ -2261,6 +3644,17 @@ button{cursor:pointer;}
         loadProjects();
       };
     }
+    var am=document.getElementById('auth-modal');
+    if(am){
+      var keyInput=document.getElementById('auth-key');
+      var loginBtn=document.getElementById('auth-login-btn');
+      if(loginBtn) loginBtn.onclick=loginWithKey;
+      if(keyInput) keyInput.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();loginWithKey();}};
+    }
+    var lo=document.getElementById('logout-btn');
+    if(lo) lo.onclick=function(){logoutSession();};
+    var loTop=document.getElementById('topbar-logout-btn');
+    if(loTop) loTop.onclick=function(){logoutSession();};
   })();
   var teamView='ceo';
   function loadTeam(){
@@ -2341,10 +3735,12 @@ button{cursor:pointer;}
   }
 
   // \u2500\u2500 boot \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-  buildNav();
-  render();
-  loadNotifications();
-  setupSSE();
+  updateSessionUi();
+  ensureSession().then(function(ok){
+    if(ok) startApp();
+  }).catch(function(e){
+    showErr(e);
+  });
   } catch(e) { showErr(e); }
 })();
 </script>
@@ -2353,9 +3749,36 @@ button{cursor:pointer;}
 }
 
 // packages/server/src/server.ts
+init_middleware();
 function buildServer(deps) {
   const { core, auth } = deps;
-  const app2 = Fastify({ logger: false });
+  const app2 = Fastify({
+    logger: {
+      level: process.env.COMPANYBRAIN_LOG_LEVEL ?? "info",
+      ...process.env.NODE_ENV !== "production" && {
+        transport: { target: "pino-pretty", options: { colorize: true, translateTime: "SYS:HH:MM:ss" } }
+      }
+    },
+    bodyLimit: 10 * 1024 * 1024,
+    // 10MB for image uploads
+    trustProxy: true
+  });
+  const allowedOrigins = (process.env.COMPANYBRAIN_CORS_ORIGINS ?? "").split(",").filter(Boolean);
+  app2.register(cors, {
+    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+  });
+  app2.register(rateLimit, rateLimitConfig);
+  const publicDir = join3(import.meta.dirname ?? process.cwd(), "public");
+  if (existsSync(publicDir)) {
+    app2.register(fastifyStatic, {
+      root: publicDir,
+      prefix: "/",
+      decorateReply: false
+    });
+  }
   const sseClients = /* @__PURE__ */ new Set();
   function broadcast(event) {
     const line = "data: " + JSON.stringify(event) + "\n\n";
@@ -2368,10 +3791,103 @@ function buildServer(deps) {
     }
   }
   const llm = createLlm();
-  const principalOf = (_req) => auth.current();
+  const authWithSessions = auth;
+  const authRequiresSession = typeof authWithSessions.login === "function";
+  const listUsers = async () => {
+    if (typeof authWithSessions.listUsers === "function") {
+      const users = await authWithSessions.listUsers();
+      if (Array.isArray(users) && users.length) return users.map((u) => sanitizeUser(u));
+    }
+    const p = await auth.current();
+    return [principalToUser(p)];
+  };
+  const getUserById = async (userId) => {
+    if (typeof authWithSessions.getUser === "function") {
+      const user = await authWithSessions.getUser(userId);
+      if (user) return sanitizeUser(user);
+    }
+    const users = await listUsers();
+    return users.find((u) => u.userId === userId) ?? null;
+  };
+  const userFromPrincipal = async (p) => {
+    const known = await getUserById(p.userId);
+    return known ?? principalToUser(p);
+  };
+  const principalOf = async (req) => {
+    const p = req.principal;
+    return p ?? auth.current();
+  };
   const params = (req) => req.params;
   const query = (req) => req.query;
-  app2.get("/health", async () => ({ ok: true }));
+  app2.get("/health", async () => ({
+    ok: true,
+    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+    uptime: process.uptime()
+  }));
+  app2.get("/metrics", async (_req, reply) => {
+    const { renderMetrics: renderMetrics2 } = await Promise.resolve().then(() => (init_middleware(), middleware_exports));
+    return reply.type("text/plain").send(renderMetrics2());
+  });
+  app2.addHook("preHandler", async (req, reply) => {
+    const url = req.raw.url ?? "";
+    if (!url.startsWith("/api/")) return;
+    if (url.startsWith("/api/auth/")) return;
+    if (!authRequiresSession) {
+      req.principal = await auth.current();
+      return;
+    }
+    const token = readAuthToken(req);
+    const principal = await auth.authenticate(token);
+    if (!principal) {
+      return reply.code(401).send({ error: "unauthorized" });
+    }
+    req.principal = principal;
+  });
+  app2.get("/api/auth/users", async () => {
+    const users = await listUsers();
+    return { authMode: authRequiresSession ? "key" : "local", requiresAuth: authRequiresSession, users: users.map(presentUser) };
+  });
+  app2.get("/api/auth/me", async (req) => {
+    if (!authRequiresSession) {
+      const p = await auth.current();
+      return { authMode: "local", authenticated: true, user: presentUser(await userFromPrincipal(p)) };
+    }
+    const principal = await auth.authenticate(readAuthToken(req));
+    if (!principal) return { authMode: "key", authenticated: false };
+    return { authMode: "key", authenticated: true, user: presentUser(await userFromPrincipal(principal)) };
+  });
+  app2.post("/api/auth/login", {
+    config: { rateLimit: authRateLimitConfig },
+    preHandler: validateBody(validation_exports.LoginSchema)
+  }, async (req, reply) => {
+    if (!authRequiresSession || typeof authWithSessions.login !== "function") {
+      const p = await auth.current();
+      return { ok: true, authMode: "local", authenticated: true, user: presentUser(await userFromPrincipal(p)) };
+    }
+    const body = req.validatedBody ?? (req.body ?? {});
+    const userId = body.userId?.trim();
+    const key = body.key?.trim();
+    if (!userId || !key) {
+      throw badRequest("userId and key are required");
+    }
+    const login = await authWithSessions.login(userId, key);
+    if (!login) {
+      logger.warn({ userId }, "Failed login attempt");
+      return reply.code(401).send({ error: "Invalid user or access key" });
+    }
+    logger.info({ userId }, "Successful login");
+    const maxAge = Math.max(60, Math.floor((login.expiresAt - Date.now()) / 1e3));
+    reply.header("Set-Cookie", makeSessionCookie("cb_session", login.token, maxAge, shouldSecureCookie(req)));
+    return { ok: true, authMode: "key", authenticated: true, user: presentUser(login.user), expiresAt: login.expiresAt };
+  });
+  app2.post("/api/auth/logout", async (req, reply) => {
+    if (authRequiresSession && typeof authWithSessions.logout === "function") {
+      const token = readAuthToken(req);
+      if (token) await authWithSessions.logout(token);
+    }
+    reply.header("Set-Cookie", clearSessionCookie("cb_session", shouldSecureCookie(req)));
+    return { ok: true };
+  });
   app2.get("/api/stream", async (req, reply) => {
     reply.raw.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -2396,17 +3912,18 @@ function buildServer(deps) {
   });
   app2.get("/api/me", async (req) => {
     const p = await principalOf(req);
-    return { userId: p.userId, orgId: p.orgId, role: p.role, name: "You", initials: "YO" };
+    return presentUser(await userFromPrincipal(p));
   });
   app2.get("/api/loops", async (req) => {
     const p = await principalOf(req);
     const side = req.query.side;
     return core.loops.list(p.orgId, side);
   });
-  app2.post("/api/loops", async (req) => {
+  app2.post("/api/loops", {
+    preHandler: validateBody(validation_exports.CreateLoopSchema)
+  }, async (req) => {
     const p = await principalOf(req);
-    const b = req.body;
-    if (!b?.title?.trim()) throw badRequest("title is required");
+    const b = req.validatedBody;
     const result = await core.loops.capture({
       orgId: p.orgId,
       actorId: p.userId,
@@ -2424,26 +3941,31 @@ function buildServer(deps) {
     broadcast({ type: "loop.closed" });
     return result;
   });
-  app2.post("/api/loops/:id/snooze", async (req) => {
+  app2.post("/api/loops/:id/snooze", {
+    preHandler: validateBody(validation_exports.SnoozeLoopSchema)
+  }, async (req) => {
     const p = await principalOf(req);
-    const b = req.body ?? {};
+    const b = req.validatedBody;
     const untilAt = Date.now() + Math.max(1, b.hours ?? 24) * 60 * 60 * 1e3;
     const result = await core.loops.snooze(params(req).id, p.userId, untilAt);
     broadcast({ type: "loop.snoozed" });
     return result;
   });
-  app2.post("/api/loops/:id/assign", async (req) => {
+  app2.post("/api/loops/:id/assign", {
+    preHandler: validateBody(validation_exports.AssignSchema)
+  }, async (req) => {
     const p = await principalOf(req);
-    const b = req.body ?? {};
+    const b = req.validatedBody;
     const loop = await core.ctx.db.loops.get(params(req).id);
     if (!loop) throw badRequest("loop not found");
     return core.ctx.db.loops.update(loop.id, { assignedTo: b.userIds ?? [p.userId] });
   });
   app2.get("/api/tasks", async (req) => core.tasks.list((await principalOf(req)).orgId));
-  app2.post("/api/tasks", async (req) => {
+  app2.post("/api/tasks", {
+    preHandler: validateBody(validation_exports.CreateTaskSchema)
+  }, async (req) => {
     const p = await principalOf(req);
-    const b = req.body;
-    if (!b?.title?.trim()) throw badRequest("title is required");
+    const b = req.validatedBody;
     const result = await core.tasks.create({ orgId: p.orgId, actorId: p.userId, ...b });
     broadcast({ type: "task.created" });
     return result;
@@ -2453,25 +3975,30 @@ function buildServer(deps) {
     broadcast({ type: "task.completed" });
     return result;
   });
-  app2.post("/api/tasks/:id/move", async (req) => {
+  app2.post("/api/tasks/:id/move", {
+    preHandler: validateBody(validation_exports.MoveTaskSchema)
+  }, async (req) => {
     const p = await principalOf(req);
-    const b = req.body ?? {};
+    const b = req.validatedBody;
     const result = await core.tasks.move(params(req).id, b.day ?? "today", p.userId);
     broadcast({ type: "task.moved" });
     return result;
   });
-  app2.post("/api/tasks/:id/assign", async (req) => {
+  app2.post("/api/tasks/:id/assign", {
+    preHandler: validateBody(validation_exports.AssignSchema)
+  }, async (req) => {
     const p = await principalOf(req);
-    const b = req.body ?? {};
+    const b = req.validatedBody;
     const task = await core.ctx.db.tasks.get(params(req).id);
     if (!task) throw badRequest("task not found");
     return core.ctx.db.tasks.update(task.id, { assignees: b.userIds ?? [p.userId] });
   });
   app2.get("/api/leads", async (req) => core.leads.list((await principalOf(req)).orgId));
-  app2.post("/api/leads", async (req) => {
+  app2.post("/api/leads", {
+    preHandler: validateBody(validation_exports.CreateLeadSchema)
+  }, async (req) => {
     const p = await principalOf(req);
-    const b = req.body;
-    if (!b?.name?.trim()) throw badRequest("name is required");
+    const b = req.validatedBody;
     const result = await core.leads.create({ orgId: p.orgId, actorId: p.userId, ...b });
     broadcast({ type: "lead.created" });
     return result;
@@ -2481,17 +4008,20 @@ function buildServer(deps) {
     broadcast({ type: "lead.advanced" });
     return result;
   });
-  app2.post("/api/leads/:id/assign", async (req) => {
+  app2.post("/api/leads/:id/assign", {
+    preHandler: validateBody(validation_exports.AssignSchema)
+  }, async (req) => {
     const p = await principalOf(req);
-    const b = req.body ?? {};
+    const b = req.validatedBody;
     const lead = await core.ctx.db.leads.get(params(req).id);
     if (!lead) throw badRequest("lead not found");
     return core.ctx.db.leads.update(lead.id, { assignedTo: b.userIds ?? [p.userId] });
   });
-  app2.post("/api/leads/quick-add", async (req) => {
+  app2.post("/api/leads/quick-add", {
+    preHandler: validateBody(validation_exports.QuickAddLeadSchema)
+  }, async (req) => {
     const p = await principalOf(req);
-    const b = req.body;
-    if (!b?.note?.trim()) throw badRequest("note is required");
+    const b = req.validatedBody;
     const result = await core.leads.quickAddFromNote(
       { orgId: p.orgId, actorId: p.userId, phone: b.phone ?? "", note: b.note },
       llm?.extractLead
@@ -2499,9 +4029,10 @@ function buildServer(deps) {
     broadcast({ type: "lead.created" });
     return result;
   });
-  app2.post("/api/leads/extract-card", async (req) => {
-    const b = req.body;
-    if (!b?.imageBase64 && !b?.text) throw badRequest("imageBase64 or text required");
+  app2.post("/api/leads/extract-card", {
+    preHandler: validateBody(validation_exports.ExtractCardSchema)
+  }, async (req) => {
+    const b = req.validatedBody;
     if (llm && b.text) {
       const extracted = await llm.extractLead(b.text);
       return extracted;
@@ -2559,14 +4090,11 @@ function buildServer(deps) {
     };
   });
   app2.get("/api/autonomy", async (req) => core.autonomy.get((await principalOf(req)).orgId));
-  app2.put("/api/autonomy", async (req) => {
+  app2.put("/api/autonomy", {
+    preHandler: validateBody(validation_exports.AutonomySchema)
+  }, async (req) => {
     const p = await principalOf(req);
-    const b = req.body;
-    const actions = ["createTasks", "sendReminders", "draftReplies", "chase", "joinMeetings"];
-    const levels = ["off", "ask", "auto"];
-    if (!b || !actions.includes(b.action) || !levels.includes(b.level)) {
-      throw badRequest("action and level are required (action \u2208 " + actions.join("|") + ", level \u2208 off|ask|auto)");
-    }
+    const b = req.validatedBody;
     return core.autonomy.set(p.orgId, b.action, b.level);
   });
   app2.get("/api/approvals", async (req) => core.approvals.list((await principalOf(req)).orgId, "pending"));
@@ -2589,20 +4117,28 @@ function buildServer(deps) {
     if (challenge === null) return reply.code(403).send("forbidden");
     return reply.type("text/plain").send(challenge);
   });
-  app2.post("/webhooks/whatsapp", async (req, reply) => {
+  app2.post("/webhooks/whatsapp", {
+    config: { rateLimit: webhookRateLimitConfig },
+    preHandler: whatsappSignatureVerify()
+  }, async (req, reply) => {
     const messages = cloud_api_exports.parseInbound(LOCAL_ORG_ID, req.body);
     for (const m of messages) await ingest(core, m);
-    if (messages.length) broadcast({ type: "loop.created" });
+    if (messages.length) {
+      logger.info({ count: messages.length }, "WhatsApp messages processed");
+      broadcast({ type: "loop.created" });
+    }
     return reply.code(200).send("ok");
   });
   const FANIN_CHANNELS = ["email", "slack", "telegram", "github", "calendar"];
-  app2.post("/webhooks/:channel", async (req, reply) => {
+  app2.post("/webhooks/:channel", {
+    config: { rateLimit: webhookRateLimitConfig },
+    preHandler: validateBody(validation_exports.WebhookFanInSchema)
+  }, async (req, reply) => {
     const channel = req.params.channel;
     if (!FANIN_CHANNELS.includes(channel)) {
       return reply.code(404).send("unknown channel");
     }
-    const b = req.body;
-    if (!b?.text?.trim()) throw badRequest("text is required");
+    const b = req.validatedBody;
     const loopId = await ingest(core, {
       orgId: LOCAL_ORG_ID,
       channel,
@@ -2610,16 +4146,129 @@ function buildServer(deps) {
       text: b.text,
       ref: b.ref
     });
+    logger.info({ channel, from: b.from }, "Webhook received");
     broadcast({ type: "loop.created" });
     return reply.send({ captured: loopId });
   });
   app2.get("/", async (_req, reply) => reply.type("text/html").send(renderUi()));
+  app2.setErrorHandler(function(error, request, reply) {
+    const statusCode = error.statusCode ?? 500;
+    const message = statusCode === 500 ? "Internal server error" : error.message;
+    if (statusCode >= 500) {
+      logger.error({ err: error, req: request }, "Unhandled error");
+    } else {
+      logger.warn({ err: error, req: request }, "Request error");
+    }
+    return reply.code(statusCode).send({
+      error: message,
+      ...statusCode !== 500 && error.details && { details: error.details }
+    });
+  });
   return app2;
 }
 function badRequest(message) {
   const err = new Error(message);
   err.statusCode = 400;
   return err;
+}
+function sanitizeUser(user) {
+  const name = (user.name ?? "").trim() || user.userId;
+  const initials = (user.initials ?? initialsFor2(name)).trim().slice(0, 3).toUpperCase();
+  return {
+    userId: user.userId,
+    orgId: user.orgId,
+    role: user.role,
+    name,
+    email: user.email?.trim() || void 0,
+    initials
+  };
+}
+function presentUser(user) {
+  const safe = sanitizeUser(user);
+  return {
+    userId: safe.userId,
+    orgId: safe.orgId,
+    role: safe.role,
+    name: safe.name,
+    email: safe.email,
+    initials: safe.initials
+  };
+}
+function principalToUser(principal) {
+  const name = principal.userId.replace(/^user[_-]?/i, "").replace(/[_-]+/g, " ").trim() || principal.userId;
+  return {
+    userId: principal.userId,
+    orgId: principal.orgId,
+    role: principal.role,
+    name,
+    initials: initialsFor2(name),
+    email: void 0
+  };
+}
+function initialsFor2(name) {
+  const parts = name.split(/\s+/).filter(Boolean).slice(0, 2);
+  if (!parts.length) return "US";
+  return parts.map((p) => p.charAt(0).toUpperCase()).join("");
+}
+function readAuthToken(req) {
+  const cookieToken = readCookie(req.headers.cookie, "cb_session");
+  if (cookieToken) return cookieToken;
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return void 0;
+  const m = authHeader.match(/^Bearer\s+(.+)$/i);
+  return m?.[1]?.trim();
+}
+function readCookie(cookieHeader, name) {
+  if (!cookieHeader) return void 0;
+  const pairs = cookieHeader.split(";");
+  for (const pair of pairs) {
+    const idx = pair.indexOf("=");
+    if (idx <= 0) continue;
+    const k = pair.slice(0, idx).trim();
+    if (k !== name) continue;
+    const raw = pair.slice(idx + 1).trim();
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  }
+  return void 0;
+}
+function shouldSecureCookie(req) {
+  const forced = (process.env.COMPANYBRAIN_SECURE_COOKIE ?? "").trim().toLowerCase();
+  if (forced === "1" || forced === "true" || forced === "yes") return true;
+  if (forced === "0" || forced === "false" || forced === "no") return false;
+  const fwd = req.headers["x-forwarded-proto"];
+  const proto = Array.isArray(fwd) ? fwd.join(",") : String(fwd ?? "");
+  if (proto) {
+    const values = proto.split(",").map((v) => v.trim().toLowerCase());
+    if (values.includes("https")) return true;
+  }
+  return (req.protocol ?? "").toLowerCase() === "https";
+}
+function makeSessionCookie(name, token, maxAgeSeconds, secure) {
+  const parts = [
+    `${name}=${encodeURIComponent(token)}`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    `Max-Age=${Math.max(0, Math.floor(maxAgeSeconds))}`
+  ];
+  if (secure) parts.push("Secure");
+  return parts.join("; ");
+}
+function clearSessionCookie(name, secure) {
+  const parts = [
+    `${name}=`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    "Max-Age=0",
+    "Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+  ];
+  if (secure) parts.push("Secure");
+  return parts.join("; ");
 }
 
 // cli/bin/companybrain.ts
@@ -2637,11 +4286,13 @@ if (baileys) await baileys.start(boot.core);
 var app = buildServer({ core: boot.core, auth: boot.auth });
 await app.listen({ port, host });
 var shown = host === "0.0.0.0" ? `http://localhost:${port}` : `http://${host}:${port}`;
+var authMode = (boot.auth.mode ?? "local").toUpperCase();
 console.log(`
   company\x1B[1mbrain\x1B[0m  \xB7  running
 
   \u25B8 ${shown}
   \u25B8 data:  ~/.companybrain/companybrain.sqlite
+  \u25B8 auth: ${authMode}${authMode === "KEY" ? " (session login enabled)" : " (single-user local mode)"}
   \u25B8 single app: SQLite + in-process worker + API + web, no external services
 
   Ctrl-C to stop.

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>companybrain</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+</head>
+<body>
+  <div id="app">
+    <!-- Background blobs -->
+    <div id="bg-blobs">
+      <div class="blob blob1"></div>
+      <div class="blob blob2"></div>
+      <div class="blob blob3"></div>
+      <div id="mesh"></div>
+      <div id="grain"></div>
+    </div>
+
+    <!-- Shell -->
+    <div id="shell">
+      <!-- Sidebar -->
+      <aside id="sidebar">
+        <div class="logo-row">
+          <div>
+            <div class="logo-text">company<span>brain</span></div>
+            <div class="logo-sub">v1 · forget-nothing</div>
+          </div>
+        </div>
+
+        <div class="sidebar-search">
+          <span class="ss-icon">🔍</span>
+          <input type="text" placeholder="Search..." id="search-input">
+        </div>
+
+        <nav id="nav">
+          <div class="nav-item active" data-page="loops">
+            <span class="ni">🔄</span>
+            <span>Loops</span>
+            <span class="nav-badge" id="loops-badge">0</span>
+          </div>
+          <div class="nav-item" data-page="tasks">
+            <span class="ni">✅</span>
+            <span>Tasks</span>
+          </div>
+          <div class="nav-item" data-page="leads">
+            <span class="ni">👥</span>
+            <span>Leads</span>
+          </div>
+          <div class="nav-item" data-page="projects">
+            <span class="ni">📁</span>
+            <span>Projects</span>
+          </div>
+          <div class="nav-item" data-page="agents">
+            <span class="ni">🤖</span>
+            <span>Agents</span>
+          </div>
+          <div class="nav-item" data-page="team">
+            <span class="ni">👥</span>
+            <span>Team</span>
+          </div>
+          <div class="nav-item" data-page="brain">
+            <span class="ni">🧠</span>
+            <span>Brain</span>
+          </div>
+          <div class="nav-item" data-page="reports">
+            <span class="ni">📊</span>
+            <span>Reports</span>
+          </div>
+          <div class="nav-item" data-page="settings">
+            <span class="ni">⚙️</span>
+            <span>Settings</span>
+          </div>
+          <div class="nav-item" data-page="activity">
+            <span class="ni">📋</span>
+            <span>Activity</span>
+          </div>
+        </nav>
+
+        <div class="sidebar-bot">
+          <div class="role-switcher">
+            <div class="role-sw-label">View As</div>
+            <div class="role-chips">
+              <button class="role-chip on" data-role="ceo">👔 CEO</button>
+              <button class="role-chip" data-role="manager">📋 Mgr</button>
+              <button class="role-chip" data-role="employee">💻 Emp</button>
+              <button class="role-chip" data-role="client">🤝 Client</button>
+            </div>
+          </div>
+
+          <div class="theme-picker">
+            <button class="theme-btn" id="theme-toggle">
+              <span>🌙</span>
+              <span>Dark mode</span>
+            </button>
+            <div class="theme-panel" id="theme-panel">
+              <div class="theme-panel-lbl">Wallpaper</div>
+              <div class="theme-swatches">
+                <div class="theme-swatch on" data-theme="light" style="background:linear-gradient(135deg,#f0f2f7,#e8eaf0)"></div>
+                <div class="theme-swatch" data-theme="dark" style="background:linear-gradient(135deg,#0a0b0f,#111318)"></div>
+                <div class="theme-swatch" data-theme="aurora" style="background:linear-gradient(135deg,#667eea,#764ba2)"></div>
+                <div class="theme-swatch" data-theme="blush" style="background:linear-gradient(135deg,#ffecd2,#fcb69f)"></div>
+                <div class="theme-swatch" data-theme="mist" style="background:linear-gradient(135deg,#e0e5ec,#a8c0d6)"></div>
+                <div class="theme-swatch" data-theme="sage" style="background:linear-gradient(135deg,#d4e4c7,#a8c0a0)"></div>
+                <div class="theme-swatch" data-theme="sand" style="background:linear-gradient(135deg,#f5e6d3,#d4a574)"></div>
+                <div class="theme-swatch" data-theme="frost" style="background:linear-gradient(135deg,#e8f4f8,#b8d4e3)"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="agent-status">
+            <div class="agent-dot"></div>
+            <div>
+              <div class="agent-label">Agent online</div>
+              <div class="agent-sublabel">watching all channels</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main content -->
+      <main id="main">
+        <div id="topbar">
+          <div class="logo-text">company<span>brain</span></div>
+          <button id="notif-btn">
+            🔔
+            <span id="notif-count">0</span>
+          </button>
+        </div>
+
+        <div id="content">
+          <!-- Dynamic content rendered here -->
+        </div>
+      </main>
+    </div>
+
+    <!-- Notification panel -->
+    <div id="notif-panel">
+      <div class="notif-head">
+        <div class="notif-title">Notifications</div>
+        <button class="notif-close" id="notif-close">×</button>
+      </div>
+      <div id="notif-list"></div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-title" id="modal-title">Modal</div>
+          <button class="modal-close" id="modal-close">×</button>
+        </div>
+        <div class="modal-body" id="modal-body"></div>
+        <div class="modal-footer" id="modal-footer"></div>
+      </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-container"></div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

@@ -414,6 +414,11 @@ button{cursor:pointer;}
           <div class="agent-dot"></div>
           <div><div class="agent-label">Agent online</div><div class="agent-sublabel">watching all channels</div></div>
         </div>
+        <div class="agent-status" id="session-user-card">
+          <div style="width:18px;height:18px;border-radius:6px;background:var(--accentSoft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:11px;font-weight:700;">👤</div>
+          <div style="flex:1;min-width:0;"><div class="agent-label" id="session-user-name">Guest</div><div class="agent-sublabel" id="session-user-role">not signed in</div></div>
+          <button class="btn-ghost" id="logout-btn" style="padding:4px 8px;min-height:28px;font-size:10.5px;display:none;">Logout</button>
+        </div>
       </div>
     </nav>
 
@@ -427,6 +432,9 @@ button{cursor:pointer;}
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           <span id="notif-count"></span>
         </div>
+        <button class="topbar-dark-toggle" id="topbar-logout-btn" title="Sign out" style="display:none;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
       </div>
       <div id="content"><div id="view"><div class="spin"></div></div></div>
     </main>
@@ -480,6 +488,19 @@ button{cursor:pointer;}
     </div>
   </div>
 
+  <div class="modal-backdrop" id="auth-modal">
+    <div class="modal-box" style="max-width:430px;">
+      <div class="modal-head"><span style="font-size:20px;">🔐</span><span class="modal-title">Sign in to companybrain</span></div>
+      <div class="modal-body">
+        <div style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:12px;">Use your user identity + workspace access key.</div>
+        <div class="modal-field"><label class="modal-label">User</label><select class="modal-select" id="auth-user"></select></div>
+        <div class="modal-field"><label class="modal-label">Access key</label><input class="modal-input" id="auth-key" type="password" placeholder="Enter access key" autocomplete="current-password"/></div>
+        <div id="auth-error" style="display:none;font-size:12px;color:var(--red);margin-top:4px;"></div>
+      </div>
+      <div class="modal-foot"><button class="btn-primary" id="auth-login-btn">Sign in</button></div>
+    </div>
+  </div>
+
   <!-- command palette -->
   <div id="cmd-overlay">
     <div id="cmd-box">
@@ -508,6 +529,7 @@ button{cursor:pointer;}
   }
   try {
   var tab='loops', side='yours', taskDay='today', leadView='all', activeRole='ceo', loopCount=0;
+  var me=null, authUsers=[], appStarted=false;
   var h0=new Date().getHours();
   var briefMode=h0<12?'am':h0<17?'pm':'eve';
 
@@ -599,7 +621,25 @@ button{cursor:pointer;}
 
   // ── helpers ──────────────────────────────────────────────────────────────
   function esc(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-  function api(path,opts){return fetch(path,opts).then(function(r){return r.json().catch(function(){return null;});});}
+  function api(path,opts){
+    return fetch(path,opts).then(function(r){
+      return r.text().then(function(t){
+        var body=null;
+        if(t){try{body=JSON.parse(t);}catch(_e){body=null;}}
+        if(!r.ok){
+          var e=new Error(body&&body.error?body.error:('HTTP '+r.status));
+          e.status=r.status; e.body=body;
+          if(r.status===401){
+            appStarted=false;
+            applySessionUser(null);
+            openAuthModal('Session expired. Sign in again.');
+          }
+          throw e;
+        }
+        return body;
+      });
+    });
+  }
   function post(path,body,method){return api(path,{method:method||'POST',headers:{'content-type':'application/json'},body:body?JSON.stringify(body):undefined});}
   function ago(ts){
     var d=(Date.now()-ts)/1e3;
@@ -656,6 +696,128 @@ button{cursor:pointer;}
     t.classList.add('show');
     if(onUndo) inner.querySelector('.toast-undo').onclick=function(){onUndo();t.classList.remove('show');};
     setTimeout(function(){t.classList.remove('show');},3200);
+  }
+
+  function roleFromApi(role){
+    if(role==='manager') return 'mgr';
+    if(role==='employee') return 'emp';
+    if(role==='client') return 'client';
+    return 'ceo';
+  }
+  function roleLabel(role){
+    if(role==='manager') return 'Manager';
+    if(role==='employee') return 'Employee';
+    if(role==='client') return 'Client';
+    if(role==='agent') return 'AI Agent';
+    return 'CEO';
+  }
+  function updateSessionUi(){
+    var n=document.getElementById('session-user-name');
+    var r=document.getElementById('session-user-role');
+    var lo=document.getElementById('logout-btn');
+    var loTop=document.getElementById('topbar-logout-btn');
+    if(me){
+      if(n) n.textContent=me.name||me.userId||'User';
+      if(r) r.textContent=(roleLabel(me.role)||'Member')+(me.email?' · '+me.email:'');
+      if(lo) lo.style.display='inline-flex';
+      if(loTop) loTop.style.display='inline-flex';
+    }else{
+      if(n) n.textContent='Guest';
+      if(r) r.textContent='not signed in';
+      if(lo) lo.style.display='none';
+      if(loTop) loTop.style.display='none';
+    }
+  }
+  function applySessionUser(user){
+    me=user||null;
+    if(me&&me.role) activeRole=roleFromApi(me.role);
+    updateSessionUi();
+  }
+  function populateAuthUsers(users){
+    authUsers=users||[];
+    var sel=document.getElementById('auth-user');
+    if(!sel) return;
+    if(!authUsers.length){
+      sel.innerHTML='<option value="user_local">user_local</option>';
+      return;
+    }
+    sel.innerHTML=authUsers.map(function(u){
+      var lbl=(u.name||u.userId)+' · '+roleLabel(u.role||'employee');
+      return '<option value="'+esc(u.userId)+'">'+esc(lbl)+'</option>';
+    }).join('');
+  }
+  function openAuthModal(msg){
+    var m=document.getElementById('auth-modal');
+    if(!m) return;
+    var err=document.getElementById('auth-error');
+    if(err){
+      if(msg){err.style.display='block';err.textContent=msg;}
+      else{err.style.display='none';err.textContent='';}
+    }
+    m.classList.add('open');
+    var key=document.getElementById('auth-key');
+    if(key) setTimeout(function(){key.focus();},20);
+  }
+  function closeAuthModal(){
+    var m=document.getElementById('auth-modal');
+    if(m) m.classList.remove('open');
+    var err=document.getElementById('auth-error');
+    if(err){err.style.display='none';err.textContent='';}
+    var key=document.getElementById('auth-key');
+    if(key) key.value='';
+  }
+  function loginWithKey(){
+    var sel=document.getElementById('auth-user');
+    var key=document.getElementById('auth-key');
+    var btn=document.getElementById('auth-login-btn');
+    var uid=sel&&sel.value||'';
+    var accessKey=key&&key.value||'';
+    if(!uid){openAuthModal('Select a user');return;}
+    if(!accessKey){openAuthModal('Access key is required');return;}
+    if(btn){btn.disabled=true;btn.textContent='Signing in…';}
+    post('/api/auth/login',{userId:uid,key:accessKey}).then(function(res){
+      applySessionUser(res&&res.user?res.user:null);
+      closeAuthModal();
+      startApp();
+    }).catch(function(e){
+      openAuthModal(e&&e.message?e.message:'Invalid credentials');
+    }).finally(function(){
+      if(btn){btn.disabled=false;btn.textContent='Sign in';}
+    });
+  }
+  function ensureSession(){
+    return api('/api/auth/me').then(function(s){
+      if(s&&s.authenticated&&s.user){
+        applySessionUser(s.user);
+        return true;
+      }
+      return api('/api/auth/users').then(function(info){
+        populateAuthUsers(info&&info.users||[]);
+        applySessionUser(null);
+        openAuthModal();
+        return false;
+      }).catch(function(){
+        populateAuthUsers([]);
+        applySessionUser(null);
+        openAuthModal('Could not load users. Try again.');
+        return false;
+      });
+    });
+  }
+  function startApp(){
+    if(appStarted) return;
+    appStarted=true;
+    buildNav();
+    render();
+    loadNotifications();
+    setupSSE();
+  }
+  function logoutSession(){
+    post('/api/auth/logout').catch(function(){}).then(function(){
+      appStarted=false;
+      applySessionUser(null);
+      ensureSession().then(function(ok){ if(ok) startApp(); });
+    });
   }
 
   // ── theme ─────────────────────────────────────────────────────────────────
@@ -932,32 +1094,8 @@ button{cursor:pointer;}
   // ── projects ──────────────────────────────────────────────────────────────
   var PROJECT_PALETTES=['linear-gradient(135deg,#3e7bfa,#7c3aed)','linear-gradient(135deg,#10b981,#14b8a6)','linear-gradient(135deg,#f59e0b,#ef4444)','linear-gradient(135deg,#6366f1,#ec4899)','linear-gradient(135deg,#0ea5e9,#06b6d4)','linear-gradient(135deg,#8b5cf6,#d946ef)'];
   var PROJECT_TEMPLATES=[{name:'Blank',emoji:'📄',bg:'linear-gradient(135deg,#6b7280,#374151)'},{name:'Social Media',emoji:'📱',bg:'linear-gradient(135deg,#ec4899,#8b5cf6)'},{name:'Product Launch',emoji:'🚀',bg:'linear-gradient(135deg,#3e7bfa,#7c3aed)'},{name:'Content Cal.',emoji:'📅',bg:'linear-gradient(135deg,#f59e0b,#ef4444)'},{name:'Client Onboard',emoji:'🤝',bg:'linear-gradient(135deg,#10b981,#0ea5e9)'},{name:'Event',emoji:'🎉',bg:'linear-gradient(135deg,#d946ef,#f59e0b)'}];
-  var selectedTemplate=0;
-  function loadProjects(){
-    var projects=JSON.parse(localStorage.getItem('cb-projects')||'[]');
-    var html='<div class="sec-head"><div><div class="sec-title">Projects</div><div class="sec-sub">Everything your team is building.</div></div><div class="head-actions"><button class="btn-primary" id="new-proj-btn">+ New project</button></div></div><div class="bento-grid">';
-    projects.forEach(function(p,i){var bg=p.bg||PROJECT_PALETTES[i%PROJECT_PALETTES.length];var done=p.done||0,total=p.total||0,pct=total>0?Math.round(done/total*100):0;html+='<div class="bento-card'+(i===0?' bento-hero':'')+'" style="background:'+bg+';"><div class="bento-card-emoji">'+esc(p.emoji||'📦')+'</div><div class="bento-card-name">'+esc(p.name)+'</div>'+(p.desc?'<div class="bento-card-desc">'+esc(p.desc)+'</div>':'')+'<div class="bento-card-foot">'+(total?'<div class="bento-prog-bar"><div class="bento-prog-fill" style="width:'+pct+'%"></div></div><span class="bento-pct">'+pct+'%</span>':'')+'<span class="bento-status">'+esc(p.status||'active')+'</span></div></div>';});
-    html+='<button class="bento-new-card" id="bento-new-card-btn"><div style="font-size:28px;">+</div><div style="font-size:13px;font-weight:600;">New project</div></button></div>';
-    view.innerHTML=html;
-    document.getElementById('new-proj-btn').onclick=openNewProjectModal;
-    document.getElementById('bento-new-card-btn').onclick=openNewProjectModal;
-  }
 
-  // ── extra views ───────────────────────────────────────────────────────────
-  var teamView='ceo';
-  function loadTeam(){
-    var subViews=[{id:'ceo',label:'CEO'},{id:'mgr',label:'Manager'},{id:'emp',label:'Employee'},{id:'client',label:'Client'},{id:'agents',label:'AI Agents'}];
-    var html='<div class="sec-head"><div><div class="sec-title">Team</div><div class="sec-sub">Switch role to see the world from any seat.</div></div></div><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:20px;background:var(--bg2);border:1px solid var(--glassBorder);border-radius:12px;padding:3px;width:fit-content;">'+subViews.map(function(sv){return '<button class="team-sv-btn'+(sv.id===teamView?' on':'')+'" data-sv="'+sv.id+'" style="padding:7px 14px;border-radius:9px;border:none;background:'+(sv.id===teamView?'var(--surface)':'transparent')+';font-size:12.5px;font-weight:'+(sv.id===teamView?'600':'500')+';color:'+(sv.id===teamView?'var(--text)':'var(--muted)')+';min-height:36px;cursor:pointer;box-shadow:'+(sv.id===teamView?'var(--shadow-md)':'none')+';">'+sv.label+'</button>';}).join('')+'</div>';
-    if(teamView==='agents'){loadAgents();return;}
-    if(teamView==='ceo') html+='<div class="kpi-grid">'+['Revenue pipeline','Team velocity','Open loops','Agent ROI'].map(function(l,i){var vals=['₹24L','87%','14','4.2x'];var cols=['var(--green)','var(--accent)','var(--amber)','var(--teal)'];return '<div class="kpi-card gc"><div class="kpi-val" style="color:'+cols[i]+'">'+vals[i]+'</div><div class="kpi-lbl">'+l+'</div></div>';}).join('')+'</div><div class="gc" style="padding:18px 20px;border-radius:16px;margin-bottom:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;margin-bottom:12px;">TEAM MEMBERS</div>'+['James (CEO)','Priya (Manager)','Alex (Dev)','Sam (Design)','Dana (Client)'].map(function(m,i){var colors=['#3e7bfa','#14b8a6','#f59e0b','#ef4444','#7c3aed'];return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--glassBorder);"><div style="width:36px;height:36px;border-radius:50%;background:'+colors[i]+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">'+m.charAt(0)+'</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+m+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">'+[2,5,3,1,0][i]+' open loops</div></div><div style="font-family:&quot;JetBrains Mono&quot;,monospace;font-size:12px;font-weight:600;color:var(--accent);">'+[8,12,7,5,2][i]+' done</div></div>';}).join('')+'</div>';
-    else if(teamView==='mgr') html+='<div class="gc" style="padding:18px 20px;border-radius:16px;"><div style="font-size:14px;font-weight:700;margin-bottom:14px;">Workload overview</div>'+['Alex — 7 tasks','Sam — 5 tasks','Dana — 3 tasks'].map(function(m,i){var pct=[70,50,30][i];return '<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span>'+m+'</span><span style="color:var(--muted);font-family:&quot;JetBrains Mono&quot;,monospace;">'+pct+'%</span></div><div style="height:5px;border-radius:5px;background:var(--bg2);overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:5px;"></div></div></div>';}).join('')+'</div>';
-    else if(teamView==='emp') html+='<div class="gc" style="padding:18px 20px;border-radius:16px;"><div style="font-size:15px;font-weight:700;margin-bottom:4px;">Your day</div><div style="font-size:12.5px;color:var(--muted);margin-bottom:16px;">3 tasks due today · 1 overdue</div><div style="font-size:13px;color:var(--text);line-height:1.6;">Focus: complete overdue task first, then today&#39;s list. You&#39;re on track.</div></div>';
-    else html+='<div class="gc" style="padding:18px 20px;border-radius:16px;border-left:3px solid var(--teal);"><div style="font-size:11px;font-weight:700;color:var(--teal);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;margin-bottom:8px;">CLIENT PORTAL — READ ONLY</div><div style="font-size:15px;font-weight:700;margin-bottom:4px;">Your project</div><div style="font-size:12.5px;color:var(--muted);">3 deliverables in progress · 1 ready for review</div></div>';
-    view.innerHTML=html;view.querySelectorAll('[data-sv]').forEach(function(b){b.onclick=function(){teamView=b.dataset.sv;loadTeam();};});
-  }
-  var BRAIN_ENTRIES=[{tag:'Sensitivity',text:'Stopped flagging invoice confirmation emails as open loops after 3 corrections.',when:Date.now()-86400e3*2},{tag:'Channel',text:'Linked WhatsApp group "Project Alpha" to project #P-004 based on recurring mentions.',when:Date.now()-86400e3*4},{tag:'People',text:'Recognised that "the client" in Slack usually refers to Dana Carter — auto-linking applied.',when:Date.now()-86400e3*7},{tag:'Loop pattern',text:'Emails from noreply@github.com marked as non-actionable by default.',when:Date.now()-86400e3*10},{tag:'Autonomy',text:'Confidence threshold raised from 70% to 85% for auto-creating tasks.',when:Date.now()-86400e3*14}];
-  function loadBrain(){view.innerHTML='<div class="sec-head"><div><div class="sec-title">Company Brain</div><div class="sec-sub">What the AI has learned — and why. Every change is correctable.</div></div></div><div style="position:relative;padding-left:20px;"><div style="position:absolute;left:7px;top:6px;bottom:0;width:2px;background:var(--glassBorder);border-radius:2px;"></div>'+BRAIN_ENTRIES.map(function(e){return '<div style="position:relative;padding:0 0 20px 20px;"><div style="position:absolute;left:-14px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--surface);box-shadow:0 0 0 3px var(--accentSoft);"></div><div style="display:inline-block;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--accentSoft);color:var(--accent);font-family:\\'JetBrains Mono\\',monospace;margin-bottom:5px;">'+esc(e.tag)+'</div><div style="font-size:13px;color:var(--text);line-height:1.5;">'+esc(e.text)+'</div><div style="font-size:10px;color:var(--faint);margin-top:4px;font-family:\\'JetBrains Mono\\',monospace;">'+ago(e.when)+' ago</div><button style="margin-top:6px;font-size:10.5px;color:var(--red);background:transparent;border:none;cursor:pointer;padding:0;" onclick="toast(\\'Correction saved. Brain will re-learn.\\')">↩ Correct this</button></div>';}).join('')+'</div>';}
-  function loadReports(){var month=new Date().toLocaleDateString([],{month:'long',year:'numeric'});view.innerHTML='<div class="sec-head"><div><div class="sec-title">Reports</div><div class="sec-sub">Monthly recap — company, team, and agent performance.</div></div></div><div style="padding:20px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;margin-bottom:16px;"><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:10px;opacity:.8;letter-spacing:.5px;text-transform:uppercase;">'+month+'</div><div style="font-size:18px;font-weight:700;margin-top:6px;">Strong month — 94% of loops closed on time.</div><div style="font-size:12.5px;opacity:.85;margin-top:4px;">Leads pipeline grew 32% · 2 new agents deployed.</div></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;margin-bottom:16px;">'+[['142','Loops closed'],['38','Tasks done'],['12','Leads added'],['4.2x','Agent ROI']].map(function(s){return '<div class="gc" style="padding:14px 15px;border-radius:13px;"><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:22px;font-weight:700;color:var(--accent);">'+s[0]+'</div><div style="font-size:11px;color:var(--muted);margin-top:5px;">'+s[1]+'</div></div>';}).join('')+'</div><div class="gc" style="padding:16px 18px;border-radius:16px;"><div style="font-size:12px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">LEADERBOARD</div>'+['James','Priya','Alex','Sam'].map(function(n,i){return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--glassBorder);"><span style="font-family:\\'JetBrains Mono\\',monospace;font-size:11px;font-weight:700;color:var(--faint);min-width:18px;">'+(i+1)+'</span><span style="font-size:13px;font-weight:600;flex:1;">'+n+'</span><span style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;font-weight:600;color:var(--accent);">'+[42,38,31,26][i]+' pts</span></div>';}).join('')+'</div>';}
+
 
   // ── agents ────────────────────────────────────────────────────────────────
   function loadAgents(){
@@ -1017,22 +1155,6 @@ button{cursor:pointer;}
     }).catch(function(e){view.innerHTML='<div class="empty">Failed to load autonomy: '+(e&&e.message||e)+'</div>';});
   }
 
-  function loadSettings(){
-    Promise.all([api('/api/autonomy'),api('/api/approvals'),api('/api/connections')]).then(function(res){
-      var settings=res[0]||{},approvals=(res[1]||[]).filter(function(a){return a.status==='pending';}),conns=res[2]||{};
-      var channels=[{name:'Gmail',icon:'📧',status:conns.channels?'webhook ready':'not configured'},{name:'Calendar',icon:'📅',status:'webhook ready'},{name:'Slack',icon:'💬',status:'webhook ready'},{name:'GitHub',icon:'🐙',status:'webhook ready'},{name:'Telegram',icon:'✈️',status:'webhook ready'},{name:'WhatsApp',icon:'📱',status:conns.whatsapp?conns.whatsapp.outbound:'not configured'}];
-      var html='<div class="sec-head"><div><div class="sec-title">Settings</div><div class="sec-sub">Autonomy, channels, and personalisation.</div></div></div><div style="padding:16px 18px;border-radius:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);display:flex;align-items:center;gap:12px;margin-bottom:20px;"><div style="flex:1;"><div style="font-size:14px;font-weight:700;color:var(--red);">Kill switch</div><div style="font-size:12px;color:var(--red);opacity:.7;margin-top:2px;">Pause ALL autonomous actions immediately.</div></div><button class="btn-danger" onclick="toast(\\'All autonomous actions paused.\\')">Pause all</button></div>';
-      if(approvals.length) html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:8px;">PENDING APPROVALS ('+approvals.length+')</div>'+approvals.map(function(ap){return '<div class="gc" style="padding:12px 14px;border-radius:13px;display:flex;align-items:center;gap:10px;margin-bottom:7px;"><div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+esc(ap.title)+'</div><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:10.5px;color:var(--faint);margin-top:2px;">'+esc(ap.action)+'</div></div><button class="approve-btn ok" data-approve="'+ap.id+'">Approve</button><button class="approve-btn no" data-dismiss="'+ap.id+'" style="margin-left:5px;">Dismiss</button></div>';}).join('');
-      html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">AUTONOMY</div>'+ACTIONS.map(function(a){var cur=settings[a.k]||'off';return '<div class="gc auto-card"><div class="auto-info"><div class="auto-label">'+a.label+'</div><div class="auto-desc">'+a.desc+'</div></div><div class="lvls">'+['off','ask','auto'].map(function(lv){return '<button class="lvl'+(lv===cur?' on':'')+'" data-act="'+a.k+'" data-lvl="'+lv+'">'+lv.charAt(0).toUpperCase()+lv.slice(1)+'</button>';}).join('')+'</div></div>';}).join('');
-      html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">CHANNEL CONNECTIONS</div>'+channels.map(function(c){var ok=c.status&&c.status!=='not configured';return '<div class="gc" style="padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:11px;margin-bottom:7px;"><div style="width:34px;height:34px;border-radius:10px;background:var(--bg2);border:1px solid var(--glassBorder);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">'+c.icon+'</div><div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">'+c.name+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">'+esc(c.status)+'</div></div><span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:6px;background:'+(ok?'var(--greenSoft)':'var(--amberSoft)')+';color:'+(ok?'var(--green)':'var(--amber)')+';">'+(ok?'Active':'Setup needed')+'</span></div>';}).join('');
-      html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">APPEARANCE</div><div class="gc" style="padding:14px 16px;border-radius:14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;"><div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">Dark mode</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;">Switch between light and dark interface.</div></div><button class="btn-ghost" id="settings-dark-toggle">'+(darkMode?'Switch to light':'Switch to dark')+'</button></div><div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;">Wallpaper</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'+THEMES.map(function(t){return '<div style="cursor:pointer;" onclick="applyTheme(\\''+t.id+'\\')"><div style="aspect-ratio:3/2;border-radius:10px;background:'+t.swatch+';border:2px solid '+(activeTheme===t.id?'var(--accent)':'transparent')+';transition:all .15s;"></div><div style="text-align:center;font-size:10px;color:var(--muted);margin-top:4px;">'+t.label+'</div></div>';}).join('')+'</div>';
-      view.innerHTML=html;
-      var std=document.getElementById('settings-dark-toggle');if(std)std.onclick=function(){applyDark(!darkMode);loadSettings();};
-      view.querySelectorAll('.lvl').forEach(function(b){b.onclick=function(){post('/api/autonomy',{action:b.dataset.act,level:b.dataset.lvl},'PUT').then(function(){toast('Saved');loadSettings();});};});
-      view.querySelectorAll('[data-approve]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.approve+'/approve').then(function(){toast('Approved');loadSettings();});};});
-      view.querySelectorAll('[data-dismiss]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(function(){toast('Dismissed');loadSettings();});};});
-    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load settings: '+(e&&e.message||e)+'</div>';});
-  }
 
   // ── events ────────────────────────────────────────────────────────────────
   function loadEvents(){
@@ -1338,6 +1460,17 @@ button{cursor:pointer;}
         loadProjects();
       };
     }
+    var am=document.getElementById('auth-modal');
+    if(am){
+      var keyInput=document.getElementById('auth-key');
+      var loginBtn=document.getElementById('auth-login-btn');
+      if(loginBtn) loginBtn.onclick=loginWithKey;
+      if(keyInput) keyInput.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();loginWithKey();}};
+    }
+    var lo=document.getElementById('logout-btn');
+    if(lo) lo.onclick=function(){logoutSession();};
+    var loTop=document.getElementById('topbar-logout-btn');
+    if(loTop) loTop.onclick=function(){logoutSession();};
   })();
   var teamView='ceo';
   function loadTeam(){
@@ -1418,10 +1551,12 @@ button{cursor:pointer;}
   }
 
   // ── boot ──────────────────────────────────────────────────────────────────
-  buildNav();
-  render();
-  loadNotifications();
-  setupSSE();
+  updateSessionUi();
+  ensureSession().then(function(ok){
+    if(ok) startApp();
+  }).catch(function(e){
+    showErr(e);
+  });
   } catch(e) { showErr(e); }
 })();
 </script>

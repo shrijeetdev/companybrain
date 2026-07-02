@@ -15,6 +15,28 @@ pnpm start
 
 That single process is the **whole product**: it runs SQLite migrations, an **in-process worker** (real timers — chases and briefings actually fire), the API, and the web UI — all on one port. No Docker, no Postgres, no Redis, no separate frontend. Data lives in one file at `~/.companybrain/companybrain.sqlite`.
 
+## Production auth (multi-user + access key)
+
+By default, companybrain runs in **local** mode (single user, no login) for frictionless dev.
+For production, enable key-based sessions:
+
+```bash
+COMPANYBRAIN_AUTH_MODE=key
+COMPANYBRAIN_ACCESS_KEY=replace-with-a-strong-secret
+```
+
+Optional: provide explicit users via JSON (`COMPANYBRAIN_USERS`).
+
+```json
+[
+  { "id": "user_ceo", "name": "James Carter", "role": "ceo", "email": "james@acme.com" },
+  { "id": "user_monty", "name": "Monty Singh", "role": "manager", "email": "monty@acme.com" },
+  { "id": "user_emp", "name": "Alex Kumar", "role": "employee", "email": "alex@acme.com" }
+]
+```
+
+If `COMPANYBRAIN_USERS` is not supplied, a safe default roster is created (including `user_monty`) and all users authenticate using `COMPANYBRAIN_ACCESS_KEY`.
+
 ## Deploy to a server (e.g. DigitalOcean)
 
 It's one container. Build and run it:
@@ -39,7 +61,7 @@ You can also run it without Docker on the server: `git clone`, `pnpm install`, `
 | --- | --- |
 | **db** | SQLite (one file) |
 | **queue** | in-process (real timers) |
-| **auth** | single self-hosted user |
+| **auth** | local single-user _or_ key-based multi-user sessions |
 
 The ports stay as interfaces, so a heavier backend could be added later without touching `core` or the routes — but nothing extra is required to run.
 
