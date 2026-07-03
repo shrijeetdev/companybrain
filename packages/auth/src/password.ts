@@ -97,18 +97,24 @@ export class PasswordAuth implements Auth {
   }
 
   private seedAdminIfNeeded() {
-    const { c } = this.db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number };
-    if (c > 0) return;
-
     const email = (process.env.COMPANYBRAIN_ADMIN_EMAIL ?? '').trim().toLowerCase();
     const password = process.env.COMPANYBRAIN_ADMIN_PASSWORD ?? '';
+
     if (!email || !password) {
-      console.warn(
-        '[companybrain] PasswordAuth: no users exist yet and COMPANYBRAIN_ADMIN_EMAIL / ' +
-        'COMPANYBRAIN_ADMIN_PASSWORD are not set. Set both env vars and restart to bootstrap the first admin.',
-      );
+      const { c } = this.db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number };
+      if (c === 0) {
+        console.warn(
+          '[companybrain] PasswordAuth: no users exist yet and COMPANYBRAIN_ADMIN_EMAIL / ' +
+          'COMPANYBRAIN_ADMIN_PASSWORD are not set. Set both env vars and restart to bootstrap the first admin.',
+        );
+      }
       return;
     }
+
+    // Only seed if this specific admin email doesn't already exist
+    const existing = this.db.prepare('SELECT id FROM users WHERE lower(email)=?').get(email) as { id: string } | undefined;
+    if (existing) return;
+
     const name = (process.env.COMPANYBRAIN_ADMIN_NAME ?? 'Admin').trim() || 'Admin';
     this.insertUser({ email, name, role: 'ceo', password, username: undefined }, null);
     console.log(`[companybrain] Seeded initial admin user: ${email} (role: ceo)`);
