@@ -7,6 +7,6 @@
   "types": "src/index.ts",
   "exports": { ".": "./src/index.ts" },
   "dependencies": {
-    "@companybrain/types": "workspace:*"
+    "@companybrain/types": "file:../types"
   }
 }

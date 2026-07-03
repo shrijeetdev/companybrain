@@ -9,7 +9,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@companybrain/types": "workspace:*",
+    "@companybrain/types": "file:../types",
     "@supabase/supabase-js": "^2.110.0",
     "better-sqlite3": "^11.3.0"
   },

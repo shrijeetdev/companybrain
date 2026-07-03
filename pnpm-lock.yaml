@@ -67,16 +67,16 @@ importers:
   cli:
     dependencies:
       '@companybrain/core':
-        specifier: workspace:*
+        specifier: file:../packages/core
         version: link:../packages/core
       '@companybrain/integrations':
-        specifier: workspace:*
+        specifier: file:../packages/integrations
         version: link:../packages/integrations
       '@companybrain/server':
-        specifier: workspace:*
+        specifier: file:../packages/server
         version: link:../packages/server
       '@companybrain/types':
-        specifier: workspace:*
+        specifier: file:../packages/types
         version: link:../packages/types
       tsx:
         specifier: ^4.19.2
@@ -85,7 +85,7 @@ importers:
   packages/auth:
     dependencies:
       '@companybrain/types':
-        specifier: workspace:*
+        specifier: file:../types
         version: link:../types
       '@supabase/supabase-js':
         specifier: ^2.110.0
@@ -101,22 +101,22 @@ importers:
   packages/core:
     dependencies:
       '@companybrain/auth':
-        specifier: workspace:*
+        specifier: file:../auth
         version: link:../auth
       '@companybrain/db':
-        specifier: workspace:*
+        specifier: file:../db
         version: link:../db
       '@companybrain/queue':
-        specifier: workspace:*
+        specifier: file:../queue
         version: link:../queue
       '@companybrain/types':
-        specifier: workspace:*
+        specifier: file:../types
         version: link:../types
 
   packages/db:
     dependencies:
       '@companybrain/types':
-        specifier: workspace:*
+        specifier: file:../types
         version: link:../types
       '@supabase/supabase-js':
         specifier: ^2.110.0
@@ -141,10 +141,10 @@ importers:
         specifier: ^0.70.0
         version: 0.70.1(zod@4.4.3)
       '@companybrain/core':
-        specifier: workspace:*
+        specifier: file:../core
         version: link:../core
       '@companybrain/types':
-        specifier: workspace:*
+        specifier: file:../types
         version: link:../types
       '@whiskeysockets/baileys':
         specifier: ^6.7.9
@@ -163,22 +163,22 @@ importers:
   packages/queue:
     dependencies:
       '@companybrain/types':
-        specifier: workspace:*
+        specifier: file:../types
         version: link:../types
 
   packages/server:
     dependencies:
       '@companybrain/auth':
-        specifier: workspace:*
+        specifier: file:../auth
         version: link:../auth
       '@companybrain/core':
-        specifier: workspace:*
+        specifier: file:../core
         version: link:../core
       '@companybrain/integrations':
-        specifier: workspace:*
+        specifier: file:../integrations
         version: link:../integrations
       '@companybrain/types':
-        specifier: workspace:*
+        specifier: file:../types
         version: link:../types
       '@fastify/cors':
         specifier: ^11.2.0

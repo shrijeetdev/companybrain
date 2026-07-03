@@ -8,10 +8,10 @@
     "start": "tsx bin/companybrain.ts"
   },
   "dependencies": {
-    "@companybrain/types": "workspace:*",
-    "@companybrain/core": "workspace:*",
-    "@companybrain/server": "workspace:*",
-    "@companybrain/integrations": "workspace:*",
+    "@companybrain/types": "file:../packages/types",
+    "@companybrain/core": "file:../packages/core",
+    "@companybrain/server": "file:../packages/server",
+    "@companybrain/integrations": "file:../packages/integrations",
     "tsx": "^4.19.2"
   }
 }
