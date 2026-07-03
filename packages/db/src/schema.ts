@@ -123,3 +123,15 @@ export const users = sqliteTable('users', {
   initials: text('initials').notNull().default('??'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
+
+// --- Custom Fields table (flexible metadata) ---
+export const customFields = sqliteTable('custom_fields', {
+  id: text('id').primaryKey(),
+  orgId: text('org_id').notNull(),
+  entityType: text('entity_type').notNull(), // 'loop' | 'task' | 'lead'
+  entityId: text('entity_id').notNull(),
+  fieldName: text('field_name').notNull(),
+  fieldType: text('field_type').notNull().default('text'), // 'text' | 'number' | 'date' | 'select' | 'boolean'
+  fieldValue: text('field_value').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+});

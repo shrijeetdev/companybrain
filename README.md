@@ -15,27 +15,29 @@ pnpm start
 
 That single process is the **whole product**: it runs SQLite migrations, an **in-process worker** (real timers — chases and briefings actually fire), the API, and the web UI — all on one port. No Docker, no Postgres, no Redis, no separate frontend. Data lives in one file at `~/.companybrain/companybrain.sqlite`.
 
-## Production auth (multi-user + access key)
+## Production auth (real users + passwords)
 
 By default, companybrain runs in **local** mode (single user, no login) for frictionless dev.
-For production, enable key-based sessions:
+For production, use password mode so the login page asks only for **email/username + password** and never exposes the user roster publicly.
+
+```bash
+COMPANYBRAIN_AUTH_MODE=password
+COMPANYBRAIN_ADMIN_EMAIL=info@vexocore.in
+COMPANYBRAIN_ADMIN_PASSWORD=1234@1234work
+COMPANYBRAIN_ADMIN_NAME="Vexocore Admin"
+COMPANYBRAIN_SECURE_COOKIE=true
+```
+
+On first boot, if the `users` table is empty, companybrain seeds that admin as role `ceo` with full permissions. After login, CEO/admin users can open **Settings → User Management** to create users, change roles (`client`, `employee`, `manager`, `ceo`, `agent`), disable/delete users, and reset passwords. If users already exist, the bootstrap env vars do not overwrite passwords; reset them from the admin UI.
+
+The older shared-key mode is still available for controlled/internal deployments:
 
 ```bash
 COMPANYBRAIN_AUTH_MODE=key
 COMPANYBRAIN_ACCESS_KEY=replace-with-a-strong-secret
 ```
 
-Optional: provide explicit users via JSON (`COMPANYBRAIN_USERS`).
-
-```json
-[
-  { "id": "user_ceo", "name": "James Carter", "role": "ceo", "email": "james@acme.com" },
-  { "id": "user_monty", "name": "Monty Singh", "role": "manager", "email": "monty@acme.com" },
-  { "id": "user_emp", "name": "Alex Kumar", "role": "employee", "email": "alex@acme.com" }
-]
-```
-
-If `COMPANYBRAIN_USERS` is not supplied, a safe default roster is created (including `user_monty`) and all users authenticate using `COMPANYBRAIN_ACCESS_KEY`.
+Optional key-mode rosters can still be provided via `COMPANYBRAIN_USERS`, but password mode is recommended for public production.
 
 ## Deploy to a server (e.g. DigitalOcean)
 
@@ -61,7 +63,7 @@ You can also run it without Docker on the server: `git clone`, `pnpm install`, `
 | --- | --- |
 | **db** | SQLite (one file) |
 | **queue** | in-process (real timers) |
-| **auth** | local single-user _or_ key-based multi-user sessions |
+| **auth** | local single-user, key-based sessions, or password-backed per-user accounts |
 
 The ports stay as interfaces, so a heavier backend could be added later without touching `core` or the routes — but nothing extra is required to run.
 

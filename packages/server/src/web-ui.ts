@@ -546,9 +546,9 @@ button{cursor:pointer;}
     <div class="modal-box" style="max-width:430px;">
       <div class="modal-head"><span style="font-size:20px;">🔐</span><span class="modal-title">Sign in to companybrain</span></div>
       <div class="modal-body">
-        <div style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:12px;">Use your user identity + workspace access key.</div>
-        <div class="modal-field"><label class="modal-label">User</label><select class="modal-select" id="auth-user"></select></div>
-        <div class="modal-field"><label class="modal-label">Access key</label><input class="modal-input" id="auth-key" type="password" placeholder="Enter access key" autocomplete="current-password"/></div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:12px;">Sign in with your email or username. Your role and permissions are assigned by the server.</div>
+        <div class="modal-field"><label class="modal-label">Email or username</label><input class="modal-input" id="auth-identifier" type="text" placeholder="you@company.com" autocomplete="username" autocapitalize="none" spellcheck="false"/></div>
+        <div class="modal-field"><label class="modal-label">Password</label><input class="modal-input" id="auth-password" type="password" placeholder="Enter password" autocomplete="current-password"/></div>
         <div id="auth-error" style="display:none;font-size:12px;color:var(--red);margin-top:4px;"></div>
       </div>
       <div class="modal-foot"><button class="btn-primary" id="auth-login-btn">Sign in</button></div>
@@ -583,7 +583,7 @@ button{cursor:pointer;}
   }
   try {
   var tab='loops', side='yours', taskDay='today', leadView='all', activeRole='ceo', loopCount=0;
-  var me=null, authUsers=[], appStarted=false;
+  var me=null, appStarted=false;
   var h0=new Date().getHours();
   var briefMode=h0<12?'am':h0<17?'pm':'eve';
 
@@ -787,19 +787,6 @@ button{cursor:pointer;}
     if(me&&me.role) activeRole=roleFromApi(me.role);
     updateSessionUi();
   }
-  function populateAuthUsers(users){
-    authUsers=users||[];
-    var sel=document.getElementById('auth-user');
-    if(!sel) return;
-    if(!authUsers.length){
-      sel.innerHTML='<option value="user_local">user_local</option>';
-      return;
-    }
-    sel.innerHTML=authUsers.map(function(u){
-      var lbl=(u.name||u.userId)+' · '+roleLabel(u.role||'employee');
-      return '<option value="'+esc(u.userId)+'">'+esc(lbl)+'</option>';
-    }).join('');
-  }
   function openAuthModal(msg){
     var m=document.getElementById('auth-modal');
     if(!m) return;
@@ -809,32 +796,34 @@ button{cursor:pointer;}
       else{err.style.display='none';err.textContent='';}
     }
     m.classList.add('open');
-    var key=document.getElementById('auth-key');
-    if(key) setTimeout(function(){key.focus();},20);
+    var id=document.getElementById('auth-identifier');
+    var pw=document.getElementById('auth-password');
+    var target=id&&id.value?id:pw;
+    if(target) setTimeout(function(){target.focus();},20);
   }
   function closeAuthModal(){
     var m=document.getElementById('auth-modal');
     if(m) m.classList.remove('open');
     var err=document.getElementById('auth-error');
     if(err){err.style.display='none';err.textContent='';}
-    var key=document.getElementById('auth-key');
-    if(key) key.value='';
+    var pw=document.getElementById('auth-password');
+    if(pw) pw.value='';
   }
-  function loginWithKey(){
-    var sel=document.getElementById('auth-user');
-    var key=document.getElementById('auth-key');
+  function loginWithPassword(){
+    var id=document.getElementById('auth-identifier');
+    var pw=document.getElementById('auth-password');
     var btn=document.getElementById('auth-login-btn');
-    var uid=sel&&sel.value||'';
-    var accessKey=key&&key.value||'';
-    if(!uid){openAuthModal('Select a user');return;}
-    if(!accessKey){openAuthModal('Access key is required');return;}
+    var identifier=id&&id.value?id.value.trim():'';
+    var password=pw&&pw.value||'';
+    if(!identifier){openAuthModal('Email or username is required');return;}
+    if(!password){openAuthModal('Password is required');return;}
     if(btn){btn.disabled=true;btn.textContent='Signing in…';}
-    post('/api/auth/login',{userId:uid,key:accessKey}).then(function(res){
+    post('/api/auth/login',{userId:identifier,key:password}).then(function(res){
       applySessionUser(res&&res.user?res.user:null);
       closeAuthModal();
       startApp();
     }).catch(function(e){
-      openAuthModal(e&&e.message?e.message:'Invalid credentials');
+      openAuthModal(e&&e.message?e.message:'Invalid email/username or password');
     }).finally(function(){
       if(btn){btn.disabled=false;btn.textContent='Sign in';}
     });
@@ -845,17 +834,13 @@ button{cursor:pointer;}
         applySessionUser(s.user);
         return true;
       }
-      return api('/api/auth/users').then(function(info){
-        populateAuthUsers(info&&info.users||[]);
-        applySessionUser(null);
-        openAuthModal();
-        return false;
-      }).catch(function(){
-        populateAuthUsers([]);
-        applySessionUser(null);
-        openAuthModal('Could not load users. Try again.');
-        return false;
-      });
+      applySessionUser(null);
+      openAuthModal();
+      return false;
+    }).catch(function(){
+      applySessionUser(null);
+      openAuthModal();
+      return false;
     });
   }
   function startApp(){
@@ -1849,10 +1834,12 @@ button{cursor:pointer;}
     }
     var am=document.getElementById('auth-modal');
     if(am){
-      var keyInput=document.getElementById('auth-key');
+      var idInput=document.getElementById('auth-identifier');
+      var pwInput=document.getElementById('auth-password');
       var loginBtn=document.getElementById('auth-login-btn');
-      if(loginBtn) loginBtn.onclick=loginWithKey;
-      if(keyInput) keyInput.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();loginWithKey();}};
+      if(loginBtn) loginBtn.onclick=loginWithPassword;
+      if(idInput) idInput.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();loginWithPassword();}};
+      if(pwInput) pwInput.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();loginWithPassword();}};
     }
     var lo=document.getElementById('logout-btn');
     if(lo) lo.onclick=function(){logoutSession();};
@@ -1928,12 +1915,109 @@ button{cursor:pointer;}
         +'<div class="gc" style="padding:14px 16px;border-radius:14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;"><div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">Dark mode</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;">Switch between light and dark interface.</div></div><button class="btn-ghost" id="settings-dark-toggle">'+(darkMode?'Switch to light':'Switch to dark')+'</button></div>'
         +'<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;">Wallpaper</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'
         +THEMES.map(function(t){return '<div style="cursor:pointer;" onclick="applyTheme(\\''+t.id+'\\')"><div style="aspect-ratio:3/2;border-radius:10px;background:'+t.swatch+';border:2px solid '+(activeTheme===t.id?'var(--accent)':'transparent')+';transition:all .15s;"></div><div style="text-align:center;font-size:10px;color:var(--muted);margin-top:4px;">'+t.label+'</div></div>';}).join('')+'</div>';
+      html+=adminUsersPanelHtml();
       view.innerHTML=html;
       var std=document.getElementById('settings-dark-toggle');
       if(std)std.onclick=function(){applyDark(!darkMode);loadSettings();};
       view.querySelectorAll('.lvl').forEach(function(b){b.onclick=function(){post('/api/autonomy',{action:b.dataset.act,level:b.dataset.lvl},'PUT').then(function(){toast('Saved');loadSettings();});};});
       view.querySelectorAll('[data-approve]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.approve+'/approve').then(function(){toast('Approved');loadSettings();});};});
       view.querySelectorAll('[data-dismiss]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(function(){toast('Dismissed');loadSettings();});};});
+      bindAdminUserUi();
+    });
+  }
+
+  function adminUsersPanelHtml(){
+    var roles=['client','employee','manager','ceo','agent'];
+    var roleOpts=roles.map(function(r){return '<option value="'+r+'">'+roleLabel(r)+'</option>';}).join('');
+    var html='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;margin:18px 0 8px;">USER MANAGEMENT</div>';
+    if(!me||me.role!=='ceo'){
+      return html+'<div class="gc" style="padding:14px 16px;border-radius:14px;color:var(--muted);font-size:12.5px;">Only CEO/admin users can manage accounts.</div>';
+    }
+    return html+'<div class="gc" style="padding:14px 16px;border-radius:14px;margin-bottom:10px;">'
+      +'<div style="font-size:13.5px;font-weight:700;margin-bottom:10px;">Create user</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;">'
+      +'<input class="modal-input" id="admin-new-name" placeholder="Full name" autocomplete="off"/>'
+      +'<input class="modal-input" id="admin-new-email" placeholder="Email" autocomplete="off"/>'
+      +'<input class="modal-input" id="admin-new-username" placeholder="Username optional" autocomplete="off"/>'
+      +'<select class="modal-select" id="admin-new-role">'+roleOpts+'</select>'
+      +'<input class="modal-input" id="admin-new-password" type="password" placeholder="Temporary password" autocomplete="new-password"/>'
+      +'<button class="btn-primary" id="admin-create-user">Create</button>'
+      +'</div><div id="admin-user-msg" style="font-size:12px;color:var(--muted);margin-top:8px;"></div></div>'
+      +'<div class="gc" style="padding:14px 16px;border-radius:14px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;"><div style="font-size:13.5px;font-weight:700;">Users</div><button class="btn-ghost" id="admin-refresh-users">Refresh</button></div><div id="admin-users-list"><div class="spin"></div></div></div>';
+  }
+
+  function adminMsg(msg,isErr){
+    var el=document.getElementById('admin-user-msg');
+    if(!el) return;
+    el.style.color=isErr?'var(--red)':'var(--muted)';
+    el.textContent=msg||'';
+  }
+  function bindAdminUserUi(){
+    if(!me||me.role!=='ceo') return;
+    var create=document.getElementById('admin-create-user');
+    var refresh=document.getElementById('admin-refresh-users');
+    if(refresh) refresh.onclick=loadAdminUsers;
+    if(create) create.onclick=function(){
+      var body={
+        name:(document.getElementById('admin-new-name').value||'').trim(),
+        email:(document.getElementById('admin-new-email').value||'').trim(),
+        username:(document.getElementById('admin-new-username').value||'').trim()||undefined,
+        role:document.getElementById('admin-new-role').value,
+        password:document.getElementById('admin-new-password').value||''
+      };
+      if(!body.name||!body.email||!body.password){adminMsg('Name, email, and password are required',true);return;}
+      post('/api/admin/users',body).then(function(){
+        adminMsg('User created',false);
+        ['admin-new-name','admin-new-email','admin-new-username','admin-new-password'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+        loadAdminUsers();
+      }).catch(function(e){adminMsg(e&&e.message?e.message:'Could not create user',true);});
+    };
+    loadAdminUsers();
+  }
+  function loadAdminUsers(){
+    var box=document.getElementById('admin-users-list');
+    if(!box) return;
+    box.innerHTML='<div class="spin"></div>';
+    api('/api/admin/users').then(function(users){
+      box.innerHTML=renderAdminUsers(users||[]);
+      bindAdminUserRows();
+    }).catch(function(e){box.innerHTML='<div style="font-size:12px;color:var(--red);">'+esc(e&&e.message?e.message:'Could not load users')+'</div>';});
+  }
+  function renderAdminUsers(users){
+    if(!users.length) return '<div style="font-size:12px;color:var(--muted);">No users yet.</div>';
+    var roles=['client','employee','manager','ceo','agent'];
+    return users.map(function(u){
+      var roleOpts=roles.map(function(r){return '<option value="'+r+'" '+(u.role===r?'selected':'')+'>'+roleLabel(r)+'</option>';}).join('');
+      return '<div class="admin-user-row" data-user-id="'+esc(u.userId)+'" style="border-top:1px solid var(--glassBorder);padding:12px 0;display:grid;grid-template-columns:minmax(180px,1fr) 140px 120px 1fr auto;gap:8px;align-items:center;">'
+        +'<div><div style="font-size:13px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:11px;color:var(--muted);">'+esc(u.email||'')+(u.username?' · '+esc(u.username):'')+'</div></div>'
+        +'<select class="modal-select admin-role" style="min-height:34px;">'+roleOpts+'</select>'
+        +'<select class="modal-select admin-active" style="min-height:34px;"><option value="true" '+(u.active===false?'':'selected')+'>Active</option><option value="false" '+(u.active===false?'selected':'')+'>Disabled</option></select>'
+        +'<div style="display:flex;gap:6px;"><input class="modal-input admin-password" type="password" placeholder="New password" autocomplete="new-password" style="min-height:34px;"/><button class="btn-ghost admin-set-password">Set</button></div>'
+        +'<div style="display:flex;gap:6px;"><button class="btn-ghost admin-save-user">Save</button><button class="btn-danger admin-delete-user">Delete</button></div>'
+        +'</div>';
+    }).join('');
+  }
+  function bindAdminUserRows(){
+    document.querySelectorAll('.admin-user-row').forEach(function(row){
+      var uid=row.dataset.userId;
+      var save=row.querySelector('.admin-save-user');
+      var del=row.querySelector('.admin-delete-user');
+      var setPw=row.querySelector('.admin-set-password');
+      if(save) save.onclick=function(){
+        var role=row.querySelector('.admin-role').value;
+        var active=row.querySelector('.admin-active').value==='true';
+        post('/api/admin/users/'+encodeURIComponent(uid),{role:role,active:active},'PATCH').then(function(){toast('User updated');loadAdminUsers();}).catch(function(e){toast(e&&e.message?e.message:'Could not update user');});
+      };
+      if(setPw) setPw.onclick=function(){
+        var input=row.querySelector('.admin-password');
+        var pw=input&&input.value||'';
+        if(!pw){toast('Enter a new password');return;}
+        post('/api/admin/users/'+encodeURIComponent(uid)+'/password',{password:pw}).then(function(){toast('Password reset');if(input)input.value='';}).catch(function(e){toast(e&&e.message?e.message:'Could not reset password');});
+      };
+      if(del) del.onclick=function(){
+        if(!confirm('Delete this user? This cannot be undone.')) return;
+        post('/api/admin/users/'+encodeURIComponent(uid),null,'DELETE').then(function(){toast('User deleted');loadAdminUsers();}).catch(function(e){toast(e&&e.message?e.message:'Could not delete user');});
+      };
     });
   }
 

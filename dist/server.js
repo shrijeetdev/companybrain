@@ -51,13 +51,12 @@ var init_local = __esm({
   }
 });
 
-// packages/auth/src/key.ts
-import { randomBytes, timingSafeEqual } from "node:crypto";
+// packages/auth/src/capabilities.ts
 function normalizeRole(raw) {
   const v = (raw ?? "").trim().toLowerCase();
-  if (v === "ceo") return "ceo";
-  if (v === "manager" || v === "mgr") return "manager";
-  if (v === "employee" || v === "emp" || v === "member") return "employee";
+  if (v === "ceo" || v === "admin" || v === "owner") return "ceo";
+  if (v === "manager" || v === "mgr" || v === "hr") return "manager";
+  if (v === "employee" || v === "emp" || v === "member" || v === "staff") return "employee";
   if (v === "client") return "client";
   if (v === "agent" || v === "ai" || v === "ai-agent") return "agent";
   return "employee";
@@ -67,57 +66,10 @@ function initialsFor(name) {
   if (!parts.length) return "US";
   return parts.map((p) => p.charAt(0).toUpperCase()).join("");
 }
-function timingSafeMatch(input, expected) {
-  const a = Buffer.from(input);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
-function parseUsers(raw, orgId) {
-  const parsed = (() => {
-    if (!raw?.trim()) return DEFAULT_USERS;
-    try {
-      const val = JSON.parse(raw);
-      if (Array.isArray(val)) return val;
-      if (val && Array.isArray(val.users)) return val.users;
-      return DEFAULT_USERS;
-    } catch {
-      return DEFAULT_USERS;
-    }
-  })();
-  const users = [];
-  const perUserKeys = /* @__PURE__ */ new Map();
-  for (const u of parsed) {
-    const id = (u.userId ?? u.id ?? "").trim() || `user_${Math.random().toString(36).slice(2, 8)}`;
-    const name = (u.name ?? id.replace(/^user_/, "").replace(/[_-]/g, " ")).trim();
-    const user = {
-      userId: id,
-      orgId: (u.orgId ?? orgId).trim() || orgId,
-      role: normalizeRole(u.role),
-      name,
-      email: u.email?.trim() || void 0,
-      initials: (u.initials?.trim() || initialsFor(name)).slice(0, 3).toUpperCase()
-    };
-    users.push(user);
-    if (typeof u.key === "string" && u.key.trim()) perUserKeys.set(user.userId, u.key.trim());
-  }
-  if (!users.length) {
-    users.push({ userId: "user_local", orgId, role: "ceo", name: "You", email: "you@companybrain.local", initials: "YO" });
-  }
-  return { users, perUserKeys };
-}
-var DEFAULT_USERS, CAPS_BY_ROLE, KeyAuth;
-var init_key = __esm({
-  "packages/auth/src/key.ts"() {
+var CAPS_BY_ROLE;
+var init_capabilities = __esm({
+  "packages/auth/src/capabilities.ts"() {
     "use strict";
-    init_local();
-    DEFAULT_USERS = [
-      { id: "user_local", role: "ceo", name: "You", email: "you@companybrain.local", initials: "YO" },
-      { id: "user_ceo", role: "ceo", name: "James Carter", email: "james@companybrain.local", initials: "JC" },
-      { id: "user_monty", role: "manager", name: "Monty Singh", email: "monty@companybrain.local", initials: "MS" },
-      { id: "user_emp", role: "employee", name: "Alex Kumar", email: "alex@companybrain.local", initials: "AK" },
-      { id: "user_client", role: "client", name: "Dana Carter", email: "dana@client.local", initials: "DC" }
-    ];
     CAPS_BY_ROLE = {
       ceo: /* @__PURE__ */ new Set([
         "loop.read",
@@ -162,6 +114,63 @@ var init_key = __esm({
         "lead.write"
       ])
     };
+  }
+});
+
+// packages/auth/src/key.ts
+import { randomBytes, timingSafeEqual } from "node:crypto";
+function timingSafeMatch(input, expected) {
+  const a = Buffer.from(input);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+function parseUsers(raw, orgId) {
+  const parsed = (() => {
+    if (!raw?.trim()) return DEFAULT_USERS;
+    try {
+      const val = JSON.parse(raw);
+      if (Array.isArray(val)) return val;
+      if (val && Array.isArray(val.users)) return val.users;
+      return DEFAULT_USERS;
+    } catch {
+      return DEFAULT_USERS;
+    }
+  })();
+  const users = [];
+  const perUserKeys = /* @__PURE__ */ new Map();
+  for (const u of parsed) {
+    const id = (u.userId ?? u.id ?? "").trim() || `user_${Math.random().toString(36).slice(2, 8)}`;
+    const name = (u.name ?? id.replace(/^user_/, "").replace(/[_-]/g, " ")).trim();
+    const user = {
+      userId: id,
+      orgId: (u.orgId ?? orgId).trim() || orgId,
+      role: normalizeRole(u.role),
+      name,
+      email: u.email?.trim() || void 0,
+      initials: (u.initials?.trim() || initialsFor(name)).slice(0, 3).toUpperCase()
+    };
+    users.push(user);
+    if (typeof u.key === "string" && u.key.trim()) perUserKeys.set(user.userId, u.key.trim());
+  }
+  if (!users.length) {
+    users.push({ userId: "user_local", orgId, role: "ceo", name: "You", email: "you@companybrain.local", initials: "YO" });
+  }
+  return { users, perUserKeys };
+}
+var DEFAULT_USERS, KeyAuth;
+var init_key = __esm({
+  "packages/auth/src/key.ts"() {
+    "use strict";
+    init_local();
+    init_capabilities();
+    DEFAULT_USERS = [
+      { id: "user_local", role: "ceo", name: "You", email: "you@companybrain.local", initials: "YO" },
+      { id: "user_ceo", role: "ceo", name: "James Carter", email: "james@companybrain.local", initials: "JC" },
+      { id: "user_monty", role: "manager", name: "Monty Singh", email: "monty@companybrain.local", initials: "MS" },
+      { id: "user_emp", role: "employee", name: "Alex Kumar", email: "alex@companybrain.local", initials: "AK" },
+      { id: "user_client", role: "client", name: "Dana Carter", email: "dana@client.local", initials: "DC" }
+    ];
     KeyAuth = class {
       mode = "key";
       orgId;
@@ -239,6 +248,258 @@ var init_key = __esm({
         const now2 = Date.now();
         for (const [token, sess] of this.sessions) {
           if (sess.expiresAt <= now2) this.sessions.delete(token);
+        }
+      }
+    };
+  }
+});
+
+// packages/auth/src/hash.ts
+import { randomBytes as randomBytes2, scryptSync, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
+function hashPassword(password) {
+  const salt = randomBytes2(16).toString("hex");
+  const hash = scryptSync(password, salt, KEY_LENGTH).toString("hex");
+  return `scrypt$${salt}$${hash}`;
+}
+function verifyPassword(password, stored) {
+  const parts = stored.split("$");
+  if (parts.length !== 3 || parts[0] !== "scrypt") return false;
+  const [, salt, hashHex] = parts;
+  if (!salt || !hashHex) return false;
+  const expected = Buffer.from(hashHex, "hex");
+  const actual = scryptSync(password, salt, KEY_LENGTH);
+  if (actual.length !== expected.length) return false;
+  return timingSafeEqual2(actual, expected);
+}
+var KEY_LENGTH;
+var init_hash = __esm({
+  "packages/auth/src/hash.ts"() {
+    "use strict";
+    KEY_LENGTH = 64;
+  }
+});
+
+// packages/auth/src/password.ts
+import { randomBytes as randomBytes3, randomUUID } from "node:crypto";
+import { homedir as homedir2 } from "node:os";
+import { join as join2 } from "node:path";
+import { mkdirSync as mkdirSync2 } from "node:fs";
+import Database2 from "better-sqlite3";
+function rowToUser(row) {
+  return {
+    userId: row.id,
+    orgId: row.org_id,
+    role: normalizeRole(row.role),
+    name: row.name,
+    email: row.email,
+    initials: row.initials,
+    username: row.username ?? void 0,
+    active: row.active === 1,
+    createdAt: row.created_at
+  };
+}
+var PasswordAuth;
+var init_password = __esm({
+  "packages/auth/src/password.ts"() {
+    "use strict";
+    init_local();
+    init_capabilities();
+    init_hash();
+    PasswordAuth = class {
+      mode = "password";
+      db;
+      orgId;
+      sessionTtlMs;
+      sessions = /* @__PURE__ */ new Map();
+      constructor() {
+        this.orgId = process.env.COMPANYBRAIN_ORG_ID?.trim() || LOCAL_ORG_ID;
+        const ttlHours = Number(process.env.COMPANYBRAIN_SESSION_TTL_HOURS ?? 168);
+        this.sessionTtlMs = (Number.isFinite(ttlHours) && ttlHours > 0 ? ttlHours : 168) * 60 * 60 * 1e3;
+        const fromEnv = process.env.COMPANYBRAIN_DB_PATH;
+        const dir = join2(homedir2(), ".companybrain");
+        mkdirSync2(dir, { recursive: true });
+        const filePath = fromEnv ?? join2(dir, "companybrain.sqlite");
+        this.db = new Database2(filePath);
+        this.db.pragma("journal_mode = WAL");
+        this.db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        org_id TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        username TEXT UNIQUE,
+        name TEXT NOT NULL,
+        initials TEXT,
+        role TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        active INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL,
+        created_by TEXT,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_users_org ON users(org_id);
+    `);
+      }
+      async init() {
+        this.seedAdminIfNeeded();
+      }
+      seedAdminIfNeeded() {
+        const { c } = this.db.prepare("SELECT COUNT(*) as c FROM users").get();
+        if (c > 0) return;
+        const email = (process.env.COMPANYBRAIN_ADMIN_EMAIL ?? "").trim().toLowerCase();
+        const password = process.env.COMPANYBRAIN_ADMIN_PASSWORD ?? "";
+        if (!email || !password) {
+          console.warn(
+            "[companybrain] PasswordAuth: no users exist yet and COMPANYBRAIN_ADMIN_EMAIL / COMPANYBRAIN_ADMIN_PASSWORD are not set. Set both env vars and restart to bootstrap the first admin."
+          );
+          return;
+        }
+        const name = (process.env.COMPANYBRAIN_ADMIN_NAME ?? "Admin").trim() || "Admin";
+        this.insertUser({ email, name, role: "ceo", password, username: void 0 }, null);
+        console.log(`[companybrain] Seeded initial admin user: ${email} (role: ceo)`);
+      }
+      insertUser(input, createdBy) {
+        const id = `user_${randomUUID().slice(0, 8)}`;
+        const now2 = Date.now();
+        const role = normalizeRole(input.role);
+        const initials = initialsFor(input.name);
+        const passwordHash = hashPassword(input.password);
+        this.db.prepare(`
+      INSERT INTO users (id, org_id, email, username, name, initials, role, password_hash, active, created_at, created_by, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,1,?,?,?)
+    `).run(
+          id,
+          this.orgId,
+          input.email.trim().toLowerCase(),
+          input.username?.trim().toLowerCase() || null,
+          input.name.trim(),
+          initials,
+          role,
+          passwordHash,
+          now2,
+          createdBy,
+          now2
+        );
+        return rowToUser(this.getRow(id));
+      }
+      getRow(id) {
+        return this.db.prepare("SELECT * FROM users WHERE id=?").get(id);
+      }
+      findByIdentifier(identifier) {
+        const v = identifier.trim().toLowerCase();
+        return this.db.prepare("SELECT * FROM users WHERE lower(email)=? OR lower(username)=?").get(v, v);
+      }
+      async authenticate(token) {
+        this.cleanupExpired();
+        if (!token) return null;
+        const sess = this.sessions.get(token);
+        if (!sess) return null;
+        if (sess.expiresAt <= Date.now()) {
+          this.sessions.delete(token);
+          return null;
+        }
+        return { userId: sess.userId, orgId: sess.orgId, role: sess.role };
+      }
+      async current() {
+        const row = this.db.prepare("SELECT * FROM users WHERE org_id=? ORDER BY created_at ASC LIMIT 1").get(this.orgId);
+        if (row) return { userId: row.id, orgId: row.org_id, role: normalizeRole(row.role) };
+        return { userId: "user_local", orgId: this.orgId, role: "ceo" };
+      }
+      can(principal, capability) {
+        return CAPS_BY_ROLE[principal.role]?.has(capability) ?? false;
+      }
+      listUsers() {
+        const rows = this.db.prepare("SELECT * FROM users WHERE org_id=? ORDER BY created_at ASC").all(this.orgId);
+        return rows.map(rowToUser);
+      }
+      getUser(userId) {
+        const row = this.getRow(userId);
+        return row ? rowToUser(row) : null;
+      }
+      async login(identifier, password) {
+        this.cleanupExpired();
+        const id = (identifier ?? "").trim();
+        const pw = password ?? "";
+        if (!id || !pw) return null;
+        const row = this.findByIdentifier(id);
+        if (!row || row.active !== 1) return null;
+        if (!verifyPassword(pw, row.password_hash)) return null;
+        const token = randomBytes3(32).toString("base64url");
+        const expiresAt = Date.now() + this.sessionTtlMs;
+        const role = normalizeRole(row.role);
+        this.sessions.set(token, { token, userId: row.id, orgId: row.org_id, role, expiresAt });
+        return {
+          token,
+          user: rowToUser(row),
+          principal: { userId: row.id, orgId: row.org_id, role },
+          expiresAt
+        };
+      }
+      async logout(token) {
+        if (!token) return;
+        this.sessions.delete(token);
+      }
+      cleanupExpired() {
+        const now2 = Date.now();
+        for (const [token, sess] of this.sessions) {
+          if (sess.expiresAt <= now2) this.sessions.delete(token);
+        }
+      }
+      // --- admin-only user management (feature-detected by the server layer) ---
+      emailTaken(email, excludeId) {
+        const row = this.db.prepare("SELECT id FROM users WHERE lower(email)=?").get(email.trim().toLowerCase());
+        return !!row && row.id !== excludeId;
+      }
+      usernameTaken(username, excludeId) {
+        const row = this.db.prepare("SELECT id FROM users WHERE lower(username)=?").get(username.trim().toLowerCase());
+        return !!row && row.id !== excludeId;
+      }
+      createUser(input, createdBy) {
+        if (this.emailTaken(input.email)) throw new Error("a user with this email already exists");
+        if (input.username && this.usernameTaken(input.username)) throw new Error("a user with this username already exists");
+        return this.insertUser(input, createdBy);
+      }
+      updateUser(id, patch) {
+        const row = this.getRow(id);
+        if (!row) throw new Error("user not found");
+        const name = patch.name?.trim() || row.name;
+        const email = (patch.email?.trim() || row.email).toLowerCase();
+        if (patch.email && this.emailTaken(email, id)) throw new Error("a user with this email already exists");
+        let username = row.username;
+        if (patch.username !== void 0) {
+          username = patch.username?.trim().toLowerCase() || null;
+          if (username && this.usernameTaken(username, id)) throw new Error("a user with this username already exists");
+        }
+        const role = patch.role ? normalizeRole(patch.role) : normalizeRole(row.role);
+        const active = patch.active !== void 0 ? patch.active ? 1 : 0 : row.active;
+        const initials = patch.name ? initialsFor(name) : row.initials;
+        if (role !== "ceo" && normalizeRole(row.role) === "ceo") {
+          const otherAdmins = this.db.prepare("SELECT COUNT(*) as c FROM users WHERE role='ceo' AND active=1 AND id!=?").get(id);
+          if (otherAdmins.c === 0) throw new Error("cannot demote the last admin");
+        }
+        this.db.prepare(`
+      UPDATE users SET name=?, email=?, username=?, role=?, active=?, initials=?, updated_at=? WHERE id=?
+    `).run(name, email, username, role, active, initials, Date.now(), id);
+        return rowToUser(this.getRow(id));
+      }
+      setPassword(id, newPassword) {
+        const row = this.getRow(id);
+        if (!row) throw new Error("user not found");
+        const passwordHash = hashPassword(newPassword);
+        this.db.prepare("UPDATE users SET password_hash=?, updated_at=? WHERE id=?").run(passwordHash, Date.now(), id);
+        for (const [token, sess] of this.sessions) {
+          if (sess.userId === id) this.sessions.delete(token);
+        }
+      }
+      deleteUser(id) {
+        const row = this.getRow(id);
+        if (!row) throw new Error("user not found");
+        if (normalizeRole(row.role) === "ceo") {
+          const otherAdmins = this.db.prepare("SELECT COUNT(*) as c FROM users WHERE role='ceo' AND active=1 AND id!=?").get(id);
+          if (otherAdmins.c === 0) throw new Error("cannot delete the last admin user");
+        }
+        this.db.prepare("DELETE FROM users WHERE id=?").run(id);
+        for (const [token, sess] of this.sessions) {
+          if (sess.userId === id) this.sessions.delete(token);
         }
       }
     };
@@ -426,12 +687,16 @@ var init_supabase = __esm({
 // packages/auth/src/index.ts
 var src_exports = {};
 __export(src_exports, {
+  CAPS_BY_ROLE: () => CAPS_BY_ROLE,
   KeyAuth: () => KeyAuth,
   LOCAL_ORG_ID: () => LOCAL_ORG_ID,
   LOCAL_USER_ID: () => LOCAL_USER_ID,
   LocalAuth: () => LocalAuth,
+  PasswordAuth: () => PasswordAuth,
   SupabaseAuth: () => SupabaseAuth,
-  createAuth: () => createAuth
+  createAuth: () => createAuth,
+  initialsFor: () => initialsFor,
+  normalizeRole: () => normalizeRole
 });
 function createAuth() {
   const forced = (process.env.COMPANYBRAIN_AUTH_MODE ?? "").trim().toLowerCase();
@@ -445,6 +710,9 @@ function createAuth() {
       serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY
     });
   }
+  if (forced === "password" || !!process.env.COMPANYBRAIN_ADMIN_EMAIL) {
+    return new PasswordAuth();
+  }
   if (forced === "key" || !!process.env.COMPANYBRAIN_ACCESS_KEY || !!process.env.COMPANYBRAIN_USERS) {
     return new KeyAuth();
   }
@@ -455,10 +723,13 @@ var init_src = __esm({
     "use strict";
     init_local();
     init_key();
+    init_password();
     init_supabase();
     init_local();
     init_key();
+    init_password();
     init_supabase();
+    init_capabilities();
   }
 });
 
@@ -470,12 +741,15 @@ __export(validation_exports, {
   CreateLeadSchema: () => CreateLeadSchema,
   CreateLoopSchema: () => CreateLoopSchema,
   CreateTaskSchema: () => CreateTaskSchema,
+  CreateUserSchema: () => CreateUserSchema,
   ExtractCardSchema: () => ExtractCardSchema,
   LoginSchema: () => LoginSchema,
   MoveTaskSchema: () => MoveTaskSchema,
   QuickAddLeadSchema: () => QuickAddLeadSchema,
   SetLeadStageSchema: () => SetLeadStageSchema,
+  SetPasswordSchema: () => SetPasswordSchema,
   SnoozeLoopSchema: () => SnoozeLoopSchema,
+  UpdateUserSchema: () => UpdateUserSchema,
   ValidationError: () => ValidationError,
   WebhookFanInSchema: () => WebhookFanInSchema,
   validateBody: () => validateBody,
@@ -510,7 +784,7 @@ function validateQuery(schema) {
     req.validatedQuery = result.data;
   };
 }
-var ValidationError, CreateLoopSchema, SnoozeLoopSchema, AssignSchema, CreateTaskSchema, MoveTaskSchema, CreateLeadSchema, SetLeadStageSchema, QuickAddLeadSchema, ExtractCardSchema, AutonomySchema, LoginSchema, WebhookFanInSchema;
+var ValidationError, CreateLoopSchema, SnoozeLoopSchema, AssignSchema, CreateTaskSchema, MoveTaskSchema, CreateLeadSchema, SetLeadStageSchema, QuickAddLeadSchema, ExtractCardSchema, AutonomySchema, LoginSchema, CreateUserSchema, UpdateUserSchema, SetPasswordSchema, WebhookFanInSchema;
 var init_validation = __esm({
   "packages/server/src/middleware/validation.ts"() {
     "use strict";
@@ -574,6 +848,23 @@ var init_validation = __esm({
       userId: z.string().trim().min(1),
       key: z.string().trim().min(1)
     });
+    CreateUserSchema = z.object({
+      email: z.string().trim().email().max(200),
+      username: z.string().trim().min(3).max(50).optional(),
+      name: z.string().trim().min(1).max(200),
+      role: z.enum(["ceo", "manager", "employee", "client", "agent"]),
+      password: z.string().min(8, "password must be at least 8 characters").max(200)
+    });
+    UpdateUserSchema = z.object({
+      name: z.string().trim().min(1).max(200).optional(),
+      email: z.string().trim().email().max(200).optional(),
+      username: z.string().trim().min(3).max(50).nullable().optional(),
+      role: z.enum(["ceo", "manager", "employee", "client", "agent"]).optional(),
+      active: z.boolean().optional()
+    });
+    SetPasswordSchema = z.object({
+      password: z.string().min(8, "password must be at least 8 characters").max(200)
+    });
     WebhookFanInSchema = z.object({
       from: z.string().trim().max(200).optional().default("unknown"),
       text: z.string().trim().min(1, "text is required").max(1e4),
@@ -625,12 +916,12 @@ var init_rate_limit = __esm({
 });
 
 // packages/server/src/middleware/webhook-verify.ts
-import { createHmac, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
+import { createHmac, timingSafeEqual as timingSafeEqual3 } from "node:crypto";
 function verifyWhatsAppSignature(body, signature, appSecret) {
   if (!signature) return false;
   const expected = "sha256=" + createHmac("sha256", appSecret).update(body).digest("hex");
   try {
-    return timingSafeEqual2(Buffer.from(expected), Buffer.from(signature));
+    return timingSafeEqual3(Buffer.from(expected), Buffer.from(signature));
   } catch {
     return false;
   }
@@ -661,7 +952,7 @@ function genericWebhookVerify(options = {}) {
     const rawBody = JSON.stringify(req.body);
     const expected = "sha256=" + createHmac("sha256", secret).update(rawBody).digest("hex");
     try {
-      const valid = timingSafeEqual2(Buffer.from(expected), Buffer.from(signature));
+      const valid = timingSafeEqual3(Buffer.from(expected), Buffer.from(signature));
       if (!valid) {
         return reply.code(403).send({ error: "Invalid webhook signature" });
       }
@@ -970,11 +1261,17 @@ CREATE TABLE IF NOT EXISTS leads  (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, st
 CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, type TEXT, at INTEGER, doc TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS settings  (org_id TEXT PRIMARY KEY, doc TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS approvals (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, status TEXT, at INTEGER, doc TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS time_entries (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, task_id TEXT NOT NULL, user_id TEXT NOT NULL, started_at INTEGER, ended_at INTEGER, duration INTEGER, note TEXT, doc TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS custom_fields (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, field_name TEXT NOT NULL, field_type TEXT NOT NULL DEFAULT 'text', field_value TEXT NOT NULL, created_at INTEGER);
 CREATE INDEX IF NOT EXISTS idx_loops_org  ON loops(org_id, side);
 CREATE INDEX IF NOT EXISTS idx_tasks_org  ON tasks(org_id);
 CREATE INDEX IF NOT EXISTS idx_leads_org  ON leads(org_id);
 CREATE INDEX IF NOT EXISTS idx_events_org ON events(org_id, at);
 CREATE INDEX IF NOT EXISTS idx_approvals_org ON approvals(org_id, status, at);
+CREATE INDEX IF NOT EXISTS idx_time_entries_task ON time_entries(task_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id, org_id);
+CREATE INDEX IF NOT EXISTS idx_custom_fields_entity ON custom_fields(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_custom_fields_org ON custom_fields(org_id);
 `;
 var SqliteDatabase = class {
   db;
@@ -984,6 +1281,8 @@ var SqliteDatabase = class {
   events;
   settings;
   approvals;
+  timeEntries;
+  customFields;
   constructor(filePath) {
     this.db = new Database(filePath);
     this.db.pragma("journal_mode = WAL");
@@ -1104,6 +1403,65 @@ var SqliteDatabase = class {
         return next;
       }
     };
+    this.timeEntries = {
+      async insert(entry) {
+        db.prepare("INSERT INTO time_entries (id, org_id, task_id, user_id, started_at, ended_at, duration, note, doc) VALUES (?,?,?,?,?,?,?,?,?)").run(entry.id, entry.orgId, entry.taskId, entry.userId, entry.startedAt, entry.endedAt ?? null, entry.duration ?? null, entry.note ?? null, JSON.stringify(entry));
+        return entry;
+      },
+      async get(id) {
+        const row = db.prepare("SELECT doc FROM time_entries WHERE id=?").get(id);
+        return row ? JSON.parse(row.doc) : null;
+      },
+      async listByTask(taskId) {
+        const rows = db.prepare("SELECT doc FROM time_entries WHERE task_id=? ORDER BY started_at DESC").all(taskId);
+        return rows.map((r) => JSON.parse(r.doc));
+      },
+      async listByUser(userId, orgId) {
+        const rows = db.prepare("SELECT doc FROM time_entries WHERE user_id=? AND org_id=? ORDER BY started_at DESC").all(userId, orgId);
+        return rows.map((r) => JSON.parse(r.doc));
+      },
+      async update(id, patch) {
+        const cur = await this.get(id);
+        if (!cur) throw new Error(`time entry ${id} not found`);
+        const next = { ...cur, ...patch };
+        db.prepare("UPDATE time_entries SET ended_at=?, duration=?, note=?, doc=? WHERE id=?").run(next.endedAt ?? null, next.duration ?? null, next.note ?? null, JSON.stringify(next), id);
+        return next;
+      },
+      async delete(id) {
+        db.prepare("DELETE FROM time_entries WHERE id=?").run(id);
+      }
+    };
+    this.customFields = {
+      async insert(field) {
+        db.prepare("INSERT INTO custom_fields (id, org_id, entity_type, entity_id, field_name, field_type, field_value, created_at) VALUES (?,?,?,?,?,?,?,?)").run(field.id, field.orgId, field.entityType, field.entityId, field.fieldName, field.fieldType, field.fieldValue, field.createdAt);
+        return field;
+      },
+      async get(id) {
+        const row = db.prepare("SELECT * FROM custom_fields WHERE id=?").get(id);
+        return row ? rowToCustomField(row) : null;
+      },
+      async listByEntity(entityType, entityId) {
+        const rows = db.prepare("SELECT * FROM custom_fields WHERE entity_type=? AND entity_id=? ORDER BY created_at ASC").all(entityType, entityId);
+        return rows.map(rowToCustomField);
+      },
+      async listByOrg(orgId, entityType) {
+        const rows = entityType ? db.prepare("SELECT * FROM custom_fields WHERE org_id=? AND entity_type=? ORDER BY created_at ASC").all(orgId, entityType) : db.prepare("SELECT * FROM custom_fields WHERE org_id=? ORDER BY created_at ASC").all(orgId);
+        return rows.map(rowToCustomField);
+      },
+      async update(id, patch) {
+        const cur = await this.get(id);
+        if (!cur) throw new Error(`custom field ${id} not found`);
+        const next = { ...cur, ...patch };
+        db.prepare("UPDATE custom_fields SET field_value=?, field_name=?, field_type=? WHERE id=?").run(next.fieldValue, next.fieldName, next.fieldType, id);
+        return next;
+      },
+      async delete(id) {
+        db.prepare("DELETE FROM custom_fields WHERE id=?").run(id);
+      },
+      async deleteByEntity(entityType, entityId) {
+        db.prepare("DELETE FROM custom_fields WHERE entity_type=? AND entity_id=?").run(entityType, entityId);
+      }
+    };
   }
   async init() {
     this.db.exec(DDL);
@@ -1112,6 +1470,18 @@ var SqliteDatabase = class {
     this.db.close();
   }
 };
+function rowToCustomField(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    fieldName: row.field_name,
+    fieldType: row.field_type,
+    fieldValue: row.field_value,
+    createdAt: row.created_at
+  };
+}
 
 // packages/db/src/supabase.ts
 import { createClient } from "@supabase/supabase-js";
@@ -1124,6 +1494,8 @@ var SupabaseDatabase = class {
   events;
   settings;
   approvals;
+  timeEntries;
+  customFields;
   constructor(opts) {
     this.client = createClient(opts.url, opts.anonKey);
     this.adminClient = opts.serviceRoleKey ? createClient(opts.url, opts.serviceRoleKey) : null;
@@ -1270,6 +1642,80 @@ var SupabaseDatabase = class {
         const { error } = await db.from("approvals").update(approvalToRow(next)).eq("id", id);
         if (error) throw error;
         return next;
+      }
+    };
+    this.timeEntries = {
+      async insert(entry) {
+        const { error } = await db.from("time_entries").insert(timeEntryToRow(entry));
+        if (error) throw error;
+        return entry;
+      },
+      async get(id) {
+        const { data, error } = await db.from("time_entries").select("*").eq("id", id).single();
+        if (error || !data) return null;
+        return rowToTimeEntry(data);
+      },
+      async listByTask(taskId) {
+        const { data, error } = await db.from("time_entries").select("*").eq("task_id", taskId).order("started_at", { ascending: false });
+        if (error) throw error;
+        return (data ?? []).map(rowToTimeEntry);
+      },
+      async listByUser(userId, orgId) {
+        const { data, error } = await db.from("time_entries").select("*").eq("user_id", userId).eq("org_id", orgId).order("started_at", { ascending: false });
+        if (error) throw error;
+        return (data ?? []).map(rowToTimeEntry);
+      },
+      async update(id, patch) {
+        const current = await this.get(id);
+        if (!current) throw new Error(`time entry ${id} not found`);
+        const next = { ...current, ...patch };
+        const { error } = await db.from("time_entries").update(timeEntryToRow(next)).eq("id", id);
+        if (error) throw error;
+        return next;
+      },
+      async delete(id) {
+        const { error } = await db.from("time_entries").delete().eq("id", id);
+        if (error) throw error;
+      }
+    };
+    this.customFields = {
+      async insert(field) {
+        const { error } = await db.from("custom_fields").insert(customFieldToRow(field));
+        if (error) throw error;
+        return field;
+      },
+      async get(id) {
+        const { data, error } = await db.from("custom_fields").select("*").eq("id", id).single();
+        if (error || !data) return null;
+        return rowToCustomField2(data);
+      },
+      async listByEntity(entityType, entityId) {
+        const { data, error } = await db.from("custom_fields").select("*").eq("entity_type", entityType).eq("entity_id", entityId).order("created_at", { ascending: true });
+        if (error) throw error;
+        return (data ?? []).map(rowToCustomField2);
+      },
+      async listByOrg(orgId, entityType) {
+        let query = db.from("custom_fields").select("*").eq("org_id", orgId);
+        if (entityType) query = query.eq("entity_type", entityType);
+        const { data, error } = await query.order("created_at", { ascending: true });
+        if (error) throw error;
+        return (data ?? []).map(rowToCustomField2);
+      },
+      async update(id, patch) {
+        const current = await this.get(id);
+        if (!current) throw new Error(`custom field ${id} not found`);
+        const next = { ...current, ...patch };
+        const { error } = await db.from("custom_fields").update(customFieldToRow(next)).eq("id", id);
+        if (error) throw error;
+        return next;
+      },
+      async delete(id) {
+        const { error } = await db.from("custom_fields").delete().eq("id", id);
+        if (error) throw error;
+      },
+      async deleteByEntity(entityType, entityId) {
+        const { error } = await db.from("custom_fields").delete().eq("entity_type", entityType).eq("entity_id", entityId);
+        if (error) throw error;
       }
     };
   }
@@ -1436,6 +1882,54 @@ function approvalToRow(approval) {
     created_at: approval.createdAt
   };
 }
+function rowToTimeEntry(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    taskId: row.task_id,
+    userId: row.user_id,
+    startedAt: row.started_at,
+    endedAt: row.ended_at ?? void 0,
+    duration: row.duration ?? void 0,
+    note: row.note ?? void 0
+  };
+}
+function timeEntryToRow(entry) {
+  return {
+    id: entry.id,
+    org_id: entry.orgId,
+    task_id: entry.taskId,
+    user_id: entry.userId,
+    started_at: entry.startedAt,
+    ended_at: entry.endedAt ?? null,
+    duration: entry.duration ?? null,
+    note: entry.note ?? null
+  };
+}
+function rowToCustomField2(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    fieldName: row.field_name,
+    fieldType: row.field_type,
+    fieldValue: row.field_value,
+    createdAt: row.created_at
+  };
+}
+function customFieldToRow(field) {
+  return {
+    id: field.id,
+    org_id: field.orgId,
+    entity_type: field.entityType,
+    entity_id: field.entityId,
+    field_name: field.fieldName,
+    field_type: field.fieldType,
+    field_value: field.fieldValue,
+    created_at: field.createdAt
+  };
+}
 
 // packages/db/src/index.ts
 function createDatabase(opts = {}) {
@@ -1514,7 +2008,7 @@ function createQueue() {
 init_src();
 
 // packages/core/src/context.ts
-import { randomUUID } from "node:crypto";
+import { randomUUID as randomUUID2 } from "node:crypto";
 var consoleMessenger = {
   async send({ channel, to, text }) {
     console.log(`[messenger:noop] would send via ${channel} \u2192 ${to}: ${text}`);
@@ -1525,7 +2019,7 @@ var templateDrafter = {
     return `Thanks \u2014 we\u2019ve logged \u201C${title}\u201D and someone will get back to you shortly. \u{1F91D}`;
   }
 };
-var newId = (prefix) => `${prefix}_${randomUUID().slice(0, 8)}`;
+var newId = (prefix) => `${prefix}_${randomUUID2().slice(0, 8)}`;
 var now = () => Date.now();
 async function record(ctx, input) {
   const event = {
@@ -1805,6 +2299,579 @@ function makeAgents() {
   };
 }
 
+// packages/core/src/time-tracking.ts
+function makeTimeTracking(ctx) {
+  return {
+    /**
+     * Start tracking time on a task.
+     * If there's already an active entry for this task, stop it first.
+     */
+    async start(input) {
+      const active = await this.getActive(input.taskId);
+      if (active) {
+        await this.stop(active.id);
+      }
+      const entry = {
+        id: newId("time"),
+        orgId: input.orgId,
+        taskId: input.taskId,
+        userId: input.userId,
+        startedAt: now(),
+        note: input.note
+      };
+      await ctx.db.timeEntries.insert(entry);
+      return entry;
+    },
+    /**
+     * Stop tracking time on a task.
+     */
+    async stop(entryId) {
+      const entry = await ctx.db.timeEntries.get(entryId);
+      if (!entry) throw new Error(`time entry ${entryId} not found`);
+      if (entry.endedAt) throw new Error(`time entry ${entryId} already stopped`);
+      const endedAt = now();
+      const duration = Math.floor((endedAt - entry.startedAt) / 1e3);
+      return ctx.db.timeEntries.update(entryId, {
+        endedAt,
+        duration
+      });
+    },
+    /**
+     * Get active (running) time entry for a task.
+     */
+    async getActive(taskId) {
+      const entries = await ctx.db.timeEntries.listByTask(taskId);
+      return entries.find((e) => !e.endedAt) ?? null;
+    },
+    /**
+     * Get all time entries for a task.
+     */
+    async listByTask(taskId) {
+      return ctx.db.timeEntries.listByTask(taskId);
+    },
+    /**
+     * Get all time entries for a user.
+     */
+    async listByUser(userId, orgId) {
+      return ctx.db.timeEntries.listByUser(userId, orgId);
+    },
+    /**
+     * Get total time spent on a task (in seconds).
+     */
+    async getTotalTime(taskId) {
+      const entries = await ctx.db.timeEntries.listByTask(taskId);
+      return entries.reduce((total, e) => total + (e.duration ?? 0), 0);
+    },
+    /**
+     * Get total time for a user today.
+     */
+    async getTodayTime(userId, orgId) {
+      const entries = await ctx.db.timeEntries.listByUser(userId, orgId);
+      const todayStart = /* @__PURE__ */ new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayMs = todayStart.getTime();
+      return entries.filter((e) => e.startedAt >= todayMs).reduce((total, e) => total + (e.duration ?? 0), 0);
+    },
+    /**
+     * Update a time entry (edit note, adjust end time).
+     */
+    async update(entryId, patch) {
+      const entry = await ctx.db.timeEntries.get(entryId);
+      if (!entry) throw new Error(`time entry ${entryId} not found`);
+      const updates = {};
+      if (patch.note !== void 0) updates.note = patch.note;
+      if (patch.endedAt !== void 0) {
+        updates.endedAt = patch.endedAt;
+        updates.duration = Math.floor((patch.endedAt - entry.startedAt) / 1e3);
+      }
+      return ctx.db.timeEntries.update(entryId, updates);
+    },
+    /**
+     * Delete a time entry.
+     */
+    async delete(entryId) {
+      await ctx.db.timeEntries.delete(entryId);
+    },
+    /**
+     * Format duration for display.
+     */
+    formatDuration(seconds) {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor(seconds % 3600 / 60);
+      const s = seconds % 60;
+      if (h > 0) return `${h}h ${m}m`;
+      if (m > 0) return `${m}m ${s}s`;
+      return `${s}s`;
+    }
+  };
+}
+
+// packages/core/src/bulk.ts
+function makeBulkOps(ctx) {
+  return {
+    /**
+     * Close multiple loops at once.
+     */
+    async closeLoops(ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          await ctx.db.loops.update(id, { status: "closed", updatedAt: Date.now() });
+          await record(ctx, { orgId: (await ctx.db.loops.get(id))?.orgId ?? "", type: "loop.closed", entityId: id, actorId });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Snooze multiple loops.
+     */
+    async snoozeLoops(ids, hours, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      const untilAt = Date.now() + Math.max(1, hours) * 60 * 60 * 1e3;
+      for (const id of ids) {
+        try {
+          await ctx.db.loops.update(id, { status: "snoozed", updatedAt: untilAt });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Move multiple tasks to a different day.
+     */
+    async moveTasks(ids, day, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          const prev = await ctx.db.tasks.get(id);
+          if (!prev) throw new Error("task not found");
+          await ctx.db.tasks.update(id, { day });
+          await record(ctx, { orgId: prev.orgId, type: "task.moved", entityId: id, actorId, undo: { restoreDay: prev.day } });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Complete multiple tasks.
+     */
+    async completeTasks(ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          const task = await ctx.db.tasks.get(id);
+          if (!task) throw new Error("task not found");
+          await ctx.db.tasks.update(id, { day: "today" });
+          await record(ctx, { orgId: task.orgId, type: "task.completed", entityId: id, actorId });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Delete multiple tasks.
+     */
+    async deleteTasks(ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          const task = await ctx.db.tasks.get(id);
+          if (!task) throw new Error("task not found");
+          await ctx.db.tasks.remove(id);
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Advance multiple leads to next stage.
+     */
+    async advanceLeads(ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      const stageOrder = ["new", "contacted", "meeting", "proposal", "won"];
+      for (const id of ids) {
+        try {
+          const lead = await ctx.db.leads.get(id);
+          if (!lead) throw new Error("lead not found");
+          const currentIdx = stageOrder.indexOf(lead.stage);
+          const nextStage = stageOrder[Math.min(currentIdx + 1, stageOrder.length - 1)];
+          await ctx.db.leads.update(id, { stage: nextStage });
+          await record(ctx, { orgId: lead.orgId, type: "lead.advanced", entityId: id, actorId });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Assign multiple entities to a user.
+     */
+    async assignMany(entityType, ids, userIds, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          if (entityType === "loop") {
+            await ctx.db.loops.update(id, { assignedTo: userIds });
+          } else if (entityType === "task") {
+            await ctx.db.tasks.update(id, { assignees: userIds });
+          } else if (entityType === "lead") {
+            await ctx.db.leads.update(id, { assignedTo: userIds });
+          }
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Delete multiple entities.
+     */
+    async deleteMany(entityType, ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          if (entityType === "loop") {
+            await ctx.db.loops.remove(id);
+          } else if (entityType === "task") {
+            await ctx.db.tasks.remove(id);
+          } else if (entityType === "lead") {
+            await ctx.db.leads.remove(id);
+          }
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    }
+  };
+}
+
+// packages/core/src/recurring.ts
+function makeRecurring(ctx) {
+  return {
+    /**
+     * Process all recurring tasks and create new instances where needed.
+     * Should be called daily (e.g., by a cron job or worker).
+     */
+    async processDaily(orgId) {
+      let created = 0;
+      let skipped = 0;
+      const tasks = await ctx.db.tasks.list(orgId);
+      const recurringTasks = tasks.filter((t) => t.recurring && t.recur);
+      for (const task of recurringTasks) {
+        const shouldCreate = this.shouldCreateToday(task.recur);
+        if (!shouldCreate) {
+          skipped++;
+          continue;
+        }
+        const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+        const existingToday = tasks.find(
+          (t) => t.title === task.title && t.createdBy === task.createdBy && new Date(t.createdAt).toISOString().split("T")[0] === today
+        );
+        if (existingToday) {
+          skipped++;
+          continue;
+        }
+        await ctx.db.tasks.insert({
+          id: newId("task"),
+          orgId: task.orgId,
+          emoji: task.emoji,
+          title: task.title,
+          list: task.list,
+          day: "today",
+          priority: task.priority,
+          recurring: true,
+          recur: task.recur,
+          assignees: task.assignees,
+          createdBy: task.createdBy,
+          subtasks: [],
+          comments: [],
+          dueAt: null,
+          createdAt: now()
+        });
+        await record(ctx, {
+          orgId: task.orgId,
+          type: "task.created",
+          entityId: task.id,
+          actorId: task.createdBy
+        });
+        created++;
+      }
+      return { created, skipped };
+    },
+    /**
+     * Check if a recurring task should be created today.
+     */
+    shouldCreateToday(recur) {
+      const today = /* @__PURE__ */ new Date();
+      const dayOfWeek = today.getDay();
+      const dayOfMonth = today.getDate();
+      switch (recur) {
+        case "Daily":
+          return true;
+        case "Weekly":
+          return true;
+        // Base task is weekly, check on creation day
+        case "Monthly":
+          return dayOfMonth === 1;
+        // Create on 1st of month
+        case "Weekdays":
+          return dayOfWeek >= 1 && dayOfWeek <= 5;
+        case "Weekends":
+          return dayOfWeek === 0 || dayOfWeek === 6;
+        default:
+          return false;
+      }
+    },
+    /**
+     * Get next run date for a recurring task.
+     */
+    getNextRun(recur) {
+      const now2 = /* @__PURE__ */ new Date();
+      switch (recur) {
+        case "Daily":
+          return new Date(now2.getTime() + 24 * 60 * 60 * 1e3);
+        case "Weekly":
+          return new Date(now2.getTime() + 7 * 24 * 60 * 60 * 1e3);
+        case "Monthly": {
+          const next = new Date(now2);
+          next.setMonth(next.getMonth() + 1);
+          next.setDate(1);
+          return next;
+        }
+        case "Weekdays": {
+          const next = new Date(now2);
+          do {
+            next.setDate(next.getDate() + 1);
+          } while (next.getDay() === 0 || next.getDay() === 6);
+          return next;
+        }
+        case "Weekends": {
+          const next = new Date(now2);
+          do {
+            next.setDate(next.getDate() + 1);
+          } while (next.getDay() !== 0 && next.getDay() !== 6);
+          return next;
+        }
+        default:
+          return new Date(now2.getTime() + 24 * 60 * 60 * 1e3);
+      }
+    },
+    /**
+     * Format schedule for display.
+     */
+    formatSchedule(recur) {
+      switch (recur) {
+        case "Daily":
+          return "Every day";
+        case "Weekly":
+          return "Every week";
+        case "Monthly":
+          return "Every month";
+        case "Weekdays":
+          return "Weekdays only";
+        case "Weekends":
+          return "Weekends only";
+        default:
+          return recur;
+      }
+    }
+  };
+}
+
+// packages/core/src/subtasks.ts
+function makeSubtasks(ctx) {
+  return {
+    /**
+     * Add a subtask to a task (appends to Task.subtasks array).
+     */
+    async add(taskId, title) {
+      const task = await ctx.db.tasks.get(taskId);
+      if (!task) throw new Error(`task ${taskId} not found`);
+      const subtask = { id: newId("sub"), title, done: false };
+      const subtasks = [...task.subtasks ?? [], subtask];
+      await ctx.db.tasks.update(taskId, { subtasks });
+      return subtask;
+    },
+    /**
+     * Complete a subtask.
+     */
+    async complete(taskId, subtaskId) {
+      const task = await ctx.db.tasks.get(taskId);
+      if (!task) throw new Error(`task ${taskId} not found`);
+      const subtasks = (task.subtasks ?? []).map(
+        (s) => s.id === subtaskId ? { ...s, done: true } : s
+      );
+      await ctx.db.tasks.update(taskId, { subtasks });
+      const allDone = subtasks.every((s) => s.done);
+      if (allDone && subtasks.length > 0) {
+        await record(ctx, {
+          orgId: task.orgId,
+          type: "task.completed",
+          entityId: taskId,
+          actorId: "system"
+        });
+      }
+    },
+    /**
+     * Remove a subtask.
+     */
+    async remove(taskId, subtaskId) {
+      const task = await ctx.db.tasks.get(taskId);
+      if (!task) throw new Error(`task ${taskId} not found`);
+      const subtasks = (task.subtasks ?? []).filter((s) => s.id !== subtaskId);
+      await ctx.db.tasks.update(taskId, { subtasks });
+    },
+    /**
+     * Toggle a subtask done state.
+     */
+    async toggle(taskId, subtaskId) {
+      const task = await ctx.db.tasks.get(taskId);
+      if (!task) throw new Error(`task ${taskId} not found`);
+      const subtasks = (task.subtasks ?? []).map(
+        (s) => s.id === subtaskId ? { ...s, done: !s.done } : s
+      );
+      await ctx.db.tasks.update(taskId, { subtasks });
+    },
+    /**
+     * List subtasks for a task.
+     */
+    async list(taskId) {
+      const task = await ctx.db.tasks.get(taskId);
+      return task?.subtasks ?? [];
+    },
+    /**
+     * Get progress percentage.
+     */
+    getProgress(subtasks) {
+      if (subtasks.length === 0) return 0;
+      const done = subtasks.filter((s) => s.done).length;
+      return Math.round(done / subtasks.length * 100);
+    }
+  };
+}
+
+// packages/core/src/ai.ts
+function makeAi(ctx) {
+  const suggestions = /* @__PURE__ */ new Map();
+  async function getSuggestions(entityType, entityId) {
+    const results = [];
+    if (entityType === "task") {
+      const task = await ctx.db.tasks.get(entityId);
+      if (task) {
+        if (task.dueAt && task.dueAt < Date.now()) {
+          results.push({
+            id: `sug_${Date.now()}_overdue`,
+            type: "priority",
+            entityType,
+            entityId,
+            reason: "Task is overdue \u2014 consider bumping priority",
+            confidence: 0.9,
+            createdAt: Date.now()
+          });
+        }
+        const subtasks = task.subtasks ?? [];
+        if (subtasks.length > 0 && subtasks.every((s) => s.done)) {
+          results.push({
+            id: `sug_${Date.now()}_done`,
+            type: "close",
+            entityType,
+            entityId,
+            reason: "All subtasks complete \u2014 ready to close",
+            confidence: 0.95,
+            createdAt: Date.now()
+          });
+        }
+      }
+    }
+    if (entityType === "loop") {
+      const loop = await ctx.db.loops.get(entityId);
+      if (loop) {
+        const age = Date.now() - loop.createdAt;
+        const threeDays = 3 * 24 * 60 * 60 * 1e3;
+        if (loop.status === "open" && age > threeDays) {
+          results.push({
+            id: `sug_${Date.now()}_stale`,
+            type: "follow_up",
+            entityType,
+            entityId,
+            reason: "Loop open for 3+ days \u2014 consider following up",
+            confidence: 0.7,
+            createdAt: Date.now()
+          });
+        }
+      }
+    }
+    for (const s of results) {
+      suggestions.set(s.id, s);
+    }
+    return results;
+  }
+  async function autoAssign(taskId) {
+    const task = await ctx.db.tasks.get(taskId);
+    if (!task || task.assignees?.length) return null;
+    const allTasks = await ctx.db.tasks.list(task.orgId);
+    const recentTasks = allTasks.filter((t) => t.assignees?.length && t.subtasks?.some((s) => s.done)).slice(-20);
+    const counts = /* @__PURE__ */ new Map();
+    for (const t of recentTasks) {
+      for (const a of t.assignees ?? []) {
+        counts.set(a, (counts.get(a) ?? 0) + 1);
+      }
+    }
+    let best = null;
+    let bestCount = 0;
+    for (const [assignee, count] of counts) {
+      if (count > bestCount) {
+        best = assignee;
+        bestCount = count;
+      }
+    }
+    if (best) {
+      await ctx.db.tasks.update(taskId, { assignees: [best] });
+    }
+    return best;
+  }
+  async function getPatterns(orgId) {
+    const tasks = await ctx.db.tasks.list(orgId);
+    const loops = await ctx.db.loops.list(orgId);
+    const assigneeCounts = /* @__PURE__ */ new Map();
+    for (const t of tasks) {
+      for (const a of t.assignees ?? []) {
+        assigneeCounts.set(a, (assigneeCounts.get(a) ?? 0) + 1);
+      }
+    }
+    const channelCounts = /* @__PURE__ */ new Map();
+    for (const l of loops) {
+      channelCounts.set(l.channel, (channelCounts.get(l.channel) ?? 0) + 1);
+    }
+    return {
+      topAssignees: [...assigneeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+      topChannels: [...channelCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+      taskCompletionRate: tasks.length > 0 ? tasks.filter((t) => t.subtasks?.some((s) => s.done)).length / tasks.length : 0,
+      totalLoops: loops.length,
+      totalTasks: tasks.length
+    };
+  }
+  async function dismiss(suggestionId) {
+    suggestions.delete(suggestionId);
+  }
+  return { getSuggestions, autoAssign, getPatterns, dismiss };
+}
+
 // packages/core/src/undo.ts
 async function undoEvent(ctx, eventId) {
   const ev = await ctx.db.events.get(eventId);
@@ -1908,6 +2975,11 @@ function createCoreFromPorts(ports) {
     agents: makeAgents(),
     autonomy: makeAutonomy(ctx),
     approvals: makeApprovals(ctx),
+    timeTracking: makeTimeTracking(ctx),
+    bulk: makeBulkOps(ctx),
+    recurring: makeRecurring(ctx),
+    subtasks: makeSubtasks(ctx),
+    ai: makeAi(ctx),
     events: {
       list: (orgId, limit) => ctx.db.events.list(orgId, limit),
       undo: (eventId) => undoEvent(ctx, eventId)
@@ -1943,7 +3015,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 import { existsSync } from "node:fs";
 
 // packages/integrations/src/pipeline.ts
@@ -2115,8 +3187,8 @@ Note: ${note}`
 }
 
 // packages/integrations/src/whatsapp/baileys.ts
-import { homedir as homedir2 } from "node:os";
-import { join as join2 } from "node:path";
+import { homedir as homedir3 } from "node:os";
+import { join as join3 } from "node:path";
 import qrcode from "qrcode-terminal";
 import baileysPkg, {
   useMultiFileAuthState,
@@ -2144,7 +3216,7 @@ var toJid = (to) => to.includes("@") ? to : `${to.replace(/[^0-9]/g, "")}@s.what
 var numberFromJid = (jid) => jid.split("@")[0] ?? jid;
 function createBaileysChannel(opts) {
   let sock = null;
-  const authDir = opts.authDir ?? join2(homedir2(), ".companybrain", "wa");
+  const authDir = opts.authDir ?? join3(homedir3(), ".companybrain", "wa");
   const messenger2 = {
     async send(msg) {
       if (msg.channel !== "whatsapp") {
@@ -2744,9 +3816,9 @@ button{cursor:pointer;}
     <div class="modal-box" style="max-width:430px;">
       <div class="modal-head"><span style="font-size:20px;">\u{1F510}</span><span class="modal-title">Sign in to companybrain</span></div>
       <div class="modal-body">
-        <div style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:12px;">Use your user identity + workspace access key.</div>
-        <div class="modal-field"><label class="modal-label">User</label><select class="modal-select" id="auth-user"></select></div>
-        <div class="modal-field"><label class="modal-label">Access key</label><input class="modal-input" id="auth-key" type="password" placeholder="Enter access key" autocomplete="current-password"/></div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:12px;">Sign in with your email or username. Your role and permissions are assigned by the server.</div>
+        <div class="modal-field"><label class="modal-label">Email or username</label><input class="modal-input" id="auth-identifier" type="text" placeholder="you@company.com" autocomplete="username" autocapitalize="none" spellcheck="false"/></div>
+        <div class="modal-field"><label class="modal-label">Password</label><input class="modal-input" id="auth-password" type="password" placeholder="Enter password" autocomplete="current-password"/></div>
         <div id="auth-error" style="display:none;font-size:12px;color:var(--red);margin-top:4px;"></div>
       </div>
       <div class="modal-foot"><button class="btn-primary" id="auth-login-btn">Sign in</button></div>
@@ -2781,7 +3853,7 @@ button{cursor:pointer;}
   }
   try {
   var tab='loops', side='yours', taskDay='today', leadView='all', activeRole='ceo', loopCount=0;
-  var me=null, authUsers=[], appStarted=false;
+  var me=null, appStarted=false;
   var h0=new Date().getHours();
   var briefMode=h0<12?'am':h0<17?'pm':'eve';
 
@@ -2985,19 +4057,6 @@ button{cursor:pointer;}
     if(me&&me.role) activeRole=roleFromApi(me.role);
     updateSessionUi();
   }
-  function populateAuthUsers(users){
-    authUsers=users||[];
-    var sel=document.getElementById('auth-user');
-    if(!sel) return;
-    if(!authUsers.length){
-      sel.innerHTML='<option value="user_local">user_local</option>';
-      return;
-    }
-    sel.innerHTML=authUsers.map(function(u){
-      var lbl=(u.name||u.userId)+' \xB7 '+roleLabel(u.role||'employee');
-      return '<option value="'+esc(u.userId)+'">'+esc(lbl)+'</option>';
-    }).join('');
-  }
   function openAuthModal(msg){
     var m=document.getElementById('auth-modal');
     if(!m) return;
@@ -3007,32 +4066,34 @@ button{cursor:pointer;}
       else{err.style.display='none';err.textContent='';}
     }
     m.classList.add('open');
-    var key=document.getElementById('auth-key');
-    if(key) setTimeout(function(){key.focus();},20);
+    var id=document.getElementById('auth-identifier');
+    var pw=document.getElementById('auth-password');
+    var target=id&&id.value?id:pw;
+    if(target) setTimeout(function(){target.focus();},20);
   }
   function closeAuthModal(){
     var m=document.getElementById('auth-modal');
     if(m) m.classList.remove('open');
     var err=document.getElementById('auth-error');
     if(err){err.style.display='none';err.textContent='';}
-    var key=document.getElementById('auth-key');
-    if(key) key.value='';
+    var pw=document.getElementById('auth-password');
+    if(pw) pw.value='';
   }
-  function loginWithKey(){
-    var sel=document.getElementById('auth-user');
-    var key=document.getElementById('auth-key');
+  function loginWithPassword(){
+    var id=document.getElementById('auth-identifier');
+    var pw=document.getElementById('auth-password');
     var btn=document.getElementById('auth-login-btn');
-    var uid=sel&&sel.value||'';
-    var accessKey=key&&key.value||'';
-    if(!uid){openAuthModal('Select a user');return;}
-    if(!accessKey){openAuthModal('Access key is required');return;}
+    var identifier=id&&id.value?id.value.trim():'';
+    var password=pw&&pw.value||'';
+    if(!identifier){openAuthModal('Email or username is required');return;}
+    if(!password){openAuthModal('Password is required');return;}
     if(btn){btn.disabled=true;btn.textContent='Signing in\u2026';}
-    post('/api/auth/login',{userId:uid,key:accessKey}).then(function(res){
+    post('/api/auth/login',{userId:identifier,key:password}).then(function(res){
       applySessionUser(res&&res.user?res.user:null);
       closeAuthModal();
       startApp();
     }).catch(function(e){
-      openAuthModal(e&&e.message?e.message:'Invalid credentials');
+      openAuthModal(e&&e.message?e.message:'Invalid email/username or password');
     }).finally(function(){
       if(btn){btn.disabled=false;btn.textContent='Sign in';}
     });
@@ -3043,17 +4104,13 @@ button{cursor:pointer;}
         applySessionUser(s.user);
         return true;
       }
-      return api('/api/auth/users').then(function(info){
-        populateAuthUsers(info&&info.users||[]);
-        applySessionUser(null);
-        openAuthModal();
-        return false;
-      }).catch(function(){
-        populateAuthUsers([]);
-        applySessionUser(null);
-        openAuthModal('Could not load users. Try again.');
-        return false;
-      });
+      applySessionUser(null);
+      openAuthModal();
+      return false;
+    }).catch(function(){
+      applySessionUser(null);
+      openAuthModal();
+      return false;
     });
   }
   function startApp(){
@@ -4047,10 +5104,12 @@ button{cursor:pointer;}
     }
     var am=document.getElementById('auth-modal');
     if(am){
-      var keyInput=document.getElementById('auth-key');
+      var idInput=document.getElementById('auth-identifier');
+      var pwInput=document.getElementById('auth-password');
       var loginBtn=document.getElementById('auth-login-btn');
-      if(loginBtn) loginBtn.onclick=loginWithKey;
-      if(keyInput) keyInput.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();loginWithKey();}};
+      if(loginBtn) loginBtn.onclick=loginWithPassword;
+      if(idInput) idInput.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();loginWithPassword();}};
+      if(pwInput) pwInput.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();loginWithPassword();}};
     }
     var lo=document.getElementById('logout-btn');
     if(lo) lo.onclick=function(){logoutSession();};
@@ -4126,12 +5185,109 @@ button{cursor:pointer;}
         +'<div class="gc" style="padding:14px 16px;border-radius:14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;"><div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">Dark mode</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;">Switch between light and dark interface.</div></div><button class="btn-ghost" id="settings-dark-toggle">'+(darkMode?'Switch to light':'Switch to dark')+'</button></div>'
         +'<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;">Wallpaper</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'
         +THEMES.map(function(t){return '<div style="cursor:pointer;" onclick="applyTheme(\\''+t.id+'\\')"><div style="aspect-ratio:3/2;border-radius:10px;background:'+t.swatch+';border:2px solid '+(activeTheme===t.id?'var(--accent)':'transparent')+';transition:all .15s;"></div><div style="text-align:center;font-size:10px;color:var(--muted);margin-top:4px;">'+t.label+'</div></div>';}).join('')+'</div>';
+      html+=adminUsersPanelHtml();
       view.innerHTML=html;
       var std=document.getElementById('settings-dark-toggle');
       if(std)std.onclick=function(){applyDark(!darkMode);loadSettings();};
       view.querySelectorAll('.lvl').forEach(function(b){b.onclick=function(){post('/api/autonomy',{action:b.dataset.act,level:b.dataset.lvl},'PUT').then(function(){toast('Saved');loadSettings();});};});
       view.querySelectorAll('[data-approve]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.approve+'/approve').then(function(){toast('Approved');loadSettings();});};});
       view.querySelectorAll('[data-dismiss]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(function(){toast('Dismissed');loadSettings();});};});
+      bindAdminUserUi();
+    });
+  }
+
+  function adminUsersPanelHtml(){
+    var roles=['client','employee','manager','ceo','agent'];
+    var roleOpts=roles.map(function(r){return '<option value="'+r+'">'+roleLabel(r)+'</option>';}).join('');
+    var html='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;margin:18px 0 8px;">USER MANAGEMENT</div>';
+    if(!me||me.role!=='ceo'){
+      return html+'<div class="gc" style="padding:14px 16px;border-radius:14px;color:var(--muted);font-size:12.5px;">Only CEO/admin users can manage accounts.</div>';
+    }
+    return html+'<div class="gc" style="padding:14px 16px;border-radius:14px;margin-bottom:10px;">'
+      +'<div style="font-size:13.5px;font-weight:700;margin-bottom:10px;">Create user</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;">'
+      +'<input class="modal-input" id="admin-new-name" placeholder="Full name" autocomplete="off"/>'
+      +'<input class="modal-input" id="admin-new-email" placeholder="Email" autocomplete="off"/>'
+      +'<input class="modal-input" id="admin-new-username" placeholder="Username optional" autocomplete="off"/>'
+      +'<select class="modal-select" id="admin-new-role">'+roleOpts+'</select>'
+      +'<input class="modal-input" id="admin-new-password" type="password" placeholder="Temporary password" autocomplete="new-password"/>'
+      +'<button class="btn-primary" id="admin-create-user">Create</button>'
+      +'</div><div id="admin-user-msg" style="font-size:12px;color:var(--muted);margin-top:8px;"></div></div>'
+      +'<div class="gc" style="padding:14px 16px;border-radius:14px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;"><div style="font-size:13.5px;font-weight:700;">Users</div><button class="btn-ghost" id="admin-refresh-users">Refresh</button></div><div id="admin-users-list"><div class="spin"></div></div></div>';
+  }
+
+  function adminMsg(msg,isErr){
+    var el=document.getElementById('admin-user-msg');
+    if(!el) return;
+    el.style.color=isErr?'var(--red)':'var(--muted)';
+    el.textContent=msg||'';
+  }
+  function bindAdminUserUi(){
+    if(!me||me.role!=='ceo') return;
+    var create=document.getElementById('admin-create-user');
+    var refresh=document.getElementById('admin-refresh-users');
+    if(refresh) refresh.onclick=loadAdminUsers;
+    if(create) create.onclick=function(){
+      var body={
+        name:(document.getElementById('admin-new-name').value||'').trim(),
+        email:(document.getElementById('admin-new-email').value||'').trim(),
+        username:(document.getElementById('admin-new-username').value||'').trim()||undefined,
+        role:document.getElementById('admin-new-role').value,
+        password:document.getElementById('admin-new-password').value||''
+      };
+      if(!body.name||!body.email||!body.password){adminMsg('Name, email, and password are required',true);return;}
+      post('/api/admin/users',body).then(function(){
+        adminMsg('User created',false);
+        ['admin-new-name','admin-new-email','admin-new-username','admin-new-password'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+        loadAdminUsers();
+      }).catch(function(e){adminMsg(e&&e.message?e.message:'Could not create user',true);});
+    };
+    loadAdminUsers();
+  }
+  function loadAdminUsers(){
+    var box=document.getElementById('admin-users-list');
+    if(!box) return;
+    box.innerHTML='<div class="spin"></div>';
+    api('/api/admin/users').then(function(users){
+      box.innerHTML=renderAdminUsers(users||[]);
+      bindAdminUserRows();
+    }).catch(function(e){box.innerHTML='<div style="font-size:12px;color:var(--red);">'+esc(e&&e.message?e.message:'Could not load users')+'</div>';});
+  }
+  function renderAdminUsers(users){
+    if(!users.length) return '<div style="font-size:12px;color:var(--muted);">No users yet.</div>';
+    var roles=['client','employee','manager','ceo','agent'];
+    return users.map(function(u){
+      var roleOpts=roles.map(function(r){return '<option value="'+r+'" '+(u.role===r?'selected':'')+'>'+roleLabel(r)+'</option>';}).join('');
+      return '<div class="admin-user-row" data-user-id="'+esc(u.userId)+'" style="border-top:1px solid var(--glassBorder);padding:12px 0;display:grid;grid-template-columns:minmax(180px,1fr) 140px 120px 1fr auto;gap:8px;align-items:center;">'
+        +'<div><div style="font-size:13px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:11px;color:var(--muted);">'+esc(u.email||'')+(u.username?' \xB7 '+esc(u.username):'')+'</div></div>'
+        +'<select class="modal-select admin-role" style="min-height:34px;">'+roleOpts+'</select>'
+        +'<select class="modal-select admin-active" style="min-height:34px;"><option value="true" '+(u.active===false?'':'selected')+'>Active</option><option value="false" '+(u.active===false?'selected':'')+'>Disabled</option></select>'
+        +'<div style="display:flex;gap:6px;"><input class="modal-input admin-password" type="password" placeholder="New password" autocomplete="new-password" style="min-height:34px;"/><button class="btn-ghost admin-set-password">Set</button></div>'
+        +'<div style="display:flex;gap:6px;"><button class="btn-ghost admin-save-user">Save</button><button class="btn-danger admin-delete-user">Delete</button></div>'
+        +'</div>';
+    }).join('');
+  }
+  function bindAdminUserRows(){
+    document.querySelectorAll('.admin-user-row').forEach(function(row){
+      var uid=row.dataset.userId;
+      var save=row.querySelector('.admin-save-user');
+      var del=row.querySelector('.admin-delete-user');
+      var setPw=row.querySelector('.admin-set-password');
+      if(save) save.onclick=function(){
+        var role=row.querySelector('.admin-role').value;
+        var active=row.querySelector('.admin-active').value==='true';
+        post('/api/admin/users/'+encodeURIComponent(uid),{role:role,active:active},'PATCH').then(function(){toast('User updated');loadAdminUsers();}).catch(function(e){toast(e&&e.message?e.message:'Could not update user');});
+      };
+      if(setPw) setPw.onclick=function(){
+        var input=row.querySelector('.admin-password');
+        var pw=input&&input.value||'';
+        if(!pw){toast('Enter a new password');return;}
+        post('/api/admin/users/'+encodeURIComponent(uid)+'/password',{password:pw}).then(function(){toast('Password reset');if(input)input.value='';}).catch(function(e){toast(e&&e.message?e.message:'Could not reset password');});
+      };
+      if(del) del.onclick=function(){
+        if(!confirm('Delete this user? This cannot be undone.')) return;
+        post('/api/admin/users/'+encodeURIComponent(uid),null,'DELETE').then(function(){toast('User deleted');loadAdminUsers();}).catch(function(e){toast(e&&e.message?e.message:'Could not delete user');});
+      };
     });
   }
 
@@ -4172,7 +5328,7 @@ function buildServer(deps) {
     allowedHeaders: ["Content-Type", "Authorization"]
   });
   app2.register(rateLimit, rateLimitConfig);
-  const publicDir = join3(import.meta.dirname ?? process.cwd(), "public");
+  const publicDir = join4(import.meta.dirname ?? process.cwd(), "public");
   if (existsSync(publicDir)) {
     app2.register(fastifyStatic, {
       root: publicDir,
@@ -4194,6 +5350,8 @@ function buildServer(deps) {
   const llm = createLlm();
   const authWithSessions = auth;
   const authRequiresSession = typeof authWithSessions.login === "function";
+  const authSupportsUserManagement = typeof authWithSessions.createUser === "function";
+  const resolvedAuthMode = auth.mode ?? (authRequiresSession ? "key" : "local");
   const listUsers = async () => {
     if (typeof authWithSessions.listUsers === "function") {
       const users = await authWithSessions.listUsers();
@@ -4245,17 +5403,16 @@ function buildServer(deps) {
     req.principal = principal;
   });
   app2.get("/api/auth/users", async () => {
-    const users = await listUsers();
-    return { authMode: authRequiresSession ? "key" : "local", requiresAuth: authRequiresSession, users: users.map(presentUser) };
+    return { authMode: resolvedAuthMode, requiresAuth: authRequiresSession };
   });
   app2.get("/api/auth/me", async (req) => {
     if (!authRequiresSession) {
       const p = await auth.current();
-      return { authMode: "local", authenticated: true, user: presentUser(await userFromPrincipal(p)) };
+      return { authMode: resolvedAuthMode, authenticated: true, user: presentUser(await userFromPrincipal(p)) };
     }
     const principal = await auth.authenticate(readAuthToken(req));
-    if (!principal) return { authMode: "key", authenticated: false };
-    return { authMode: "key", authenticated: true, user: presentUser(await userFromPrincipal(principal)) };
+    if (!principal) return { authMode: resolvedAuthMode, authenticated: false };
+    return { authMode: resolvedAuthMode, authenticated: true, user: presentUser(await userFromPrincipal(principal)) };
   });
   app2.post("/api/auth/login", {
     config: { rateLimit: authRateLimitConfig },
@@ -4263,7 +5420,7 @@ function buildServer(deps) {
   }, async (req, reply) => {
     if (!authRequiresSession || typeof authWithSessions.login !== "function") {
       const p = await auth.current();
-      return { ok: true, authMode: "local", authenticated: true, user: presentUser(await userFromPrincipal(p)) };
+      return { ok: true, authMode: resolvedAuthMode, authenticated: true, user: presentUser(await userFromPrincipal(p)) };
     }
     const body = req.validatedBody ?? (req.body ?? {});
     const userId = body.userId?.trim();
@@ -4274,12 +5431,12 @@ function buildServer(deps) {
     const login = await authWithSessions.login(userId, key);
     if (!login) {
       logger.warn({ userId }, "Failed login attempt");
-      return reply.code(401).send({ error: "Invalid user or access key" });
+      return reply.code(401).send({ error: "Invalid email/username or password" });
     }
-    logger.info({ userId }, "Successful login");
+    logger.info({ userId: login.user.userId }, "Successful login");
     const maxAge = Math.max(60, Math.floor((login.expiresAt - Date.now()) / 1e3));
     reply.header("Set-Cookie", makeSessionCookie("cb_session", login.token, maxAge, shouldSecureCookie(req)));
-    return { ok: true, authMode: "key", authenticated: true, user: presentUser(login.user), expiresAt: login.expiresAt };
+    return { ok: true, authMode: resolvedAuthMode, authenticated: true, user: presentUser(login.user), expiresAt: login.expiresAt };
   });
   app2.post("/api/auth/logout", async (req, reply) => {
     if (authRequiresSession && typeof authWithSessions.logout === "function") {
@@ -4288,6 +5445,68 @@ function buildServer(deps) {
     }
     reply.header("Set-Cookie", clearSessionCookie("cb_session", shouldSecureCookie(req)));
     return { ok: true };
+  });
+  const requireUserManagement = () => {
+    if (!authSupportsUserManagement) {
+      const err = new Error("User management is only available in password auth mode");
+      err.statusCode = 501;
+      throw err;
+    }
+  };
+  app2.get("/api/admin/users", {
+    preHandler: requireMinRole("ceo")
+  }, async () => {
+    requireUserManagement();
+    const users = await listUsers();
+    return users.map(presentUser);
+  });
+  app2.post("/api/admin/users", {
+    preHandler: [requireMinRole("ceo"), validateBody(validation_exports.CreateUserSchema)]
+  }, async (req) => {
+    requireUserManagement();
+    const principal = await principalOf(req);
+    const body = req.validatedBody;
+    try {
+      const user = await authWithSessions.createUser(body, principal.userId);
+      return { ok: true, user: presentUser(user) };
+    } catch (error) {
+      throw badRequest(error instanceof Error ? error.message : "Could not create user");
+    }
+  });
+  app2.patch("/api/admin/users/:id", {
+    preHandler: [requireMinRole("ceo"), validateBody(validation_exports.UpdateUserSchema)]
+  }, async (req) => {
+    requireUserManagement();
+    const body = req.validatedBody;
+    try {
+      const user = await authWithSessions.updateUser(params(req).id, body);
+      return { ok: true, user: presentUser(user) };
+    } catch (error) {
+      throw badRequest(error instanceof Error ? error.message : "Could not update user");
+    }
+  });
+  app2.post("/api/admin/users/:id/password", {
+    preHandler: [requireMinRole("ceo"), validateBody(validation_exports.SetPasswordSchema)]
+  }, async (req) => {
+    requireUserManagement();
+    const body = req.validatedBody;
+    try {
+      await authWithSessions.setPassword(params(req).id, body.password);
+      return { ok: true };
+    } catch (error) {
+      throw badRequest(error instanceof Error ? error.message : "Could not set password");
+    }
+  });
+  app2.delete("/api/admin/users/:id", {
+    preHandler: requireMinRole("ceo")
+  }, async (req) => {
+    requireUserManagement();
+    try {
+      await authWithSessions.deleteUser(params(req).id);
+      return { ok: true };
+    } catch (error) {
+      throw badRequest(error instanceof Error ? error.message : "Could not delete user");
+    }
   });
   app2.get("/api/stream", async (req, reply) => {
     reply.raw.writeHead(200, {
@@ -4394,6 +5613,31 @@ function buildServer(deps) {
     if (!task) throw badRequest("task not found");
     return core.ctx.db.tasks.update(task.id, { assignees: b.userIds ?? [p.userId] });
   });
+  app2.post("/api/tasks/:id/time/start", async (req) => {
+    const p = await principalOf(req);
+    const taskId = params(req).id;
+    const entry = await core.timeTracking.start({ orgId: p.orgId, taskId, userId: p.userId });
+    broadcast({ type: "time.started" });
+    return entry;
+  });
+  app2.post("/api/time/:entryId/stop", async (req) => {
+    const entryId = req.params.entryId;
+    const entry = await core.timeTracking.stop(entryId);
+    broadcast({ type: "time.stopped" });
+    return entry;
+  });
+  app2.get("/api/tasks/:id/time", async (req) => {
+    const taskId = params(req).id;
+    const entries = await core.timeTracking.listByTask(taskId);
+    const total = await core.timeTracking.getTotalTime(taskId);
+    const active = await core.timeTracking.getActive(taskId);
+    return { entries, total, active };
+  });
+  app2.get("/api/time/today", async (req) => {
+    const p = await principalOf(req);
+    const total = await core.timeTracking.getTodayTime(p.userId, p.orgId);
+    return { total, formatted: core.timeTracking.formatDuration(total) };
+  });
   app2.get("/api/leads", async (req) => core.leads.list((await principalOf(req)).orgId));
   app2.post("/api/leads", {
     preHandler: validateBody(validation_exports.CreateLeadSchema)
@@ -4470,6 +5714,93 @@ function buildServer(deps) {
       }
     }
     return { name: "", title: "", company: "", email: "", phone: "" };
+  });
+  app2.post("/api/bulk/loops/close", async (req) => {
+    const p = await principalOf(req);
+    const { ids } = req.body;
+    if (!ids?.length) throw badRequest("ids required");
+    return core.bulk.closeLoops(ids, p.userId);
+  });
+  app2.post("/api/bulk/loops/snooze", async (req) => {
+    const p = await principalOf(req);
+    const { ids, hours } = req.body;
+    if (!ids?.length) throw badRequest("ids required");
+    return core.bulk.snoozeLoops(ids, hours ?? 24, p.userId);
+  });
+  app2.post("/api/bulk/tasks/move", async (req) => {
+    const p = await principalOf(req);
+    const { ids, day } = req.body;
+    if (!ids?.length) throw badRequest("ids required");
+    return core.bulk.moveTasks(ids, day, p.userId);
+  });
+  app2.post("/api/bulk/tasks/complete", async (req) => {
+    const p = await principalOf(req);
+    const { ids } = req.body;
+    if (!ids?.length) throw badRequest("ids required");
+    return core.bulk.completeTasks(ids, p.userId);
+  });
+  app2.post("/api/bulk/tasks/delete", async (req) => {
+    const p = await principalOf(req);
+    const { ids } = req.body;
+    if (!ids?.length) throw badRequest("ids required");
+    return core.bulk.deleteTasks(ids, p.userId);
+  });
+  app2.post("/api/bulk/leads/advance", async (req) => {
+    const p = await principalOf(req);
+    const { ids } = req.body;
+    if (!ids?.length) throw badRequest("ids required");
+    return core.bulk.advanceLeads(ids, p.userId);
+  });
+  app2.post("/api/bulk/assign", async (req) => {
+    const p = await principalOf(req);
+    const { entityType, ids, userIds } = req.body;
+    if (!ids?.length || !entityType) throw badRequest("ids and entityType required");
+    return core.bulk.assignMany(entityType, ids, userIds ?? [p.userId], p.userId);
+  });
+  app2.post("/api/bulk/delete", async (req) => {
+    const p = await principalOf(req);
+    const { entityType, ids } = req.body;
+    if (!ids?.length || !entityType) throw badRequest("ids and entityType required");
+    return core.bulk.deleteMany(entityType, ids, p.userId);
+  });
+  app2.post("/api/recurring/process", async (req) => {
+    const p = await principalOf(req);
+    const result = await core.recurring.processDaily(p.orgId);
+    logger.info(result, "Recurring tasks processed");
+    return result;
+  });
+  app2.get("/api/recurring/next/:recur", async (req) => {
+    const recur = req.params.recur;
+    const next = core.recurring.getNextRun(recur);
+    return { next: next.toISOString(), formatted: core.recurring.formatSchedule(recur) };
+  });
+  app2.post("/api/tasks/:id/subtasks", async (req) => {
+    const taskId = params(req).id;
+    const { title } = req.body;
+    if (!title) throw badRequest("title required");
+    return core.subtasks.add(taskId, title);
+  });
+  app2.post("/api/tasks/:id/subtasks/:subId/complete", async (req) => {
+    const taskId = params(req).id;
+    const subId = req.params.subId;
+    await core.subtasks.complete(taskId, subId);
+    return { ok: true };
+  });
+  app2.post("/api/tasks/:id/subtasks/:subId/toggle", async (req) => {
+    const taskId = params(req).id;
+    const subId = req.params.subId;
+    await core.subtasks.toggle(taskId, subId);
+    return { ok: true };
+  });
+  app2.delete("/api/tasks/:id/subtasks/:subId", async (req) => {
+    const taskId = params(req).id;
+    const subId = req.params.subId;
+    await core.subtasks.remove(taskId, subId);
+    return { ok: true };
+  });
+  app2.get("/api/tasks/:id/subtasks", async (req) => {
+    const taskId = params(req).id;
+    return core.subtasks.list(taskId);
   });
   app2.get("/api/agents", async () => core.agents.roster());
   app2.get("/api/events", async (req) => {
@@ -4560,6 +5891,109 @@ function buildServer(deps) {
     broadcast({ type: "loop.created" });
     return reply.send({ captured: loopId });
   });
+  const pushSubscriptions = /* @__PURE__ */ new Map();
+  app2.post("/api/notifications/subscribe", async (req) => {
+    const { subscription } = req.body;
+    const p = await principalOf(req);
+    pushSubscriptions.set(p.userId, subscription);
+    return { ok: true };
+  });
+  app2.post("/api/notifications/unsubscribe", async (req) => {
+    const p = await principalOf(req);
+    pushSubscriptions.delete(p.userId);
+    return { ok: true };
+  });
+  app2.get("/api/notifications/status", async (req) => {
+    const p = await principalOf(req);
+    return { subscribed: pushSubscriptions.has(p.userId) };
+  });
+  app2.get("/api/export/loops", async (req, reply) => {
+    const p = await principalOf(req);
+    const loops = await core.loops.list(p.orgId);
+    const format = req.query?.format || "json";
+    if (format === "csv") {
+      const csv = loopsToCsv(loops);
+      reply.header("Content-Type", "text/csv");
+      reply.header("Content-Disposition", 'attachment; filename="loops.csv"');
+      return csv;
+    }
+    return loops;
+  });
+  app2.get("/api/export/tasks", async (req, reply) => {
+    const p = await principalOf(req);
+    const tasks = await core.tasks.list(p.orgId);
+    const format = req.query?.format || "json";
+    if (format === "csv") {
+      const csv = tasksToCsv(tasks);
+      reply.header("Content-Type", "text/csv");
+      reply.header("Content-Disposition", 'attachment; filename="tasks.csv"');
+      return csv;
+    }
+    return tasks;
+  });
+  app2.get("/api/export/leads", async (req, reply) => {
+    const p = await principalOf(req);
+    const leads = await core.leads.list(p.orgId);
+    const format = req.query?.format || "json";
+    if (format === "csv") {
+      const csv = leadsToCsv(leads);
+      reply.header("Content-Type", "text/csv");
+      reply.header("Content-Disposition", 'attachment; filename="leads.csv"');
+      return csv;
+    }
+    return leads;
+  });
+  app2.get("/api/ai/suggestions/:entityType/:entityId", async (req) => {
+    const { entityType, entityId } = req.params;
+    return core.ai.getSuggestions(entityType, entityId);
+  });
+  app2.post("/api/ai/assign/:taskId", async (req) => {
+    const taskId = req.params.taskId;
+    const assignee = await core.ai.autoAssign(taskId);
+    return { assignee };
+  });
+  app2.get("/api/ai/patterns", async (req) => {
+    const p = await principalOf(req);
+    return core.ai.getPatterns(p.orgId);
+  });
+  app2.post("/api/ai/suggestions/:id/dismiss", async (req) => {
+    const id = req.params.id;
+    await core.ai.dismiss(id);
+    return { ok: true };
+  });
+  app2.get("/api/dashboard", async (req) => {
+    const p = await principalOf(req);
+    const [loops, tasks, leads] = await Promise.all([
+      core.loops.list(p.orgId),
+      core.tasks.list(p.orgId),
+      core.leads.list(p.orgId)
+    ]);
+    const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    const todayTasks = tasks.filter((t) => t.day === "today");
+    const openLoops = loops.filter((l) => l.status === "open");
+    const completedTasks = tasks.filter((t) => t.subtasks?.every((s) => s.done));
+    return {
+      loops: {
+        total: loops.length,
+        open: openLoops.length,
+        closed: loops.filter((l) => l.status === "closed").length,
+        snoozed: loops.filter((l) => l.status === "snoozed").length
+      },
+      tasks: {
+        total: tasks.length,
+        today: todayTasks.length,
+        completedToday: completedTasks.length,
+        overdue: tasks.filter((t) => t.dueAt && t.dueAt < Date.now() && t.subtasks?.some((s) => !s.done)).length
+      },
+      leads: {
+        total: leads.length,
+        won: leads.filter((l) => l.stage === "won").length,
+        lost: leads.filter((l) => l.stage === "lost").length,
+        pipeline: leads.filter((l) => !["won", "lost"].includes(l.stage)).length
+      },
+      today
+    };
+  });
   app2.get("/", async (_req, reply) => reply.type("text/html").send(renderUi()));
   app2.setErrorHandler(function(error, request, reply) {
     const statusCode = error.statusCode ?? 500;
@@ -4590,6 +6024,9 @@ function sanitizeUser(user) {
     role: user.role,
     name,
     email: user.email?.trim() || void 0,
+    username: user.username?.trim() || void 0,
+    active: user.active,
+    createdAt: user.createdAt,
     initials
   };
 }
@@ -4601,6 +6038,9 @@ function presentUser(user) {
     role: safe.role,
     name: safe.name,
     email: safe.email,
+    username: safe.username,
+    active: safe.active,
+    createdAt: safe.createdAt,
     initials: safe.initials
   };
 }
@@ -4679,6 +6119,64 @@ function clearSessionCookie(name, secure) {
   ];
   if (secure) parts.push("Secure");
   return parts.join("; ");
+}
+function escapeCsvField(val) {
+  if (val === null || val === val === void 0) return "";
+  const str = String(val);
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+function arrayToCsv(headers, rows) {
+  const lines = [headers.join(",")];
+  for (const row of rows) {
+    lines.push(row.map(escapeCsvField).join(","));
+  }
+  return lines.join("\n");
+}
+function loopsToCsv(loops) {
+  const headers = ["id", "channel", "from", "subject", "body", "status", "assignee", "createdAt"];
+  const rows = loops.map((l) => [
+    l.id,
+    l.channel,
+    l.from,
+    l.subject,
+    l.body,
+    l.status,
+    l.assignee,
+    l.createdAt
+  ]);
+  return arrayToCsv(headers, rows);
+}
+function tasksToCsv(tasks) {
+  const headers = ["id", "title", "list", "day", "priority", "recurring", "dueAt", "assignees", "completed"];
+  const rows = tasks.map((t) => [
+    t.id,
+    t.title,
+    t.list,
+    t.day,
+    t.priority,
+    t.recurring ? "yes" : "no",
+    t.dueAt ? new Date(t.dueAt).toISOString() : "",
+    (t.assignees ?? []).join("; "),
+    (t.subtasks ?? []).every((s) => s.done) ? "yes" : "no"
+  ]);
+  return arrayToCsv(headers, rows);
+}
+function leadsToCsv(leads) {
+  const headers = ["id", "name", "company", "title", "stage", "value", "notes", "createdAt"];
+  const rows = leads.map((l) => [
+    l.id,
+    l.name,
+    l.company,
+    l.title,
+    l.stage,
+    l.value,
+    l.notes,
+    l.createdAt
+  ]);
+  return arrayToCsv(headers, rows);
 }
 
 // cli/bin/companybrain.ts

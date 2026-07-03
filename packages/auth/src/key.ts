@@ -2,6 +2,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Role } from '@companybrain/types';
 import type { Auth, AuthUser, Capability, LoginResult, Principal } from './port';
 import { LOCAL_ORG_ID } from './local';
+import { CAPS_BY_ROLE, normalizeRole, initialsFor } from './capabilities';
 
 type RawUser = {
   id?: string;
@@ -29,52 +30,6 @@ const DEFAULT_USERS: RawUser[] = [
   { id: 'user_emp', role: 'employee', name: 'Alex Kumar', email: 'alex@companybrain.local', initials: 'AK' },
   { id: 'user_client', role: 'client', name: 'Dana Carter', email: 'dana@client.local', initials: 'DC' },
 ];
-
-const CAPS_BY_ROLE: Record<Role, Set<Capability>> = {
-  ceo: new Set<Capability>([
-    'loop.read', 'loop.write',
-    'task.read', 'task.write',
-    'lead.read', 'lead.write',
-    'autonomy.configure', 'killswitch.toggle', 'org.admin',
-  ]),
-  manager: new Set<Capability>([
-    'loop.read', 'loop.write',
-    'task.read', 'task.write',
-    'lead.read', 'lead.write',
-    'autonomy.configure', 'killswitch.toggle',
-  ]),
-  employee: new Set<Capability>([
-    'loop.read', 'loop.write',
-    'task.read', 'task.write',
-    'lead.read', 'lead.write',
-  ]),
-  client: new Set<Capability>([
-    'loop.read',
-    'task.read',
-    'lead.read',
-  ]),
-  agent: new Set<Capability>([
-    'loop.read', 'loop.write',
-    'task.read', 'task.write',
-    'lead.read', 'lead.write',
-  ]),
-};
-
-function normalizeRole(raw?: string): Role {
-  const v = (raw ?? '').trim().toLowerCase();
-  if (v === 'ceo') return 'ceo';
-  if (v === 'manager' || v === 'mgr') return 'manager';
-  if (v === 'employee' || v === 'emp' || v === 'member') return 'employee';
-  if (v === 'client') return 'client';
-  if (v === 'agent' || v === 'ai' || v === 'ai-agent') return 'agent';
-  return 'employee';
-}
-
-function initialsFor(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
-  if (!parts.length) return 'US';
-  return parts.map((p) => p.charAt(0).toUpperCase()).join('');
-}
 
 function timingSafeMatch(input: string, expected: string): boolean {
   const a = Buffer.from(input);

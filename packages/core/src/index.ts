@@ -11,6 +11,11 @@ import { makeTasks } from './tasks';
 import { makeLeads } from './leads';
 import { makeAgents } from './agents';
 import { makeAutonomy, makeApprovals } from './autonomy';
+import { makeTimeTracking } from './time-tracking';
+import { makeBulkOps } from './bulk';
+import { makeRecurring } from './recurring';
+import { makeSubtasks } from './subtasks';
+import { makeAi } from './ai';
 import { undoEvent, type UndoResult } from './undo';
 import { registerWorkers } from './workers';
 
@@ -32,6 +37,11 @@ export interface Core {
   agents: ReturnType<typeof makeAgents>;
   autonomy: ReturnType<typeof makeAutonomy>;
   approvals: ReturnType<typeof makeApprovals>;
+  timeTracking: ReturnType<typeof makeTimeTracking>;
+  bulk: ReturnType<typeof makeBulkOps>;
+  recurring: ReturnType<typeof makeRecurring>;
+  subtasks: ReturnType<typeof makeSubtasks>;
+  ai: ReturnType<typeof makeAi>;
   events: { list: Context['db']['events']['list']; undo: (eventId: string) => Promise<UndoResult> };
   /** Optional server-side LLM injection point (wired in M5); when undefined, leads fall back to heuristics. */
   llm?: { extractLead?: (note: string) => Promise<Partial<import('@companybrain/types').Lead>> };
@@ -54,6 +64,11 @@ export function createCoreFromPorts(ports: { db: Database; queue: Queue; auth: A
     agents: makeAgents(),
     autonomy: makeAutonomy(ctx),
     approvals: makeApprovals(ctx),
+    timeTracking: makeTimeTracking(ctx),
+    bulk: makeBulkOps(ctx),
+    recurring: makeRecurring(ctx),
+    subtasks: makeSubtasks(ctx),
+    ai: makeAi(ctx),
     events: {
       list: (orgId: string, limit?: number) => ctx.db.events.list(orgId, limit),
       undo: (eventId: string) => undoEvent(ctx, eventId),

@@ -11,6 +11,10 @@ import type {
   EventRepo,
   SettingsRepo,
   ApprovalRepo,
+  TimeEntryRepo,
+  TimeEntry,
+  CustomFieldRepo,
+  CustomField,
 } from './port';
 
 const DDL = `
@@ -20,11 +24,17 @@ CREATE TABLE IF NOT EXISTS leads  (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, st
 CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, type TEXT, at INTEGER, doc TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS settings  (org_id TEXT PRIMARY KEY, doc TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS approvals (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, status TEXT, at INTEGER, doc TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS time_entries (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, task_id TEXT NOT NULL, user_id TEXT NOT NULL, started_at INTEGER, ended_at INTEGER, duration INTEGER, note TEXT, doc TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS custom_fields (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, field_name TEXT NOT NULL, field_type TEXT NOT NULL DEFAULT 'text', field_value TEXT NOT NULL, created_at INTEGER);
 CREATE INDEX IF NOT EXISTS idx_loops_org  ON loops(org_id, side);
 CREATE INDEX IF NOT EXISTS idx_tasks_org  ON tasks(org_id);
 CREATE INDEX IF NOT EXISTS idx_leads_org  ON leads(org_id);
 CREATE INDEX IF NOT EXISTS idx_events_org ON events(org_id, at);
 CREATE INDEX IF NOT EXISTS idx_approvals_org ON approvals(org_id, status, at);
+CREATE INDEX IF NOT EXISTS idx_time_entries_task ON time_entries(task_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id, org_id);
+CREATE INDEX IF NOT EXISTS idx_custom_fields_entity ON custom_fields(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_custom_fields_org ON custom_fields(org_id);
 `;
 
 export class SqliteDatabase implements DbPort {
@@ -35,6 +45,8 @@ export class SqliteDatabase implements DbPort {
   events: EventRepo;
   settings: SettingsRepo;
   approvals: ApprovalRepo;
+  timeEntries: TimeEntryRepo;
+  customFields: CustomFieldRepo;
 
   constructor(filePath: string) {
     this.db = new Database(filePath);
@@ -174,6 +186,73 @@ export class SqliteDatabase implements DbPort {
         return next;
       },
     };
+
+    this.timeEntries = {
+      async insert(entry) {
+        db.prepare('INSERT INTO time_entries (id, org_id, task_id, user_id, started_at, ended_at, duration, note, doc) VALUES (?,?,?,?,?,?,?,?,?)')
+          .run(entry.id, entry.orgId, entry.taskId, entry.userId, entry.startedAt, entry.endedAt ?? null, entry.duration ?? null, entry.note ?? null, JSON.stringify(entry));
+        return entry;
+      },
+      async get(id) {
+        const row = db.prepare('SELECT doc FROM time_entries WHERE id=?').get(id) as { doc: string } | undefined;
+        return row ? (JSON.parse(row.doc) as TimeEntry) : null;
+      },
+      async listByTask(taskId) {
+        const rows = db.prepare('SELECT doc FROM time_entries WHERE task_id=? ORDER BY started_at DESC').all(taskId) as { doc: string }[];
+        return rows.map((r) => JSON.parse(r.doc) as TimeEntry);
+      },
+      async listByUser(userId, orgId) {
+        const rows = db.prepare('SELECT doc FROM time_entries WHERE user_id=? AND org_id=? ORDER BY started_at DESC').all(userId, orgId) as { doc: string }[];
+        return rows.map((r) => JSON.parse(r.doc) as TimeEntry);
+      },
+      async update(id, patch) {
+        const cur = await this.get(id);
+        if (!cur) throw new Error(`time entry ${id} not found`);
+        const next = { ...cur, ...patch } as TimeEntry;
+        db.prepare('UPDATE time_entries SET ended_at=?, duration=?, note=?, doc=? WHERE id=?')
+          .run(next.endedAt ?? null, next.duration ?? null, next.note ?? null, JSON.stringify(next), id);
+        return next;
+      },
+      async delete(id) {
+        db.prepare('DELETE FROM time_entries WHERE id=?').run(id);
+      },
+    };
+
+    this.customFields = {
+      async insert(field) {
+        db.prepare('INSERT INTO custom_fields (id, org_id, entity_type, entity_id, field_name, field_type, field_value, created_at) VALUES (?,?,?,?,?,?,?,?)')
+          .run(field.id, field.orgId, field.entityType, field.entityId, field.fieldName, field.fieldType, field.fieldValue, field.createdAt);
+        return field;
+      },
+      async get(id) {
+        const row = db.prepare('SELECT * FROM custom_fields WHERE id=?').get(id) as any;
+        return row ? rowToCustomField(row) : null;
+      },
+      async listByEntity(entityType, entityId) {
+        const rows = db.prepare('SELECT * FROM custom_fields WHERE entity_type=? AND entity_id=? ORDER BY created_at ASC').all(entityType, entityId) as any[];
+        return rows.map(rowToCustomField);
+      },
+      async listByOrg(orgId, entityType?) {
+        const rows = entityType
+          ? db.prepare('SELECT * FROM custom_fields WHERE org_id=? AND entity_type=? ORDER BY created_at ASC').all(orgId, entityType) as any[]
+          : db.prepare('SELECT * FROM custom_fields WHERE org_id=? ORDER BY created_at ASC').all(orgId) as any[];
+        return rows.map(rowToCustomField);
+      },
+      async update(id, patch) {
+        const cur = await this.get(id);
+        if (!cur) throw new Error(`custom field ${id} not found`);
+        const next = { ...cur, ...patch } as CustomField;
+        db.prepare('UPDATE custom_fields SET field_value=?, field_name=?, field_type=? WHERE id=?')
+          .run(next.fieldValue, next.fieldName, next.fieldType, id);
+        return next;
+      },
+      async delete(id) {
+        db.prepare('DELETE FROM custom_fields WHERE id=?').run(id);
+      },
+      async deleteByEntity(entityType, entityId) {
+        db.prepare('DELETE FROM custom_fields WHERE entity_type=? AND entity_id=?').run(entityType, entityId);
+      },
+    };
   }
 
   async init() {
@@ -183,4 +262,17 @@ export class SqliteDatabase implements DbPort {
   async close() {
     this.db.close();
   }
+}
+
+function rowToCustomField(row: any): CustomField {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    fieldName: row.field_name,
+    fieldType: row.field_type,
+    fieldValue: row.field_value,
+    createdAt: row.created_at,
+  };
 }

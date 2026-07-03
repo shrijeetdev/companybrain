@@ -3,7 +3,11 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <title>companybrain</title>
+  <title>Company Brain</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,6 +23,13 @@
       <div class="blob blob3"></div>
       <div id="mesh"></div>
       <div id="grain"></div>
+    </div>
+
+    <!-- Floating Orbs (futuristic effect) -->
+    <div class="floating-orbs">
+      <div class="floating-orb"></div>
+      <div class="floating-orb"></div>
+      <div class="floating-orb"></div>
     </div>
 
     <!-- Shell -->
@@ -138,6 +149,35 @@
       </main>
     </div>
 
+    <!-- Bottom Navigation (Mobile) -->
+    <nav class="bottom-nav">
+      <div class="bottom-nav-inner">
+        <div class="bottom-nav-item active" data-page="loops">
+          <span>🔄</span>
+          <span>Loops</span>
+        </div>
+        <div class="bottom-nav-item" data-page="tasks">
+          <span>✅</span>
+          <span>Tasks</span>
+        </div>
+        <div class="bottom-nav-item" data-page="leads">
+          <span>👥</span>
+          <span>Leads</span>
+        </div>
+        <div class="bottom-nav-item" data-page="projects">
+          <span>📁</span>
+          <span>Projects</span>
+        </div>
+        <div class="bottom-nav-item" data-page="settings">
+          <span>⚙️</span>
+          <span>Settings</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Floating Action Button (Mobile) -->
+    <button class="fab" id="fab" onclick="app.openFabMenu()">+</button>
+
     <!-- Notification panel -->
     <div id="notif-panel">
       <div class="notif-head">
@@ -159,10 +199,85 @@
       </div>
     </div>
 
+    <!-- Command Palette (Cmd+K) -->
+    <div class="cmd-overlay" id="cmd-overlay">
+      <div class="cmd-palette">
+        <div class="cmd-search-row">
+          <span class="cmd-icon">🔍</span>
+          <input type="text" id="cmd-input" placeholder="Search or type a command..." autocomplete="off">
+          <kbd class="cmd-kbd">ESC</kbd>
+        </div>
+        <div class="cmd-results" id="cmd-results"></div>
+        <div class="cmd-footer">
+          <span><kbd>↑↓</kbd> Navigate</span>
+          <span><kbd>↵</kbd> Select</span>
+          <span><kbd>ESC</kbd> Close</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Help -->
+    <div class="shortcuts-overlay" id="shortcuts-overlay">
+      <div class="shortcuts-panel">
+        <div class="shortcuts-header">
+          <div class="shortcuts-title">Keyboard Shortcuts</div>
+          <button class="modal-close" onclick="app.closeShortcuts()">×</button>
+        </div>
+        <div class="shortcuts-grid">
+          <div class="shortcut-group">
+            <div class="shortcut-group-title">Navigation</div>
+            <div class="shortcut-row"><kbd>g</kbd> then <kbd>l</kbd><span>Go to Loops</span></div>
+            <div class="shortcut-row"><kbd>g</kbd> then <kbd>t</kbd><span>Go to Tasks</span></div>
+            <div class="shortcut-row"><kbd>g</kbd> then <kbd>d</kbd><span>Go to Leads</span></div>
+            <div class="shortcut-row"><kbd>g</kbd> then <kbd>p</kbd><span>Go to Projects</span></div>
+            <div class="shortcut-row"><kbd>j</kbd><span>Move down</span></div>
+            <div class="shortcut-row"><kbd>k</kbd><span>Move up</span></div>
+          </div>
+          <div class="shortcut-group">
+            <div class="shortcut-group-title">Actions</div>
+            <div class="shortcut-row"><kbd>Cmd</kbd>+<kbd>K</kbd><span>Command palette</span></div>
+            <div class="shortcut-row"><kbd>/</kbd><span>Focus search</span></div>
+            <div class="shortcut-row"><kbd>n</kbd><span>New item</span></div>
+            <div class="shortcut-row"><kbd>x</kbd><span>Complete selected</span></div>
+            <div class="shortcut-row"><kbd>s</kbd><span>Snooze selected</span></div>
+            <div class="shortcut-row"><kbd>?</kbd><span>Show shortcuts</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Sheet (mobile) -->
+    <div class="bottom-sheet-overlay" id="bottom-sheet-overlay">
+      <div class="bottom-sheet" id="bottom-sheet">
+        <div class="bottom-sheet-handle"></div>
+        <div class="bottom-sheet-content" id="bottom-sheet-content"></div>
+      </div>
+    </div>
+
     <!-- Toast container -->
     <div id="toast-container"></div>
+
+    <!-- Loading skeleton -->
+    <template id="skeleton-card">
+      <div class="skeleton-card">
+        <div class="skeleton-line skeleton-title"></div>
+        <div class="skeleton-line skeleton-sub"></div>
+        <div class="skeleton-line skeleton-short"></div>
+      </div>
+    </template>
   </div>
 
   <script src="/js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('SW registered:', reg.scope))
+        .catch(err => console.error('SW registration failed:', err));
+    }
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  </script>
 </body>
 </html>

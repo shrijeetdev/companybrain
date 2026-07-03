@@ -16,14 +16,16 @@ This checklist is based on a full repo sweep of:
 - [x] Removed duplicate UI function blocks in `web-ui.ts` that could break script parsing/stall rendering
 - [x] Fixed bundle/runtime regression (`Dynamic require of "node:*" is not supported`) by hardening externals in `scripts/build.mjs`
 - [x] Rebuilt and committed `dist/server.js` from latest source
-- [x] Added production auth mode with key-based sessions and cookie auth
-  - [x] `COMPANYBRAIN_AUTH_MODE=key`
-  - [x] `COMPANYBRAIN_ACCESS_KEY`
-  - [x] Optional `COMPANYBRAIN_USERS` JSON roster
-  - [x] Default roster includes **Monty** (`user_monty`)
+- [x] Added production auth modes with cookie sessions
+  - [x] Legacy shared-key mode: `COMPANYBRAIN_AUTH_MODE=key`, `COMPANYBRAIN_ACCESS_KEY`, optional `COMPANYBRAIN_USERS`
+  - [x] Recommended password mode: `COMPANYBRAIN_AUTH_MODE=password`
+  - [x] First-admin bootstrap via `COMPANYBRAIN_ADMIN_EMAIL`, `COMPANYBRAIN_ADMIN_PASSWORD`, optional `COMPANYBRAIN_ADMIN_NAME`
 - [x] Added `/api/auth/*` endpoints for login/session flow
-- [x] Protected non-auth `/api/*` endpoints with session checks in key mode
+- [x] Login no longer exposes public user names/rosters; users enter email/username + password
+- [x] Added CEO/admin user-management endpoints: `GET/POST /api/admin/users`, `PATCH/DELETE /api/admin/users/:id`, `POST /api/admin/users/:id/password`
+- [x] Protected non-auth `/api/*` endpoints with session checks in session auth modes
 - [x] Added web login modal + sign-out controls in UI (desktop + mobile)
+- [x] Added Settings → User Management UI for CEO/admins to create users, edit roles/status, reset passwords, and delete users
 - [x] Added unauthorized/session-expiry handling in client API helper
 - [x] Added login rate-limit guard on `/api/auth/login`
 - [x] Updated startup logs to show auth mode
@@ -46,6 +48,12 @@ This checklist is based on a full repo sweep of:
   - [x] `/api/loops` returns `401` without session in key mode
   - [x] login works for `user_monty`
   - [x] authenticated requests succeed
+- [x] Smoke-tested password auth flow:
+  - [x] `/api/loops` returns `401` without session
+  - [x] `/api/auth/users` does not reveal the roster
+  - [x] bootstrap admin can log in as `ceo`
+  - [x] CEO/admin can list/create users
+  - [x] created non-CEO user can log in but cannot access `/api/admin/users`
 
 ## 🔧 Required go-live settings (Hostinger)
 
@@ -59,13 +67,20 @@ Environment variables:
 
 - `NODE_ENV=production`
 - `COMPANYBRAIN_NO_OPEN=true`
-- `COMPANYBRAIN_AUTH_MODE=key`
-- `COMPANYBRAIN_ACCESS_KEY=<strong-random-secret>`
-- `COMPANYBRAIN_USERS=<json-array-optional>`
+- `COMPANYBRAIN_AUTH_MODE=password`
+- `COMPANYBRAIN_ADMIN_EMAIL=info@vexocore.in`
+- `COMPANYBRAIN_ADMIN_PASSWORD=1234@1234work`
+- `COMPANYBRAIN_ADMIN_NAME=Vexocore Admin`
+- `COMPANYBRAIN_SECURE_COOKIE=true`
+
+Notes:
+
+- Password mode seeds the admin only when no users exist yet. If users already exist, change/reset passwords from Settings → User Management.
+- Replace the bootstrap password after first login for a public production deployment.
 
 ## ⚠️ Recommended before public launch (non-blocking but important)
 
-- [ ] Enforce HTTPS-only cookies in production via `COMPANYBRAIN_SECURE_COOKIE=true`
+- [x] Enforce HTTPS-only cookies in production via `COMPANYBRAIN_SECURE_COOKIE=true`
 - [ ] Add structured request logging and error telemetry (Sentry/Logtail/etc.)
 - [ ] Configure automated SQLite backups for `~/.companybrain/companybrain.sqlite`
 - [ ] Add HTTPS reverse-proxy hardening headers (HSTS/CSP fine-tune)

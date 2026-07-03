@@ -105,6 +105,26 @@ export const LoginSchema = z.object({
   key: z.string().trim().min(1),
 });
 
+export const CreateUserSchema = z.object({
+  email: z.string().trim().email().max(200),
+  username: z.string().trim().min(3).max(50).optional(),
+  name: z.string().trim().min(1).max(200),
+  role: z.enum(['ceo', 'manager', 'employee', 'client', 'agent']),
+  password: z.string().min(8, 'password must be at least 8 characters').max(200),
+});
+
+export const UpdateUserSchema = z.object({
+  name: z.string().trim().min(1).max(200).optional(),
+  email: z.string().trim().email().max(200).optional(),
+  username: z.string().trim().min(3).max(50).nullable().optional(),
+  role: z.enum(['ceo', 'manager', 'employee', 'client', 'agent']).optional(),
+  active: z.boolean().optional(),
+});
+
+export const SetPasswordSchema = z.object({
+  password: z.string().min(8, 'password must be at least 8 characters').max(200),
+});
+
 export const WebhookFanInSchema = z.object({
   from: z.string().trim().max(200).optional().default('unknown'),
   text: z.string().trim().min(1, 'text is required').max(10000),

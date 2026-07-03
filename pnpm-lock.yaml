@@ -90,6 +90,13 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.0
         version: 2.110.0
+      better-sqlite3:
+        specifier: ^11.3.0
+        version: 11.10.0
+    devDependencies:
+      '@types/better-sqlite3':
+        specifier: ^7.6.11
+        version: 7.6.13
 
   packages/core:
     dependencies:

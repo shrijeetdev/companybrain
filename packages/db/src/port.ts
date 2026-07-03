@@ -49,6 +49,47 @@ export interface ApprovalRepo {
   update(id: string, patch: Partial<Approval>): Promise<Approval>;
 }
 
+export interface TimeEntry {
+  id: string;
+  orgId: string;
+  taskId: string;
+  userId: string;
+  startedAt: number;
+  endedAt?: number;
+  duration?: number;
+  note?: string;
+}
+
+export interface TimeEntryRepo {
+  insert(entry: TimeEntry): Promise<TimeEntry>;
+  get(id: string): Promise<TimeEntry | null>;
+  listByTask(taskId: string): Promise<TimeEntry[]>;
+  listByUser(userId: string, orgId: string): Promise<TimeEntry[]>;
+  update(id: string, patch: Partial<TimeEntry>): Promise<TimeEntry>;
+  delete(id: string): Promise<void>;
+}
+
+export interface CustomField {
+  id: string;
+  orgId: string;
+  entityType: 'loop' | 'task' | 'lead';
+  entityId: string;
+  fieldName: string;
+  fieldType: 'text' | 'number' | 'date' | 'select' | 'boolean';
+  fieldValue: string;
+  createdAt: number;
+}
+
+export interface CustomFieldRepo {
+  insert(field: CustomField): Promise<CustomField>;
+  get(id: string): Promise<CustomField | null>;
+  listByEntity(entityType: string, entityId: string): Promise<CustomField[]>;
+  listByOrg(orgId: string, entityType?: string): Promise<CustomField[]>;
+  update(id: string, patch: Partial<CustomField>): Promise<CustomField>;
+  delete(id: string): Promise<void>;
+  deleteByEntity(entityType: string, entityId: string): Promise<void>;
+}
+
 export interface Database {
   /** create tables if missing */
   init(): Promise<void>;
@@ -58,5 +99,7 @@ export interface Database {
   events: EventRepo;
   settings: SettingsRepo;
   approvals: ApprovalRepo;
+  timeEntries: TimeEntryRepo;
+  customFields: CustomFieldRepo;
   close(): Promise<void>;
 }

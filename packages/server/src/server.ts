@@ -9,7 +9,7 @@ import fastifyStatic from '@fastify/static';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import type { Core } from '@companybrain/core';
-import type { Auth, AuthUser, Principal } from '@companybrain/auth';
+import type { Auth, AuthUser, Principal, CreateUserInput, UpdateUserInput } from '@companybrain/auth';
 import { ingest, whatsapp, createLlm } from '@companybrain/integrations';
 import { LOCAL_ORG_ID } from '@companybrain/auth';
 import { renderUi } from './web-ui';
@@ -20,6 +20,7 @@ import {
   webhookRateLimitConfig,
   authRateLimitConfig,
   whatsappSignatureVerify,
+  requireMinRole,
   logger,
   schemas,
 } from './middleware';
@@ -83,8 +84,14 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     logout?: (token: string) => Promise<void>;
     listUsers?: () => Promise<AuthUser[]> | AuthUser[];
     getUser?: (userId: string) => Promise<AuthUser | null> | AuthUser | null;
+    createUser?: (input: CreateUserInput, createdBy: string) => Promise<AuthUser> | AuthUser;
+    updateUser?: (userId: string, patch: UpdateUserInput) => Promise<AuthUser> | AuthUser;
+    deleteUser?: (userId: string) => Promise<void> | void;
+    setPassword?: (userId: string, newPassword: string) => Promise<void> | void;
   };
   const authRequiresSession = typeof authWithSessions.login === 'function';
+  const authSupportsUserManagement = typeof authWithSessions.createUser === 'function';
+  const resolvedAuthMode = auth.mode ?? (authRequiresSession ? 'key' : 'local');
 
   const listUsers = async (): Promise<AuthUser[]> => {
     if (typeof authWithSessions.listUsers === 'function') {
@@ -149,20 +156,21 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   // --- Auth/session ---
+  // Intentionally does NOT list users pre-login — visitors should not be able to see who
+  // has an account before authenticating. The login form asks for an email/username instead.
   app.get('/api/auth/users', async () => {
-    const users = await listUsers();
-    return { authMode: authRequiresSession ? 'key' : 'local', requiresAuth: authRequiresSession, users: users.map(presentUser) };
+    return { authMode: resolvedAuthMode, requiresAuth: authRequiresSession };
   });
 
   app.get('/api/auth/me', async (req) => {
     if (!authRequiresSession) {
       const p = await auth.current();
-      return { authMode: 'local', authenticated: true, user: presentUser(await userFromPrincipal(p)) };
+      return { authMode: resolvedAuthMode, authenticated: true, user: presentUser(await userFromPrincipal(p)) };
     }
 
     const principal = await auth.authenticate(readAuthToken(req));
-    if (!principal) return { authMode: 'key', authenticated: false };
-    return { authMode: 'key', authenticated: true, user: presentUser(await userFromPrincipal(principal)) };
+    if (!principal) return { authMode: resolvedAuthMode, authenticated: false };
+    return { authMode: resolvedAuthMode, authenticated: true, user: presentUser(await userFromPrincipal(principal)) };
   });
 
   app.post('/api/auth/login', {
@@ -171,7 +179,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   }, async (req, reply) => {
     if (!authRequiresSession || typeof authWithSessions.login !== 'function') {
       const p = await auth.current();
-      return { ok: true, authMode: 'local', authenticated: true, user: presentUser(await userFromPrincipal(p)) };
+      return { ok: true, authMode: resolvedAuthMode, authenticated: true, user: presentUser(await userFromPrincipal(p)) };
     }
 
     const body = (req as any).validatedBody ?? (req.body ?? {}) as { userId?: string; key?: string };
@@ -184,14 +192,14 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const login = await authWithSessions.login(userId, key);
     if (!login) {
       logger.warn({ userId }, 'Failed login attempt');
-      return reply.code(401).send({ error: 'Invalid user or access key' });
+      return reply.code(401).send({ error: 'Invalid email/username or password' });
     }
 
-    logger.info({ userId }, 'Successful login');
+    logger.info({ userId: login.user.userId }, 'Successful login');
 
     const maxAge = Math.max(60, Math.floor((login.expiresAt - Date.now()) / 1000));
     reply.header('Set-Cookie', makeSessionCookie('cb_session', login.token, maxAge, shouldSecureCookie(req)));
-    return { ok: true, authMode: 'key', authenticated: true, user: presentUser(login.user), expiresAt: login.expiresAt };
+    return { ok: true, authMode: resolvedAuthMode, authenticated: true, user: presentUser(login.user), expiresAt: login.expiresAt };
   });
 
   app.post('/api/auth/logout', async (req, reply) => {
@@ -201,6 +209,75 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     }
     reply.header('Set-Cookie', clearSessionCookie('cb_session', shouldSecureCookie(req)));
     return { ok: true };
+  });
+
+  // --- Admin user management ---
+  const requireUserManagement = () => {
+    if (!authSupportsUserManagement) {
+      const err = new Error('User management is only available in password auth mode') as Error & { statusCode: number };
+      err.statusCode = 501;
+      throw err;
+    }
+  };
+
+  app.get('/api/admin/users', {
+    preHandler: requireMinRole('ceo'),
+  }, async () => {
+    requireUserManagement();
+    const users = await listUsers();
+    return users.map(presentUser);
+  });
+
+  app.post('/api/admin/users', {
+    preHandler: [requireMinRole('ceo'), validateBody(schemas.CreateUserSchema)],
+  }, async (req) => {
+    requireUserManagement();
+    const principal = await principalOf(req);
+    const body = (req as any).validatedBody as CreateUserInput;
+    try {
+      const user = await authWithSessions.createUser!(body, principal.userId);
+      return { ok: true, user: presentUser(user) };
+    } catch (error) {
+      throw badRequest(error instanceof Error ? error.message : 'Could not create user');
+    }
+  });
+
+  app.patch('/api/admin/users/:id', {
+    preHandler: [requireMinRole('ceo'), validateBody(schemas.UpdateUserSchema)],
+  }, async (req) => {
+    requireUserManagement();
+    const body = (req as any).validatedBody as UpdateUserInput;
+    try {
+      const user = await authWithSessions.updateUser!(params(req).id, body);
+      return { ok: true, user: presentUser(user) };
+    } catch (error) {
+      throw badRequest(error instanceof Error ? error.message : 'Could not update user');
+    }
+  });
+
+  app.post('/api/admin/users/:id/password', {
+    preHandler: [requireMinRole('ceo'), validateBody(schemas.SetPasswordSchema)],
+  }, async (req) => {
+    requireUserManagement();
+    const body = (req as any).validatedBody as { password: string };
+    try {
+      await authWithSessions.setPassword!(params(req).id, body.password);
+      return { ok: true };
+    } catch (error) {
+      throw badRequest(error instanceof Error ? error.message : 'Could not set password');
+    }
+  });
+
+  app.delete('/api/admin/users/:id', {
+    preHandler: requireMinRole('ceo'),
+  }, async (req) => {
+    requireUserManagement();
+    try {
+      await authWithSessions.deleteUser!(params(req).id);
+      return { ok: true };
+    } catch (error) {
+      throw badRequest(error instanceof Error ? error.message : 'Could not delete user');
+    }
   });
 
   // --- SSE stream ---
@@ -314,6 +391,36 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     return core.ctx.db.tasks.update(task.id, { assignees: b.userIds ?? [p.userId] });
   });
 
+  // --- Time Tracking ---
+  app.post('/api/tasks/:id/time/start', async (req) => {
+    const p = await principalOf(req);
+    const taskId = params(req).id;
+    const entry = await core.timeTracking.start({ orgId: p.orgId, taskId, userId: p.userId });
+    broadcast({ type: 'time.started' });
+    return entry;
+  });
+
+  app.post('/api/time/:entryId/stop', async (req) => {
+    const entryId = (req.params as { entryId: string }).entryId;
+    const entry = await core.timeTracking.stop(entryId);
+    broadcast({ type: 'time.stopped' });
+    return entry;
+  });
+
+  app.get('/api/tasks/:id/time', async (req) => {
+    const taskId = params(req).id;
+    const entries = await core.timeTracking.listByTask(taskId);
+    const total = await core.timeTracking.getTotalTime(taskId);
+    const active = await core.timeTracking.getActive(taskId);
+    return { entries, total, active };
+  });
+
+  app.get('/api/time/today', async (req) => {
+    const p = await principalOf(req);
+    const total = await core.timeTracking.getTodayTime(p.userId, p.orgId);
+    return { total, formatted: core.timeTracking.formatDuration(total) };
+  });
+
   // --- Leads ---
   app.get('/api/leads', async (req) => core.leads.list((await principalOf(req)).orgId));
 
@@ -400,6 +507,111 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     }
 
     return { name: '', title: '', company: '', email: '', phone: '' };
+  });
+
+  // --- Bulk Operations ---
+  app.post('/api/bulk/loops/close', async (req) => {
+    const p = await principalOf(req);
+    const { ids } = req.body as { ids: string[] };
+    if (!ids?.length) throw badRequest('ids required');
+    return core.bulk.closeLoops(ids, p.userId);
+  });
+
+  app.post('/api/bulk/loops/snooze', async (req) => {
+    const p = await principalOf(req);
+    const { ids, hours } = req.body as { ids: string[]; hours?: number };
+    if (!ids?.length) throw badRequest('ids required');
+    return core.bulk.snoozeLoops(ids, hours ?? 24, p.userId);
+  });
+
+  app.post('/api/bulk/tasks/move', async (req) => {
+    const p = await principalOf(req);
+    const { ids, day } = req.body as { ids: string[]; day: string };
+    if (!ids?.length) throw badRequest('ids required');
+    return core.bulk.moveTasks(ids, day as any, p.userId);
+  });
+
+  app.post('/api/bulk/tasks/complete', async (req) => {
+    const p = await principalOf(req);
+    const { ids } = req.body as { ids: string[] };
+    if (!ids?.length) throw badRequest('ids required');
+    return core.bulk.completeTasks(ids, p.userId);
+  });
+
+  app.post('/api/bulk/tasks/delete', async (req) => {
+    const p = await principalOf(req);
+    const { ids } = req.body as { ids: string[] };
+    if (!ids?.length) throw badRequest('ids required');
+    return core.bulk.deleteTasks(ids, p.userId);
+  });
+
+  app.post('/api/bulk/leads/advance', async (req) => {
+    const p = await principalOf(req);
+    const { ids } = req.body as { ids: string[] };
+    if (!ids?.length) throw badRequest('ids required');
+    return core.bulk.advanceLeads(ids, p.userId);
+  });
+
+  app.post('/api/bulk/assign', async (req) => {
+    const p = await principalOf(req);
+    const { entityType, ids, userIds } = req.body as { entityType: string; ids: string[]; userIds: string[] };
+    if (!ids?.length || !entityType) throw badRequest('ids and entityType required');
+    return core.bulk.assignMany(entityType as any, ids, userIds ?? [p.userId], p.userId);
+  });
+
+  app.post('/api/bulk/delete', async (req) => {
+    const p = await principalOf(req);
+    const { entityType, ids } = req.body as { entityType: string; ids: string[] };
+    if (!ids?.length || !entityType) throw badRequest('ids and entityType required');
+    return core.bulk.deleteMany(entityType as any, ids, p.userId);
+  });
+
+  // --- Recurring Tasks ---
+  app.post('/api/recurring/process', async (req) => {
+    const p = await principalOf(req);
+    const result = await core.recurring.processDaily(p.orgId);
+    logger.info(result, 'Recurring tasks processed');
+    return result;
+  });
+
+  app.get('/api/recurring/next/:recur', async (req) => {
+    const recur = (req.params as { recur: string }).recur;
+    const next = core.recurring.getNextRun(recur);
+    return { next: next.toISOString(), formatted: core.recurring.formatSchedule(recur) };
+  });
+
+  // --- Subtasks ---
+  app.post('/api/tasks/:id/subtasks', async (req) => {
+    const taskId = params(req).id;
+    const { title } = req.body as { title: string };
+    if (!title) throw badRequest('title required');
+    return core.subtasks.add(taskId, title);
+  });
+
+  app.post('/api/tasks/:id/subtasks/:subId/complete', async (req) => {
+    const taskId = params(req).id;
+    const subId = (req.params as { subId: string }).subId;
+    await core.subtasks.complete(taskId, subId);
+    return { ok: true };
+  });
+
+  app.post('/api/tasks/:id/subtasks/:subId/toggle', async (req) => {
+    const taskId = params(req).id;
+    const subId = (req.params as { subId: string }).subId;
+    await core.subtasks.toggle(taskId, subId);
+    return { ok: true };
+  });
+
+  app.delete('/api/tasks/:id/subtasks/:subId', async (req) => {
+    const taskId = params(req).id;
+    const subId = (req.params as { subId: string }).subId;
+    await core.subtasks.remove(taskId, subId);
+    return { ok: true };
+  });
+
+  app.get('/api/tasks/:id/subtasks', async (req) => {
+    const taskId = params(req).id;
+    return core.subtasks.list(taskId);
   });
 
   // --- AI agents + audit ---
@@ -493,6 +705,130 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     return reply.send({ captured: loopId });
   });
 
+  // --- Push Notifications ---
+  const pushSubscriptions = new Map<string, any>();
+
+  app.post('/api/notifications/subscribe', async (req) => {
+    const { subscription } = req.body as { subscription: any };
+    const p = await principalOf(req);
+    pushSubscriptions.set(p.userId, subscription);
+    return { ok: true };
+  });
+
+  app.post('/api/notifications/unsubscribe', async (req) => {
+    const p = await principalOf(req);
+    pushSubscriptions.delete(p.userId);
+    return { ok: true };
+  });
+
+  app.get('/api/notifications/status', async (req) => {
+    const p = await principalOf(req);
+    return { subscribed: pushSubscriptions.has(p.userId) };
+  });
+
+  // --- Export ---
+  app.get('/api/export/loops', async (req, reply) => {
+    const p = await principalOf(req);
+    const loops = await core.loops.list(p.orgId);
+    const format = (req.query as any)?.format || 'json';
+
+    if (format === 'csv') {
+      const csv = loopsToCsv(loops);
+      reply.header('Content-Type', 'text/csv');
+      reply.header('Content-Disposition', 'attachment; filename="loops.csv"');
+      return csv;
+    }
+    return loops;
+  });
+
+  app.get('/api/export/tasks', async (req, reply) => {
+    const p = await principalOf(req);
+    const tasks = await core.tasks.list(p.orgId);
+    const format = (req.query as any)?.format || 'json';
+
+    if (format === 'csv') {
+      const csv = tasksToCsv(tasks);
+      reply.header('Content-Type', 'text/csv');
+      reply.header('Content-Disposition', 'attachment; filename="tasks.csv"');
+      return csv;
+    }
+    return tasks;
+  });
+
+  app.get('/api/export/leads', async (req, reply) => {
+    const p = await principalOf(req);
+    const leads = await core.leads.list(p.orgId);
+    const format = (req.query as any)?.format || 'json';
+
+    if (format === 'csv') {
+      const csv = leadsToCsv(leads);
+      reply.header('Content-Type', 'text/csv');
+      reply.header('Content-Disposition', 'attachment; filename="leads.csv"');
+      return csv;
+    }
+    return leads;
+  });
+
+  // --- AI Suggestions ---
+  app.get('/api/ai/suggestions/:entityType/:entityId', async (req) => {
+    const { entityType, entityId } = req.params as { entityType: string; entityId: string };
+    return core.ai.getSuggestions(entityType as 'loop' | 'task' | 'lead', entityId);
+  });
+
+  app.post('/api/ai/assign/:taskId', async (req) => {
+    const taskId = (req.params as { taskId: string }).taskId;
+    const assignee = await core.ai.autoAssign(taskId);
+    return { assignee };
+  });
+
+  app.get('/api/ai/patterns', async (req) => {
+    const p = await principalOf(req);
+    return core.ai.getPatterns(p.orgId);
+  });
+
+  app.post('/api/ai/suggestions/:id/dismiss', async (req) => {
+    const id = (req.params as { id: string }).id;
+    await core.ai.dismiss(id);
+    return { ok: true };
+  });
+
+  // --- Dashboard KPIs ---
+  app.get('/api/dashboard', async (req) => {
+    const p = await principalOf(req);
+    const [loops, tasks, leads] = await Promise.all([
+      core.loops.list(p.orgId),
+      core.tasks.list(p.orgId),
+      core.leads.list(p.orgId),
+    ]);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const todayTasks = tasks.filter(t => t.day === 'today');
+    const openLoops = loops.filter(l => l.status === 'open');
+    const completedTasks = tasks.filter(t => t.subtasks?.every(s => s.done));
+
+    return {
+      loops: {
+        total: loops.length,
+        open: openLoops.length,
+        closed: loops.filter(l => l.status === 'closed').length,
+        snoozed: loops.filter(l => l.status === 'snoozed').length,
+      },
+      tasks: {
+        total: tasks.length,
+        today: todayTasks.length,
+        completedToday: completedTasks.length,
+        overdue: tasks.filter(t => t.dueAt && t.dueAt < Date.now() && t.subtasks?.some(s => !s.done)).length,
+      },
+      leads: {
+        total: leads.length,
+        won: leads.filter(l => l.stage === 'won').length,
+        lost: leads.filter(l => l.stage === 'lost').length,
+        pipeline: leads.filter(l => !['won', 'lost'].includes(l.stage)).length,
+      },
+      today,
+    };
+  });
+
   // --- Embedded web UI (this app IS the website) ---
   app.get('/', async (_req, reply) => reply.type('text/html').send(renderUi()));
 
@@ -531,6 +867,9 @@ function sanitizeUser(user: AuthUser): AuthUser {
     role: user.role,
     name,
     email: user.email?.trim() || undefined,
+    username: user.username?.trim() || undefined,
+    active: user.active,
+    createdAt: user.createdAt,
     initials,
   };
 }
@@ -543,6 +882,9 @@ function presentUser(user: AuthUser) {
     role: safe.role,
     name: safe.name,
     email: safe.email,
+    username: safe.username,
+    active: safe.active,
+    createdAt: safe.createdAt,
     initials: safe.initials,
   };
 }
@@ -626,4 +968,49 @@ function clearSessionCookie(name: string, secure: boolean): string {
   ];
   if (secure) parts.push('Secure');
   return parts.join('; ');
+}
+
+// --- CSV Export Helpers ---
+function escapeCsvField(val: unknown): string {
+  if (val === null || val === val === undefined) return '';
+  const str = String(val);
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function arrayToCsv(headers: string[], rows: (string | number | boolean | null)[][]): string {
+  const lines = [headers.join(',')];
+  for (const row of rows) {
+    lines.push(row.map(escapeCsvField).join(','));
+  }
+  return lines.join('\n');
+}
+
+function loopsToCsv(loops: any[]): string {
+  const headers = ['id', 'channel', 'from', 'subject', 'body', 'status', 'assignee', 'createdAt'];
+  const rows = loops.map(l => [
+    l.id, l.channel, l.from, l.subject, l.body, l.status, l.assignee, l.createdAt,
+  ]);
+  return arrayToCsv(headers, rows);
+}
+
+function tasksToCsv(tasks: any[]): string {
+  const headers = ['id', 'title', 'list', 'day', 'priority', 'recurring', 'dueAt', 'assignees', 'completed'];
+  const rows = tasks.map(t => [
+    t.id, t.title, t.list, t.day, t.priority, t.recurring ? 'yes' : 'no',
+    t.dueAt ? new Date(t.dueAt).toISOString() : '',
+    (t.assignees ?? []).join('; '),
+    (t.subtasks ?? []).every((s: any) => s.done) ? 'yes' : 'no',
+  ]);
+  return arrayToCsv(headers, rows);
+}
+
+function leadsToCsv(leads: any[]): string {
+  const headers = ['id', 'name', 'company', 'title', 'stage', 'value', 'notes', 'createdAt'];
+  const rows = leads.map(l => [
+    l.id, l.name, l.company, l.title, l.stage, l.value, l.notes, l.createdAt,
+  ]);
+  return arrayToCsv(headers, rows);
 }

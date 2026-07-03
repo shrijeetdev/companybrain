@@ -11,6 +11,10 @@ import type {
   EventRepo,
   SettingsRepo,
   ApprovalRepo,
+  TimeEntryRepo,
+  TimeEntry,
+  CustomFieldRepo,
+  CustomField,
 } from './port';
 
 export interface SupabaseDbOptions {
@@ -28,6 +32,8 @@ export class SupabaseDatabase implements DbPort {
   events: EventRepo;
   settings: SettingsRepo;
   approvals: ApprovalRepo;
+  timeEntries: TimeEntryRepo;
+  customFields: CustomFieldRepo;
 
   constructor(opts: SupabaseDbOptions) {
     this.client = createClient(opts.url, opts.anonKey);
@@ -209,6 +215,100 @@ export class SupabaseDatabase implements DbPort {
         return next;
       },
     };
+
+    this.timeEntries = {
+      async insert(entry) {
+        const { error } = await db.from('time_entries').insert(timeEntryToRow(entry));
+        if (error) throw error;
+        return entry;
+      },
+
+      async get(id) {
+        const { data, error } = await db.from('time_entries').select('*').eq('id', id).single();
+        if (error || !data) return null;
+        return rowToTimeEntry(data);
+      },
+
+      async listByTask(taskId) {
+        const { data, error } = await db.from('time_entries').select('*').eq('task_id', taskId).order('started_at', { ascending: false });
+        if (error) throw error;
+        return (data ?? []).map(rowToTimeEntry);
+      },
+
+      async listByUser(userId, orgId) {
+        const { data, error } = await db.from('time_entries').select('*').eq('user_id', userId).eq('org_id', orgId).order('started_at', { ascending: false });
+        if (error) throw error;
+        return (data ?? []).map(rowToTimeEntry);
+      },
+
+      async update(id, patch) {
+        const current = await this.get(id);
+        if (!current) throw new Error(`time entry ${id} not found`);
+        const next = { ...current, ...patch } as TimeEntry;
+        const { error } = await db.from('time_entries').update(timeEntryToRow(next)).eq('id', id);
+        if (error) throw error;
+        return next;
+      },
+
+      async delete(id) {
+        const { error } = await db.from('time_entries').delete().eq('id', id);
+        if (error) throw error;
+      },
+    };
+
+    this.customFields = {
+      async insert(field) {
+        const { error } = await db.from('custom_fields').insert(customFieldToRow(field));
+        if (error) throw error;
+        return field;
+      },
+
+      async get(id) {
+        const { data, error } = await db.from('custom_fields').select('*').eq('id', id).single();
+        if (error || !data) return null;
+        return rowToCustomField(data);
+      },
+
+      async listByEntity(entityType, entityId) {
+        const { data, error } = await db.from('custom_fields')
+          .select('*')
+          .eq('entity_type', entityType)
+          .eq('entity_id', entityId)
+          .order('created_at', { ascending: true });
+        if (error) throw error;
+        return (data ?? []).map(rowToCustomField);
+      },
+
+      async listByOrg(orgId, entityType?) {
+        let query = db.from('custom_fields').select('*').eq('org_id', orgId);
+        if (entityType) query = query.eq('entity_type', entityType);
+        const { data, error } = await query.order('created_at', { ascending: true });
+        if (error) throw error;
+        return (data ?? []).map(rowToCustomField);
+      },
+
+      async update(id, patch) {
+        const current = await this.get(id);
+        if (!current) throw new Error(`custom field ${id} not found`);
+        const next = { ...current, ...patch } as CustomField;
+        const { error } = await db.from('custom_fields').update(customFieldToRow(next)).eq('id', id);
+        if (error) throw error;
+        return next;
+      },
+
+      async delete(id) {
+        const { error } = await db.from('custom_fields').delete().eq('id', id);
+        if (error) throw error;
+      },
+
+      async deleteByEntity(entityType, entityId) {
+        const { error } = await db.from('custom_fields')
+          .delete()
+          .eq('entity_type', entityType)
+          .eq('entity_id', entityId);
+        if (error) throw error;
+      },
+    };
   }
 
   async init() {
@@ -387,5 +487,57 @@ function approvalToRow(approval: Approval) {
     title: approval.title,
     status: approval.status,
     created_at: approval.createdAt,
+  };
+}
+
+function rowToTimeEntry(row: any): TimeEntry {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    taskId: row.task_id,
+    userId: row.user_id,
+    startedAt: row.started_at,
+    endedAt: row.ended_at ?? undefined,
+    duration: row.duration ?? undefined,
+    note: row.note ?? undefined,
+  };
+}
+
+function timeEntryToRow(entry: TimeEntry) {
+  return {
+    id: entry.id,
+    org_id: entry.orgId,
+    task_id: entry.taskId,
+    user_id: entry.userId,
+    started_at: entry.startedAt,
+    ended_at: entry.endedAt ?? null,
+    duration: entry.duration ?? null,
+    note: entry.note ?? null,
+  };
+}
+
+function rowToCustomField(row: any): CustomField {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    fieldName: row.field_name,
+    fieldType: row.field_type,
+    fieldValue: row.field_value,
+    createdAt: row.created_at,
+  };
+}
+
+function customFieldToRow(field: CustomField) {
+  return {
+    id: field.id,
+    org_id: field.orgId,
+    entity_type: field.entityType,
+    entity_id: field.entityId,
+    field_name: field.fieldName,
+    field_type: field.fieldType,
+    field_value: field.fieldValue,
+    created_at: field.createdAt,
   };
 }
