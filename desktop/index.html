@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Lock to the splash's logical size so it looks identical everywhere. -->
+    <meta name="viewport" content="width=480, initial-scale=1" />
+    <title>CompanyBrain</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!--
+      Liquid Glass splash. The whole window is frameless + transparent; this card
+      is the visible region. It is replaced by the real web UI (loaded from the
+      server) once /health is green and the main window finishes rendering.
+    -->
+    <main class="glass-card" id="splash">
+      <!-- Animated aurora blobs sit behind the glass, giving the "liquid" feel. -->
+      <div class="aurora" aria-hidden="true">
+        <span class="blob blob--a"></span>
+        <span class="blob blob--b"></span>
+        <span class="blob blob--c"></span>
+      </div>
+
+      <section class="glass-content">
+        <div class="wordmark">
+          <span class="word-light">company</span><span class="word-bold">brain</span>
+        </div>
+
+        <p class="tagline">Never let a loop slip.</p>
+
+        <!-- Spinner + status line swap content from JS (renderer.js). -->
+        <div class="status" id="status">
+          <span class="spinner" aria-hidden="true"></span>
+          <span class="status-text" id="status-text">Starting your workspace…</span>
+        </div>
+      </section>
+
+      <footer class="glass-foot">
+        <span class="dot"></span> binding to 127.0.0.1:4317
+      </footer>
+    </main>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>

@@ -15,6 +15,7 @@ import type {
   TimeEntry,
   CustomFieldRepo,
   CustomField,
+  ConnectionRepo,
 } from './port';
 
 export interface SupabaseDbOptions {
@@ -34,6 +35,12 @@ export class SupabaseDatabase implements DbPort {
   approvals: ApprovalRepo;
   timeEntries: TimeEntryRepo;
   customFields: CustomFieldRepo;
+  connections: ConnectionRepo = {
+    async list() { return []; },
+    async get() { return null; },
+    async upsert() { throw new Error('Connections not supported in Supabase mode yet'); },
+    async delete() {},
+  };
 
   constructor(opts: SupabaseDbOptions) {
     this.client = createClient(opts.url, opts.anonKey);

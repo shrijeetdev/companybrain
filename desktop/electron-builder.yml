@@ -1,0 +1,72 @@
+# electron-builder config for the CompanyBrain desktop app.
+#
+# Run `npm run dist` (or dist:mac / dist:win / dist:linux) from desktop/.
+# Output installers land in desktop/release/.
+#
+# Architecture: the desktop app is a thin Electron shell. The real product
+# (the companybrain server bundle, dist/server.js, plus its node_modules) is
+# copied into the packaged app's resources directory via `extraResources`. At
+# runtime main.cjs spawns `node <resourcesPath>/dist/server.js` bound to
+# 127.0.0.1:4317, waits for /health, then loads the server's web UI.
+
+appId: io.vexocore.companybrain
+productName: CompanyBrain
+copyright: Copyright © Vexocore
+
+directories:
+  output: release
+
+# Files packed INTO the app's asar (the Electron shell itself). The server
+# bundle and node_modules are NOT in asar — they're copied as extraResources
+# below, so the child `node` process can read them directly from disk.
+files:
+  - main.cjs
+  - preload.cjs
+  - renderer.js
+  - index.html
+  - styles.css
+  - package.json
+
+# Resources placed BESIDE the asar, on disk, in the packaged app:
+#   <app>/Contents/Resources/dist/server.js        (the companybrain server)
+#   <app>/Contents/Resources/node_modules/...        (its dependencies)
+# main.cjs resolves these via process.resourcesPath.
+extraResources:
+  - from: ../dist
+    to: dist
+  - from: ../node_modules
+    to: node_modules
+    filter:
+      - '**/*'
+      - '!**/.bin/**'
+      - '!**/.cache/**'
+
+# --- Platform targets -------------------------------------------------------
+
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  darkModeSupport: true
+  # Notarize via CI env vars (APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD /
+  # APPLE_TEAM_ID) when present. Locally this is a no-op.
+  # notarize: true
+
+win:
+  target:
+    - nsis
+  icon: build/icon.ico
+
+linux:
+  target:
+    - AppImage
+  category: Office
+  icon: build/icon.png
+
+# Windows NSIS installer options — interactive, per-user, custom install dir.
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false

@@ -343,16 +343,19 @@ var init_password = __esm({
         this.seedAdminIfNeeded();
       }
       seedAdminIfNeeded() {
-        const { c } = this.db.prepare("SELECT COUNT(*) as c FROM users").get();
-        if (c > 0) return;
         const email = (process.env.COMPANYBRAIN_ADMIN_EMAIL ?? "").trim().toLowerCase();
         const password = process.env.COMPANYBRAIN_ADMIN_PASSWORD ?? "";
         if (!email || !password) {
-          console.warn(
-            "[companybrain] PasswordAuth: no users exist yet and COMPANYBRAIN_ADMIN_EMAIL / COMPANYBRAIN_ADMIN_PASSWORD are not set. Set both env vars and restart to bootstrap the first admin."
-          );
+          const { c } = this.db.prepare("SELECT COUNT(*) as c FROM users").get();
+          if (c === 0) {
+            console.warn(
+              "[companybrain] PasswordAuth: no users exist yet and COMPANYBRAIN_ADMIN_EMAIL / COMPANYBRAIN_ADMIN_PASSWORD are not set. Set both env vars and restart to bootstrap the first admin."
+            );
+          }
           return;
         }
+        const existing = this.db.prepare("SELECT id FROM users WHERE lower(email)=?").get(email);
+        if (existing) return;
         const name = (process.env.COMPANYBRAIN_ADMIN_NAME ?? "Admin").trim() || "Admin";
         this.insertUser({ email, name, role: "ceo", password, username: void 0 }, null);
         console.log(`[companybrain] Seeded initial admin user: ${email} (role: ceo)`);
@@ -1263,6 +1266,7 @@ CREATE TABLE IF NOT EXISTS settings  (org_id TEXT PRIMARY KEY, doc TEXT NOT NULL
 CREATE TABLE IF NOT EXISTS approvals (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, status TEXT, at INTEGER, doc TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS time_entries (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, task_id TEXT NOT NULL, user_id TEXT NOT NULL, started_at INTEGER, ended_at INTEGER, duration INTEGER, note TEXT, doc TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS custom_fields (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, field_name TEXT NOT NULL, field_type TEXT NOT NULL DEFAULT 'text', field_value TEXT NOT NULL, created_at INTEGER);
+CREATE TABLE IF NOT EXISTS connections (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'disconnected', credentials TEXT NOT NULL DEFAULT '{}', created_at INTEGER, updated_at INTEGER);
 CREATE INDEX IF NOT EXISTS idx_loops_org  ON loops(org_id, side);
 CREATE INDEX IF NOT EXISTS idx_tasks_org  ON tasks(org_id);
 CREATE INDEX IF NOT EXISTS idx_leads_org  ON leads(org_id);
@@ -1272,6 +1276,7 @@ CREATE INDEX IF NOT EXISTS idx_time_entries_task ON time_entries(task_id);
 CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id, org_id);
 CREATE INDEX IF NOT EXISTS idx_custom_fields_entity ON custom_fields(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_custom_fields_org ON custom_fields(org_id);
+CREATE INDEX IF NOT EXISTS idx_connections_org_channel ON connections(org_id, channel);
 `;
 var SqliteDatabase = class {
   db;
@@ -1283,6 +1288,7 @@ var SqliteDatabase = class {
   approvals;
   timeEntries;
   customFields;
+  connections;
   constructor(filePath) {
     this.db = new Database(filePath);
     this.db.pragma("journal_mode = WAL");
@@ -1462,6 +1468,40 @@ var SqliteDatabase = class {
         db.prepare("DELETE FROM custom_fields WHERE entity_type=? AND entity_id=?").run(entityType, entityId);
       }
     };
+    const connectionRepo = {
+      async list(orgId) {
+        const rows = db.prepare("SELECT id, org_id, channel, status, credentials, created_at, updated_at FROM connections WHERE org_id=? ORDER BY channel ASC").all(orgId);
+        return rows.map(rowToConnection);
+      },
+      async get(orgId, channel) {
+        const row = db.prepare("SELECT id, org_id, channel, status, credentials, created_at, updated_at FROM connections WHERE org_id=? AND channel=?").get(orgId, channel);
+        return row ? rowToConnection(row) : null;
+      },
+      async upsert(orgId, channel, patch) {
+        const existing = await connectionRepo.get(orgId, channel);
+        const now2 = Date.now();
+        if (existing) {
+          const merged = { ...existing, ...patch, channel, updatedAt: now2 };
+          db.prepare("UPDATE connections SET status=?, credentials=?, updated_at=? WHERE org_id=? AND channel=?").run(merged.status, JSON.stringify(merged.credentials), now2, orgId, channel);
+          return merged;
+        }
+        const conn = {
+          id: `conn_${channel}_${Date.now()}`,
+          orgId,
+          channel,
+          status: patch.status ?? "disconnected",
+          credentials: patch.credentials ?? {},
+          createdAt: patch.createdAt ?? now2,
+          updatedAt: now2
+        };
+        db.prepare("INSERT INTO connections (id, org_id, channel, status, credentials, created_at, updated_at) VALUES (?,?,?,?,?,?,?)").run(conn.id, conn.orgId, conn.channel, conn.status, JSON.stringify(conn.credentials), conn.createdAt, conn.updatedAt);
+        return conn;
+      },
+      async delete(orgId, channel) {
+        db.prepare("DELETE FROM connections WHERE org_id=? AND channel=?").run(orgId, channel);
+      }
+    };
+    this.connections = connectionRepo;
   }
   async init() {
     this.db.exec(DDL);
@@ -1482,6 +1522,17 @@ function rowToCustomField(row) {
     createdAt: row.created_at
   };
 }
+function rowToConnection(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    channel: row.channel,
+    status: row.status,
+    credentials: typeof row.credentials === "string" ? JSON.parse(row.credentials) : row.credentials ?? {},
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
 
 // packages/db/src/supabase.ts
 import { createClient } from "@supabase/supabase-js";
@@ -1496,6 +1547,19 @@ var SupabaseDatabase = class {
   approvals;
   timeEntries;
   customFields;
+  connections = {
+    async list() {
+      return [];
+    },
+    async get() {
+      return null;
+    },
+    async upsert() {
+      throw new Error("Connections not supported in Supabase mode yet");
+    },
+    async delete() {
+    }
+  };
   constructor(opts) {
     this.client = createClient(opts.url, opts.anonKey);
     this.adminClient = opts.serviceRoleKey ? createClient(opts.url, opts.serviceRoleKey) : null;
@@ -2958,6 +3022,454 @@ async function seedIfEmpty(core) {
   await core.leads.create({ orgId: org, actorId: me, name: "Aisha Khan", company: "Northwind", title: "Head of Ops", phone: "+971500000000", what: "Interested in team plan" });
 }
 
+// packages/core/src/methods.ts
+var methods_exports = {};
+__export(methods_exports, {
+  METHODS: () => METHODS,
+  METHOD_LIST: () => METHOD_LIST,
+  abcde: () => abcde,
+  eatThatFrog: () => eatThatFrog,
+  eisenhower: () => eisenhower,
+  gtd: () => gtd,
+  moscow: () => moscow,
+  pareto: () => pareto,
+  pomodoro: () => pomodoro,
+  threeThree: () => threeThree,
+  timeBlocking: () => timeBlocking,
+  twoMinute: () => twoMinute
+});
+var MS_PER_DAY = 864e5;
+function isUrgent(t, now2 = Date.now()) {
+  if (t.day === "today") return true;
+  if (t.dueAt && t.dueAt - now2 <= MS_PER_DAY) return true;
+  return false;
+}
+function isImportant(t) {
+  return t.priority === "high";
+}
+function isOverdue(t, now2 = Date.now()) {
+  if (!t.dueAt) return false;
+  return t.dueAt < now2;
+}
+function isComplete(t) {
+  if (!t.subtasks || t.subtasks.length === 0) return false;
+  return t.subtasks.every((s) => s.done);
+}
+function eisenhower(tasks, now2 = Date.now()) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const result = { q1: [], q2: [], q3: [], q4: [] };
+  for (const t of open) {
+    const u = isUrgent(t, now2);
+    const i = isImportant(t);
+    if (u && i) result.q1.push(t);
+    else if (!u && i) result.q2.push(t);
+    else if (u && !i) result.q3.push(t);
+    else result.q4.push(t);
+  }
+  return result;
+}
+function moscow(tasks, now2 = Date.now()) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const result = { must: [], should: [], could: [], wont: [] };
+  for (const t of open) {
+    if (t.priority === "high") result.must.push(t);
+    else if (t.priority === "med") result.should.push(t);
+    else if (t.priority === "low") result.could.push(t);
+    else if (isOverdue(t, now2)) result.wont.push(t);
+    else result.could.push(t);
+  }
+  return result;
+}
+var RANK_WEIGHT = { A: 0, B: 1, C: 2, D: 3, E: 4 };
+function abcde(tasks, now2 = Date.now()) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const ranked = open.map((task) => {
+    let rank;
+    if (task.priority === "high" && isOverdue(task, now2)) rank = "A";
+    else if (task.priority === "high") rank = "B";
+    else if (task.priority === "med" && task.day === "today") rank = "C";
+    else if (task.priority === "med") rank = "D";
+    else rank = "E";
+    return { task, rank };
+  });
+  ranked.sort((a, b) => (RANK_WEIGHT[a.rank] ?? 9) - (RANK_WEIGHT[b.rank] ?? 9));
+  return { ranked };
+}
+var GTD_CONTEXTS = ["@email", "@call", "@computer", "@errands", "@home", "@anywhere"];
+var EMOJI_TO_CONTEXT = {
+  "\u{1F4DE}": "@call",
+  "\u260E\uFE0F": "@call",
+  "\u{1F4BB}": "@computer",
+  "\u{1F5A5}\uFE0F": "@computer",
+  "\u2709\uFE0F": "@email",
+  "\u{1F4E7}": "@email",
+  "\u{1F697}": "@errands",
+  "\u{1F6D2}": "@errands",
+  "\u{1F3E0}": "@home",
+  "\u{1F3E1}": "@home"
+};
+function inferContext(task) {
+  const lower = task.title.toLowerCase();
+  for (const ctx of GTD_CONTEXTS) {
+    if (lower.includes(ctx)) return ctx;
+  }
+  if (task.emoji && EMOJI_TO_CONTEXT[task.emoji]) return EMOJI_TO_CONTEXT[task.emoji];
+  return null;
+}
+function gtd(tasks) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const contexts = {
+    "@email": [],
+    "@call": [],
+    "@computer": [],
+    "@errands": [],
+    "@home": [],
+    "@anywhere": []
+  };
+  const inbox = [];
+  for (const t of open) {
+    const ctx = inferContext(t);
+    if (ctx) contexts[ctx].push(t);
+    else inbox.push(t);
+  }
+  return { contexts, inbox };
+}
+var QUICK_VERBS = ["call", "email", "reply", "send", "pay", "file", "book", "text", "sign", "approve", "confirm"];
+function twoMinute(tasks) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const twoMinute2 = [];
+  const longer = [];
+  for (const t of open) {
+    const lower = t.title.toLowerCase();
+    const isQuick = QUICK_VERBS.some((v) => lower.includes(v));
+    if (isQuick) twoMinute2.push(t);
+    else longer.push(t);
+  }
+  return { twoMinute: twoMinute2, longer };
+}
+function frogScore(t, now2) {
+  const pWeight = t.priority === "high" ? 3 : t.priority === "med" ? 2 : t.priority === "low" ? 1 : 0;
+  let uWeight = 0;
+  if (isOverdue(t, now2)) uWeight = 3;
+  else if (t.day === "today") uWeight = 2;
+  else if (t.day === "tomorrow") uWeight = 1;
+  return pWeight * 3 + uWeight;
+}
+function eatThatFrog(tasks, now2 = Date.now()) {
+  const open = tasks.filter((t) => !isComplete(t));
+  if (open.length === 0) return { frog: null, why: "No open tasks \u2014 nothing to eat." };
+  let best = open[0];
+  let bestScore = frogScore(best, now2);
+  for (const t of open) {
+    const s = frogScore(t, now2);
+    if (s > bestScore) {
+      best = t;
+      bestScore = s;
+    }
+  }
+  const reasons = [];
+  if (best.priority === "high") reasons.push("highest priority");
+  if (isOverdue(best, now2)) reasons.push("overdue");
+  else if (best.day === "today") reasons.push("due today");
+  const why = reasons.length > 0 ? `Your frog: the task that is ${reasons.join(" and ")}. Do it first.` : "Your frog: the highest-impact task right now. Do it first.";
+  return { frog: best, why };
+}
+function threeThree(tasks) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const deep = open.filter((t) => t.priority === "high").slice(0, 3);
+  const deepIds = new Set(deep.map((t) => t.id));
+  const remaining = open.filter((t) => !deepIds.has(t.id));
+  const medium = remaining.filter((t) => t.priority === "med").slice(0, 3);
+  const mediumIds = new Set(medium.map((t) => t.id));
+  const small = remaining.filter((t) => !mediumIds.has(t.id) && (t.priority === "low" || t.priority === null)).slice(0, 3);
+  return { deep, medium, small };
+}
+function paretoScore(t) {
+  const p = t.priority === "high" ? 3 : t.priority === "med" ? 2 : t.priority === "low" ? 1 : 0;
+  const subtasks = t.subtasks?.length ?? 0;
+  const recurring = t.recurring ? 2 : 0;
+  return p * 2 + subtasks + recurring;
+}
+function pareto(tasks) {
+  const open = tasks.filter((t) => !isComplete(t));
+  if (open.length === 0) return { vital: [], useful: [] };
+  const sorted = [...open].sort((a, b) => paretoScore(b) - paretoScore(a));
+  const vitalCount = Math.max(1, Math.ceil(open.length * 0.2));
+  return { vital: sorted.slice(0, vitalCount), useful: sorted.slice(vitalCount) };
+}
+var toClock = (minutes) => {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+function timeBlocking(tasks) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const meeting = open.filter((t) => {
+    const lower = t.title.toLowerCase();
+    return lower.includes("call") || lower.includes("meet") || lower.includes("sync") || lower.includes("standup");
+  });
+  const meetingIds = new Set(meeting.map((t) => t.id));
+  const deep = open.filter((t) => !meetingIds.has(t.id) && t.priority === "high");
+  const deepIds = new Set(deep.map((t) => t.id));
+  const admin = open.filter((t) => !meetingIds.has(t.id) && !deepIds.has(t.id));
+  const blocks = [];
+  let clock = 9 * 60;
+  const place = (list, blockType) => {
+    for (const task of list) {
+      const dur = 30;
+      blocks.push({ start: toClock(clock), end: toClock(clock + dur), task, blockType });
+      clock += dur;
+    }
+  };
+  place(deep, "deep");
+  place(admin.slice(0, 4), "admin");
+  place(meeting, "meeting");
+  place(admin.slice(4), "admin");
+  return blocks.slice(0, 18);
+}
+function pomodoro(tasks) {
+  const open = tasks.filter((t) => !isComplete(t));
+  return open.map((task) => {
+    const words = task.title.trim().split(/\s+/).filter(Boolean).length;
+    let sessions = 1;
+    if (words > 15) sessions = 4;
+    else if (words > 10) sessions = 3;
+    else if (words > 5) sessions = 2;
+    const subtaskCount = task.subtasks?.length ?? 0;
+    sessions += subtaskCount;
+    return { task, sessions, minutes: sessions * 25 };
+  });
+}
+var METHODS = {
+  eisenhower: {
+    meta: { id: "eisenhower", name: "Eisenhower Matrix", icon: "\u{1F532}", description: "Sort by urgent vs important into 4 quadrants." },
+    run: (tasks) => eisenhower(tasks)
+  },
+  moscow: {
+    meta: { id: "moscow", name: "MoSCoW", icon: "\u{1F3AF}", description: "Must / Should / Could / Won\u2019t \u2014 prioritize by commitment." },
+    run: (tasks) => moscow(tasks)
+  },
+  abcde: {
+    meta: { id: "abcde", name: "ABCDE Method", icon: "\u{1F524}", description: "Rank A (critical) through E (eliminate)." },
+    run: (tasks) => abcde(tasks)
+  },
+  gtd: {
+    meta: { id: "gtd", name: "Getting Things Done", icon: "\u{1F5C2}\uFE0F", description: "Group tasks by context (@call, @computer, @email\u2026)." },
+    run: (tasks) => gtd(tasks)
+  },
+  twominute: {
+    meta: { id: "twominute", name: "2-Minute Rule", icon: "\u26A1", description: "Flag quick tasks you can knock out right now." },
+    run: (tasks) => twoMinute(tasks)
+  },
+  frog: {
+    meta: { id: "frog", name: "Eat That Frog", icon: "\u{1F438}", description: "The one highest-impact task to do first today." },
+    run: (tasks) => eatThatFrog(tasks)
+  },
+  threethree: {
+    meta: { id: "threethree", name: "3-3-3 Method", icon: "3\uFE0F\u20E3", description: "3 deep + 3 medium + 3 small tasks for a focused day." },
+    run: (tasks) => threeThree(tasks)
+  },
+  pareto: {
+    meta: { id: "pareto", name: "80/20 Rule", icon: "\u{1F4CA}", description: "The vital 20% of tasks driving 80% of value." },
+    run: (tasks) => pareto(tasks)
+  },
+  timeblock: {
+    meta: { id: "timeblock", name: "Time Blocking", icon: "\u{1F5D3}\uFE0F", description: "Lay tasks out across a 9am\u20136pm workday." },
+    run: (tasks) => timeBlocking(tasks)
+  },
+  pomodoro: {
+    meta: { id: "pomodoro", name: "Pomodoro Estimate", icon: "\u{1F345}", description: "Estimate focus sessions (25 min) per task." },
+    run: (tasks) => pomodoro(tasks)
+  }
+};
+var METHOD_LIST = Object.values(METHODS).map((m) => m.meta);
+
+// packages/core/src/analytics.ts
+var analytics_exports = {};
+__export(analytics_exports, {
+  computeReport: () => computeReport
+});
+var MS_PER_HOUR = 36e5;
+var MS_PER_DAY2 = 864e5;
+var SECONDS_PER_HOUR = 3600;
+var ON_TIME_HOURS = 72;
+var WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+function isTaskComplete(task) {
+  return !!task.subtasks && task.subtasks.length > 0 && task.subtasks.every((s) => s.done);
+}
+function round(n) {
+  return Math.round(n);
+}
+function computeLoops(loops, windowStart) {
+  let open = 0;
+  let closed = 0;
+  let snoozed = 0;
+  let overdue = 0;
+  let closedInWindow = 0;
+  let onTime = 0;
+  let totalCloseMs = 0;
+  for (const l of loops) {
+    const status = l.status;
+    if (status === "open") open++;
+    else if (status === "snoozed") snoozed++;
+    else if (status === "overdue") overdue++;
+    if (status === "closed") {
+      closed++;
+      if (l.updatedAt >= windowStart) closedInWindow++;
+      const closeMs = l.updatedAt - l.createdAt;
+      totalCloseMs += closeMs;
+      if (closeMs <= ON_TIME_HOURS * MS_PER_HOUR) onTime++;
+    }
+  }
+  const avgCloseHours = closed > 0 ? totalCloseMs / closed / MS_PER_HOUR : 0;
+  const onTimeRate = closed > 0 ? round(onTime / closed * 100) : 0;
+  return {
+    total: loops.length,
+    open,
+    closed,
+    closedInWindow,
+    onTimeRate,
+    snoozed,
+    overdue,
+    avgCloseHours: round(avgCloseHours * 10) / 10
+    // one decimal place
+  };
+}
+function computeTasks(tasks, windowStart, now2) {
+  let completedInWindow = 0;
+  let createdInWindow = 0;
+  let overdue = 0;
+  const byPriority = { high: 0, med: 0, low: 0, none: 0 };
+  for (const t of tasks) {
+    const p = t.priority ?? null;
+    if (p === "high") byPriority.high++;
+    else if (p === "med") byPriority.med++;
+    else if (p === "low") byPriority.low++;
+    else byPriority.none++;
+    if (t.createdAt >= windowStart) createdInWindow++;
+    if (isTaskComplete(t)) {
+      if (t.createdAt >= windowStart) completedInWindow++;
+    } else if (t.dueAt != null && t.dueAt < now2) {
+      overdue++;
+    }
+  }
+  const completionRate = createdInWindow > 0 ? round(completedInWindow / createdInWindow * 100) : 0;
+  return { total: tasks.length, completedInWindow, createdInWindow, completionRate, overdue, byPriority };
+}
+function computeLeads(leads, windowStart) {
+  let won = 0;
+  let lost = 0;
+  let pipeline = 0;
+  let wonInWindow = 0;
+  for (const lead of leads) {
+    const stage = lead.stage;
+    if (stage === "won") {
+      won++;
+      if (lead.createdAt >= windowStart) wonInWindow++;
+    } else if (stage === "lost") {
+      lost++;
+    } else {
+      pipeline++;
+    }
+  }
+  const conversionRate = won + lost > 0 ? round(won / (won + lost) * 100) : 0;
+  return {
+    total: leads.length,
+    won,
+    lost,
+    pipeline,
+    wonInWindow,
+    conversionRate,
+    // pipelineValue is a placeholder: Lead currently has no monetary/value field. Returns 0
+    // rather than a fabricated number so the UI degrades honestly until value is modelled.
+    pipelineValue: 0
+  };
+}
+function computeProductivity(tasks, timeEntries, windowStart, now2, windowDays) {
+  const focusSeconds = (timeEntries ?? []).reduce((sum, e) => sum + (e.duration ?? 0), 0);
+  const focusHours = round(focusSeconds / SECONDS_PER_HOUR * 10) / 10;
+  const trend = [0, 0, 0, 0, 0, 0, 0];
+  const dayBuckets = new Array(7).fill(0);
+  const completedByCreatedAt = tasks.filter(isTaskComplete);
+  for (const t of completedByCreatedAt) {
+    const dow = new Date(t.createdAt).getDay();
+    if (dayBuckets[dow] === void 0) dayBuckets[dow] = 0;
+    dayBuckets[dow]++;
+    const ageDays = Math.floor((now2 - t.createdAt) / MS_PER_DAY2);
+    if (ageDays >= 0 && ageDays <= 6) {
+      const idx = 6 - ageDays;
+      const slot = trend[idx];
+      if (slot !== void 0) trend[idx] = slot + 1;
+    }
+  }
+  const tasksPerDay = windowDays > 0 ? round(completedByCreatedAt.length / windowDays * 10) / 10 : 0;
+  let bestDay = "\u2014";
+  let bestCount = -1;
+  for (let i = 0; i < 7; i++) {
+    const count = dayBuckets[i] ?? 0;
+    if (count > bestCount) {
+      bestCount = count;
+      bestDay = WEEKDAYS[i] ?? "\u2014";
+    }
+  }
+  if (bestCount <= 0) bestDay = "\u2014";
+  return { focusHours, tasksPerDay, velocityTrend: trend, bestDay };
+}
+function computeLeaderboard(users, loops, tasks, timeEntries) {
+  if (!users || users.length === 0) return [];
+  const focusMinutes = /* @__PURE__ */ new Map();
+  for (const e of timeEntries ?? []) {
+    const minutes = Math.floor((e.duration ?? 0) / 60);
+    focusMinutes.set(e.userId, (focusMinutes.get(e.userId) ?? 0) + minutes);
+  }
+  const tasksDone = /* @__PURE__ */ new Map();
+  for (const t of tasks) {
+    if (!isTaskComplete(t)) continue;
+    for (const uid of t.assignees) tasksDone.set(uid, (tasksDone.get(uid) ?? 0) + 1);
+  }
+  const loopsClosed = /* @__PURE__ */ new Map();
+  for (const l of loops) {
+    if (l.status !== "closed") continue;
+    for (const uid of l.assignedTo) loopsClosed.set(uid, (loopsClosed.get(uid) ?? 0) + 1);
+  }
+  const rows = users.map((u) => {
+    const done = tasksDone.get(u.userId) ?? 0;
+    const closed = loopsClosed.get(u.userId) ?? 0;
+    const minutes = focusMinutes.get(u.userId) ?? 0;
+    const points = done * 3 + closed * 2 + Math.floor(minutes / 25);
+    return { userId: u.userId, name: u.name, points, tasksDone: done, loopsClosed: closed, focusMinutes: minutes };
+  });
+  rows.sort((a, b) => b.points - a.points || b.tasksDone - a.tasksDone);
+  return rows;
+}
+function buildSummary(loops, tasks, leads, windowDays) {
+  const period = windowDays >= 30 ? "this period" : `over the last ${windowDays} days`;
+  const headline = `${loops.onTimeRate}% of loops closed on time ${period}.`;
+  const sub = `${tasks.completedInWindow} tasks completed, ${leads.wonInWindow} leads won.`;
+  return { headline, sub };
+}
+function computeReport(input) {
+  const { loops = [], tasks = [], leads = [], timeEntries, users, windowDays = 30 } = input ?? {};
+  const now2 = Date.now();
+  const windowStart = now2 - windowDays * MS_PER_DAY2;
+  const loopsReport = computeLoops(loops, windowStart);
+  const tasksReport = computeTasks(tasks, windowStart, now2);
+  const leadsReport = computeLeads(leads, windowStart);
+  const productivity = computeProductivity(tasks, timeEntries, windowStart, now2, windowDays);
+  const leaderboard = computeLeaderboard(users, loops, tasks, timeEntries);
+  const summary = buildSummary(loopsReport, tasksReport, leadsReport, windowDays);
+  return {
+    windowDays,
+    generatedAt: now2,
+    loops: loopsReport,
+    tasks: tasksReport,
+    leads: leadsReport,
+    productivity,
+    leaderboard,
+    summary
+  };
+}
+
 // packages/core/src/index.ts
 function createCoreFromPorts(ports) {
   const ctx = {
@@ -3015,8 +3527,8 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
-import { join as join4 } from "node:path";
-import { existsSync } from "node:fs";
+import { join as join5 } from "node:path";
+import { existsSync as existsSync2 } from "node:fs";
 
 // packages/integrations/src/pipeline.ts
 function needsHuman(msg) {
@@ -3266,6 +3778,341 @@ function createBaileysChannel(opts) {
     sock = null;
   }
   return { messenger: messenger2, start, stop };
+}
+
+// packages/integrations/src/input/index.ts
+var input_exports = {};
+__export(input_exports, {
+  deleteAttachment: () => deleteAttachment,
+  downloadIcsFromUrl: () => downloadIcsFromUrl,
+  getAttachmentPath: () => getAttachmentPath,
+  icsToTasks: () => icsToTasks,
+  listAttachments: () => listAttachments,
+  parseIcs: () => parseIcs,
+  parseTasksFromTranscript: () => parseTasksFromTranscript,
+  saveAttachment: () => saveAttachment,
+  transcribeAudio: () => transcribeAudio
+});
+
+// packages/integrations/src/input/voice.ts
+var OPENAI_AUDIO_URL = "https://api.openai.com/v1/audio/transcriptions";
+async function transcribeAudio(audioBuffer, mimeType) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    console.warn("[voice] OPENAI_API_KEY not set \u2014 transcription disabled, returning empty text");
+    return "";
+  }
+  const ext = mimeToExtension(mimeType, "mp3");
+  const form = new FormData();
+  form.append("model", "whisper-1");
+  form.append("file", new Blob([new Uint8Array(audioBuffer)], { type: mimeType ?? "audio/mpeg" }), `audio.${ext}`);
+  try {
+    const response = await fetch(OPENAI_AUDIO_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form
+    });
+    if (!response.ok) {
+      const detail = await safeReadText(response);
+      console.warn(`[voice] Whisper API returned ${response.status}: ${detail}`);
+      return "";
+    }
+    const data = await response.json();
+    return data.text?.trim() ?? "";
+  } catch (err) {
+    console.warn("[voice] transcription failed, returning empty text:", err);
+    return "";
+  }
+}
+function parseTasksFromTranscript(text) {
+  if (!text) return [];
+  const normalised = text.replace(/\s+/g, " ").trim();
+  const cuePattern = /\b(?:remind me to|add (?:a )?task(?: to)?|i need to|todo\s*:|to-do\s*:|don't forget to|make sure (?:to|i))\b/gi;
+  const clauses = normalised.split(/(?:[.!?]\s+|\band then\b|\n+|(?:,\s*)(?=\b(?:remind|add|i need|todo|to-do|don't|make sure)\b))/i).map((c) => c.trim()).filter(Boolean);
+  const titles = [];
+  for (const clause of clauses) {
+    const match = cuePattern.exec(clause);
+    if (!match) continue;
+    let title = clause.slice(match.index + match[0].length).trim();
+    title = title.replace(/^[\s,;:.\-–—]+/, "").trim();
+    title = title.replace(/[\s,;:]+$/, "");
+    if (title) titles.push(title.charAt(0).toUpperCase() + title.slice(1));
+    cuePattern.lastIndex = 0;
+  }
+  return [...new Set(titles)];
+}
+function mimeToExtension(mime, fallback) {
+  if (!mime) return fallback;
+  const map = {
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/wave": "wav",
+    "audio/webm": "webm",
+    "audio/ogg": "ogg",
+    "audio/mp4": "m4a",
+    "audio/x-m4a": "m4a",
+    "audio/aac": "aac",
+    "audio/flac": "flac"
+  };
+  const base = mime.split(";")[0]?.trim().toLowerCase() ?? mime.trim().toLowerCase();
+  return map[base] ?? fallback;
+}
+async function safeReadText(response) {
+  try {
+    return await response.text();
+  } catch {
+    return "<unreadable response body>";
+  }
+}
+
+// packages/integrations/src/input/calendar-import.ts
+function unfoldLines(icsText) {
+  const normalised = icsText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = normalised.split("\n");
+  const out = [];
+  for (const line of lines) {
+    if ((line.startsWith(" ") || line.startsWith("	")) && out.length > 0) {
+      out[out.length - 1] += line.slice(1);
+    } else {
+      out.push(line);
+    }
+  }
+  return out.filter((l) => l.length > 0);
+}
+function unescapeIcs(value) {
+  return value.replace(/\\n/gi, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+}
+function parseContentLine(line) {
+  let valueStart = -1;
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') inQuotes = !inQuotes;
+    else if (ch === ":" && !inQuotes) {
+      valueStart = i;
+      break;
+    }
+  }
+  if (valueStart === -1) return { name: "", params: {}, value: "" };
+  const head = line.slice(0, valueStart);
+  const value = line.slice(valueStart + 1);
+  const [nameRaw, ...paramParts] = head.split(";");
+  const params = {};
+  for (const part of paramParts) {
+    const eq = part.indexOf("=");
+    if (eq > -1) {
+      const k = part.slice(0, eq).toUpperCase();
+      let v = part.slice(eq + 1);
+      v = v.replace(/^"(.*)"$/, "$1");
+      params[k] = v;
+    }
+  }
+  return { name: (nameRaw ?? "").toUpperCase(), params, value };
+}
+function parseIcsDate(value, _params) {
+  const v = value.trim();
+  if (/^\d{8}$/.test(v)) {
+    return /* @__PURE__ */ new Date(`${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}T00:00:00`);
+  }
+  const utcMatch = v.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
+  if (utcMatch) {
+    const [, y, mo, d, h, mi, s] = utcMatch;
+    return new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi, +s));
+  }
+  const localMatch = v.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/);
+  if (localMatch) {
+    const [, y, mo, d, h, mi, s] = localMatch;
+    return new Date(+y, +mo - 1, +d, +h, +mi, +s);
+  }
+  const fallback = new Date(v);
+  return Number.isNaN(fallback.getTime()) ? /* @__PURE__ */ new Date(0) : fallback;
+}
+function parseIcs(icsText) {
+  const lines = unfoldLines(icsText);
+  const events = [];
+  let inEvent = false;
+  let current = null;
+  for (const line of lines) {
+    const { name, value } = parseContentLine(line);
+    if (name === "BEGIN" && value === "VEVENT") {
+      inEvent = true;
+      current = /* @__PURE__ */ new Map();
+      continue;
+    }
+    if (name === "END" && value === "VEVENT") {
+      if (inEvent && current) {
+        const ev = buildEvent(current);
+        if (ev) events.push(ev);
+      }
+      inEvent = false;
+      current = null;
+      continue;
+    }
+    if (inEvent && current) {
+      current.set(name, { value, params: parseContentLine(line).params });
+    }
+  }
+  return events;
+}
+function buildEvent(props) {
+  const summaryRaw = props.get("SUMMARY")?.value ?? "";
+  const summary = unescapeIcs(summaryRaw).trim();
+  const startRaw = props.get("DTSTART");
+  const endRaw = props.get("DTEND") ?? props.get("DURATION");
+  const uid = (props.get("UID")?.value ?? "").trim();
+  const descriptionRaw = props.get("DESCRIPTION")?.value;
+  const locationRaw = props.get("LOCATION")?.value;
+  if (!startRaw) return null;
+  const start = parseIcsDate(startRaw.value, startRaw.params);
+  const end = endRaw ? parseIcsDate(endRaw.value, endRaw.params) : start;
+  return {
+    uid: uid || `${start.getTime()}-${summary}`,
+    summary: summary || "Untitled event",
+    description: descriptionRaw ? unescapeIcs(descriptionRaw) : void 0,
+    start,
+    end,
+    location: locationRaw ? unescapeIcs(locationRaw) : void 0
+  };
+}
+function dayFromStart(start) {
+  const startOf = (d) => {
+    const copy = new Date(d);
+    copy.setHours(0, 0, 0, 0);
+    return copy.getTime();
+  };
+  const today = startOf(/* @__PURE__ */ new Date());
+  const startDay = startOf(start);
+  const oneDayMs = 24 * 60 * 60 * 1e3;
+  const diff = Math.round((startDay - today) / oneDayMs);
+  if (diff <= 0) return "today";
+  if (diff === 1) return "tomorrow";
+  return "upcoming";
+}
+function icsToTasks(events, orgId, actorId) {
+  const now2 = Date.now();
+  return events.map((ev) => ({
+    orgId,
+    title: ev.summary,
+    day: dayFromStart(ev.start),
+    dueAt: ev.start.getTime(),
+    list: "Calendar",
+    createdBy: actorId,
+    assignees: [actorId],
+    createdAt: now2
+  }));
+}
+async function downloadIcsFromUrl(url) {
+  const response = await fetch(url, {
+    headers: { Accept: "text/calendar, application/octet-stream, text/plain, */*" }
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to download .ics from ${url}: HTTP ${response.status}`);
+  }
+  return response.text();
+}
+
+// packages/integrations/src/input/attachments.ts
+import { mkdirSync as mkdirSync3, writeFileSync, readFileSync, readdirSync, unlinkSync, existsSync } from "node:fs";
+import { homedir as homedir4 } from "node:os";
+import { join as join4 } from "node:path";
+import { randomUUID as randomUUID3 } from "node:crypto";
+function attachmentsRoot() {
+  const base = process.env.COMPANYBRAIN_HOME ?? join4(homedir4(), ".companybrain");
+  return join4(base, "attachments");
+}
+function taskDir(orgId, taskId) {
+  return join4(attachmentsRoot(), orgId, taskId);
+}
+function indexPath(orgId, taskId) {
+  return join4(taskDir(orgId, taskId), "index.json");
+}
+function readIndex(orgId, taskId) {
+  const path = indexPath(orgId, taskId);
+  if (!existsSync(path)) return [];
+  try {
+    const raw = readFileSync(path, "utf8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+function writeIndex(orgId, taskId, records) {
+  const dir = taskDir(orgId, taskId);
+  mkdirSync3(dir, { recursive: true });
+  writeFileSync(indexPath(orgId, taskId), JSON.stringify(records, null, 2), "utf8");
+}
+async function saveAttachment(opts) {
+  const { taskId, filename, mimeType, data, orgId } = opts;
+  const id = randomUUID3();
+  const dir = taskDir(orgId, taskId);
+  mkdirSync3(dir, { recursive: true });
+  const storedFilename = `${id}-${sanitizeFilename(filename)}`;
+  const storedPath = join4(dir, storedFilename);
+  writeFileSync(storedPath, data);
+  const record2 = {
+    id,
+    taskId,
+    orgId,
+    filename,
+    mimeType,
+    size: data.byteLength,
+    storedPath,
+    createdAt: Date.now()
+  };
+  const records = readIndex(orgId, taskId);
+  records.push(record2);
+  writeIndex(orgId, taskId, records);
+  return record2;
+}
+function getAttachmentPath(orgId, attachmentId) {
+  const orgRoot = join4(attachmentsRoot(), orgId);
+  if (!existsSync(orgRoot)) return "";
+  for (const taskId of safeReaddir(orgRoot)) {
+    const records = readIndex(orgId, taskId);
+    const hit = records.find((r) => r.id === attachmentId);
+    if (hit) return hit.storedPath;
+  }
+  return "";
+}
+async function listAttachments(taskId) {
+  const root = attachmentsRoot();
+  if (!existsSync(root)) return [];
+  for (const orgId of safeReaddir(root)) {
+    const dir = taskDir(orgId, taskId);
+    if (existsSync(dir)) {
+      return readIndex(orgId, taskId);
+    }
+  }
+  return [];
+}
+async function deleteAttachment(orgId, attachmentId) {
+  const orgRoot = join4(attachmentsRoot(), orgId);
+  if (!existsSync(orgRoot)) return;
+  for (const taskId of safeReaddir(orgRoot)) {
+    const records = readIndex(orgId, taskId);
+    const hit = records.find((r) => r.id === attachmentId);
+    if (!hit) continue;
+    try {
+      if (existsSync(hit.storedPath)) unlinkSync(hit.storedPath);
+    } catch {
+    }
+    writeIndex(orgId, taskId, records.filter((r) => r.id !== attachmentId));
+    return;
+  }
+}
+function safeReaddir(dir) {
+  try {
+    return readdirSync(dir);
+  } catch {
+    return [];
+  }
+}
+function sanitizeFilename(name) {
+  const leaf = name.replace(/[/\\]+/g, "_").replace(/^\.+/, "");
+  return leaf.slice(0, 180) || "attachment";
 }
 
 // packages/server/src/server.ts
@@ -3863,6 +4710,7 @@ button{cursor:pointer;}
     {id:'leads',  ic:'\u{1F91D}', label:'Leads'},
     {id:'projects', ic:'\u{1F4E6}', label:'Projects'},
     {id:'agents', ic:'\u{1F916}', label:'Agents'},
+    {id:'methods', ic:'\u{1F9ED}', label:'Methods'},
     {id:'team',   ic:'\u{1F465}', label:'Team'},
     {id:'brain',  ic:'\u{1F9E0}', label:'Brain'},
     {id:'reports',ic:'\u{1F4CA}', label:'Reports'},
@@ -3876,6 +4724,7 @@ button{cursor:pointer;}
     leads:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
     projects:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="6" height="6" rx="1"/><rect x="9" y="3" width="6" height="6" rx="1"/><rect x="16" y="3" width="6" height="6" rx="1"/><rect x="2" y="12" width="6" height="6" rx="1"/><rect x="9" y="12" width="6" height="6" rx="1"/></svg>',
     agents:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 7V4M8 13h.01M16 13h.01"/></svg>',
+    methods:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>',
     team:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
     brain:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.14Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.14Z"/></svg>',
     reports:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
@@ -4166,7 +5015,7 @@ button{cursor:pointer;}
 
   // \u2500\u2500 nav \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   var BOT_TABS=['loops','tasks','leads','projects','agents'];
-  var MORE_TABS=['team','brain','reports','settings','events'];
+  var MORE_TABS=['team','methods','brain','reports','settings','events'];
   function buildNav(){
     var sn=document.getElementById('side-nav');
     sn.innerHTML=TABS.map(function(t){
@@ -4226,6 +5075,7 @@ button{cursor:pointer;}
     else if(tab==='leads')  loadLeads();
     else if(tab==='projects') loadProjects();
     else if(tab==='agents') loadAgents();
+    else if(tab==='methods') loadMethods();
     else if(tab==='team')   loadTeam();
     else if(tab==='brain')  loadBrain();
     else if(tab==='reports') loadReports();
@@ -5118,25 +5968,78 @@ button{cursor:pointer;}
   })();
   var teamView='ceo';
   function loadTeam(){
+    var role=me&&me.role;
+    var isManager=role==='ceo'||role==='manager';
     var subViews=[{id:'ceo',label:'CEO'},{id:'mgr',label:'Manager'},{id:'emp',label:'Employee'},{id:'client',label:'Client'},{id:'agents',label:'AI Agents'}];
-    var html='<div class="sec-head"><div><div class="sec-title">Team</div><div class="sec-sub">Switch role to see the world from any seat.</div></div></div>';
-    html+='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:20px;background:var(--bg2);border:1px solid var(--glassBorder);border-radius:12px;padding:3px;width:fit-content;">'+subViews.map(function(sv){return '<button class="team-sv-btn'+(sv.id===teamView?' on':'')+'" data-sv="'+sv.id+'" style="padding:7px 14px;border-radius:9px;border:none;background:'+(sv.id===teamView?'var(--surface)':'transparent')+';font-size:12.5px;font-weight:'+(sv.id===teamView?'600':'500')+';color:'+(sv.id===teamView?'var(--text)':'var(--muted)')+';min-height:36px;cursor:pointer;box-shadow:'+(sv.id===teamView?'var(--shadow-md)':'none')+';">'+sv.label+'</button>';}).join('')+'</div>';
-    if(teamView==='ceo'){
-      html+='<div class="kpi-grid">'+['Revenue pipeline','Team velocity','Open loops','Agent ROI'].map(function(l,i){var vals=['\u20B924L','87%','14','4.2x'];var cols=['var(--green)','var(--accent)','var(--amber)','var(--teal)'];return '<div class="kpi-card gc"><div class="kpi-val" style="color:'+cols[i]+'">'+vals[i]+'</div><div class="kpi-lbl">'+l+'</div></div>';}).join('')+'</div>'
-        +'<div class="gc" style="padding:18px 20px;border-radius:16px;margin-bottom:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">TEAM MEMBERS</div>'
-        +['James (CEO)','Priya (Manager)','Alex (Dev)','Sam (Design)','Dana (Client)'].map(function(m,i){var colors=['#3e7bfa','#14b8a6','#f59e0b','#ef4444','#7c3aed'];var ld=[2,5,3,1,0][i];return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--glassBorder);"><div style="width:36px;height:36px;border-radius:50%;background:'+colors[i]+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">'+m.charAt(0)+'</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+m+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">'+ld+' open loops</div></div><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;font-weight:600;color:var(--accent);">'+[8,12,7,5,2][i]+' done</div></div>';}).join('')+'</div>';
-    }else if(teamView==='mgr'){
-      html+='<div class="gc" style="padding:18px 20px;border-radius:16px;"><div style="font-size:14px;font-weight:700;margin-bottom:14px;">Workload overview</div>'
-        +['Alex - 7 tasks','Sam - 5 tasks','Dana - 3 tasks'].map(function(m,i){var pct=[70,50,30][i];return '<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span>'+m+'</span><span style="color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;">'+pct+'%</span></div><div style="height:5px;border-radius:5px;background:var(--bg2);overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:5px;"></div></div></div>';}).join('')+'</div>';
-    }else if(teamView==='emp'){
-      html+='<div class="gc" style="padding:18px 20px;border-radius:16px;"><div style="font-size:15px;font-weight:700;margin-bottom:4px;">Your day</div><div style="font-size:12.5px;color:var(--muted);margin-bottom:16px;">3 tasks due today - 1 overdue</div><div style="font-size:13px;color:var(--text);line-height:1.6;">Focus: complete overdue task first, then today&#39;s list. You&#39;re on track.</div></div>';
-    }else if(teamView==='client'){
-      html+='<div class="gc" style="padding:18px 20px;border-radius:16px;border-left:3px solid var(--teal);"><div style="font-size:11px;font-weight:700;color:var(--teal);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:8px;">CLIENT PORTAL - READ ONLY</div><div style="font-size:15px;font-weight:700;margin-bottom:4px;">Your project</div><div style="font-size:12.5px;color:var(--muted);">3 deliverables in progress - 1 ready for review</div><div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--glassBorder);display:flex;gap:20px;"><div><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:20px;font-weight:700;color:var(--teal);">3</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">in progress</div></div><div><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:20px;font-weight:700;color:var(--green);">1</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">for review</div></div><div><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:20px;font-weight:700;color:var(--faint);">0</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">delivered</div></div></div></div>';
-    }else{
-      loadAgents();return;
+    var html='<div class="sec-head"><div><div class="sec-title">Team</div><div class="sec-sub">Per-employee performance from time tracking.</div></div></div>';
+    if(teamView==='agents'){loadAgents();return;}
+    // Access guard: only managers/CEOs see team performance dashboards
+    if(!isManager){
+      html+='<div class="gc" style="padding:40px 24px;border-radius:16px;text-align:center;">'
+        +'<div style="font-size:34px;margin-bottom:10px;">\u{1F512}</div>'
+        +'<div style="font-size:15px;font-weight:700;">You don't have access</div>'
+        +'<div style="font-size:12.5px;color:var(--muted);margin-top:6px;">Team performance dashboards are available to managers and CEOs.</div></div>';
+      view.innerHTML=html;
+      return;
     }
-    view.innerHTML=html;
-    view.querySelectorAll('[data-sv]').forEach(function(b){b.onclick=function(){teamView=b.dataset.sv;loadTeam();};});
+    html+='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:20px;background:var(--bg2);border:1px solid var(--glassBorder);border-radius:12px;padding:3px;width:fit-content;">'+subViews.map(function(sv){return '<button class="team-sv-btn'+(sv.id===teamView?' on':'')+'" data-sv="'+sv.id+'" style="padding:7px 14px;border-radius:9px;border:none;background:'+(sv.id===teamView?'var(--surface)':'transparent')+';font-size:12.5px;font-weight:'+(sv.id===teamView?'600':'500')+';color:'+(sv.id===teamView?'var(--text)':'var(--muted)')+';min-height:36px;cursor:pointer;box-shadow:'+(sv.id===teamView?'var(--shadow-md)':'none')+';">'+sv.label+'</button>';}).join('')+'</div>';
+    view.innerHTML=html+'<div class="spin"></div>';
+    api('/api/team/performance').then(function(res){
+      res=res||[];
+      var people=Array.isArray(res)?res:(res.people||res.team||[]);
+      people=people.slice().sort(function(a,b){return (b.points||0)-(a.points||0);});
+      var detail='';
+      if(teamView==='ceo'){
+        // Aggregate KPIs across the team
+        var totTasks=people.reduce(function(s,p){return s+(p.tasksDone||0);},0);
+        var totLoops=people.reduce(function(s,p){return s+(p.loopsClosed||0);},0);
+        var totFocus=people.reduce(function(s,p){return s+(p.focusMinutes||0);},0);
+        detail='<div class="kpi-grid">'
+          +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--accent)">'+people.length+'</div><div class="kpi-lbl">team members</div></div>'
+          +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--green)">'+totTasks+'</div><div class="kpi-lbl">tasks done (30d)</div></div>'
+          +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--amber)">'+totLoops+'</div><div class="kpi-lbl">loops closed</div></div>'
+          +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--teal)">'+Math.round(totFocus/60)+'h</div><div class="kpi-lbl">focus time</div></div>'
+          +'</div>';
+      }else if(teamView==='mgr'){
+        detail='<div class="gc" style="padding:18px 20px;border-radius:16px;"><div style="font-size:14px;font-weight:700;margin-bottom:14px;">Workload overview</div>';
+        if(people.length){
+          var maxTasks=Math.max.apply(null,people.map(function(p){return p.tasksDone||0;}).concat([1]));
+          detail+=people.map(function(p){
+            var pct=Math.round(((p.tasksDone||0)/maxTasks)*100);
+            return '<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span>'+esc(p.name||'Unknown')+'</span><span style="color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;">'+(p.tasksDone||0)+' tasks</span></div><div style="height:5px;border-radius:5px;background:var(--bg2);overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:5px;"></div></div></div>';
+          }).join('');
+        }else{
+          detail+='<div class="empty-dashed">No team data yet \u2014 connect time tracking.</div>';
+        }
+        detail+='</div>';
+      }
+      // Employee cards (real data) for ceo/mgr/emp views
+      if(teamView==='ceo'||teamView==='mgr'||teamView==='emp'){
+        detail+='<div class="gc" style="padding:18px 20px;border-radius:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">'+(teamView==='emp'?'YOUR STATS':'TEAM MEMBERS')+'</div>';
+        if(people.length){
+          detail+=people.map(function(p){
+            var initials=(p.name||'?').trim().split(/s+/).slice(0,2).map(function(w){return w[0].toUpperCase();}).join('');
+            var hue=((p.name||'A').charCodeAt(0)*37)%360;
+            return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--glassBorder);">'
+              +'<div style="width:36px;height:36px;border-radius:50%;background:hsl('+hue+',35%,52%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">'+esc(initials)+'</div>'
+              +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;">'+esc(p.name||'Unknown')+(p.role?' <span style="color:var(--muted);font-weight:500;font-size:11px;">('+esc(p.role)+')</span>':'')+'</div>'
+              +'<div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:\\'JetBrains Mono\\',monospace;">'+(p.tasksDone||0)+' tasks \xB7 '+(p.loopsClosed||0)+' loops \xB7 '+Math.round((p.focusMinutes||0)/60)+'h focus</div></div>'
+              +'<div style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;font-weight:600;color:var(--accent);">'+(p.points||0)+' pts</div></div>';
+          }).join('');
+        }else{
+          detail+='<div class="empty-dashed">No team data yet \u2014 connect time tracking.</div>';
+        }
+        detail+='</div>';
+      }
+      if(teamView==='client'){
+        detail='<div class="gc" style="padding:18px 20px;border-radius:16px;border-left:3px solid var(--teal);"><div style="font-size:11px;font-weight:700;color:var(--teal);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:8px;">CLIENT PORTAL - READ ONLY</div><div style="font-size:15px;font-weight:700;margin-bottom:4px;">Your project</div><div style="font-size:12.5px;color:var(--muted);">Project deliverables and progress will appear here once shared.</div></div>';
+      }
+      view.innerHTML=html+detail;
+      view.querySelectorAll('[data-sv]').forEach(function(b){b.onclick=function(){teamView=b.dataset.sv;loadTeam();};});
+    }).catch(function(e){
+      view.innerHTML=html+'<div class="empty">Failed to load team data: '+(e&&e.message||e)+'</div>';
+      view.querySelectorAll('[data-sv]').forEach(function(b){b.onclick=function(){teamView=b.dataset.sv;loadTeam();};});
+    });
   }
   var BRAIN_ENTRIES=[
     {tag:'Sensitivity', text:'Stopped flagging invoice confirmation emails as open loops after 3 corrections.', when:Date.now()-86400e3*2},
@@ -5150,28 +6053,311 @@ button{cursor:pointer;}
       +BRAIN_ENTRIES.map(function(e){return '<div style="position:relative;padding:0 0 20px 20px;"><div style="position:absolute;left:-14px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--surface);box-shadow:0 0 0 3px var(--accentSoft);"></div><div style="display:inline-block;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--accentSoft);color:var(--accent);font-family:\\'JetBrains Mono\\',monospace;margin-bottom:5px;">'+esc(e.tag)+'</div><div style="font-size:13px;color:var(--text);line-height:1.5;">'+esc(e.text)+'</div><div style="font-size:10px;color:var(--faint);margin-top:4px;font-family:\\'JetBrains Mono\\',monospace;">'+ago(e.when)+' ago</div><button style="margin-top:6px;font-size:10.5px;color:var(--red);background:transparent;border:none;cursor:pointer;padding:0;" onclick="toast(\\'Correction saved. Brain will re-learn.\\')">\u21A9 Correct this</button></div>';}).join('')+'</div>';
     view.innerHTML=html;
   }
-  function loadReports(){
-    var month=new Date().toLocaleDateString([],{month:'long', year:'numeric'});
-    var html='<div class="sec-head"><div><div class="sec-title">Reports</div><div class="sec-sub">Monthly recap - company, team, and agent performance.</div></div></div><div style="padding:20px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;margin-bottom:16px;"><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:10px;opacity:.8;letter-spacing:.5px;text-transform:uppercase;">'+month+'</div><div style="font-size:18px;font-weight:700;margin-top:6px;">Strong month - 94% of loops closed on time.</div><div style="font-size:12.5px;opacity:.85;margin-top:4px;">Leads pipeline grew 32% - 2 new agents deployed.</div></div>'
-      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;margin-bottom:16px;">'+[['142','Loops closed'],['38','Tasks done'],['12','Leads added'],['4.2x','Agent ROI']].map(function(s){return '<div class="gc" style="padding:14px 15px;border-radius:13px;"><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:22px;font-weight:700;color:var(--accent);">'+s[0]+'</div><div style="font-size:11px;color:var(--muted);margin-top:5px;">'+s[1]+'</div></div>';}).join('')+'</div>'
-      +'<div class="gc" style="padding:16px 18px;border-radius:16px;"><div style="font-size:12px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">LEADERBOARD</div>'
-      +['James','Priya','Alex','Sam'].map(function(n,i){var scores=[42,38,31,26];var medals=['\u{1F947}','\u{1F948}','\u{1F949}',''];return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--glassBorder);"><span style="font-family:\\'JetBrains Mono\\',monospace;font-size:11px;font-weight:700;color:var(--faint);min-width:18px;">'+(i+1)+'</span><span style="font-size:16px;">'+medals[i]+'</span><span style="font-size:13px;font-weight:600;flex:1;">'+n+'</span><span style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;font-weight:600;color:var(--accent);">'+scores[i]+' pts</span></div>';}).join('')+'</div>';
+  // \u2500\u2500 methods (productivity) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  function methodTaskCard(t){
+    var pr=t.priority==='high'?'<span class="priority-pill priority-high">HIGH</span>':t.priority==='med'?'<span class="priority-pill priority-med">MED</span>':t.priority==='low'?'<span class="priority-pill priority-low">LOW</span>':'';
+    return '<div class="kanban-task-card gc" data-mtask="'+esc(t.id||'')+'" style="cursor:pointer;">'
+      +'<div class="kanban-task-row"><button class="kanban-check" data-mdone="'+esc(t.id||'')+'"></button>'
+      +'<span class="kanban-task-emoji">'+esc(t.emoji||'\u{1F4DD}')+'</span>'
+      +'<div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title||t.name||'Untitled')+'</div>'
+      +(t.note||t.list?'<div class="kanban-task-sub">'+esc(t.note||t.list)+'</div>':'')+'</div></div>'
+      +'<div class="kanban-task-foot">'+pr+'</div></div>';
+  }
+  function wireMethodTaskCards(){
+    view.querySelectorAll('[data-mtask]').forEach(function(c){
+      c.onclick=function(e){
+        if(e.target.classList.contains('kanban-check'))return;
+        toast('Opening task\u2026');
+      };
+    });
+    view.querySelectorAll('[data-mdone]').forEach(function(b){
+      b.onclick=function(e){
+        e.stopPropagation();
+        var id=b.dataset.mdone;
+        if(!id)return;
+        post('/api/tasks/'+id+'/complete').then(function(){toast('Task completed');}).catch(function(){});
+      };
+    });
+  }
+  function renderMethodResult(methodId, result, meta){
+    result=result||{};
+    function col(label, dotColor, tasks){
+      tasks=tasks||[];
+      var cards=tasks.length?tasks.map(methodTaskCard).join(''):'<div class="empty-dashed" style="font-size:11px;padding:14px 10px;">Nothing here.</div>';
+      return '<div class="kanban-col"><div class="kanban-col-head"><span class="kanban-col-dot" style="background:'+dotColor+'"></span><span class="kanban-col-label">'+label+'</span><span class="kanban-col-count">'+tasks.length+'</span></div><div class="kanban-col-body">'+cards+'</div></div>';
+    }
+    function listSection(label, dotColor, tasks){
+      tasks=tasks||[];
+      var items=tasks.length?tasks.map(methodTaskCard).join(''):'<div class="empty-dashed" style="font-size:11px;padding:14px 10px;">Nothing here.</div>';
+      return '<div class="gc" style="padding:14px 16px;border-radius:14px;margin-bottom:14px;">'
+        +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;"><span style="width:8px;height:8px;border-radius:2px;background:'+dotColor+';flex-shrink:0;"></span>'
+        +'<span style="font-family:\\'JetBrains Mono\\',monospace;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);">'+label+'</span>'
+        +'<span style="margin-left:auto;font-family:\\'JetBrains Mono\\',monospace;font-size:11px;color:var(--faint);">'+tasks.length+'</span></div>'
+        +'<div style="display:flex;flex-direction:column;gap:7px;">'+items+'</div></div>';
+    }
+    var html='<div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;">'
+      +'<button class="btn-ghost" id="methods-back" style="font-size:12px;padding:7px 12px;">\u2190 All methods</button>'
+      +'<div style="font-size:16px;">'+esc((meta&&meta.icon)||'\u{1F9ED}')+'</div>'
+      +'<div><div style="font-size:16px;font-weight:700;">'+esc((meta&&meta.name)||methodId)+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+esc((meta&&meta.description)||'')+'</div></div></div>';
+
+    if(methodId==='eisenhower'){
+      html+='<div class="kanban-board" style="grid-template-columns:repeat(4,1fr);">'
+        +col('Q1 \xB7 DO','#ef4444',result.q1||result.do)
+        +col('Q2 \xB7 SCHEDULE','#3e7bfa',result.q2||result.schedule)
+        +col('Q3 \xB7 DELEGATE','#f59e0b',result.q3||result.delegate)
+        +col('Q4 \xB7 DROP','#9ca3af',result.q4||result.drop)
+        +'</div>';
+    }else if(methodId==='moscow'){
+      html+=listSection('MUST HAVE','#ef4444',result.must||result.M)
+        +listSection('SHOULD HAVE','#f59e0b',result.should||result.S)
+        +listSection('COULD HAVE','#3e7bfa',result.could||result.C)
+        +listSection('WON'T HAVE','#9ca3af',result.wont||result.W);
+    }else if(methodId==='abcde'){
+      var ranks=[{k:'A',col:'#ef4444'},{k:'B',col:'#f59e0b'},{k:'C',col:'#3e7bfa'},{k:'D',col:'#9ca3af'},{k:'E',col:'#6b7280'}];
+      var tasks=result.tasks||result.ranked||[];
+      html+='<div style="display:flex;flex-direction:column;gap:7px;">'+tasks.map(function(t){
+        var rk=(t.rank||'').toString().toUpperCase().charAt(0);
+        var rc=ranks.filter(function(r){return r.k===rk;})[0]||{col:'var(--faint)'};
+        var c2=methodTaskCard(Object.assign({},t));
+        return '<div style="display:flex;gap:10px;">'
+          +'<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:'+rc.col+'22;color:#fff;font-weight:700;font-size:14px;font-family:\\'JetBrains Mono\\',monospace;flex-shrink:0;">'+esc(rk||'?')+'</span>'
+          +'<div style="flex:1;min-width:0;">'+c2+'</div></div>';
+      }).join('')+'</div>';
+    }else if(methodId==='gtd'){
+      var groups=result.contexts||result.groups||{};
+      var inbox=result.inbox||[];
+      var keys=Object.keys(groups);
+      html+=(inbox.length?listSection('INBOX','#9ca3af',inbox):'')
+        +keys.map(function(k){return listSection(k,'#3e7bfa',groups[k]||[]);}).join('');
+      if(!inbox.length&&!keys.length)html+='<div class="empty-dashed">Your inbox is clear. Nothing to organize.</div>';
+    }else if(methodId==='twominute'){
+      html+='<div class="kanban-board" style="grid-template-columns:repeat(2,1fr);">'
+        +col('DO NOW < 2 MIN','#10b981',result.doNow||result.quick||[])
+        +col('LONGER','#3e7bfa',result.longer||result.longerTasks||[])
+        +'</div>';
+    }else if(methodId==='frog'){
+      var f=result.frog||result.task;
+      html+='<div class="gc" style="padding:22px;border-radius:16px;border-left:4px solid var(--red);margin-bottom:14px;">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--red);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;">\u{1F438} EAT THIS FROG FIRST</div>'
+        +'<div style="font-size:18px;font-weight:700;margin-top:10px;">'+esc(f&&(f.title)||'No frog identified today')+'</div>'
+        +(f&&(f.why||f.reason)?'<div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5;">'+esc(f.why||f.reason)+'</div>':'')
+        +'</div>';
+    }else if(methodId==='threethree'){
+      html+='<div class="kanban-board" style="grid-template-columns:repeat(3,1fr);">'
+        +col('DEEP WORK','#3e7bfa',(result.deep||[]).slice(0,3))
+        +col('MEDIUM','#f59e0b',(result.medium||[]).slice(0,3))
+        +col('SMALL','#10b981',(result.small||[]).slice(0,3))
+        +'</div>';
+    }else if(methodId==='pareto'){
+      html+=listSection('VITAL 20%','#ef4444',result.vital||result.vital20||[])
+        +listSection('USEFUL 80%','#9ca3af',result.useful||result.useful80||[]);
+    }else if(methodId==='timeblock'){
+      var blocks=result.blocks||[];
+      html+='<div class="gc" style="padding:16px 18px;border-radius:16px;">';
+      var colmap={deep:'var(--blue)',meeting:'var(--amber)',admin:'var(--faint)',call:'var(--teal)',focus:'var(--green)'};
+      for(var h=9;h<=18;h++){
+        var hh=(h<10?'0':'')+h;
+        var slot=blocks.filter(function(b){return (b.start||9)<=h&&(b.end||19)>h;});
+        html+='<div style="display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--glassBorder);min-height:32px;">'
+          +'<div style="width:46px;font-family:\\'JetBrains Mono\\',monospace;font-size:10px;color:var(--muted);padding:6px 0;flex-shrink:0;">'+hh+':00</div>'
+          +'<div style="flex:1;display:flex;flex-direction:column;gap:3px;padding:4px 0;">';
+        if(slot.length){
+          slot.forEach(function(b){
+            var c=colmap[b.type]||'var(--faint)';
+            html+='<div style="background:'+c+'22;border-radius:7px;padding:5px 9px;font-size:11.5px;font-weight:600;color:var(--text);">'+esc(b.title||b.type||'block')+'</div>';
+          });
+        }
+        html+='</div></div>';
+      }
+      html+='</div>';
+    }else if(methodId==='pomodoro'){
+      var tasks=result.tasks||[];
+      html+='<div class="gc" style="padding:16px 18px;border-radius:16px;">'
+        +'<div style="font-size:12px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">\u{1F345} POMODORO PLAN</div>'
+        +'<div style="display:flex;flex-direction:column;gap:8px;">'+(tasks.length?tasks.map(function(t){
+          var sess=t.sessions||t.pomodoros||Math.ceil((t.minutes||25)/25);
+          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--glassBorder);">'
+            +'<span style="font-size:16px;">\u{1F345}</span>'
+            +'<div style="flex:1;font-size:13px;font-weight:600;">'+esc(t.title||'Task')+'</div>'
+            +'<span style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;font-weight:600;color:var(--accent);">'+esc(sess)+' \xD7 <span style="color:var(--muted);font-weight:500;">('+(t.minutes||sess*25)+'m)</span></span></div>';
+        }).join(''):'<div class="empty-dashed">No tasks to plan.</div>')+'</div></div>';
+    }else{
+      // Fallback: try to render known arrays
+      var keys=Object.keys(result).filter(function(k){return Array.isArray(result[k]);});
+      if(keys.length){
+        html+=keys.map(function(k){return listSection(k.toUpperCase(),'#3e7bfa',result[k]);}).join('');
+      }else{
+        html+='<div class="gc" style="padding:18px;border-radius:16px;"><div style="font-size:13px;color:var(--muted);">No structured output for this method yet.</div></div>';
+      }
+    }
     view.innerHTML=html;
+    var back=document.getElementById('methods-back');
+    if(back) back.onclick=function(){tab='methods';buildNav();loadMethods();};
+    wireMethodTaskCards();
+  }
+  function loadMethods(){
+    api('/api/methods').then(function(res){
+      var methods=(res&&res.methods)||[];
+      if(!methods.length){
+        view.innerHTML='<div class="sec-head"><div><div class="sec-title">Methods</div><div class="sec-sub">Productivity frameworks to triage and plan your work.</div></div></div>'
+          +'<div class="empty-dashed">No methods available yet.</div>';
+        return;
+      }
+      view.innerHTML='<div class="sec-head"><div><div class="sec-title">Methods</div><div class="sec-sub">Productivity frameworks \u2014 pick one to triage your tasks.</div></div></div>'
+        +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">'+methods.map(function(m){
+          return '<div class="gc method-card" data-method="'+esc(m.id)+'" style="padding:16px;border-radius:14px;cursor:pointer;transition:transform .15s,box-shadow .15s;">'
+            +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">'
+            +'<span style="width:38px;height:38px;border-radius:10px;background:var(--accentSoft);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;">'+esc(m.icon||'\u{1F9ED}')+'</span>'
+            +'<div style="font-size:14px;font-weight:700;">'+esc(m.name||m.id)+'</div></div>'
+            +'<div style="font-size:12px;color:var(--muted);line-height:1.5;">'+esc(m.description||'')+'</div></div>';
+        }).join('')+'</div>';
+      view.querySelectorAll('.method-card').forEach(function(c){
+        c.onclick=function(){
+          view.innerHTML='<div class="spin"></div>';
+          api('/api/methods/'+c.dataset.method).then(function(r){
+            r=r||{};
+            renderMethodResult(c.dataset.method, r.result, r.meta||{id:c.dataset.method});
+          }).catch(function(e){view.innerHTML='<div class="empty">Failed to run method: '+(e&&e.message||e)+'</div>';});
+        };
+      });
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load methods: '+(e&&e.message||e)+'</div>';});
+  }
+  function loadReports(){
+    view.innerHTML='<div class="spin"></div>';
+    api('/api/reports?days=30').then(function(r){
+      r=r||{};
+      var loops=r.loops||{}, tasks=r.tasks||{}, leads=r.leads||{}, prod=r.productivity||{}, summary=r.summary||{}, lb=r.leaderboard||[];
+      var month=new Date().toLocaleDateString([],{month:'long', year:'numeric'});
+      var html='<div class="sec-head"><div><div class="sec-title">Reports</div><div class="sec-sub">30-day analytics \u2014 loops, tasks, leads, and productivity.</div></div></div>'
+        +'<div style="padding:20px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;margin-bottom:16px;">'
+        +'<div style="font-family:\\'JetBrains Mono\\',monospace;font-size:10px;opacity:.8;letter-spacing:.5px;text-transform:uppercase;">'+esc(month)+' \xB7 last 30 days</div>'
+        +'<div style="font-size:18px;font-weight:700;margin-top:6px;">'+esc(summary.headline||('Strong month \u2014 '+loops.closedInWindow+' loops closed.'))+'</div>'
+        +(summary.sub?'<div style="font-size:12.5px;opacity:.85;margin-top:4px;">'+esc(summary.sub)+'</div>':'')
+        +'</div>'
+        // KPI cards
+        +'<div class="kpi-grid">'
+        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--accent);">'+(loops.closedInWindow||0)+'</div><div class="kpi-lbl">loops closed</div></div>'
+        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--green);">'+(tasks.completedInWindow||0)+'</div><div class="kpi-lbl">tasks done</div></div>'
+        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--teal);">'+(leads.won||0)+'</div><div class="kpi-lbl">leads won</div></div>'
+        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--amber);">'+(prod.focusHours||0)+'h</div><div class="kpi-lbl">focus hours</div></div>'
+        +'</div>'
+        // velocity sparkline + rates
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">'
+        +'<div class="gc" style="padding:16px 18px;border-radius:16px;">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:4px;">7-DAY VELOCITY</div>'
+        +velocitySparkline(prod.velocityTrend||[])
+        +'</div>'
+        +'<div class="gc" style="padding:16px 18px;border-radius:16px;">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">RATES</div>'
+        +'<div style="display:flex;flex-direction:column;gap:10px;">'
+        +rateRow('On-time close rate', (loops.onTimeRate||0), 'var(--green)')
+        +rateRow('Lead conversion', (leads.conversionRate||0), 'var(--teal)')
+        +rateRow('Task completion', (tasks.completionRate||0), 'var(--accent)')
+        +'</div></div>'
+        +'</div>'
+        // leaderboard
+        +'<div class="gc" style="padding:16px 18px;border-radius:16px;"><div style="font-size:12px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">LEADERBOARD</div>'
+        +(lb.length?lb.slice().sort(function(a,b){return (b.points||0)-(a.points||0);}).map(function(p,i){
+          var medals=['\u{1F947}','\u{1F948}','\u{1F949}'];
+          var fm=(prod.bestDay&&p.name===prod.bestDay)?'\u2B50':'';
+          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--glassBorder);">'
+            +'<span style="font-family:\\'JetBrains Mono\\',monospace;font-size:11px;font-weight:700;color:var(--faint);min-width:18px;">'+(i+1)+'</span>'
+            +'<span style="font-size:16px;">'+(medals[i]||'')+'</span>'
+            +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;">'+esc(p.name||'Unknown')+'</div>'
+            +'<div style="font-size:10.5px;color:var(--muted);margin-top:2px;font-family:\\'JetBrains Mono\\',monospace;">'
+            +(p.tasksDone||0)+' tasks \xB7 '+(p.loopsClosed||0)+' loops \xB7 '+Math.round((p.focusMinutes||0)/60)+'h focus</div></div>'
+            +'<span style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;font-weight:600;color:var(--accent);">'+(p.points||0)+' pts</span></div>';
+        }).join(''):'<div class="empty-dashed">No leaderboard data yet \u2014 start closing loops and tasks.</div>')
+        +'</div>';
+      view.innerHTML=html;
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load reports: '+(e&&e.message||e)+'</div>';});
+  }
+  function velocitySparkline(trend){
+    trend=trend||[];
+    if(!trend.length) return '<div style="font-size:11px;color:var(--faint);padding:12px 0;">No velocity data yet.</div>';
+    var max=Math.max.apply(null,trend.concat([1]));
+    var w=140, h=40, barW=Math.floor(w/trend.length)-2;
+    var bars=trend.map(function(v,i){
+      var bh=Math.max(2,Math.round((v/max)*h));
+      var x=i*(barW+2);
+      var y=h-bh;
+      return '<rect x="'+x+'" y="'+y+'" width="'+barW+'" height="'+bh+'" rx="2" fill="var(--accent)"/>';
+    }).join('');
+    return '<svg width="'+w+'" height="'+h+'" style="display:block;margin-top:6px;">'+bars+'</svg>'
+      +'<div style="font-size:10.5px;color:var(--muted);margin-top:6px;font-family:\\'JetBrains Mono\\',monospace;">best day: '+esc(trend.indexOf(Math.max.apply(null,trend))>=0?'this week':'\u2014')+'</div>';
+  }
+  function rateRow(label, rate, color){
+    var pct=Math.round((rate||0)*100);
+    return '<div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--text);">'+label+'</span><span style="color:'+color+';font-family:\\'JetBrains Mono\\',monospace;font-weight:600;">'+pct+'%</span></div>'
+      +'<div style="height:5px;border-radius:5px;background:var(--bg2);overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:5px;"></div></div></div>';
   }
   function loadSettings(){
     Promise.all([api('/api/autonomy'),api('/api/approvals'),api('/api/connections')]).then(function(res){
       var settings=res[0]||{};
       var approvals=(res[1]||[]).filter(function(a){return a.status==='pending';});
       var conns=res[2]||{};
-      var channels=[
-        {name:'Gmail',icon:'\u{1F4E7}',key:'email',status:conns.channels?'webhook ready':'not configured'},
-        {name:'Calendar',icon:'\u{1F4C5}',key:'calendar',status:'webhook ready'},
-        {name:'Slack',icon:'\u{1F4AC}',key:'slack',status:'webhook ready'},
-        {name:'GitHub',icon:'\u{1F419}',key:'github',status:'webhook ready'},
-        {name:'Telegram',icon:'\u2708\uFE0F',key:'telegram',status:'webhook ready'},
-        {name:'WhatsApp',icon:'\u{1F4F1}',key:'whatsapp',status:conns.whatsapp?conns.whatsapp.outbound:'not configured'},
-      ];
-      var html='<div class="sec-head"><div><div class="sec-title">Settings</div><div class="sec-sub">Autonomy, channels, and personalisation.</div></div></div>';
+      var isCeo=me&&me.role==='ceo';
+      var connStatus=function(key){return(conns[key]||{}).status||'disconnected';};
+      var connOk=function(key){var s=connStatus(key);return s==='connected';};
+
+      // Build channel cards with real Connect buttons
+      function channelCard(name,icon,key,desc,connectHtml,statusExtra){
+        var st=connStatus(key);
+        var ok=st==='connected';
+        var statusLabel=st==='connecting'?'Connecting\u2026':st==='connected'?'Connected':st==='error'?'Error':'Not connected';
+        var statusColor=ok?'var(--green)':st==='connecting'?'var(--amber)':st==='error'?'var(--red)':'var(--muted)';
+        var subtext=statusExtra||statusLabel;
+        return '<div class="gc" style="padding:14px 16px;border-radius:14px;margin-bottom:8px;">'
+          +'<div style="display:flex;align-items:center;gap:11px;margin-bottom:8px;">'
+          +'<div style="width:36px;height:36px;border-radius:10px;background:var(--bg2);border:1px solid var(--glassBorder);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">'+icon+'</div>'
+          +'<div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:700;">'+name+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px;">'+esc(desc)+'</div></div>'
+          +'<span style="font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:6px;background:'+(ok?'var(--greenSoft)':st==='connecting'?'var(--amberSoft)':'var(--bg2)')+';color:'+statusColor+';font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.3px;">'+statusLabel.toUpperCase()+'</span>'
+          +'</div>'
+          +(ok?'<div style="font-size:11px;color:var(--faint);margin-bottom:8px;font-family:&quot;JetBrains Mono&quot;,monospace;">'+esc(subtext)+'</div>':'')
+          +(ok&&isCeo?'<button class="btn-ghost conn-disconnect-btn" data-channel="'+key+'" style="font-size:11px;padding:6px 12px;">Disconnect</button>':'')
+          +(!ok&&isCeo?'<div style="margin-top:4px;">'+connectHtml+'</div>':'')
+          +(st==='connecting'&&isCeo?'<div style="font-size:11px;color:var(--amber);margin-top:6px;"><span class="spin" style="display:inline-block;width:12px;height:12px;border-width:2px;vertical-align:middle;margin-right:6px;"></span>Waiting for connection\u2026</div>':'')
+          +'</div>';
+      }
+
+      var waCloudConn=channelCard('WhatsApp Business','\u{1F4F1}','whatsapp_cloud','Official Meta Cloud API for business messaging',
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
+        +'<input class="modal-input conn-input" data-field="phoneNumberId" placeholder="Phone Number ID"/>'
+        +'<input class="modal-input conn-input" data-field="accessToken" type="password" placeholder="Access Token"/>'
+        +'<input class="modal-input conn-input" data-field="webhookVerifyToken" placeholder="Verify Token (optional)"/>'
+        +'<input class="modal-input conn-input" data-field="appSecret" type="password" placeholder="App Secret (optional)"/>'
+        +'</div>'
+        +'<button class="btn-primary conn-save-btn" data-channel="whatsapp_cloud" style="font-size:12px;padding:7px 14px;">Connect WhatsApp Cloud</button>'
+        ,(conns.whatsapp_cloud||{}).phone||'');
+
+      var waBaileysConn=channelCard('WhatsApp (QR)','\u{1F4F1}','whatsapp_baileys','Free \u2014 scan QR code with your personal WhatsApp',
+        '<button class="btn-primary conn-start-btn" data-channel="whatsapp_baileys" style="font-size:12px;padding:7px 14px;">Start QR Pairing</button>'
+        +'<div style="font-size:10.5px;color:var(--faint);margin-top:6px;">Opens terminal QR. Use for personal/dev accounts only.</div>'
+      );
+
+      var gmailConn=channelCard('Gmail','\u{1F4E7}','gmail','Read emails, auto-create tasks from messages',
+        '<button class="btn-primary conn-gmail-btn" style="font-size:12px;padding:7px 14px;">\u{1F517} Connect with Google</button>'
+        +'<div style="font-size:10.5px;color:var(--faint);margin-top:6px;">Requires GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET in server .env</div>'
+        ,(conns.gmail||{}).email||'');
+
+      var calendarConn=channelCard('Google Calendar','\u{1F4C5}','calendar','Sync events and deadlines',
+        '<div style="font-size:11px;color:var(--muted);">Coming soon \u2014 uses same Google OAuth as Gmail</div>'
+      );
+
+      var slackConn=channelCard('Slack','\u{1F4AC}','slack','Watch channels, capture messages as loops',
+        '<div style="font-size:11px;color:var(--muted);">Set SLACK_BOT_TOKEN in .env to enable</div>'
+      );
+
+      var telegramConn=channelCard('Telegram','\u2708\uFE0F','telegram','Bot messages become tracked loops',
+        '<div style="font-size:11px;color:var(--muted);">Set TELEGRAM_BOT_TOKEN in .env to enable</div>'
+      );
+
+      var githubConn=channelCard('GitHub','\u{1F419}','github','Issues, PRs, and commits as open loops',
+        '<div style="font-size:11px;color:var(--muted);">Set GITHUB_TOKEN + GITHUB_WEBHOOK_SECRET in .env to enable</div>'
+      );
+
+      var html='<div class="sec-head"><div><div class="sec-title">Settings</div><div class="sec-sub">Integrations, autonomy, and personalisation.</div></div></div>';
       html+='<div style="padding:16px 18px;border-radius:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);display:flex;align-items:center;gap:12px;margin-bottom:20px;"><div style="flex:1;"><div style="font-size:14px;font-weight:700;color:var(--red);">Kill switch</div><div style="font-size:12px;color:var(--red);opacity:.7;margin-top:2px;">Pause ALL autonomous actions immediately.</div></div><button class="btn-danger" onclick="toast(\\'All autonomous actions paused.\\')">Pause all</button></div>';
       if(approvals.length){
         html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:8px;">PENDING APPROVALS ('+approvals.length+')</div>'
@@ -5179,19 +6365,68 @@ button{cursor:pointer;}
       }
       html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">AUTONOMY</div>'
         +ACTIONS.map(function(a){var cur=settings[a.k]||'off';return '<div class="gc auto-card" style="padding:14px 16px;border-radius:14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><div style="flex:1;min-width:160px;"><div style="font-size:13.5px;font-weight:600;">'+a.label+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;">'+a.desc+'</div></div><div class="lvls">'+['off','ask','auto'].map(function(lv){return '<button class="lvl'+(lv===cur?' on':'')+'" data-act="'+a.k+'" data-lvl="'+lv+'">'+(lv.charAt(0).toUpperCase()+lv.slice(1))+'</button>';}).join('')+'</div></div>';}).join('');
-      html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">CHANNEL CONNECTIONS</div>'
-        +channels.map(function(c){var ok=c.status&&c.status!=='not configured';return '<div class="gc" style="padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:11px;margin-bottom:7px;"><div style="width:34px;height:34px;border-radius:10px;background:var(--bg2);border:1px solid var(--glassBorder);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">'+c.icon+'</div><div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">'+c.name+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">'+esc(c.status)+'</div></div><span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:6px;background:'+(ok?'var(--greenSoft)':'var(--amberSoft)')+';color:'+(ok?'var(--green)':'var(--amber)')+';">'+(ok?'Active':'Setup needed')+'</span></div>';}).join('');
+      html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">INTEGRATIONS</div>'
+        +waCloudConn+waBaileysConn+gmailConn+calendarConn+slackConn+telegramConn+githubConn;
       html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">APPEARANCE</div>'
         +'<div class="gc" style="padding:14px 16px;border-radius:14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;"><div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">Dark mode</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;">Switch between light and dark interface.</div></div><button class="btn-ghost" id="settings-dark-toggle">'+(darkMode?'Switch to light':'Switch to dark')+'</button></div>'
         +'<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;">Wallpaper</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'
         +THEMES.map(function(t){return '<div style="cursor:pointer;" onclick="applyTheme(\\''+t.id+'\\')"><div style="aspect-ratio:3/2;border-radius:10px;background:'+t.swatch+';border:2px solid '+(activeTheme===t.id?'var(--accent)':'transparent')+';transition:all .15s;"></div><div style="text-align:center;font-size:10px;color:var(--muted);margin-top:4px;">'+t.label+'</div></div>';}).join('')+'</div>';
       html+=adminUsersPanelHtml();
       view.innerHTML=html;
+
+      // Bind settings handlers
       var std=document.getElementById('settings-dark-toggle');
       if(std)std.onclick=function(){applyDark(!darkMode);loadSettings();};
       view.querySelectorAll('.lvl').forEach(function(b){b.onclick=function(){post('/api/autonomy',{action:b.dataset.act,level:b.dataset.lvl},'PUT').then(function(){toast('Saved');loadSettings();});};});
       view.querySelectorAll('[data-approve]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.approve+'/approve').then(function(){toast('Approved');loadSettings();});};});
       view.querySelectorAll('[data-dismiss]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(function(){toast('Dismissed');loadSettings();});};});
+
+      // WhatsApp Cloud \u2014 save credentials
+      view.querySelectorAll('.conn-save-btn').forEach(function(btn){
+        btn.onclick=function(){
+          var channel=btn.dataset.channel;
+          var card=btn.closest('.gc');
+          var fields={};
+          card.querySelectorAll('.conn-input').forEach(function(inp){
+            if(inp.value.trim()) fields[inp.dataset.field]=inp.value.trim();
+          });
+          if(!fields.phoneNumberId||!fields.accessToken){toast('Phone Number ID and Access Token are required');return;}
+          btn.disabled=true;btn.textContent='Connecting\u2026';
+          post('/api/connections/'+channel,fields).then(function(){toast('WhatsApp Cloud connected!');loadSettings();}).catch(function(e){toast(e.message||'Failed');btn.disabled=false;btn.textContent='Connect WhatsApp Cloud';});
+        };
+      });
+
+      // WhatsApp Baileys \u2014 start QR
+      view.querySelectorAll('.conn-start-btn').forEach(function(btn){
+        btn.onclick=function(){
+          btn.disabled=true;btn.textContent='Starting\u2026';
+          post('/api/connections/whatsapp_baileys/start',{}).then(function(r){
+            toast(r.message||'QR pairing started \u2014 check server console');
+            loadSettings();
+          }).catch(function(e){toast(e.message||'Failed');btn.disabled=false;btn.textContent='Start QR Pairing';});
+        };
+      });
+
+      // Gmail \u2014 OAuth
+      view.querySelectorAll('.conn-gmail-btn').forEach(function(btn){
+        btn.onclick=function(){
+          btn.disabled=true;btn.textContent='Loading\u2026';
+          api('/api/connections/gmail/auth-url').then(function(r){
+            if(r.error){toast(r.error);btn.disabled=false;btn.textContent='\u{1F517} Connect with Google';return;}
+            if(r.authUrl) window.location.href=r.authUrl;
+            else{toast('Failed to get auth URL');btn.disabled=false;btn.textContent='\u{1F517} Connect with Google';}
+          }).catch(function(e){toast(e.message||'Failed');btn.disabled=false;btn.textContent='\u{1F517} Connect with Google';});
+        };
+      });
+
+      // Disconnect buttons
+      view.querySelectorAll('.conn-disconnect-btn').forEach(function(btn){
+        btn.onclick=function(){
+          if(!confirm('Disconnect this integration?')) return;
+          post('/api/connections/'+btn.dataset.channel+'/disconnect',{}).then(function(){toast('Disconnected');loadSettings();});
+        };
+      });
+
       bindAdminUserUi();
     });
   }
@@ -5328,8 +6563,8 @@ function buildServer(deps) {
     allowedHeaders: ["Content-Type", "Authorization"]
   });
   app2.register(rateLimit, rateLimitConfig);
-  const publicDir = join4(import.meta.dirname ?? process.cwd(), "public");
-  if (existsSync(publicDir)) {
+  const publicDir = join5(import.meta.dirname ?? process.cwd(), "public");
+  if (existsSync2(publicDir)) {
     app2.register(fastifyStatic, {
       root: publicDir,
       prefix: "/",
@@ -5814,21 +7049,151 @@ function buildServer(deps) {
     await principalOf(req);
     return core.events.undo(params(req).id);
   });
-  app2.get("/api/connections", async () => {
+  app2.get("/api/connections", async (req) => {
+    const p = await principalOf(req);
+    const conns = await core.ctx.db.connections.list(p.orgId);
     const env = process.env;
     const has = (...keys) => keys.every((k) => !!env[k]);
+    const byChannel = new Map(conns.map((c) => [c.channel, c]));
     return {
       ai: { configured: !!llm, via: llm ? "anthropic" : null },
-      whatsapp: {
-        inbound: "webhook ready at /webhooks/whatsapp",
-        outbound: has("WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_ACCESS_TOKEN") ? "cloud-api" : env.WHATSAPP_BAILEYS === "on" ? "baileys-qr" : "not configured"
+      whatsapp_cloud: {
+        status: byChannel.get("whatsapp_cloud")?.status ?? (has("WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_ACCESS_TOKEN") ? "connected" : "disconnected"),
+        method: has("WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_ACCESS_TOKEN") ? "cloud-api" : "not configured",
+        phone: env.WHATSAPP_PHONE_NUMBER_ID ? `+${env.WHATSAPP_PHONE_NUMBER_ID}` : ""
       },
-      channels: ["email", "slack", "telegram", "github", "calendar"].map((c) => ({
-        channel: c,
-        inbound: `webhook ready at /webhooks/${c}`,
-        outbound: "not configured"
-      }))
+      whatsapp_baileys: {
+        status: byChannel.get("whatsapp_baileys")?.status ?? (env.WHATSAPP_BAILEYS === "on" ? "connecting" : "disconnected"),
+        method: env.WHATSAPP_BAILEYS === "on" ? "baileys-qr" : "not configured"
+      },
+      gmail: {
+        status: byChannel.get("gmail")?.status ?? "disconnected",
+        email: byChannel.get("gmail")?.credentials?.email ?? ""
+      },
+      slack: {
+        status: byChannel.get("slack")?.status ?? (has("SLACK_BOT_TOKEN") ? "connected" : "disconnected")
+      },
+      telegram: {
+        status: byChannel.get("telegram")?.status ?? (has("TELEGRAM_BOT_TOKEN") ? "connected" : "disconnected")
+      },
+      github: {
+        status: byChannel.get("github")?.status ?? (has("GITHUB_TOKEN") ? "connected" : "disconnected")
+      },
+      calendar: {
+        status: byChannel.get("calendar")?.status ?? "disconnected"
+      }
     };
+  });
+  app2.post("/api/connections/whatsapp_cloud", {
+    preHandler: requireMinRole("ceo")
+  }, async (req) => {
+    const p = await principalOf(req);
+    const body = req.body;
+    if (!body.phoneNumberId || !body.accessToken) {
+      return { error: "phone_number_id and access_token are required" };
+    }
+    const conn = await core.ctx.db.connections.upsert(p.orgId, "whatsapp_cloud", {
+      status: "connected",
+      credentials: {
+        phoneNumberId: body.phoneNumberId,
+        accessToken: body.accessToken,
+        webhookVerifyToken: body.webhookVerifyToken ?? "",
+        appSecret: body.appSecret ?? ""
+      }
+    });
+    broadcast({ type: "connections.changed" });
+    return { ok: true, connection: conn };
+  });
+  app2.post("/api/connections/whatsapp_baileys/start", {
+    preHandler: requireMinRole("ceo")
+  }, async (req) => {
+    const p = await principalOf(req);
+    await core.ctx.db.connections.upsert(p.orgId, "whatsapp_baileys", {
+      status: "connecting",
+      credentials: {}
+    });
+    broadcast({ type: "connections.changed" });
+    return { ok: true, message: "QR code will appear in server console. Scan with WhatsApp." };
+  });
+  app2.get("/api/connections/gmail/auth-url", {
+    preHandler: requireMinRole("ceo")
+  }, async (req, reply) => {
+    const p = await principalOf(req);
+    const clientId = process.env.GMAIL_CLIENT_ID;
+    const clientSecret = process.env.GMAIL_CLIENT_SECRET;
+    const redirectBase = process.env.GMAIL_REDIRECT_URI || `${req.headers.origin || "http://localhost:4317"}/api/connections/gmail/callback`;
+    if (!clientId || !clientSecret) {
+      return reply.code(503).send({ error: "Gmail OAuth not configured. Set GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET in .env" });
+    }
+    const params2 = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectBase,
+      response_type: "code",
+      scope: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify",
+      access_type: "offline",
+      prompt: "consent"
+    });
+    await core.ctx.db.connections.upsert(p.orgId, "gmail", {
+      status: "connecting",
+      credentials: { redirectUri: redirectBase }
+    });
+    return { authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params2.toString()}` };
+  });
+  app2.get("/api/connections/gmail/callback", async (req, reply) => {
+    const { code } = req.query;
+    if (!code) {
+      return reply.redirect("/?error=gmail_no_code");
+    }
+    try {
+      const clientId = process.env.GMAIL_CLIENT_ID;
+      const clientSecret = process.env.GMAIL_CLIENT_SECRET;
+      const redirectBase = process.env.GMAIL_REDIRECT_URI || `http://localhost:4317/api/connections/gmail/callback`;
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectBase,
+          grant_type: "authorization_code"
+        })
+      });
+      const tokens = await tokenRes.json();
+      if (!tokens.access_token) {
+        return reply.redirect("/?error=gmail_token_failed");
+      }
+      const profileRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
+        headers: { Authorization: `Bearer ${tokens.access_token}` }
+      });
+      const profile = await profileRes.json();
+      await core.ctx.db.connections.upsert(LOCAL_ORG_ID, "gmail", {
+        status: "connected",
+        credentials: {
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token ?? "",
+          expiresIn: tokens.expires_in,
+          email: profile.emailAddress ?? ""
+        }
+      });
+      broadcast({ type: "connections.changed" });
+      return reply.redirect("/?connected=gmail");
+    } catch (err) {
+      logger.error({ err }, "Gmail OAuth callback failed");
+      return reply.redirect("/?error=gmail_callback_failed");
+    }
+  });
+  app2.post("/api/connections/:channel/disconnect", {
+    preHandler: requireMinRole("ceo")
+  }, async (req) => {
+    const p = await principalOf(req);
+    const { channel } = req.params;
+    await core.ctx.db.connections.upsert(p.orgId, channel, {
+      status: "disconnected",
+      credentials: {}
+    });
+    broadcast({ type: "connections.changed" });
+    return { ok: true };
   });
   app2.get("/api/autonomy", async (req) => core.autonomy.get((await principalOf(req)).orgId));
   app2.put("/api/autonomy", {
@@ -5993,6 +7358,115 @@ function buildServer(deps) {
       },
       today
     };
+  });
+  app2.get("/api/methods", async () => ({ methods: methods_exports.METHOD_LIST }));
+  app2.get("/api/methods/:methodId", async (req) => {
+    const p = await principalOf(req);
+    const { methodId } = req.params;
+    const entry = methods_exports.METHODS[methodId];
+    if (!entry) return { error: "Unknown method" };
+    const tasks = await core.tasks.list(p.orgId);
+    const result = entry.run(tasks);
+    return { result, meta: entry.meta };
+  });
+  app2.get("/api/reports", async (req) => {
+    const p = await principalOf(req);
+    const days = Math.min(365, Math.max(1, Number(req.query?.days ?? 30)));
+    const [loops, tasks, leads] = await Promise.all([
+      core.loops.list(p.orgId),
+      core.tasks.list(p.orgId),
+      core.leads.list(p.orgId)
+    ]);
+    let timeEntries = [];
+    try {
+      timeEntries = await core.ctx.db.timeEntries.listByUser(p.userId, p.orgId);
+    } catch {
+    }
+    return analytics_exports.computeReport({ loops, tasks, leads, timeEntries, windowDays: days });
+  });
+  app2.get("/api/team/performance", { preHandler: requireMinRole("manager") }, async (req) => {
+    const p = await principalOf(req);
+    const tasks = await core.tasks.list(p.orgId);
+    const loops = await core.loops.list(p.orgId);
+    const userStats = /* @__PURE__ */ new Map();
+    const ensure = (uid) => {
+      if (!userStats.has(uid)) userStats.set(uid, { userId: uid, tasksDone: 0, loopsClosed: 0, focusMinutes: 0, points: 0 });
+      return userStats.get(uid);
+    };
+    for (const t of tasks) {
+      const done = t.subtasks && t.subtasks.length > 0 && t.subtasks.every((s) => s.done);
+      for (const uid of t.assignees || []) {
+        const s = ensure(uid);
+        if (done) {
+          s.tasksDone++;
+          s.points += 3;
+        }
+      }
+    }
+    for (const l of loops) {
+      if (l.status === "closed") {
+        for (const uid of l.assignedTo || []) {
+          const s = ensure(uid);
+          s.loopsClosed++;
+          s.points += 2;
+        }
+      }
+    }
+    const rows = Array.from(userStats.values());
+    for (const r of rows) {
+      try {
+        const u = await auth.getUser?.(r.userId);
+        r.name = u?.name ?? r.userId;
+        r.role = u?.role ?? "employee";
+      } catch {
+        r.name = r.userId;
+        r.role = "employee";
+      }
+    }
+    return rows.sort((a, b) => b.points - a.points);
+  });
+  app2.post("/api/input/voice", async (req) => {
+    const p = await principalOf(req);
+    const body = req.body;
+    if (!body.audio) return { error: "No audio provided" };
+    const buf = Buffer.from(body.audio, "base64");
+    const text = await input_exports.transcribeAudio(buf, body.mimeType);
+    const taskTitles = input_exports.parseTasksFromTranscript(text);
+    const created = [];
+    for (const title of taskTitles.slice(0, 5)) {
+      created.push(await core.tasks.create({ orgId: p.orgId, actorId: p.userId, title, day: "today" }));
+    }
+    return { text, taskTitles, created };
+  });
+  app2.post("/api/input/calendar-import", async (req) => {
+    const p = await principalOf(req);
+    const body = req.body;
+    const icsText = body.ics ?? (body.url ? await input_exports.downloadIcsFromUrl(body.url) : "");
+    if (!icsText) return { error: "No .ics content or URL provided" };
+    const events = input_exports.parseIcs(icsText);
+    const taskShapes = input_exports.icsToTasks(events, p.orgId, p.userId);
+    const created = [];
+    for (const t of taskShapes) {
+      created.push(await core.tasks.create({ orgId: p.orgId, actorId: p.userId, title: t.title ?? "Imported event", day: t.day ?? "upcoming", dueAt: t.dueAt ?? void 0 }));
+    }
+    return { eventsFound: events.length, created };
+  });
+  app2.post("/api/input/attachments", async (req) => {
+    const p = await principalOf(req);
+    const body = req.body;
+    if (!body.taskId || !body.filename || !body.data) return { error: "taskId, filename, and data are required" };
+    const buf = Buffer.from(body.data, "base64");
+    const record2 = await input_exports.saveAttachment({ taskId: body.taskId, filename: body.filename, mimeType: body.mimeType ?? "application/octet-stream", data: buf, orgId: p.orgId });
+    return { ok: true, attachment: record2 };
+  });
+  app2.get("/api/input/attachments/:taskId", async (req) => {
+    const { taskId } = req.params;
+    return { attachments: await input_exports.listAttachments(taskId) };
+  });
+  app2.delete("/api/input/attachments/:orgId/:attachmentId", async (req) => {
+    const { orgId, attachmentId } = req.params;
+    await input_exports.deleteAttachment(orgId, attachmentId);
+    return { ok: true };
   });
   app2.get("/", async (_req, reply) => reply.type("text/html").send(renderUi()));
   app2.setErrorHandler(function(error, request, reply) {

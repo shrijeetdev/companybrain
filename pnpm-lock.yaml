@@ -82,6 +82,15 @@ importers:
         specifier: ^4.19.2
         version: 4.22.4
 
+  packages/agent:
+    dependencies:
+      '@companybrain/core':
+        specifier: file:../core
+        version: link:../core
+      '@companybrain/types':
+        specifier: file:../types
+        version: link:../types
+
   packages/auth:
     dependencies:
       '@companybrain/types':
@@ -97,6 +106,18 @@ importers:
       '@types/better-sqlite3':
         specifier: ^7.6.11
         version: 7.6.13
+
+  packages/billing:
+    dependencies:
+      '@companybrain/db':
+        specifier: file:../db
+        version: link:../db
+      '@companybrain/types':
+        specifier: file:../types
+        version: link:../types
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
 
   packages/core:
     dependencies:
@@ -159,6 +180,15 @@ importers:
       '@types/qrcode-terminal':
         specifier: ^0.12.2
         version: 0.12.2
+
+  packages/mcp:
+    dependencies:
+      '@companybrain/core':
+        specifier: file:../core
+        version: link:../core
+      '@companybrain/types':
+        specifier: file:../types
+        version: link:../types
 
   packages/queue:
     dependencies:

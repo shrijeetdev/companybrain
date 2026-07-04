@@ -10,7 +10,8 @@ import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import type { Core } from '@companybrain/core';
 import type { Auth, AuthUser, Principal, CreateUserInput, UpdateUserInput } from '@companybrain/auth';
-import { ingest, whatsapp, createLlm } from '@companybrain/integrations';
+import { ingest, whatsapp, createLlm, input as inputApi } from '@companybrain/integrations';
+import { methods, analytics } from '@companybrain/core';
 import { LOCAL_ORG_ID } from '@companybrain/auth';
 import { renderUi } from './web-ui';
 import {
@@ -626,21 +627,174 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   // Reverse a logged action (the "reversible" pillar): delete what was created, restore what changed.
   app.post('/api/events/:id/undo', async (req) => { await principalOf(req); return core.events.undo(params(req).id); });
 
-  // --- Connections: what's configured vs. what needs credentials (for self-hosting) ---
-  app.get('/api/connections', async () => {
+  // --- Connections: real credential management + connect flows ---
+  app.get('/api/connections', async (req) => {
+    const p = await principalOf(req);
+    const conns = await core.ctx.db.connections.list(p.orgId);
     const env = process.env;
     const has = (...keys: string[]) => keys.every((k) => !!env[k]);
+    // Merge stored connections with env-based config
+    const byChannel = new Map(conns.map(c => [c.channel, c]));
     return {
       ai: { configured: !!llm, via: llm ? 'anthropic' : null },
-      whatsapp: {
-        inbound: 'webhook ready at /webhooks/whatsapp',
-        outbound: has('WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_ACCESS_TOKEN') ? 'cloud-api'
-          : env.WHATSAPP_BAILEYS === 'on' ? 'baileys-qr' : 'not configured',
+      whatsapp_cloud: {
+        status: byChannel.get('whatsapp_cloud')?.status ?? (has('WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_ACCESS_TOKEN') ? 'connected' : 'disconnected'),
+        method: has('WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_ACCESS_TOKEN') ? 'cloud-api' : 'not configured',
+        phone: env.WHATSAPP_PHONE_NUMBER_ID ? `+${env.WHATSAPP_PHONE_NUMBER_ID}` : '',
       },
-      channels: ['email', 'slack', 'telegram', 'github', 'calendar'].map((c) => ({
-        channel: c, inbound: `webhook ready at /webhooks/${c}`, outbound: 'not configured',
-      })),
+      whatsapp_baileys: {
+        status: byChannel.get('whatsapp_baileys')?.status ?? (env.WHATSAPP_BAILEYS === 'on' ? 'connecting' : 'disconnected'),
+        method: env.WHATSAPP_BAILEYS === 'on' ? 'baileys-qr' : 'not configured',
+      },
+      gmail: {
+        status: byChannel.get('gmail')?.status ?? 'disconnected',
+        email: byChannel.get('gmail')?.credentials?.email ?? '',
+      },
+      slack: {
+        status: byChannel.get('slack')?.status ?? (has('SLACK_BOT_TOKEN') ? 'connected' : 'disconnected'),
+      },
+      telegram: {
+        status: byChannel.get('telegram')?.status ?? (has('TELEGRAM_BOT_TOKEN') ? 'connected' : 'disconnected'),
+      },
+      github: {
+        status: byChannel.get('github')?.status ?? (has('GITHUB_TOKEN') ? 'connected' : 'disconnected'),
+      },
+      calendar: {
+        status: byChannel.get('calendar')?.status ?? 'disconnected',
+      },
     };
+  });
+
+  // WhatsApp Cloud API — save credentials
+  app.post('/api/connections/whatsapp_cloud', {
+    preHandler: requireMinRole('ceo'),
+  }, async (req) => {
+    const p = await principalOf(req);
+    const body = req.body as any;
+    if (!body.phoneNumberId || !body.accessToken) {
+      return { error: 'phone_number_id and access_token are required' };
+    }
+    const conn = await core.ctx.db.connections.upsert(p.orgId, 'whatsapp_cloud', {
+      status: 'connected',
+      credentials: {
+        phoneNumberId: body.phoneNumberId,
+        accessToken: body.accessToken,
+        webhookVerifyToken: body.webhookVerifyToken ?? '',
+        appSecret: body.appSecret ?? '',
+      },
+    });
+    broadcast({ type: 'connections.changed' });
+    return { ok: true, connection: conn };
+  });
+
+  // WhatsApp Baileys — request QR code
+  app.post('/api/connections/whatsapp_baileys/start', {
+    preHandler: requireMinRole('ceo'),
+  }, async (req) => {
+    const p = await principalOf(req);
+    await core.ctx.db.connections.upsert(p.orgId, 'whatsapp_baileys', {
+      status: 'connecting',
+      credentials: {},
+    });
+    broadcast({ type: 'connections.changed' });
+    return { ok: true, message: 'QR code will appear in server console. Scan with WhatsApp.' };
+  });
+
+  // Gmail — initiate OAuth flow (returns Google auth URL)
+  app.get('/api/connections/gmail/auth-url', {
+    preHandler: requireMinRole('ceo'),
+  }, async (req, reply) => {
+    const p = await principalOf(req);
+    const clientId = process.env.GMAIL_CLIENT_ID;
+    const clientSecret = process.env.GMAIL_CLIENT_SECRET;
+    const redirectBase = process.env.GMAIL_REDIRECT_URI || `${(req.headers.origin as string) || 'http://localhost:4317'}/api/connections/gmail/callback`;
+
+    if (!clientId || !clientSecret) {
+      return reply.code(503).send({ error: 'Gmail OAuth not configured. Set GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET in .env' });
+    }
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectBase,
+      response_type: 'code',
+      scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify',
+      access_type: 'offline',
+      prompt: 'consent',
+    });
+
+    await core.ctx.db.connections.upsert(p.orgId, 'gmail', {
+      status: 'connecting',
+      credentials: { redirectUri: redirectBase },
+    });
+
+    return { authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
+  });
+
+  // Gmail — OAuth callback (Google redirects here with code)
+  app.get('/api/connections/gmail/callback', async (req, reply) => {
+    const { code } = req.query as { code?: string; error?: string };
+    if (!code) {
+      return reply.redirect('/?error=gmail_no_code');
+    }
+    try {
+      const clientId = process.env.GMAIL_CLIENT_ID!;
+      const clientSecret = process.env.GMAIL_CLIENT_SECRET!;
+      const redirectBase = process.env.GMAIL_REDIRECT_URI || `http://localhost:4317/api/connections/gmail/callback`;
+
+      // Exchange code for tokens
+      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectBase,
+          grant_type: 'authorization_code',
+        }),
+      });
+      const tokens = await tokenRes.json() as any;
+      if (!tokens.access_token) {
+        return reply.redirect('/?error=gmail_token_failed');
+      }
+
+      // Get user email
+      const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      const profile = await profileRes.json() as any;
+
+      // Store credentials
+      await core.ctx.db.connections.upsert(LOCAL_ORG_ID, 'gmail', {
+        status: 'connected',
+        credentials: {
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token ?? '',
+          expiresIn: tokens.expires_in,
+          email: profile.emailAddress ?? '',
+        },
+      });
+
+      broadcast({ type: 'connections.changed' });
+      return reply.redirect('/?connected=gmail');
+    } catch (err: any) {
+      logger.error({ err }, 'Gmail OAuth callback failed');
+      return reply.redirect('/?error=gmail_callback_failed');
+    }
+  });
+
+  // Disconnect a channel
+  app.post('/api/connections/:channel/disconnect', {
+    preHandler: requireMinRole('ceo'),
+  }, async (req) => {
+    const p = await principalOf(req);
+    const { channel } = req.params as { channel: string };
+    await core.ctx.db.connections.upsert(p.orgId, channel, {
+      status: 'disconnected',
+      credentials: {},
+    });
+    broadcast({ type: 'connections.changed' });
+    return { ok: true };
   });
 
   // --- Autonomy (off · ask · auto) + the human approval queue ---
@@ -827,6 +981,124 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
       },
       today,
     };
+  });
+
+  // --- Productivity Methods ---
+  app.get('/api/methods', async () => ({ methods: methods.METHOD_LIST }));
+
+  app.get('/api/methods/:methodId', async (req) => {
+    const p = await principalOf(req);
+    const { methodId } = req.params as { methodId: string };
+    const entry = (methods.METHODS as Record<string, any>)[methodId];
+    if (!entry) return { error: 'Unknown method' };
+    const tasks = await core.tasks.list(p.orgId);
+    const result = entry.run(tasks);
+    return { result, meta: entry.meta };
+  });
+
+  // --- Reports (real analytics) ---
+  app.get('/api/reports', async (req) => {
+    const p = await principalOf(req);
+    const days = Math.min(365, Math.max(1, Number((req.query as any)?.days ?? 30)));
+    const [loops, tasks, leads] = await Promise.all([
+      core.loops.list(p.orgId),
+      core.tasks.list(p.orgId),
+      core.leads.list(p.orgId),
+    ]);
+    // Time entries per user (best-effort — pull from db if available)
+    let timeEntries: any[] = [];
+    try { timeEntries = await core.ctx.db.timeEntries.listByUser(p.userId, p.orgId); } catch { /* no-op */ }
+    return analytics.computeReport({ loops, tasks, leads, timeEntries, windowDays: days });
+  });
+
+  // --- Team performance (manager/ceo only) ---
+  app.get('/api/team/performance', { preHandler: requireMinRole('manager') }, async (req) => {
+    const p = await principalOf(req);
+    const tasks = await core.tasks.list(p.orgId);
+    const loops = await core.loops.list(p.orgId);
+    // Build per-user stats from assignees + time entries
+    const userStats = new Map<string, { userId: string; tasksDone: number; loopsClosed: number; focusMinutes: number; points: number }>();
+    const ensure = (uid: string) => {
+      if (!userStats.has(uid)) userStats.set(uid, { userId: uid, tasksDone: 0, loopsClosed: 0, focusMinutes: 0, points: 0 });
+      return userStats.get(uid)!;
+    };
+    for (const t of tasks) {
+      const done = t.subtasks && t.subtasks.length > 0 && t.subtasks.every((s: any) => s.done);
+      for (const uid of t.assignees || []) {
+        const s = ensure(uid);
+        if (done) { s.tasksDone++; s.points += 3; }
+      }
+    }
+    for (const l of loops) {
+      if (l.status === 'closed') {
+        for (const uid of l.assignedTo || []) {
+          const s = ensure(uid);
+          s.loopsClosed++; s.points += 2;
+        }
+      }
+    }
+    // Resolve user names from auth
+    const rows = Array.from(userStats.values());
+    for (const r of rows) {
+      try {
+        const u = await (auth as any).getUser?.(r.userId);
+        (r as any).name = u?.name ?? r.userId;
+        (r as any).role = u?.role ?? 'employee';
+      } catch { (r as any).name = r.userId; (r as any).role = 'employee'; }
+    }
+    return rows.sort((a, b) => b.points - a.points);
+  });
+
+  // --- Rich input: voice transcription ---
+  app.post('/api/input/voice', async (req) => {
+    const p = await principalOf(req);
+    const body = req.body as { audio?: string; mimeType?: string };
+    if (!body.audio) return { error: 'No audio provided' };
+    const buf = Buffer.from(body.audio, 'base64');
+    const text = await inputApi.transcribeAudio(buf, body.mimeType);
+    const taskTitles = inputApi.parseTasksFromTranscript(text);
+    // Auto-create tasks if transcript yielded action items
+    const created: any[] = [];
+    for (const title of taskTitles.slice(0, 5)) {
+      created.push(await core.tasks.create({ orgId: p.orgId, actorId: p.userId, title, day: 'today' }));
+    }
+    return { text, taskTitles, created };
+  });
+
+  // --- Rich input: calendar .ics import ---
+  app.post('/api/input/calendar-import', async (req) => {
+    const p = await principalOf(req);
+    const body = req.body as { ics?: string; url?: string };
+    const icsText = body.ics ?? (body.url ? await inputApi.downloadIcsFromUrl(body.url) : '');
+    if (!icsText) return { error: 'No .ics content or URL provided' };
+    const events = inputApi.parseIcs(icsText);
+    const taskShapes = inputApi.icsToTasks(events, p.orgId, p.userId);
+    const created: any[] = [];
+    for (const t of taskShapes) {
+      created.push(await core.tasks.create({ orgId: p.orgId, actorId: p.userId, title: t.title ?? 'Imported event', day: (t.day as any) ?? 'upcoming', dueAt: t.dueAt ?? undefined }));
+    }
+    return { eventsFound: events.length, created };
+  });
+
+  // --- Rich input: attachment upload ---
+  app.post('/api/input/attachments', async (req) => {
+    const p = await principalOf(req);
+    const body = req.body as { taskId?: string; filename?: string; mimeType?: string; data?: string };
+    if (!body.taskId || !body.filename || !body.data) return { error: 'taskId, filename, and data are required' };
+    const buf = Buffer.from(body.data, 'base64');
+    const record = await inputApi.saveAttachment({ taskId: body.taskId, filename: body.filename, mimeType: body.mimeType ?? 'application/octet-stream', data: buf, orgId: p.orgId });
+    return { ok: true, attachment: record };
+  });
+
+  app.get('/api/input/attachments/:taskId', async (req) => {
+    const { taskId } = req.params as { taskId: string };
+    return { attachments: await inputApi.listAttachments(taskId) };
+  });
+
+  app.delete('/api/input/attachments/:orgId/:attachmentId', async (req) => {
+    const { orgId, attachmentId } = req.params as { orgId: string; attachmentId: string };
+    await inputApi.deleteAttachment(orgId, attachmentId);
+    return { ok: true };
   });
 
   // --- Embedded web UI (this app IS the website) ---

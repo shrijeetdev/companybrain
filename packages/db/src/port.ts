@@ -90,6 +90,23 @@ export interface CustomFieldRepo {
   deleteByEntity(entityType: string, entityId: string): Promise<void>;
 }
 
+export interface ConnectionRecord {
+  id: string;
+  orgId: string;
+  channel: 'whatsapp_cloud' | 'whatsapp_baileys' | 'gmail' | 'slack' | 'telegram' | 'github' | 'calendar';
+  status: 'disconnected' | 'connecting' | 'connected' | 'error';
+  credentials: Record<string, any>;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ConnectionRepo {
+  list(orgId: string): Promise<ConnectionRecord[]>;
+  get(orgId: string, channel: string): Promise<ConnectionRecord | null>;
+  upsert(orgId: string, channel: string, patch: Partial<ConnectionRecord>): Promise<ConnectionRecord>;
+  delete(orgId: string, channel: string): Promise<void>;
+}
+
 export interface Database {
   /** create tables if missing */
   init(): Promise<void>;
@@ -101,5 +118,6 @@ export interface Database {
   approvals: ApprovalRepo;
   timeEntries: TimeEntryRepo;
   customFields: CustomFieldRepo;
+  connections: ConnectionRepo;
   close(): Promise<void>;
 }

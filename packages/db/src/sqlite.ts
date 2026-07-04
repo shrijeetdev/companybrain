@@ -15,6 +15,8 @@ import type {
   TimeEntry,
   CustomFieldRepo,
   CustomField,
+  ConnectionRepo,
+  ConnectionRecord,
 } from './port';
 
 const DDL = `
@@ -26,6 +28,7 @@ CREATE TABLE IF NOT EXISTS settings  (org_id TEXT PRIMARY KEY, doc TEXT NOT NULL
 CREATE TABLE IF NOT EXISTS approvals (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, status TEXT, at INTEGER, doc TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS time_entries (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, task_id TEXT NOT NULL, user_id TEXT NOT NULL, started_at INTEGER, ended_at INTEGER, duration INTEGER, note TEXT, doc TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS custom_fields (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, field_name TEXT NOT NULL, field_type TEXT NOT NULL DEFAULT 'text', field_value TEXT NOT NULL, created_at INTEGER);
+CREATE TABLE IF NOT EXISTS connections (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'disconnected', credentials TEXT NOT NULL DEFAULT '{}', created_at INTEGER, updated_at INTEGER);
 CREATE INDEX IF NOT EXISTS idx_loops_org  ON loops(org_id, side);
 CREATE INDEX IF NOT EXISTS idx_tasks_org  ON tasks(org_id);
 CREATE INDEX IF NOT EXISTS idx_leads_org  ON leads(org_id);
@@ -35,6 +38,7 @@ CREATE INDEX IF NOT EXISTS idx_time_entries_task ON time_entries(task_id);
 CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id, org_id);
 CREATE INDEX IF NOT EXISTS idx_custom_fields_entity ON custom_fields(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_custom_fields_org ON custom_fields(org_id);
+CREATE INDEX IF NOT EXISTS idx_connections_org_channel ON connections(org_id, channel);
 `;
 
 export class SqliteDatabase implements DbPort {
@@ -47,6 +51,7 @@ export class SqliteDatabase implements DbPort {
   approvals: ApprovalRepo;
   timeEntries: TimeEntryRepo;
   customFields: CustomFieldRepo;
+  connections: ConnectionRepo;
 
   constructor(filePath: string) {
     this.db = new Database(filePath);
@@ -253,6 +258,43 @@ export class SqliteDatabase implements DbPort {
         db.prepare('DELETE FROM custom_fields WHERE entity_type=? AND entity_id=?').run(entityType, entityId);
       },
     };
+
+    const connectionRepo: ConnectionRepo = {
+      async list(orgId) {
+        const rows = db.prepare('SELECT id, org_id, channel, status, credentials, created_at, updated_at FROM connections WHERE org_id=? ORDER BY channel ASC').all(orgId) as any[];
+        return rows.map(rowToConnection);
+      },
+      async get(orgId, channel) {
+        const row = db.prepare('SELECT id, org_id, channel, status, credentials, created_at, updated_at FROM connections WHERE org_id=? AND channel=?').get(orgId, channel) as any;
+        return row ? rowToConnection(row) : null;
+      },
+      async upsert(orgId, channel, patch) {
+        const existing = await connectionRepo.get(orgId, channel);
+        const now = Date.now();
+        if (existing) {
+          const merged = { ...existing, ...patch, channel, updatedAt: now } as ConnectionRecord;
+          db.prepare('UPDATE connections SET status=?, credentials=?, updated_at=? WHERE org_id=? AND channel=?')
+            .run(merged.status, JSON.stringify(merged.credentials), now, orgId, channel);
+          return merged;
+        }
+        const conn: ConnectionRecord = {
+          id: `conn_${channel}_${Date.now()}`,
+          orgId,
+          channel: channel as ConnectionRecord['channel'],
+          status: patch.status ?? 'disconnected',
+          credentials: patch.credentials ?? {},
+          createdAt: patch.createdAt ?? now,
+          updatedAt: now,
+        };
+        db.prepare('INSERT INTO connections (id, org_id, channel, status, credentials, created_at, updated_at) VALUES (?,?,?,?,?,?,?)')
+          .run(conn.id, conn.orgId, conn.channel, conn.status, JSON.stringify(conn.credentials), conn.createdAt, conn.updatedAt);
+        return conn;
+      },
+      async delete(orgId, channel) {
+        db.prepare('DELETE FROM connections WHERE org_id=? AND channel=?').run(orgId, channel);
+      },
+    };
+    this.connections = connectionRepo;
   }
 
   async init() {
@@ -274,5 +316,17 @@ function rowToCustomField(row: any): CustomField {
     fieldType: row.field_type,
     fieldValue: row.field_value,
     createdAt: row.created_at,
+  };
+}
+
+function rowToConnection(row: any): ConnectionRecord {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    channel: row.channel,
+    status: row.status,
+    credentials: typeof row.credentials === 'string' ? JSON.parse(row.credentials) : (row.credentials ?? {}),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }

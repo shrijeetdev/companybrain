@@ -1,0 +1,255 @@
+/*
+ * companybrain desktop — Liquid Glass splash styles.
+ *
+ * The window is frameless + transparent (see main.cjs createSplash), so the
+ * body is fully clear and the .glass-card is the only opaque region. We lean on
+ * backdrop-filter for the frosted-glass look, a layered radial gradient for the
+ * "liquid" aurora behind it, and a soft drop shadow to lift the card off the
+ * desktop. Designed to read well on both light and dark wallpapers.
+ */
+
+:root {
+  --ink: #f4f6fb;
+  --ink-dim: rgba(244, 246, 251, 0.62);
+  --glass: rgba(20, 24, 33, 0.55);
+  --glass-edge: rgba(255, 255, 255, 0.16);
+  --glass-sheen: rgba(255, 255, 255, 0.06);
+  --accent: #5b8cff;
+  --accent-2: #9b6bff;
+  --accent-3: #2bd9c9;
+  --danger: #ff6b6b;
+  --radius: 28px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  /* Transparent so the OS shows through to the wallpaper (transparent window). */
+  background: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: var(--ink);
+  overflow: hidden;
+  user-select: none;
+}
+
+/* The single visible region: a rounded frosted card centered on screen. */
+.glass-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  /* Frosted glass: blur whatever is behind, tint it dark, add a light sheen. */
+  background: linear-gradient(
+      160deg,
+      var(--glass-sheen),
+      rgba(255, 255, 255, 0.02) 40%,
+      rgba(0, 0, 0, 0.18)
+    ),
+    var(--glass);
+  -webkit-backdrop-filter: blur(34px) saturate(180%);
+  backdrop-filter: blur(34px) saturate(180%);
+  /* Two-layer border: bright top-left edge (the "glass" highlight), faint elsewhere. */
+  box-shadow: inset 0 1px 0 var(--glass-edge),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 30px 80px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Liquid aurora: three blurred, drifting color blobs behind the glass. --- */
+.aurora {
+  position: absolute;
+  inset: -30%;
+  z-index: 0;
+  filter: blur(50px);
+  opacity: 0.85;
+}
+
+.blob {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  animation: drift 14s ease-in-out infinite;
+}
+
+.blob--a {
+  background: radial-gradient(circle at 30% 30%, var(--accent), transparent 70%);
+  top: 8%;
+  left: 6%;
+  animation-delay: 0s;
+}
+
+.blob--b {
+  background: radial-gradient(circle at 70% 70%, var(--accent-2), transparent 70%);
+  bottom: 4%;
+  right: 0%;
+  animation-delay: -4s;
+}
+
+.blob--c {
+  background: radial-gradient(circle at 50% 50%, var(--accent-3), transparent 70%);
+  top: 40%;
+  left: 45%;
+  width: 240px;
+  height: 240px;
+  animation-delay: -8s;
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(40px, -30px, 0) scale(1.12);
+  }
+  66% {
+    transform: translate3d(-30px, 25px, 0) scale(0.92);
+  }
+}
+
+/* --- Foreground content sits above the aurora. --- */
+.glass-content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 40px;
+  text-align: center;
+}
+
+.wordmark {
+  font-size: 44px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
+}
+
+.word-light {
+  font-weight: 300;
+  color: var(--ink-dim);
+}
+
+.word-bold {
+  font-weight: 800;
+  color: var(--ink);
+  background: linear-gradient(120deg, var(--accent), var(--accent-2) 60%, var(--accent-3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.tagline {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-dim);
+  letter-spacing: 0.02em;
+}
+
+/* --- Status row: spinner + line of text. --- */
+.status {
+  margin-top: 26px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  min-height: 20px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+  flex: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error state flips the status text + spinner color. Added by renderer.js. */
+.status.is-error .spinner {
+  border-top-color: var(--danger);
+  animation: none;
+  border-color: rgba(255, 107, 107, 0.4);
+  border-top-color: var(--danger);
+  position: relative;
+}
+.status.is-error .spinner::after {
+  content: "!";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--danger);
+}
+.status.is-error .status-text {
+  color: var(--danger);
+}
+
+/* --- Footer: a tiny port indicator. --- */
+.glass-foot {
+  position: relative;
+  z-index: 1;
+  padding: 16px 24px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-3);
+  box-shadow: 0 0 8px var(--accent-3);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Respect reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  .blob,
+  .spinner,
+  .dot {
+    animation: none !important;
+  }
+}

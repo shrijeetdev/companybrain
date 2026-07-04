@@ -132,3 +132,33 @@ export interface Job<T = Record<string, unknown>> {
   orgId: string;
   data: T;
 }
+
+// ─── Productivity-methods engine types ────────────────────────────────────────
+// Pure functions over Task[] that classify / rank / schedule work. The engine in
+// @companybrain/core exposes both individual functions and a METHODS registry.
+
+/** Identifier for one of the built-in productivity frameworks. */
+export type MethodId =
+  | 'eisenhower'
+  | 'moscow'
+  | 'abcde'
+  | 'gtd'
+  | 'twominute'
+  | 'frog'
+  | 'threethree'
+  | 'pareto'
+  | 'timeblock'
+  | 'pomodoro';
+
+/** Human-facing metadata for a method (used by the registry / UI). */
+export interface MethodMeta {
+  id: MethodId;
+  name: string;
+  icon: string;
+  description: string;
+}
+
+/** Methods return arbitrary structured results — typed loosely at the boundary. */
+export interface MethodResult {
+  [key: string]: any;
+}

@@ -593,6 +593,7 @@ button{cursor:pointer;}
     {id:'leads',  ic:'🤝', label:'Leads'},
     {id:'projects', ic:'📦', label:'Projects'},
     {id:'agents', ic:'🤖', label:'Agents'},
+    {id:'methods', ic:'🧭', label:'Methods'},
     {id:'team',   ic:'👥', label:'Team'},
     {id:'brain',  ic:'🧠', label:'Brain'},
     {id:'reports',ic:'📊', label:'Reports'},
@@ -606,6 +607,7 @@ button{cursor:pointer;}
     leads:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
     projects:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="6" height="6" rx="1"/><rect x="9" y="3" width="6" height="6" rx="1"/><rect x="16" y="3" width="6" height="6" rx="1"/><rect x="2" y="12" width="6" height="6" rx="1"/><rect x="9" y="12" width="6" height="6" rx="1"/></svg>',
     agents:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 7V4M8 13h.01M16 13h.01"/></svg>',
+    methods:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>',
     team:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
     brain:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.14Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.14Z"/></svg>',
     reports:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
@@ -896,7 +898,7 @@ button{cursor:pointer;}
 
   // ── nav ───────────────────────────────────────────────────────────────────
   var BOT_TABS=['loops','tasks','leads','projects','agents'];
-  var MORE_TABS=['team','brain','reports','settings','events'];
+  var MORE_TABS=['team','methods','brain','reports','settings','events'];
   function buildNav(){
     var sn=document.getElementById('side-nav');
     sn.innerHTML=TABS.map(function(t){
@@ -956,6 +958,7 @@ button{cursor:pointer;}
     else if(tab==='leads')  loadLeads();
     else if(tab==='projects') loadProjects();
     else if(tab==='agents') loadAgents();
+    else if(tab==='methods') loadMethods();
     else if(tab==='team')   loadTeam();
     else if(tab==='brain')  loadBrain();
     else if(tab==='reports') loadReports();
@@ -1848,25 +1851,78 @@ button{cursor:pointer;}
   })();
   var teamView='ceo';
   function loadTeam(){
+    var role=me&&me.role;
+    var isManager=role==='ceo'||role==='manager';
     var subViews=[{id:'ceo',label:'CEO'},{id:'mgr',label:'Manager'},{id:'emp',label:'Employee'},{id:'client',label:'Client'},{id:'agents',label:'AI Agents'}];
-    var html='<div class="sec-head"><div><div class="sec-title">Team</div><div class="sec-sub">Switch role to see the world from any seat.</div></div></div>';
-    html+='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:20px;background:var(--bg2);border:1px solid var(--glassBorder);border-radius:12px;padding:3px;width:fit-content;">'+subViews.map(function(sv){return '<button class="team-sv-btn'+(sv.id===teamView?' on':'')+'" data-sv="'+sv.id+'" style="padding:7px 14px;border-radius:9px;border:none;background:'+(sv.id===teamView?'var(--surface)':'transparent')+';font-size:12.5px;font-weight:'+(sv.id===teamView?'600':'500')+';color:'+(sv.id===teamView?'var(--text)':'var(--muted)')+';min-height:36px;cursor:pointer;box-shadow:'+(sv.id===teamView?'var(--shadow-md)':'none')+';">'+sv.label+'</button>';}).join('')+'</div>';
-    if(teamView==='ceo'){
-      html+='<div class="kpi-grid">'+['Revenue pipeline','Team velocity','Open loops','Agent ROI'].map(function(l,i){var vals=['\u20B924L','87%','14','4.2x'];var cols=['var(--green)','var(--accent)','var(--amber)','var(--teal)'];return '<div class="kpi-card gc"><div class="kpi-val" style="color:'+cols[i]+'">'+vals[i]+'</div><div class="kpi-lbl">'+l+'</div></div>';}).join('')+'</div>'
-        +'<div class="gc" style="padding:18px 20px;border-radius:16px;margin-bottom:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">TEAM MEMBERS</div>'
-        +['James (CEO)','Priya (Manager)','Alex (Dev)','Sam (Design)','Dana (Client)'].map(function(m,i){var colors=['#3e7bfa','#14b8a6','#f59e0b','#ef4444','#7c3aed'];var ld=[2,5,3,1,0][i];return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--glassBorder);"><div style="width:36px;height:36px;border-radius:50%;background:'+colors[i]+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">'+m.charAt(0)+'</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+m+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">'+ld+' open loops</div></div><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;font-weight:600;color:var(--accent);">'+[8,12,7,5,2][i]+' done</div></div>';}).join('')+'</div>';
-    }else if(teamView==='mgr'){
-      html+='<div class="gc" style="padding:18px 20px;border-radius:16px;"><div style="font-size:14px;font-weight:700;margin-bottom:14px;">Workload overview</div>'
-        +['Alex - 7 tasks','Sam - 5 tasks','Dana - 3 tasks'].map(function(m,i){var pct=[70,50,30][i];return '<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span>'+m+'</span><span style="color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;">'+pct+'%</span></div><div style="height:5px;border-radius:5px;background:var(--bg2);overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:5px;"></div></div></div>';}).join('')+'</div>';
-    }else if(teamView==='emp'){
-      html+='<div class="gc" style="padding:18px 20px;border-radius:16px;"><div style="font-size:15px;font-weight:700;margin-bottom:4px;">Your day</div><div style="font-size:12.5px;color:var(--muted);margin-bottom:16px;">3 tasks due today - 1 overdue</div><div style="font-size:13px;color:var(--text);line-height:1.6;">Focus: complete overdue task first, then today&#39;s list. You&#39;re on track.</div></div>';
-    }else if(teamView==='client'){
-      html+='<div class="gc" style="padding:18px 20px;border-radius:16px;border-left:3px solid var(--teal);"><div style="font-size:11px;font-weight:700;color:var(--teal);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:8px;">CLIENT PORTAL - READ ONLY</div><div style="font-size:15px;font-weight:700;margin-bottom:4px;">Your project</div><div style="font-size:12.5px;color:var(--muted);">3 deliverables in progress - 1 ready for review</div><div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--glassBorder);display:flex;gap:20px;"><div><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:20px;font-weight:700;color:var(--teal);">3</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">in progress</div></div><div><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:20px;font-weight:700;color:var(--green);">1</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">for review</div></div><div><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:20px;font-weight:700;color:var(--faint);">0</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">delivered</div></div></div></div>';
-    }else{
-      loadAgents();return;
+    var html='<div class="sec-head"><div><div class="sec-title">Team</div><div class="sec-sub">Per-employee performance from time tracking.</div></div></div>';
+    if(teamView==='agents'){loadAgents();return;}
+    // Access guard: only managers/CEOs see team performance dashboards
+    if(!isManager){
+      html+='<div class="gc" style="padding:40px 24px;border-radius:16px;text-align:center;">'
+        +'<div style="font-size:34px;margin-bottom:10px;">🔒</div>'
+        +'<div style="font-size:15px;font-weight:700;">You don\'t have access</div>'
+        +'<div style="font-size:12.5px;color:var(--muted);margin-top:6px;">Team performance dashboards are available to managers and CEOs.</div></div>';
+      view.innerHTML=html;
+      return;
     }
-    view.innerHTML=html;
-    view.querySelectorAll('[data-sv]').forEach(function(b){b.onclick=function(){teamView=b.dataset.sv;loadTeam();};});
+    html+='<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:20px;background:var(--bg2);border:1px solid var(--glassBorder);border-radius:12px;padding:3px;width:fit-content;">'+subViews.map(function(sv){return '<button class="team-sv-btn'+(sv.id===teamView?' on':'')+'" data-sv="'+sv.id+'" style="padding:7px 14px;border-radius:9px;border:none;background:'+(sv.id===teamView?'var(--surface)':'transparent')+';font-size:12.5px;font-weight:'+(sv.id===teamView?'600':'500')+';color:'+(sv.id===teamView?'var(--text)':'var(--muted)')+';min-height:36px;cursor:pointer;box-shadow:'+(sv.id===teamView?'var(--shadow-md)':'none')+';">'+sv.label+'</button>';}).join('')+'</div>';
+    view.innerHTML=html+'<div class="spin"></div>';
+    api('/api/team/performance').then(function(res){
+      res=res||[];
+      var people=Array.isArray(res)?res:(res.people||res.team||[]);
+      people=people.slice().sort(function(a,b){return (b.points||0)-(a.points||0);});
+      var detail='';
+      if(teamView==='ceo'){
+        // Aggregate KPIs across the team
+        var totTasks=people.reduce(function(s,p){return s+(p.tasksDone||0);},0);
+        var totLoops=people.reduce(function(s,p){return s+(p.loopsClosed||0);},0);
+        var totFocus=people.reduce(function(s,p){return s+(p.focusMinutes||0);},0);
+        detail='<div class="kpi-grid">'
+          +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--accent)">'+people.length+'</div><div class="kpi-lbl">team members</div></div>'
+          +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--green)">'+totTasks+'</div><div class="kpi-lbl">tasks done (30d)</div></div>'
+          +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--amber)">'+totLoops+'</div><div class="kpi-lbl">loops closed</div></div>'
+          +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--teal)">'+Math.round(totFocus/60)+'h</div><div class="kpi-lbl">focus time</div></div>'
+          +'</div>';
+      }else if(teamView==='mgr'){
+        detail='<div class="gc" style="padding:18px 20px;border-radius:16px;"><div style="font-size:14px;font-weight:700;margin-bottom:14px;">Workload overview</div>';
+        if(people.length){
+          var maxTasks=Math.max.apply(null,people.map(function(p){return p.tasksDone||0;}).concat([1]));
+          detail+=people.map(function(p){
+            var pct=Math.round(((p.tasksDone||0)/maxTasks)*100);
+            return '<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span>'+esc(p.name||'Unknown')+'</span><span style="color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;">'+(p.tasksDone||0)+' tasks</span></div><div style="height:5px;border-radius:5px;background:var(--bg2);overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:5px;"></div></div></div>';
+          }).join('');
+        }else{
+          detail+='<div class="empty-dashed">No team data yet — connect time tracking.</div>';
+        }
+        detail+='</div>';
+      }
+      // Employee cards (real data) for ceo/mgr/emp views
+      if(teamView==='ceo'||teamView==='mgr'||teamView==='emp'){
+        detail+='<div class="gc" style="padding:18px 20px;border-radius:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">'+(teamView==='emp'?'YOUR STATS':'TEAM MEMBERS')+'</div>';
+        if(people.length){
+          detail+=people.map(function(p){
+            var initials=(p.name||'?').trim().split(/\s+/).slice(0,2).map(function(w){return w[0].toUpperCase();}).join('');
+            var hue=((p.name||'A').charCodeAt(0)*37)%360;
+            return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--glassBorder);">'
+              +'<div style="width:36px;height:36px;border-radius:50%;background:hsl('+hue+',35%,52%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">'+esc(initials)+'</div>'
+              +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;">'+esc(p.name||'Unknown')+(p.role?' <span style="color:var(--muted);font-weight:500;font-size:11px;">('+esc(p.role)+')</span>':'')+'</div>'
+              +'<div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:\\'JetBrains Mono\\',monospace;">'+(p.tasksDone||0)+' tasks · '+(p.loopsClosed||0)+' loops · '+Math.round((p.focusMinutes||0)/60)+'h focus</div></div>'
+              +'<div style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;font-weight:600;color:var(--accent);">'+(p.points||0)+' pts</div></div>';
+          }).join('');
+        }else{
+          detail+='<div class="empty-dashed">No team data yet — connect time tracking.</div>';
+        }
+        detail+='</div>';
+      }
+      if(teamView==='client'){
+        detail='<div class="gc" style="padding:18px 20px;border-radius:16px;border-left:3px solid var(--teal);"><div style="font-size:11px;font-weight:700;color:var(--teal);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:8px;">CLIENT PORTAL - READ ONLY</div><div style="font-size:15px;font-weight:700;margin-bottom:4px;">Your project</div><div style="font-size:12.5px;color:var(--muted);">Project deliverables and progress will appear here once shared.</div></div>';
+      }
+      view.innerHTML=html+detail;
+      view.querySelectorAll('[data-sv]').forEach(function(b){b.onclick=function(){teamView=b.dataset.sv;loadTeam();};});
+    }).catch(function(e){
+      view.innerHTML=html+'<div class="empty">Failed to load team data: '+(e&&e.message||e)+'</div>';
+      view.querySelectorAll('[data-sv]').forEach(function(b){b.onclick=function(){teamView=b.dataset.sv;loadTeam();};});
+    });
   }
   var BRAIN_ENTRIES=[
     {tag:'Sensitivity', text:'Stopped flagging invoice confirmation emails as open loops after 3 corrections.', when:Date.now()-86400e3*2},
@@ -1880,28 +1936,311 @@ button{cursor:pointer;}
       +BRAIN_ENTRIES.map(function(e){return '<div style="position:relative;padding:0 0 20px 20px;"><div style="position:absolute;left:-14px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--surface);box-shadow:0 0 0 3px var(--accentSoft);"></div><div style="display:inline-block;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--accentSoft);color:var(--accent);font-family:\\'JetBrains Mono\\',monospace;margin-bottom:5px;">'+esc(e.tag)+'</div><div style="font-size:13px;color:var(--text);line-height:1.5;">'+esc(e.text)+'</div><div style="font-size:10px;color:var(--faint);margin-top:4px;font-family:\\'JetBrains Mono\\',monospace;">'+ago(e.when)+' ago</div><button style="margin-top:6px;font-size:10.5px;color:var(--red);background:transparent;border:none;cursor:pointer;padding:0;" onclick="toast(\\'Correction saved. Brain will re-learn.\\')">\u21A9 Correct this</button></div>';}).join('')+'</div>';
     view.innerHTML=html;
   }
-  function loadReports(){
-    var month=new Date().toLocaleDateString([],{month:'long', year:'numeric'});
-    var html='<div class="sec-head"><div><div class="sec-title">Reports</div><div class="sec-sub">Monthly recap - company, team, and agent performance.</div></div></div><div style="padding:20px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;margin-bottom:16px;"><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:10px;opacity:.8;letter-spacing:.5px;text-transform:uppercase;">'+month+'</div><div style="font-size:18px;font-weight:700;margin-top:6px;">Strong month - 94% of loops closed on time.</div><div style="font-size:12.5px;opacity:.85;margin-top:4px;">Leads pipeline grew 32% - 2 new agents deployed.</div></div>'
-      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;margin-bottom:16px;">'+[['142','Loops closed'],['38','Tasks done'],['12','Leads added'],['4.2x','Agent ROI']].map(function(s){return '<div class="gc" style="padding:14px 15px;border-radius:13px;"><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:22px;font-weight:700;color:var(--accent);">'+s[0]+'</div><div style="font-size:11px;color:var(--muted);margin-top:5px;">'+s[1]+'</div></div>';}).join('')+'</div>'
-      +'<div class="gc" style="padding:16px 18px;border-radius:16px;"><div style="font-size:12px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">LEADERBOARD</div>'
-      +['James','Priya','Alex','Sam'].map(function(n,i){var scores=[42,38,31,26];var medals=['\u{1F947}','\u{1F948}','\u{1F949}',''];return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--glassBorder);"><span style="font-family:\\'JetBrains Mono\\',monospace;font-size:11px;font-weight:700;color:var(--faint);min-width:18px;">'+(i+1)+'</span><span style="font-size:16px;">'+medals[i]+'</span><span style="font-size:13px;font-weight:600;flex:1;">'+n+'</span><span style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;font-weight:600;color:var(--accent);">'+scores[i]+' pts</span></div>';}).join('')+'</div>';
+  // ── methods (productivity) ────────────────────────────────────────────────────
+  function methodTaskCard(t){
+    var pr=t.priority==='high'?'<span class="priority-pill priority-high">HIGH</span>':t.priority==='med'?'<span class="priority-pill priority-med">MED</span>':t.priority==='low'?'<span class="priority-pill priority-low">LOW</span>':'';
+    return '<div class="kanban-task-card gc" data-mtask="'+esc(t.id||'')+'" style="cursor:pointer;">'
+      +'<div class="kanban-task-row"><button class="kanban-check" data-mdone="'+esc(t.id||'')+'"></button>'
+      +'<span class="kanban-task-emoji">'+esc(t.emoji||'📝')+'</span>'
+      +'<div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title||t.name||'Untitled')+'</div>'
+      +(t.note||t.list?'<div class="kanban-task-sub">'+esc(t.note||t.list)+'</div>':'')+'</div></div>'
+      +'<div class="kanban-task-foot">'+pr+'</div></div>';
+  }
+  function wireMethodTaskCards(){
+    view.querySelectorAll('[data-mtask]').forEach(function(c){
+      c.onclick=function(e){
+        if(e.target.classList.contains('kanban-check'))return;
+        toast('Opening task\u2026');
+      };
+    });
+    view.querySelectorAll('[data-mdone]').forEach(function(b){
+      b.onclick=function(e){
+        e.stopPropagation();
+        var id=b.dataset.mdone;
+        if(!id)return;
+        post('/api/tasks/'+id+'/complete').then(function(){toast('Task completed');}).catch(function(){});
+      };
+    });
+  }
+  function renderMethodResult(methodId, result, meta){
+    result=result||{};
+    function col(label, dotColor, tasks){
+      tasks=tasks||[];
+      var cards=tasks.length?tasks.map(methodTaskCard).join(''):'<div class="empty-dashed" style="font-size:11px;padding:14px 10px;">Nothing here.</div>';
+      return '<div class="kanban-col"><div class="kanban-col-head"><span class="kanban-col-dot" style="background:'+dotColor+'"></span><span class="kanban-col-label">'+label+'</span><span class="kanban-col-count">'+tasks.length+'</span></div><div class="kanban-col-body">'+cards+'</div></div>';
+    }
+    function listSection(label, dotColor, tasks){
+      tasks=tasks||[];
+      var items=tasks.length?tasks.map(methodTaskCard).join(''):'<div class="empty-dashed" style="font-size:11px;padding:14px 10px;">Nothing here.</div>';
+      return '<div class="gc" style="padding:14px 16px;border-radius:14px;margin-bottom:14px;">'
+        +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;"><span style="width:8px;height:8px;border-radius:2px;background:'+dotColor+';flex-shrink:0;"></span>'
+        +'<span style="font-family:\\'JetBrains Mono\\',monospace;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);">'+label+'</span>'
+        +'<span style="margin-left:auto;font-family:\\'JetBrains Mono\\',monospace;font-size:11px;color:var(--faint);">'+tasks.length+'</span></div>'
+        +'<div style="display:flex;flex-direction:column;gap:7px;">'+items+'</div></div>';
+    }
+    var html='<div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;">'
+      +'<button class="btn-ghost" id="methods-back" style="font-size:12px;padding:7px 12px;">← All methods</button>'
+      +'<div style="font-size:16px;">'+esc((meta&&meta.icon)||'🧭')+'</div>'
+      +'<div><div style="font-size:16px;font-weight:700;">'+esc((meta&&meta.name)||methodId)+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+esc((meta&&meta.description)||'')+'</div></div></div>';
+
+    if(methodId==='eisenhower'){
+      html+='<div class="kanban-board" style="grid-template-columns:repeat(4,1fr);">'
+        +col('Q1 · DO','#ef4444',result.q1||result.do)
+        +col('Q2 · SCHEDULE','#3e7bfa',result.q2||result.schedule)
+        +col('Q3 · DELEGATE','#f59e0b',result.q3||result.delegate)
+        +col('Q4 · DROP','#9ca3af',result.q4||result.drop)
+        +'</div>';
+    }else if(methodId==='moscow'){
+      html+=listSection('MUST HAVE','#ef4444',result.must||result.M)
+        +listSection('SHOULD HAVE','#f59e0b',result.should||result.S)
+        +listSection('COULD HAVE','#3e7bfa',result.could||result.C)
+        +listSection('WON\u0027T HAVE','#9ca3af',result.wont||result.W);
+    }else if(methodId==='abcde'){
+      var ranks=[{k:'A',col:'#ef4444'},{k:'B',col:'#f59e0b'},{k:'C',col:'#3e7bfa'},{k:'D',col:'#9ca3af'},{k:'E',col:'#6b7280'}];
+      var tasks=result.tasks||result.ranked||[];
+      html+='<div style="display:flex;flex-direction:column;gap:7px;">'+tasks.map(function(t){
+        var rk=(t.rank||'').toString().toUpperCase().charAt(0);
+        var rc=ranks.filter(function(r){return r.k===rk;})[0]||{col:'var(--faint)'};
+        var c2=methodTaskCard(Object.assign({},t));
+        return '<div style="display:flex;gap:10px;">'
+          +'<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:'+rc.col+'22;color:#fff;font-weight:700;font-size:14px;font-family:\\'JetBrains Mono\\',monospace;flex-shrink:0;">'+esc(rk||'?')+'</span>'
+          +'<div style="flex:1;min-width:0;">'+c2+'</div></div>';
+      }).join('')+'</div>';
+    }else if(methodId==='gtd'){
+      var groups=result.contexts||result.groups||{};
+      var inbox=result.inbox||[];
+      var keys=Object.keys(groups);
+      html+=(inbox.length?listSection('INBOX','#9ca3af',inbox):'')
+        +keys.map(function(k){return listSection(k,'#3e7bfa',groups[k]||[]);}).join('');
+      if(!inbox.length&&!keys.length)html+='<div class="empty-dashed">Your inbox is clear. Nothing to organize.</div>';
+    }else if(methodId==='twominute'){
+      html+='<div class="kanban-board" style="grid-template-columns:repeat(2,1fr);">'
+        +col('DO NOW < 2 MIN','#10b981',result.doNow||result.quick||[])
+        +col('LONGER','#3e7bfa',result.longer||result.longerTasks||[])
+        +'</div>';
+    }else if(methodId==='frog'){
+      var f=result.frog||result.task;
+      html+='<div class="gc" style="padding:22px;border-radius:16px;border-left:4px solid var(--red);margin-bottom:14px;">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--red);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;">🐸 EAT THIS FROG FIRST</div>'
+        +'<div style="font-size:18px;font-weight:700;margin-top:10px;">'+esc(f&&(f.title)||'No frog identified today')+'</div>'
+        +(f&&(f.why||f.reason)?'<div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5;">'+esc(f.why||f.reason)+'</div>':'')
+        +'</div>';
+    }else if(methodId==='threethree'){
+      html+='<div class="kanban-board" style="grid-template-columns:repeat(3,1fr);">'
+        +col('DEEP WORK','#3e7bfa',(result.deep||[]).slice(0,3))
+        +col('MEDIUM','#f59e0b',(result.medium||[]).slice(0,3))
+        +col('SMALL','#10b981',(result.small||[]).slice(0,3))
+        +'</div>';
+    }else if(methodId==='pareto'){
+      html+=listSection('VITAL 20%','#ef4444',result.vital||result.vital20||[])
+        +listSection('USEFUL 80%','#9ca3af',result.useful||result.useful80||[]);
+    }else if(methodId==='timeblock'){
+      var blocks=result.blocks||[];
+      html+='<div class="gc" style="padding:16px 18px;border-radius:16px;">';
+      var colmap={deep:'var(--blue)',meeting:'var(--amber)',admin:'var(--faint)',call:'var(--teal)',focus:'var(--green)'};
+      for(var h=9;h<=18;h++){
+        var hh=(h<10?'0':'')+h;
+        var slot=blocks.filter(function(b){return (b.start||9)<=h&&(b.end||19)>h;});
+        html+='<div style="display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--glassBorder);min-height:32px;">'
+          +'<div style="width:46px;font-family:\\'JetBrains Mono\\',monospace;font-size:10px;color:var(--muted);padding:6px 0;flex-shrink:0;">'+hh+':00</div>'
+          +'<div style="flex:1;display:flex;flex-direction:column;gap:3px;padding:4px 0;">';
+        if(slot.length){
+          slot.forEach(function(b){
+            var c=colmap[b.type]||'var(--faint)';
+            html+='<div style="background:'+c+'22;border-radius:7px;padding:5px 9px;font-size:11.5px;font-weight:600;color:var(--text);">'+esc(b.title||b.type||'block')+'</div>';
+          });
+        }
+        html+='</div></div>';
+      }
+      html+='</div>';
+    }else if(methodId==='pomodoro'){
+      var tasks=result.tasks||[];
+      html+='<div class="gc" style="padding:16px 18px;border-radius:16px;">'
+        +'<div style="font-size:12px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">🍅 POMODORO PLAN</div>'
+        +'<div style="display:flex;flex-direction:column;gap:8px;">'+(tasks.length?tasks.map(function(t){
+          var sess=t.sessions||t.pomodoros||Math.ceil((t.minutes||25)/25);
+          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--glassBorder);">'
+            +'<span style="font-size:16px;">🍅</span>'
+            +'<div style="flex:1;font-size:13px;font-weight:600;">'+esc(t.title||'Task')+'</div>'
+            +'<span style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;font-weight:600;color:var(--accent);">'+esc(sess)+' \u00d7 <span style="color:var(--muted);font-weight:500;">('+(t.minutes||sess*25)+'m)</span></span></div>';
+        }).join(''):'<div class="empty-dashed">No tasks to plan.</div>')+'</div></div>';
+    }else{
+      // Fallback: try to render known arrays
+      var keys=Object.keys(result).filter(function(k){return Array.isArray(result[k]);});
+      if(keys.length){
+        html+=keys.map(function(k){return listSection(k.toUpperCase(),'#3e7bfa',result[k]);}).join('');
+      }else{
+        html+='<div class="gc" style="padding:18px;border-radius:16px;"><div style="font-size:13px;color:var(--muted);">No structured output for this method yet.</div></div>';
+      }
+    }
     view.innerHTML=html;
+    var back=document.getElementById('methods-back');
+    if(back) back.onclick=function(){tab='methods';buildNav();loadMethods();};
+    wireMethodTaskCards();
+  }
+  function loadMethods(){
+    api('/api/methods').then(function(res){
+      var methods=(res&&res.methods)||[];
+      if(!methods.length){
+        view.innerHTML='<div class="sec-head"><div><div class="sec-title">Methods</div><div class="sec-sub">Productivity frameworks to triage and plan your work.</div></div></div>'
+          +'<div class="empty-dashed">No methods available yet.</div>';
+        return;
+      }
+      view.innerHTML='<div class="sec-head"><div><div class="sec-title">Methods</div><div class="sec-sub">Productivity frameworks — pick one to triage your tasks.</div></div></div>'
+        +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">'+methods.map(function(m){
+          return '<div class="gc method-card" data-method="'+esc(m.id)+'" style="padding:16px;border-radius:14px;cursor:pointer;transition:transform .15s,box-shadow .15s;">'
+            +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">'
+            +'<span style="width:38px;height:38px;border-radius:10px;background:var(--accentSoft);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;">'+esc(m.icon||'🧭')+'</span>'
+            +'<div style="font-size:14px;font-weight:700;">'+esc(m.name||m.id)+'</div></div>'
+            +'<div style="font-size:12px;color:var(--muted);line-height:1.5;">'+esc(m.description||'')+'</div></div>';
+        }).join('')+'</div>';
+      view.querySelectorAll('.method-card').forEach(function(c){
+        c.onclick=function(){
+          view.innerHTML='<div class="spin"></div>';
+          api('/api/methods/'+c.dataset.method).then(function(r){
+            r=r||{};
+            renderMethodResult(c.dataset.method, r.result, r.meta||{id:c.dataset.method});
+          }).catch(function(e){view.innerHTML='<div class="empty">Failed to run method: '+(e&&e.message||e)+'</div>';});
+        };
+      });
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load methods: '+(e&&e.message||e)+'</div>';});
+  }
+  function loadReports(){
+    view.innerHTML='<div class="spin"></div>';
+    api('/api/reports?days=30').then(function(r){
+      r=r||{};
+      var loops=r.loops||{}, tasks=r.tasks||{}, leads=r.leads||{}, prod=r.productivity||{}, summary=r.summary||{}, lb=r.leaderboard||[];
+      var month=new Date().toLocaleDateString([],{month:'long', year:'numeric'});
+      var html='<div class="sec-head"><div><div class="sec-title">Reports</div><div class="sec-sub">30-day analytics — loops, tasks, leads, and productivity.</div></div></div>'
+        +'<div style="padding:20px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;margin-bottom:16px;">'
+        +'<div style="font-family:\\'JetBrains Mono\\',monospace;font-size:10px;opacity:.8;letter-spacing:.5px;text-transform:uppercase;">'+esc(month)+' · last 30 days</div>'
+        +'<div style="font-size:18px;font-weight:700;margin-top:6px;">'+esc(summary.headline||('Strong month — '+loops.closedInWindow+' loops closed.'))+'</div>'
+        +(summary.sub?'<div style="font-size:12.5px;opacity:.85;margin-top:4px;">'+esc(summary.sub)+'</div>':'')
+        +'</div>'
+        // KPI cards
+        +'<div class="kpi-grid">'
+        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--accent);">'+(loops.closedInWindow||0)+'</div><div class="kpi-lbl">loops closed</div></div>'
+        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--green);">'+(tasks.completedInWindow||0)+'</div><div class="kpi-lbl">tasks done</div></div>'
+        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--teal);">'+(leads.won||0)+'</div><div class="kpi-lbl">leads won</div></div>'
+        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--amber);">'+(prod.focusHours||0)+'h</div><div class="kpi-lbl">focus hours</div></div>'
+        +'</div>'
+        // velocity sparkline + rates
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">'
+        +'<div class="gc" style="padding:16px 18px;border-radius:16px;">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:4px;">7-DAY VELOCITY</div>'
+        +velocitySparkline(prod.velocityTrend||[])
+        +'</div>'
+        +'<div class="gc" style="padding:16px 18px;border-radius:16px;">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">RATES</div>'
+        +'<div style="display:flex;flex-direction:column;gap:10px;">'
+        +rateRow('On-time close rate', (loops.onTimeRate||0), 'var(--green)')
+        +rateRow('Lead conversion', (leads.conversionRate||0), 'var(--teal)')
+        +rateRow('Task completion', (tasks.completionRate||0), 'var(--accent)')
+        +'</div></div>'
+        +'</div>'
+        // leaderboard
+        +'<div class="gc" style="padding:16px 18px;border-radius:16px;"><div style="font-size:12px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">LEADERBOARD</div>'
+        +(lb.length?lb.slice().sort(function(a,b){return (b.points||0)-(a.points||0);}).map(function(p,i){
+          var medals=['\u{1F947}','\u{1F948}','\u{1F949}'];
+          var fm=(prod.bestDay&&p.name===prod.bestDay)?'\u2B50':'';
+          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--glassBorder);">'
+            +'<span style="font-family:\\'JetBrains Mono\\',monospace;font-size:11px;font-weight:700;color:var(--faint);min-width:18px;">'+(i+1)+'</span>'
+            +'<span style="font-size:16px;">'+(medals[i]||'')+'</span>'
+            +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;">'+esc(p.name||'Unknown')+'</div>'
+            +'<div style="font-size:10.5px;color:var(--muted);margin-top:2px;font-family:\\'JetBrains Mono\\',monospace;">'
+            +(p.tasksDone||0)+' tasks · '+(p.loopsClosed||0)+' loops · '+Math.round((p.focusMinutes||0)/60)+'h focus</div></div>'
+            +'<span style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;font-weight:600;color:var(--accent);">'+(p.points||0)+' pts</span></div>';
+        }).join(''):'<div class="empty-dashed">No leaderboard data yet — start closing loops and tasks.</div>')
+        +'</div>';
+      view.innerHTML=html;
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load reports: '+(e&&e.message||e)+'</div>';});
+  }
+  function velocitySparkline(trend){
+    trend=trend||[];
+    if(!trend.length) return '<div style="font-size:11px;color:var(--faint);padding:12px 0;">No velocity data yet.</div>';
+    var max=Math.max.apply(null,trend.concat([1]));
+    var w=140, h=40, barW=Math.floor(w/trend.length)-2;
+    var bars=trend.map(function(v,i){
+      var bh=Math.max(2,Math.round((v/max)*h));
+      var x=i*(barW+2);
+      var y=h-bh;
+      return '<rect x="'+x+'" y="'+y+'" width="'+barW+'" height="'+bh+'" rx="2" fill="var(--accent)"/>';
+    }).join('');
+    return '<svg width="'+w+'" height="'+h+'" style="display:block;margin-top:6px;">'+bars+'</svg>'
+      +'<div style="font-size:10.5px;color:var(--muted);margin-top:6px;font-family:\\'JetBrains Mono\\',monospace;">best day: '+esc(trend.indexOf(Math.max.apply(null,trend))>=0?'this week':'—')+'</div>';
+  }
+  function rateRow(label, rate, color){
+    var pct=Math.round((rate||0)*100);
+    return '<div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--text);">'+label+'</span><span style="color:'+color+';font-family:\\'JetBrains Mono\\',monospace;font-weight:600;">'+pct+'%</span></div>'
+      +'<div style="height:5px;border-radius:5px;background:var(--bg2);overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:5px;"></div></div></div>';
   }
   function loadSettings(){
     Promise.all([api('/api/autonomy'),api('/api/approvals'),api('/api/connections')]).then(function(res){
       var settings=res[0]||{};
       var approvals=(res[1]||[]).filter(function(a){return a.status==='pending';});
       var conns=res[2]||{};
-      var channels=[
-        {name:'Gmail',icon:'\u{1F4E7}',key:'email',status:conns.channels?'webhook ready':'not configured'},
-        {name:'Calendar',icon:'\u{1F4C5}',key:'calendar',status:'webhook ready'},
-        {name:'Slack',icon:'\u{1F4AC}',key:'slack',status:'webhook ready'},
-        {name:'GitHub',icon:'\u{1F419}',key:'github',status:'webhook ready'},
-        {name:'Telegram',icon:'\u{2708}\uFE0F',key:'telegram',status:'webhook ready'},
-        {name:'WhatsApp',icon:'\u{1F4F1}',key:'whatsapp',status:conns.whatsapp?conns.whatsapp.outbound:'not configured'},
-      ];
-      var html='<div class="sec-head"><div><div class="sec-title">Settings</div><div class="sec-sub">Autonomy, channels, and personalisation.</div></div></div>';
+      var isCeo=me&&me.role==='ceo';
+      var connStatus=function(key){return(conns[key]||{}).status||'disconnected';};
+      var connOk=function(key){var s=connStatus(key);return s==='connected';};
+
+      // Build channel cards with real Connect buttons
+      function channelCard(name,icon,key,desc,connectHtml,statusExtra){
+        var st=connStatus(key);
+        var ok=st==='connected';
+        var statusLabel=st==='connecting'?'Connecting\u2026':st==='connected'?'Connected':st==='error'?'Error':'Not connected';
+        var statusColor=ok?'var(--green)':st==='connecting'?'var(--amber)':st==='error'?'var(--red)':'var(--muted)';
+        var subtext=statusExtra||statusLabel;
+        return '<div class="gc" style="padding:14px 16px;border-radius:14px;margin-bottom:8px;">'
+          +'<div style="display:flex;align-items:center;gap:11px;margin-bottom:8px;">'
+          +'<div style="width:36px;height:36px;border-radius:10px;background:var(--bg2);border:1px solid var(--glassBorder);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">'+icon+'</div>'
+          +'<div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:700;">'+name+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px;">'+esc(desc)+'</div></div>'
+          +'<span style="font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:6px;background:'+(ok?'var(--greenSoft)':st==='connecting'?'var(--amberSoft)':'var(--bg2)')+';color:'+statusColor+';font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.3px;">'+statusLabel.toUpperCase()+'</span>'
+          +'</div>'
+          +(ok?'<div style="font-size:11px;color:var(--faint);margin-bottom:8px;font-family:&quot;JetBrains Mono&quot;,monospace;">'+esc(subtext)+'</div>':'')
+          +(ok&&isCeo?'<button class="btn-ghost conn-disconnect-btn" data-channel="'+key+'" style="font-size:11px;padding:6px 12px;">Disconnect</button>':'')
+          +(!ok&&isCeo?'<div style="margin-top:4px;">'+connectHtml+'</div>':'')
+          +(st==='connecting'&&isCeo?'<div style="font-size:11px;color:var(--amber);margin-top:6px;"><span class="spin" style="display:inline-block;width:12px;height:12px;border-width:2px;vertical-align:middle;margin-right:6px;"></span>Waiting for connection\u2026</div>':'')
+          +'</div>';
+      }
+
+      var waCloudConn=channelCard('WhatsApp Business','\u{1F4F1}','whatsapp_cloud','Official Meta Cloud API for business messaging',
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
+        +'<input class="modal-input conn-input" data-field="phoneNumberId" placeholder="Phone Number ID"/>'
+        +'<input class="modal-input conn-input" data-field="accessToken" type="password" placeholder="Access Token"/>'
+        +'<input class="modal-input conn-input" data-field="webhookVerifyToken" placeholder="Verify Token (optional)"/>'
+        +'<input class="modal-input conn-input" data-field="appSecret" type="password" placeholder="App Secret (optional)"/>'
+        +'</div>'
+        +'<button class="btn-primary conn-save-btn" data-channel="whatsapp_cloud" style="font-size:12px;padding:7px 14px;">Connect WhatsApp Cloud</button>'
+        ,(conns.whatsapp_cloud||{}).phone||'');
+
+      var waBaileysConn=channelCard('WhatsApp (QR)','\u{1F4F1}','whatsapp_baileys','Free — scan QR code with your personal WhatsApp',
+        '<button class="btn-primary conn-start-btn" data-channel="whatsapp_baileys" style="font-size:12px;padding:7px 14px;">Start QR Pairing</button>'
+        +'<div style="font-size:10.5px;color:var(--faint);margin-top:6px;">Opens terminal QR. Use for personal/dev accounts only.</div>'
+      );
+
+      var gmailConn=channelCard('Gmail','\u{1F4E7}','gmail','Read emails, auto-create tasks from messages',
+        '<button class="btn-primary conn-gmail-btn" style="font-size:12px;padding:7px 14px;">\u{1F517} Connect with Google</button>'
+        +'<div style="font-size:10.5px;color:var(--faint);margin-top:6px;">Requires GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET in server .env</div>'
+        ,(conns.gmail||{}).email||'');
+
+      var calendarConn=channelCard('Google Calendar','\u{1F4C5}','calendar','Sync events and deadlines',
+        '<div style="font-size:11px;color:var(--muted);">Coming soon — uses same Google OAuth as Gmail</div>'
+      );
+
+      var slackConn=channelCard('Slack','\u{1F4AC}','slack','Watch channels, capture messages as loops',
+        '<div style="font-size:11px;color:var(--muted);">Set SLACK_BOT_TOKEN in .env to enable</div>'
+      );
+
+      var telegramConn=channelCard('Telegram','\u{2708}\uFE0F','telegram','Bot messages become tracked loops',
+        '<div style="font-size:11px;color:var(--muted);">Set TELEGRAM_BOT_TOKEN in .env to enable</div>'
+      );
+
+      var githubConn=channelCard('GitHub','\u{1F419}','github','Issues, PRs, and commits as open loops',
+        '<div style="font-size:11px;color:var(--muted);">Set GITHUB_TOKEN + GITHUB_WEBHOOK_SECRET in .env to enable</div>'
+      );
+
+      var html='<div class="sec-head"><div><div class="sec-title">Settings</div><div class="sec-sub">Integrations, autonomy, and personalisation.</div></div></div>';
       html+='<div style="padding:16px 18px;border-radius:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);display:flex;align-items:center;gap:12px;margin-bottom:20px;"><div style="flex:1;"><div style="font-size:14px;font-weight:700;color:var(--red);">Kill switch</div><div style="font-size:12px;color:var(--red);opacity:.7;margin-top:2px;">Pause ALL autonomous actions immediately.</div></div><button class="btn-danger" onclick="toast(\\'All autonomous actions paused.\\')">Pause all</button></div>';
       if(approvals.length){
         html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:8px;">PENDING APPROVALS ('+approvals.length+')</div>'
@@ -1909,19 +2248,68 @@ button{cursor:pointer;}
       }
       html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">AUTONOMY</div>'
         +ACTIONS.map(function(a){var cur=settings[a.k]||'off';return '<div class="gc auto-card" style="padding:14px 16px;border-radius:14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><div style="flex:1;min-width:160px;"><div style="font-size:13.5px;font-weight:600;">'+a.label+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;">'+a.desc+'</div></div><div class="lvls">'+['off','ask','auto'].map(function(lv){return '<button class="lvl'+(lv===cur?' on':'')+'" data-act="'+a.k+'" data-lvl="'+lv+'">'+(lv.charAt(0).toUpperCase()+lv.slice(1))+'</button>';}).join('')+'</div></div>';}).join('');
-      html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">CHANNEL CONNECTIONS</div>'
-        +channels.map(function(c){var ok=c.status&&c.status!=='not configured';return '<div class="gc" style="padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:11px;margin-bottom:7px;"><div style="width:34px;height:34px;border-radius:10px;background:var(--bg2);border:1px solid var(--glassBorder);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">'+c.icon+'</div><div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">'+c.name+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">'+esc(c.status)+'</div></div><span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:6px;background:'+(ok?'var(--greenSoft)':'var(--amberSoft)')+';color:'+(ok?'var(--green)':'var(--amber)')+';">'+(ok?'Active':'Setup needed')+'</span></div>';}).join('');
+      html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">INTEGRATIONS</div>'
+        +waCloudConn+waBaileysConn+gmailConn+calendarConn+slackConn+telegramConn+githubConn;
       html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin:16px 0 8px;">APPEARANCE</div>'
         +'<div class="gc" style="padding:14px 16px;border-radius:14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;"><div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">Dark mode</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;">Switch between light and dark interface.</div></div><button class="btn-ghost" id="settings-dark-toggle">'+(darkMode?'Switch to light':'Switch to dark')+'</button></div>'
         +'<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;">Wallpaper</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'
         +THEMES.map(function(t){return '<div style="cursor:pointer;" onclick="applyTheme(\\''+t.id+'\\')"><div style="aspect-ratio:3/2;border-radius:10px;background:'+t.swatch+';border:2px solid '+(activeTheme===t.id?'var(--accent)':'transparent')+';transition:all .15s;"></div><div style="text-align:center;font-size:10px;color:var(--muted);margin-top:4px;">'+t.label+'</div></div>';}).join('')+'</div>';
       html+=adminUsersPanelHtml();
       view.innerHTML=html;
+
+      // Bind settings handlers
       var std=document.getElementById('settings-dark-toggle');
       if(std)std.onclick=function(){applyDark(!darkMode);loadSettings();};
       view.querySelectorAll('.lvl').forEach(function(b){b.onclick=function(){post('/api/autonomy',{action:b.dataset.act,level:b.dataset.lvl},'PUT').then(function(){toast('Saved');loadSettings();});};});
       view.querySelectorAll('[data-approve]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.approve+'/approve').then(function(){toast('Approved');loadSettings();});};});
       view.querySelectorAll('[data-dismiss]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(function(){toast('Dismissed');loadSettings();});};});
+
+      // WhatsApp Cloud — save credentials
+      view.querySelectorAll('.conn-save-btn').forEach(function(btn){
+        btn.onclick=function(){
+          var channel=btn.dataset.channel;
+          var card=btn.closest('.gc');
+          var fields={};
+          card.querySelectorAll('.conn-input').forEach(function(inp){
+            if(inp.value.trim()) fields[inp.dataset.field]=inp.value.trim();
+          });
+          if(!fields.phoneNumberId||!fields.accessToken){toast('Phone Number ID and Access Token are required');return;}
+          btn.disabled=true;btn.textContent='Connecting\u2026';
+          post('/api/connections/'+channel,fields).then(function(){toast('WhatsApp Cloud connected!');loadSettings();}).catch(function(e){toast(e.message||'Failed');btn.disabled=false;btn.textContent='Connect WhatsApp Cloud';});
+        };
+      });
+
+      // WhatsApp Baileys — start QR
+      view.querySelectorAll('.conn-start-btn').forEach(function(btn){
+        btn.onclick=function(){
+          btn.disabled=true;btn.textContent='Starting\u2026';
+          post('/api/connections/whatsapp_baileys/start',{}).then(function(r){
+            toast(r.message||'QR pairing started — check server console');
+            loadSettings();
+          }).catch(function(e){toast(e.message||'Failed');btn.disabled=false;btn.textContent='Start QR Pairing';});
+        };
+      });
+
+      // Gmail — OAuth
+      view.querySelectorAll('.conn-gmail-btn').forEach(function(btn){
+        btn.onclick=function(){
+          btn.disabled=true;btn.textContent='Loading\u2026';
+          api('/api/connections/gmail/auth-url').then(function(r){
+            if(r.error){toast(r.error);btn.disabled=false;btn.textContent='\u{1F517} Connect with Google';return;}
+            if(r.authUrl) window.location.href=r.authUrl;
+            else{toast('Failed to get auth URL');btn.disabled=false;btn.textContent='\u{1F517} Connect with Google';}
+          }).catch(function(e){toast(e.message||'Failed');btn.disabled=false;btn.textContent='\u{1F517} Connect with Google';});
+        };
+      });
+
+      // Disconnect buttons
+      view.querySelectorAll('.conn-disconnect-btn').forEach(function(btn){
+        btn.onclick=function(){
+          if(!confirm('Disconnect this integration?')) return;
+          post('/api/connections/'+btn.dataset.channel+'/disconnect',{}).then(function(){toast('Disconnected');loadSettings();});
+        };
+      });
+
       bindAdminUserUi();
     });
   }

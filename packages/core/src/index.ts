@@ -28,6 +28,8 @@ export { seedIfEmpty } from './seed';
 export type { CaptureLoopInput } from './loops';
 export type { CreateTaskInput } from './tasks';
 export type { CreateLeadInput } from './leads';
+export * as methods from './methods';
+export * as analytics from './analytics';
 
 export interface Core {
   ctx: Context;

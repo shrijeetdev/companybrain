@@ -17,7 +17,12 @@
     "start": "node server.js",
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test packages/core/test/domain.test.ts packages/core/test/autonomy.test.ts packages/core/test/undo.test.ts packages/core/test/features.test.ts packages/integrations/test/pipeline.test.ts"
+    "test": "node --import tsx --test packages/core/test/domain.test.ts packages/core/test/autonomy.test.ts packages/core/test/undo.test.ts packages/core/test/features.test.ts packages/core/test/methods.test.ts packages/core/test/analytics.test.ts packages/integrations/test/pipeline.test.ts",
+    "desktop:install": "npm --prefix desktop install",
+    "desktop:dev": "pnpm build && npm --prefix desktop start",
+    "desktop:dist": "npm --prefix desktop run dist",
+    "desktop:dist:mac": "npm --prefix desktop run dist:mac",
+    "desktop:dist:win": "npm --prefix desktop run dist:win"
   },
   "dependencies": {
     "fastify": "^5.0.0",
