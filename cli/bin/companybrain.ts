@@ -9,6 +9,21 @@ import { platform } from 'node:os';
 import { bootstrap, seedIfEmpty } from '@companybrain/core';
 import { buildServer } from '@companybrain/server';
 import { whatsapp, createMessenger, createBaileysChannel, createLlm } from '@companybrain/integrations';
+import { captureException, flushSentry } from '@companybrain/server/middleware';
+
+// --- Process error handlers: catch what would otherwise be silent crashes (H6) ---
+process.on('unhandledRejection', (reason) => {
+  // A swallowed promise is a bug, not a reason to die. Log + report, keep running.
+  console.error('[companybrain] unhandledRejection:', reason);
+  captureException(reason instanceof Error ? reason : new Error(String(reason)));
+});
+
+process.on('uncaughtException', (err) => {
+  // Truly fatal — Node's state is now unreliable. Report, flush, then exit non-zero.
+  console.error('[companybrain] uncaughtException (fatal):', err);
+  captureException(err);
+  flushSentry().finally(() => process.exit(1));
+});
 
 const port = Number(process.env.COMPANYBRAIN_PORT ?? process.env.PORT ?? 4317);
 const host = process.env.COMPANYBRAIN_HOST ?? '0.0.0.0';

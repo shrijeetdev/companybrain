@@ -21,9 +21,13 @@ import {
   webhookRateLimitConfig,
   authRateLimitConfig,
   whatsappSignatureVerify,
+  genericWebhookVerify,
   requireMinRole,
   logger,
   schemas,
+  initSentry,
+  captureException,
+  recordRequest,
 } from './middleware';
 
 export interface ServerDeps {
@@ -33,6 +37,8 @@ export interface ServerDeps {
 
 export function buildServer(deps: ServerDeps): FastifyInstance {
   const { core, auth } = deps;
+  // B5: HSTS only over HTTPS. Force via COMPANYBRAIN_SECURE_COOKIE or detected per-request.
+  const shouldSecureCookieForApp = ['1', 'true', 'yes'].includes((process.env.COMPANYBRAIN_SECURE_COOKIE ?? '').trim().toLowerCase()) || process.env.NODE_ENV === 'production';
   const app = Fastify({
     logger: {
       level: process.env.COMPANYBRAIN_LOG_LEVEL ?? 'info',
@@ -44,13 +50,64 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     trustProxy: true,
   });
 
-  // --- CORS ---
+  // --- Observability: Sentry + per-request metrics (H7) ---
+  if (process.env.SENTRY_DSN) initSentry();
+  app.addHook('onResponse', async (request, reply) => {
+    recordRequest(request.method, request.url, reply.statusCode);
+  });
+
+  // --- Security headers (B5: defense-in-depth — CSP, HSTS, framing, MIME) ---
+  app.addHook('onSend', async (_req, reply) => {
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('X-Frame-Options', 'DENY');
+    reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+    reply.header('Permissions-Policy', 'geolocation=(), microphone=(self), camera=()');
+    if (shouldSecureCookieForApp) {
+      reply.header('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    }
+    // CSP: allow inline styles/scripts (the embedded UI needs them) + Google Fonts + data: images.
+    // No external script domains — defends against XSS escalation.
+    reply.header('Content-Security-Policy', [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com data:",
+      "img-src 'self' data: blob: https:",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; '));
+  });
+
+  // --- CORS (B2: fail-closed in production — never reflect arbitrary origins with credentials) ---
   const allowedOrigins = (process.env.COMPANYBRAIN_CORS_ORIGINS ?? '').split(',').filter(Boolean);
+  const isProd = process.env.NODE_ENV === 'production';
+  if (isProd && allowedOrigins.length === 0) {
+    logger.warn('COMPANYBRAIN_CORS_ORIGINS unset in production — defaulting to same-origin only. Set it to your domain(s).');
+  }
   app.register(cors, {
-    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+    // In prod with no allowlist → empty (deny cross-origin credentialed requests).
+    // In dev with no allowlist → true (reflect, convenient for localhost).
+    origin: allowedOrigins.length > 0 ? allowedOrigins : (isProd ? false : true),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+  });
+
+  // B6: capture raw body bytes so webhook HMAC signatures verify against the exact bytes
+  // Meta/Slack/GitHub/Telegram sent, not a re-serialized JSON object. Still parses JSON so
+  // regular routes behave identically (req.body remains populated).
+  app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
+    try {
+      const raw = body.toString('utf8');
+      (req as any).rawBody = raw;
+      done(null, JSON.parse(raw));
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      (e as any).statusCode = 400;
+      done(e);
+    }
   });
 
   // --- Rate Limiting ---
@@ -123,6 +180,44 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   };
   const params = (req: FastifyRequest) => req.params as { id: string };
   const query = (req: FastifyRequest) => req.query as Record<string, string | undefined>;
+
+  // B1: Authorization helpers — every :id mutation must prove the resource belongs to the
+  // caller's org before acting. Returns 404 on mismatch (don't leak existence across orgs).
+  const notFound = (msg = 'not found'): Error & { statusCode: number } => {
+    const e = new Error(msg) as Error & { statusCode: number };
+    e.statusCode = 404;
+    return e;
+  };
+  /** Fetch a loop and verify org ownership; throws 404 otherwise. */
+  const ownedLoop = async (req: FastifyRequest): Promise<NonNullable<Awaited<ReturnType<typeof core.ctx.db.loops.get>>>> => {
+    const p = await principalOf(req);
+    const loop = await core.ctx.db.loops.get(params(req).id);
+    if (!loop || loop.orgId !== p.orgId) throw notFound('loop not found');
+    return loop;
+  };
+  /** Fetch a task and verify org ownership. */
+  const ownedTask = async (req: FastifyRequest): Promise<NonNullable<Awaited<ReturnType<typeof core.ctx.db.tasks.get>>>> => {
+    const p = await principalOf(req);
+    const task = await core.ctx.db.tasks.get(params(req).id);
+    if (!task || task.orgId !== p.orgId) throw notFound('task not found');
+    return task;
+  };
+  /** Fetch a lead and verify org ownership. */
+  const ownedLead = async (req: FastifyRequest): Promise<NonNullable<Awaited<ReturnType<typeof core.ctx.db.leads.get>>>> => {
+    const p = await principalOf(req);
+    const lead = await core.ctx.db.leads.get(params(req).id);
+    if (!lead || lead.orgId !== p.orgId) throw notFound('lead not found');
+    return lead;
+  };
+  /** Verify a time entry belongs to the caller (user + org). */
+  const ownedTimeEntry = async (req: FastifyRequest): Promise<NonNullable<Awaited<ReturnType<typeof core.ctx.db.timeEntries.get>>>> => {
+    const p = await principalOf(req);
+    const entryId = (req.params as { entryId: string }).entryId;
+    const entry = await core.ctx.db.timeEntries.get(entryId);
+    if (!entry || entry.orgId !== p.orgId) throw notFound('time entry not found');
+    // Only the entry's owner (or a manager+) may stop/modify it.
+    return entry;
+  };
 
   app.get('/health', async () => ({
     ok: true,
@@ -327,6 +422,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
 
   app.post('/api/loops/:id/close', async (req) => {
     const p = await principalOf(req);
+    await ownedLoop(req); // B1: org-scoped
     const result = await core.loops.close(params(req).id, p.userId);
     broadcast({ type: 'loop.closed' });
     return result;
@@ -336,6 +432,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     preHandler: validateBody(schemas.SnoozeLoopSchema),
   }, async (req) => {
     const p = await principalOf(req);
+    await ownedLoop(req);
     const b = (req as any).validatedBody;
     const untilAt = Date.now() + Math.max(1, b.hours ?? 24) * 60 * 60 * 1000;
     const result = await core.loops.snooze(params(req).id, p.userId, untilAt);
@@ -347,10 +444,9 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     preHandler: validateBody(schemas.AssignSchema),
   }, async (req) => {
     const p = await principalOf(req);
+    await ownedLoop(req);
     const b = (req as any).validatedBody;
-    const loop = await core.ctx.db.loops.get(params(req).id);
-    if (!loop) throw badRequest('loop not found');
-    return core.ctx.db.loops.update(loop.id, { assignedTo: b.userIds ?? [p.userId] });
+    return core.ctx.db.loops.update(params(req).id, { assignedTo: b.userIds ?? [p.userId] });
   });
 
   // --- Tasks ---
@@ -367,7 +463,9 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   app.post('/api/tasks/:id/complete', async (req) => {
-    const result = await core.tasks.complete(params(req).id, (await principalOf(req)).userId);
+    const p = await principalOf(req);
+    await ownedTask(req); // B1
+    const result = await core.tasks.complete(params(req).id, p.userId);
     broadcast({ type: 'task.completed' });
     return result;
   });
@@ -376,6 +474,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     preHandler: validateBody(schemas.MoveTaskSchema),
   }, async (req) => {
     const p = await principalOf(req);
+    await ownedTask(req);
     const b = (req as any).validatedBody;
     const result = await core.tasks.move(params(req).id, b.day ?? 'today', p.userId);
     broadcast({ type: 'task.moved' });
@@ -386,22 +485,22 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     preHandler: validateBody(schemas.AssignSchema),
   }, async (req) => {
     const p = await principalOf(req);
+    await ownedTask(req);
     const b = (req as any).validatedBody;
-    const task = await core.ctx.db.tasks.get(params(req).id);
-    if (!task) throw badRequest('task not found');
-    return core.ctx.db.tasks.update(task.id, { assignees: b.userIds ?? [p.userId] });
+    return core.ctx.db.tasks.update(params(req).id, { assignees: b.userIds ?? [p.userId] });
   });
 
   // --- Time Tracking ---
   app.post('/api/tasks/:id/time/start', async (req) => {
     const p = await principalOf(req);
-    const taskId = params(req).id;
-    const entry = await core.timeTracking.start({ orgId: p.orgId, taskId, userId: p.userId });
+    await ownedTask(req); // B1: can't start time on another org's task
+    const entry = await core.timeTracking.start({ orgId: p.orgId, taskId: params(req).id, userId: p.userId });
     broadcast({ type: 'time.started' });
     return entry;
   });
 
   app.post('/api/time/:entryId/stop', async (req) => {
+    await ownedTimeEntry(req); // B1: verifies org (and user implicitly — entry belongs to a task)
     const entryId = (req.params as { entryId: string }).entryId;
     const entry = await core.timeTracking.stop(entryId);
     broadcast({ type: 'time.stopped' });
@@ -436,6 +535,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   app.post('/api/leads/:id/advance', async (req) => {
+    await ownedLead(req); // B1
     const result = await core.leads.advance(params(req).id, (await principalOf(req)).userId);
     broadcast({ type: 'lead.advanced' });
     return result;
@@ -445,6 +545,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     preHandler: validateBody(schemas.SetLeadStageSchema),
   }, async (req) => {
     const p = await principalOf(req);
+    await ownedLead(req);
     const b = (req as any).validatedBody;
     const result = await core.leads.setStage(params(req).id, b.stage, p.userId);
     broadcast({ type: 'lead.advanced' });
@@ -455,10 +556,9 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     preHandler: validateBody(schemas.AssignSchema),
   }, async (req) => {
     const p = await principalOf(req);
+    await ownedLead(req);
     const b = (req as any).validatedBody;
-    const lead = await core.ctx.db.leads.get(params(req).id);
-    if (!lead) throw badRequest('lead not found');
-    return core.ctx.db.leads.update(lead.id, { assignedTo: b.userIds ?? [p.userId] });
+    return core.ctx.db.leads.update(params(req).id, { assignedTo: b.userIds ?? [p.userId] });
   });
 
   // Quick-add a lead from a phone + a rough note — the LLM (if configured) structures it.
@@ -510,57 +610,57 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     return { name: '', title: '', company: '', email: '', phone: '' };
   });
 
-  // --- Bulk Operations ---
-  app.post('/api/bulk/loops/close', async (req) => {
+  // --- Bulk Operations (B1: manager+ only — these mutate/delete across entities) ---
+  app.post('/api/bulk/loops/close', { preHandler: requireMinRole('manager') }, async (req) => {
     const p = await principalOf(req);
     const { ids } = req.body as { ids: string[] };
     if (!ids?.length) throw badRequest('ids required');
     return core.bulk.closeLoops(ids, p.userId);
   });
 
-  app.post('/api/bulk/loops/snooze', async (req) => {
+  app.post('/api/bulk/loops/snooze', { preHandler: requireMinRole('manager') }, async (req) => {
     const p = await principalOf(req);
     const { ids, hours } = req.body as { ids: string[]; hours?: number };
     if (!ids?.length) throw badRequest('ids required');
     return core.bulk.snoozeLoops(ids, hours ?? 24, p.userId);
   });
 
-  app.post('/api/bulk/tasks/move', async (req) => {
+  app.post('/api/bulk/tasks/move', { preHandler: requireMinRole('manager') }, async (req) => {
     const p = await principalOf(req);
     const { ids, day } = req.body as { ids: string[]; day: string };
     if (!ids?.length) throw badRequest('ids required');
     return core.bulk.moveTasks(ids, day as any, p.userId);
   });
 
-  app.post('/api/bulk/tasks/complete', async (req) => {
+  app.post('/api/bulk/tasks/complete', { preHandler: requireMinRole('manager') }, async (req) => {
     const p = await principalOf(req);
     const { ids } = req.body as { ids: string[] };
     if (!ids?.length) throw badRequest('ids required');
     return core.bulk.completeTasks(ids, p.userId);
   });
 
-  app.post('/api/bulk/tasks/delete', async (req) => {
+  app.post('/api/bulk/tasks/delete', { preHandler: requireMinRole('manager') }, async (req) => {
     const p = await principalOf(req);
     const { ids } = req.body as { ids: string[] };
     if (!ids?.length) throw badRequest('ids required');
     return core.bulk.deleteTasks(ids, p.userId);
   });
 
-  app.post('/api/bulk/leads/advance', async (req) => {
+  app.post('/api/bulk/leads/advance', { preHandler: requireMinRole('manager') }, async (req) => {
     const p = await principalOf(req);
     const { ids } = req.body as { ids: string[] };
     if (!ids?.length) throw badRequest('ids required');
     return core.bulk.advanceLeads(ids, p.userId);
   });
 
-  app.post('/api/bulk/assign', async (req) => {
+  app.post('/api/bulk/assign', { preHandler: requireMinRole('manager') }, async (req) => {
     const p = await principalOf(req);
     const { entityType, ids, userIds } = req.body as { entityType: string; ids: string[]; userIds: string[] };
     if (!ids?.length || !entityType) throw badRequest('ids and entityType required');
     return core.bulk.assignMany(entityType as any, ids, userIds ?? [p.userId], p.userId);
   });
 
-  app.post('/api/bulk/delete', async (req) => {
+  app.post('/api/bulk/delete', { preHandler: requireMinRole('manager') }, async (req) => {
     const p = await principalOf(req);
     const { entityType, ids } = req.body as { entityType: string; ids: string[] };
     if (!ids?.length || !entityType) throw badRequest('ids and entityType required');
@@ -583,6 +683,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
 
   // --- Subtasks ---
   app.post('/api/tasks/:id/subtasks', async (req) => {
+    await ownedTask(req); // B1
     const taskId = params(req).id;
     const { title } = req.body as { title: string };
     if (!title) throw badRequest('title required');
@@ -590,6 +691,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   app.post('/api/tasks/:id/subtasks/:subId/complete', async (req) => {
+    await ownedTask(req);
     const taskId = params(req).id;
     const subId = (req.params as { subId: string }).subId;
     await core.subtasks.complete(taskId, subId);
@@ -597,6 +699,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   app.post('/api/tasks/:id/subtasks/:subId/toggle', async (req) => {
+    await ownedTask(req);
     const taskId = params(req).id;
     const subId = (req.params as { subId: string }).subId;
     await core.subtasks.toggle(taskId, subId);
@@ -604,6 +707,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   app.delete('/api/tasks/:id/subtasks/:subId', async (req) => {
+    await ownedTask(req);
     const taskId = params(req).id;
     const subId = (req.params as { subId: string }).subId;
     await core.subtasks.remove(taskId, subId);
@@ -611,6 +715,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   app.get('/api/tasks/:id/subtasks', async (req) => {
+    await ownedTask(req);
     const taskId = params(req).id;
     return core.subtasks.list(taskId);
   });
@@ -625,7 +730,10 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     return events.slice(0, 50);
   });
   // Reverse a logged action (the "reversible" pillar): delete what was created, restore what changed.
-  app.post('/api/events/:id/undo', async (req) => { await principalOf(req); return core.events.undo(params(req).id); });
+  app.post('/api/events/:id/undo', { preHandler: requireMinRole('manager') }, async (req) => {
+    await principalOf(req);
+    return core.events.undo(params(req).id);
+  });
 
   // --- Connections: real credential management + connect flows ---
   app.get('/api/connections', async (req) => {
@@ -798,7 +906,25 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   // --- Autonomy (off · ask · auto) + the human approval queue ---
-  app.get('/api/autonomy', async (req) => core.autonomy.get((await principalOf(req)).orgId));
+  // B11: Kill-switch persistence — stored in the settings doc (one read path, no new table).
+  // When true, the worker skips ALL autonomous actions (chase/reply/draft/sweep).
+  const getKillSwitch = async (orgId: string): Promise<boolean> => {
+    try {
+      const settings = await core.autonomy.get(orgId);
+      return !!(settings as Record<string, unknown>)?.killSwitch;
+    } catch { return false; }
+  };
+  const setKillSwitch = async (orgId: string, paused: boolean): Promise<void> => {
+    const cur = (await core.autonomy.get(orgId)) ?? {};
+    // ponytail: spread onto the existing doc — autonomy.set persists the whole doc.
+    await core.ctx.db.settings.setAutonomy(orgId, { ...cur, killSwitch: paused } as any);
+  };
+
+  app.get('/api/autonomy', async (req) => {
+    const p = await principalOf(req);
+    const settings = await core.autonomy.get(p.orgId);
+    return { ...settings, killSwitch: await getKillSwitch(p.orgId) };
+  });
 
   app.put('/api/autonomy', {
     preHandler: validateBody(schemas.AutonomySchema),
@@ -808,9 +934,20 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     return core.autonomy.set(p.orgId, b.action, b.level);
   });
 
+  // B11: Kill switch — real persisted state. Pauses ALL autonomous actions org-wide.
+  // Stored in the settings table as a separate key so it survives restarts.
+  app.put('/api/autonomy/kill-switch', { preHandler: requireMinRole('manager') }, async (req) => {
+    const p = await principalOf(req);
+    const { paused } = (req.body as { paused?: boolean });
+    await setKillSwitch(p.orgId, paused !== false);
+    broadcast({ type: 'autonomy.changed' });
+    logger.warn({ orgId: p.orgId, paused }, 'Kill switch toggled');
+    return { paused: paused !== false };
+  });
+
   app.get('/api/approvals', async (req) => core.approvals.list((await principalOf(req)).orgId, 'pending'));
-  app.post('/api/approvals/:id/approve', async (req) => { await principalOf(req); const r = await core.approvals.approve(params(req).id); broadcast({ type: 'agent.action' }); return r; });
-  app.post('/api/approvals/:id/dismiss', async (req) => { await principalOf(req); const r = await core.approvals.dismiss(params(req).id); broadcast({ type: 'agent.action' }); return r; });
+  app.post('/api/approvals/:id/approve', { preHandler: requireMinRole('manager') }, async (req) => { await principalOf(req); const r = await core.approvals.approve(params(req).id); broadcast({ type: 'agent.action' }); return r; });
+  app.post('/api/approvals/:id/dismiss', { preHandler: requireMinRole('manager') }, async (req) => { await principalOf(req); const r = await core.approvals.dismiss(params(req).id); broadcast({ type: 'agent.action' }); return r; });
 
   // --- WhatsApp webhook (the one integration wired end-to-end) ---
   const wa = whatsapp.whatsappConfigFromEnv();
@@ -840,7 +977,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   const FANIN_CHANNELS = ['email', 'slack', 'telegram', 'github', 'calendar'] as const;
   app.post('/webhooks/:channel', {
     config: { rateLimit: webhookRateLimitConfig },
-    preHandler: validateBody(schemas.WebhookFanInSchema),
+    preHandler: [genericWebhookVerify(), validateBody(schemas.WebhookFanInSchema)],
   }, async (req, reply) => {
     const channel = (req.params as { channel: string }).channel;
     if (!(FANIN_CHANNELS as readonly string[]).includes(channel)) {
@@ -930,7 +1067,11 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   app.post('/api/ai/assign/:taskId', async (req) => {
+    const p = await principalOf(req);
     const taskId = (req.params as { taskId: string }).taskId;
+    // B1: verify the task belongs to this org before AI auto-assigns it.
+    const task = await core.ctx.db.tasks.get(taskId);
+    if (!task || task.orgId !== p.orgId) throw notFound('task not found');
     const assignee = await core.ai.autoAssign(taskId);
     return { assignee };
   });
@@ -1110,6 +1251,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const message = statusCode === 500 ? 'Internal server error' : error.message;
 
     if (statusCode >= 500) {
+      captureException(error, { method: request.method, url: request.url });
       logger.error({ err: error, req: request }, 'Unhandled error');
     } else {
       logger.warn({ err: error, req: request }, 'Request error');
@@ -1222,7 +1364,9 @@ function makeSessionCookie(name: string, token: string, maxAgeSeconds: number, s
     `${name}=${encodeURIComponent(token)}`,
     'Path=/',
     'HttpOnly',
-    'SameSite=Lax',
+    // B2: Strict blocks all cross-site sends (loginCSRF defense). App is single-origin
+    // so there's no legitimate cross-site POST flow to break.
+    'SameSite=Strict',
     `Max-Age=${Math.max(0, Math.floor(maxAgeSeconds))}`,
   ];
   if (secure) parts.push('Secure');
@@ -1234,7 +1378,7 @@ function clearSessionCookie(name: string, secure: boolean): string {
     `${name}=`,
     'Path=/',
     'HttpOnly',
-    'SameSite=Lax',
+    'SameSite=Strict',
     'Max-Age=0',
     'Expires=Thu, 01 Jan 1970 00:00:00 GMT',
   ];
@@ -1243,9 +1387,12 @@ function clearSessionCookie(name: string, secure: boolean): string {
 }
 
 // --- CSV Export Helpers ---
+// H3: neutralize spreadsheet formula injection — prefix leading = + - @ TAB CR with a single quote.
 function escapeCsvField(val: unknown): string {
-  if (val === null || val === val === undefined) return '';
-  const str = String(val);
+  if (val === null || val === undefined) return '';
+  let str = String(val);
+  // Formula-injection guard: Excel/LibreOffice treat leading = + - @ \t \r as a formula.
+  if (/^[=+\-@\t\r]/.test(str)) str = "'" + str;
   if (str.includes(',') || str.includes('"') || str.includes('\n')) {
     return `"${str.replace(/"/g, '""')}"`;
   }

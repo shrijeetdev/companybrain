@@ -13,11 +13,19 @@ export {
 export {
   classifyCommand,
   formatConfirmPrompt,
+  isAllowed,
+  hasInjectionOrDestructiveComposition,
+  tokenize,
+  ALLOWED_COMMANDS,
   type RiskLevel,
   type CommandRisk,
+  type AllowedCommand,
+  type AllowedRisk,
+  type AllowedResult,
 } from './safety.js';
 export {
   executeShell,
+  executeShellPipeline,
   executeAppleScript,
   openUrl,
   openApp,

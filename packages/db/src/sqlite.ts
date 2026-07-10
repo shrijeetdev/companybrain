@@ -18,6 +18,7 @@ import type {
   ConnectionRepo,
   ConnectionRecord,
 } from './port';
+import { encryptJSON, decryptJSON } from './crypto';
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS loops  (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, side TEXT, status TEXT, updated_at INTEGER, doc TEXT NOT NULL);
@@ -274,7 +275,7 @@ export class SqliteDatabase implements DbPort {
         if (existing) {
           const merged = { ...existing, ...patch, channel, updatedAt: now } as ConnectionRecord;
           db.prepare('UPDATE connections SET status=?, credentials=?, updated_at=? WHERE org_id=? AND channel=?')
-            .run(merged.status, JSON.stringify(merged.credentials), now, orgId, channel);
+            .run(merged.status, encryptJSON(merged.credentials), now, orgId, channel);
           return merged;
         }
         const conn: ConnectionRecord = {
@@ -287,7 +288,7 @@ export class SqliteDatabase implements DbPort {
           updatedAt: now,
         };
         db.prepare('INSERT INTO connections (id, org_id, channel, status, credentials, created_at, updated_at) VALUES (?,?,?,?,?,?,?)')
-          .run(conn.id, conn.orgId, conn.channel, conn.status, JSON.stringify(conn.credentials), conn.createdAt, conn.updatedAt);
+          .run(conn.id, conn.orgId, conn.channel, conn.status, encryptJSON(conn.credentials), conn.createdAt, conn.updatedAt);
         return conn;
       },
       async delete(orgId, channel) {
@@ -320,12 +321,13 @@ function rowToCustomField(row: any): CustomField {
 }
 
 function rowToConnection(row: any): ConnectionRecord {
+  const raw = typeof row.credentials === 'string' ? row.credentials : '';
   return {
     id: row.id,
     orgId: row.org_id,
     channel: row.channel,
     status: row.status,
-    credentials: typeof row.credentials === 'string' ? JSON.parse(row.credentials) : (row.credentials ?? {}),
+    credentials: (raw ? decryptJSON(raw) : {}) as Record<string, any>,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

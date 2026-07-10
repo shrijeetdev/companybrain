@@ -6,9 +6,10 @@
 
 import type { Core } from '@companybrain/core';
 import { classifyIntent, type ClassifiedIntent, type Llm } from './intent.js';
-import { classifyCommand, formatConfirmPrompt, type CommandRisk } from './safety.js';
+import { classifyCommand, formatConfirmPrompt, isAllowed, type CommandRisk } from './safety.js';
 import {
   executeShell,
+  executeShellPipeline,
   openUrl,
   openApp,
   createFolder,
@@ -20,10 +21,16 @@ import {
 export interface BridgeDeps {
   core: Core;
   llm?: Llm;
-  /** Called when an action needs a human yes/no. Default: always allow (autonomous). */
+  /** Called when an action needs a human yes/no. Default: DENY (fail-closed). */
   onConfirm?: (intent: ClassifiedIntent, risk: CommandRisk) => Promise<boolean>;
   /** Append a structured log entry for every command, success or failure. */
   onLog?: (entry: BridgeLogEntry) => void;
+  /**
+   * Dev-mode escape hatch: when true, the confirm step is bypassed (auto-approved)
+   * AND a loud warning is logged on the first use. NEVER enable in production — it
+   * removes the human gate on potentially destructive commands.
+   */
+  confirmAll?: boolean;
 }
 
 export interface BridgeLogEntry {
@@ -115,7 +122,10 @@ function resolveAction(intent: ClassifiedIntent): ActionPlan {
   switch (intent.type) {
     case 'shell_command': {
       const command = String(intent.args.command ?? '');
-      return { run: () => executeShell(command), shellPreview: command };
+      // Route commands that genuinely need shell features (pipes, redirects, &&) to the
+      // shell-using executor; everything else runs shell-free. Both gate via isAllowed().
+      const runner = needsShell(command) ? executeShellPipeline : executeShell;
+      return { run: () => runner(command), shellPreview: command };
     }
     case 'open_url': {
       const url = String(intent.args.url ?? '');
@@ -182,17 +192,48 @@ async function createTaskInCore(intent: ClassifiedIntent, deps: BridgeDeps): Pro
   }
 }
 
+/** True if the command uses shell-only features (pipes, redirects, job control) that
+ *  require the /bin/sh path; false → run shell-free via spawn({ shell: false }). */
+function needsShell(command: string): boolean {
+  return /([|><]|&&|\|\||;)/.test(command);
+}
+
+// Emit the confirmAll escape-hatch warning at most once per process.
+let confirmAllWarned = false;
+
 async function askConfirm(deps: BridgeDeps, intent: ClassifiedIntent, risk: CommandRisk): Promise<boolean> {
-  if (deps.onConfirm) {
-    try {
-      return await deps.onConfirm(intent, risk);
-    } catch {
-      return false;
+  // Dev-mode bypass: auto-approve, but log a loud warning the first time.
+  if (deps.confirmAll) {
+    if (!confirmAllWarned) {
+      confirmAllWarned = true;
+      await log(deps, {
+        command: intent.rawCommand,
+        intent,
+        risk,
+        requiredConfirm: true,
+        confirmed: true,
+        at: Date.now(),
+        result: {
+          ok: true,
+          output: '',
+          error: '⚠️  confirmAll is enabled — human confirmation is BYPASSED. Dev mode only; never ship this.',
+          durationMs: 0,
+        },
+      });
     }
+    return true;
   }
-  // No confirm hook → autonomous mode. Still surface the prompt for logging/debugging.
-  formatConfirmPrompt(intent.rawCommand, risk);
-  return true;
+
+  // Fail-closed default: no confirm hook → DENY. Only an explicit onConfirm == true runs.
+  if (!deps.onConfirm) {
+    formatConfirmPrompt(intent.rawCommand, risk); // surfaced for logging/debugging only
+    return false;
+  }
+  try {
+    return await deps.onConfirm(intent, risk);
+  } catch {
+    return false; // a throwing hook also fails closed
+  }
 }
 
 async function log(deps: BridgeDeps, entry: BridgeLogEntry): Promise<void> {

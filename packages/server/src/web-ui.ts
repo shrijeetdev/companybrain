@@ -71,6 +71,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Hanken Grote
 input,button,textarea{font-family:inherit;}
 input:focus,textarea:focus{outline:none;}
 button{cursor:pointer;}
+/* H1: keyboard accessibility — visible focus ring on every focusable control. */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px;}
+button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.nav-item:focus-visible,#notif-btn:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
 
 @keyframes cbFade{from{opacity:0}to{opacity:1}}
 @keyframes cbFadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
@@ -114,7 +118,7 @@ button{cursor:pointer;}
 [data-theme="dark"] .sidebar-search input:focus{background:rgba(255,255,255,.08);}
 .sidebar-search input::placeholder{color:var(--faint);}
 .ss-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.4;}
-.nav-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);transition:all .2s cubic-bezier(.4,0,.2,1);user-select:none;min-height:42px;position:relative;}
+.nav-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);transition:all .2s cubic-bezier(.4,0,.2,1);user-select:none;min-height:42px;position:relative;width:100%;border:1px solid transparent;background:transparent;font-family:inherit;text-align:left;}
 .nav-item:hover{background:rgba(255,255,255,.4);color:var(--text);transform:translateX(2px);}
 [data-theme="dark"] .nav-item:hover{background:rgba(255,255,255,.06);}
 .nav-item.active{background:var(--accentSoft);color:var(--accent);font-weight:600;box-shadow:inset 0 1px 0 rgba(255,255,255,.3);}
@@ -152,7 +156,8 @@ button{cursor:pointer;}
 #topbar{display:none;align-items:center;gap:10px;padding:12px 18px;flex-shrink:0;border-bottom:1px solid var(--glassBorder);background:var(--grad-glass),var(--glassThin);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);box-shadow:0 4px 20px rgba(82,99,140,.06);}
 [data-theme="dark"] #topbar{box-shadow:0 4px 20px rgba(0,0,0,.3);}
 #topbar .logo-text{font-size:15px;}
-#notif-btn{position:relative;width:42px;height:42px;border-radius:12px;border:1px solid var(--glassBorder);background:rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-left:auto;transition:all .2s;backdrop-filter:blur(10px);}
+#notif-btn{position:relative;width:42px;height:42px;border-radius:12px;border:1px solid var(--glassBorder);background:rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-left:auto;transition:all .2s;backdrop-filter:blur(10px);padding:0;}
+#notif-btn > svg{pointer-events:none;}
 [data-theme="dark"] #notif-btn{background:rgba(255,255,255,.06);}
 #notif-btn:hover{background:rgba(255,255,255,.7);transform:translateY(-1px);box-shadow:var(--shadow-md);}
 [data-theme="dark"] #notif-btn:hover{background:rgba(255,255,255,.12);}
@@ -518,10 +523,10 @@ button{cursor:pointer;}
         <button class="topbar-dark-toggle" id="topbar-dark-toggle">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
-        <div id="notif-btn">
+        <button id="notif-btn" aria-label="Notifications" type="button">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           <span id="notif-count"></span>
-        </div>
+        </button>
         <button class="topbar-dark-toggle" id="topbar-logout-btn" title="Sign out" style="display:none;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>
@@ -967,8 +972,8 @@ button{cursor:pointer;}
     var sn=document.getElementById('side-nav');
     sn.innerHTML=TABS.map(function(t){
       var badge=(t.id==='loops'&&loopCount>0)?'<span class="nav-badge">'+loopCount+'</span>':'';
-      return '<div class="nav-item'+(t.id===tab?' active':'')+'" data-tab="'+t.id+'">'
-        +'<span class="ni">'+SVG[t.id]+'</span>'+t.label+badge+'</div>';
+      return '<button type="button" class="nav-item'+(t.id===tab?' active':'')+'" data-tab="'+t.id+'" aria-current="'+(t.id===tab?'page':'false')+'">'
+        +'<span class="ni" aria-hidden="true">'+SVG[t.id]+'</span>'+t.label+badge+'</button>';
     }).join('');
     sn.querySelectorAll('.nav-item').forEach(function(el){
       el.onclick=function(){tab=el.dataset.tab;buildNav();buildBotNav();render();};
@@ -1924,7 +1929,7 @@ button{cursor:pointer;}
     if(!isManager){
       html+='<div class="gc" style="padding:40px 24px;border-radius:16px;text-align:center;">'
         +'<div style="font-size:34px;margin-bottom:10px;">🔒</div>'
-        +'<div style="font-size:15px;font-weight:700;">You don\'t have access</div>'
+        +'<div style="font-size:15px;font-weight:700;">You don\u2019t have access</div>'
         +'<div style="font-size:12.5px;color:var(--muted);margin-top:6px;">Team performance dashboards are available to managers and CEOs.</div></div>';
       view.innerHTML=html;
       return;
@@ -2059,7 +2064,7 @@ button{cursor:pointer;}
       html+=listSection('MUST HAVE','#ef4444',result.must||result.M)
         +listSection('SHOULD HAVE','#f59e0b',result.should||result.S)
         +listSection('COULD HAVE','#3e7bfa',result.could||result.C)
-        +listSection('WON\u0027T HAVE','#9ca3af',result.wont||result.W);
+        +listSection('WON\u2019T HAVE','#9ca3af',result.wont||result.W);
     }else if(methodId==='abcde'){
       var ranks=[{k:'A',col:'#ef4444'},{k:'B',col:'#f59e0b'},{k:'C',col:'#3e7bfa'},{k:'D',col:'#9ca3af'},{k:'E',col:'#6b7280'}];
       var tasks=result.tasks||result.ranked||[];
@@ -2305,7 +2310,8 @@ button{cursor:pointer;}
       );
 
       var html='<div class="sec-head"><div><div class="sec-title">Settings</div><div class="sec-sub">Integrations, autonomy, and personalisation.</div></div></div>';
-      html+='<div style="padding:16px 18px;border-radius:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);display:flex;align-items:center;gap:12px;margin-bottom:20px;"><div style="flex:1;"><div style="font-size:14px;font-weight:700;color:var(--red);">Kill switch</div><div style="font-size:12px;color:var(--red);opacity:.7;margin-top:2px;">Pause ALL autonomous actions immediately.</div></div><button class="btn-danger" onclick="toast(\\'All autonomous actions paused.\\')">Pause all</button></div>';
+      var ksActive = settings.killSwitch === true;
+      html+='<div style="padding:16px 18px;border-radius:14px;background:'+(ksActive?'linear-gradient(135deg,rgba(0,184,148,.15),rgba(0,184,148,.06))':'rgba(239,68,68,.08)')+';border:1px solid '+(ksActive?'rgba(0,184,148,.3)':'rgba(239,68,68,.18)')+';display:flex;align-items:center;gap:12px;margin-bottom:20px;"><div style="flex:1;"><div style="font-size:14px;font-weight:700;color:'+(ksActive?'var(--green)':'var(--red)')+';">Kill switch '+(ksActive?'ACTIVE — autonomous actions paused':'Standby')+'</div><div style="font-size:12px;color:'+(ksActive?'var(--green)':'var(--red)')+';opacity:.75;margin-top:2px;">'+(ksActive?'All autonomous actions are paused. Click to resume.':'Pause ALL autonomous actions immediately.')+'</div></div><button class="'+(ksActive?'btn-primary':'btn-danger')+'" id="kill-switch-btn" data-paused="'+ksActive+'">'+(ksActive?'Resume autonomy':'Pause all')+'</button></div>';
       if(approvals.length){
         html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:8px;">PENDING APPROVALS ('+approvals.length+')</div>'
           +approvals.map(function(ap){return '<div class="gc" style="padding:12px 14px;border-radius:13px;display:flex;align-items:center;gap:10px;margin-bottom:7px;"><div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+esc(ap.title)+'</div><div style="font-family:\\'JetBrains Mono\\',monospace;font-size:10.5px;color:var(--faint);margin-top:2px;">'+esc(ap.action)+'</div></div><button class="approve-btn ok" data-approve="'+ap.id+'">Approve</button><button class="approve-btn no" data-dismiss="'+ap.id+'" style="margin-left:5px;">Dismiss</button></div>';}).join('');
@@ -2324,6 +2330,16 @@ button{cursor:pointer;}
       // Bind settings handlers
       var std=document.getElementById('settings-dark-toggle');
       if(std)std.onclick=function(){applyDark(!darkMode);loadSettings();};
+      // B11: Kill switch — real persisted state via PUT /api/autonomy/kill-switch
+      var ksb=document.getElementById('kill-switch-btn');
+      if(ksb)ksb.onclick=function(){
+        var nextPause=ksb.dataset.paused!=='true';
+        ksb.disabled=true;ksb.textContent='Working\u2026';
+        post('/api/autonomy/kill-switch',{paused:nextPause},'PUT').then(function(){
+          toast(nextPause?'Autonomy paused — all autonomous actions stopped.':'Autonomy resumed.');
+          loadSettings();
+        }).catch(function(e){toast(e.message||'Failed');ksb.disabled=false;ksb.textContent=nextPause?'Pause all':'Resume autonomy';});
+      };
       view.querySelectorAll('.lvl').forEach(function(b){b.onclick=function(){post('/api/autonomy',{action:b.dataset.act,level:b.dataset.lvl},'PUT').then(function(){toast('Saved');loadSettings();});};});
       view.querySelectorAll('[data-approve]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.approve+'/approve').then(function(){toast('Approved');loadSettings();});};});
       view.querySelectorAll('[data-dismiss]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(function(){toast('Dismissed');loadSettings();});};});
