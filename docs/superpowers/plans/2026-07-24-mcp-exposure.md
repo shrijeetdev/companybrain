@@ -192,7 +192,7 @@ test('apiKeys: listByOrg and delete', async () => {
   assert.equal((await db.apiKeys.listByOrg('org_local')).length, 0);
 });
 
-test('apiKeys: keys persist across a new connection (new process)', async () => {
+test('apiKeys: keys persist across a new connection (simulating a separate MCP process)', async () => {
   await db.apiKeys.insert({
     id: 'apikey_2', orgId: 'org_local', name: 'Other',
     prefix: 'cb_12345', keyHash: hash('cb_persist_me'),
@@ -200,10 +200,12 @@ test('apiKeys: keys persist across a new connection (new process)', async () => 
   });
   await db.close();
 
+  // Reopen the SAME file — this is exactly what the MCP process does vs the web app.
   const db2 = new SqliteDatabase(dbPath);
   await db2.init();
-  const found = await db2.findByHash ? null : await db2.apiKeys.findByHash(hash('cb_persist_me'));
+  const found = await db2.apiKeys.findByHash(hash('cb_persist_me'));
   assert.ok(found, 'key survived reopen of the same file');
+  assert.equal(found!.actorId, undefined); // this key was created without an actorId
   await db2.close();
 });
 
@@ -302,7 +304,18 @@ Expected: PASS (all four tests).
 - [ ] **Step 6: Typecheck**
 
 Run: `pnpm typecheck`
-Expected: PASS — `SupabaseDatabase` in `packages/db/src/supabase.ts` must also satisfy the new `apiKeys` field. If typecheck fails there, add a stub:
+Expected: PASS — `SupabaseDatabase` in `packages/db/src/supabase.ts` must also satisfy the new `apiKeys` field. If typecheck fails there:
+
+First, add `ApiKeyRepo` to the existing import from `./port` at the top of `supabase.ts`:
+
+```ts
+import type {
+  // ... existing imports ...
+  ApiKeyRepo,
+} from './port';
+```
+
+Then add the stub as a class field on `SupabaseDatabase`:
 
 ```ts
   apiKeys: ApiKeyRepo = {
@@ -314,7 +327,7 @@ Expected: PASS — `SupabaseDatabase` in `packages/db/src/supabase.ts` must also
   };
 ```
 
-(Add the `ApiKeyRepo` import to `supabase.ts`. Supabase is not the ship target; the stub keeps the port honest.)
+(Supabase is not the ship target; the stub keeps the port honest. SQLite is the only adapter this sub-project uses.)
 
 - [ ] **Step 7: Commit**
 
@@ -949,6 +962,8 @@ In the root `package.json`, append the new test files to the `test` script's `--
 Run: `pnpm test`
 Expected: PASS — all tests green.
 
+**Pre-existing caveat (do not fix here):** the aggregate `test` script runs every file in one Node process, and each test file sets `process.env.COMPANYBRAIN_DB_PATH` at its top level. Because `bootstrap()` reads that env at call-time, all files effectively share whichever DB path was set last. The existing suite already lives with this; every test file uses a unique temp path with `pid`+`Date.now()`, so within a single file the right DB is used. If the aggregate ever flakes on DB-path races, that's a separate cleanup (give each file an explicit `bootstrap({ db: { sqlitePath } })`), not part of this sub-project.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -1014,12 +1029,15 @@ Create `cli/bin/mcp.ts`:
 
 ```ts
 #!/usr/bin/env -S npx tsx
-// companybrain mcp — standalone MCP stdio server. Boots a minimal Core (no web UI,
-// no worker, no port), verifies the env-supplied API key, injects the agent identity
-// as ToolContext, and starts the JSON-RPC server. Spawned by MCP hosts (Claude Desktop,
-// Cursor, VS Code) directly from their config.
+// companybrain mcp — standalone MCP stdio server. Boots a minimal Core directly from
+// ports (no web UI, no registered workers, no port), verifies the env-supplied API key,
+// injects the agent identity as ToolContext, and starts the JSON-RPC server. Spawned by
+// MCP hosts (Claude Desktop, Cursor, VS Code) directly from their config.
 
-import { bootstrap } from '@companybrain/core';
+import { createCoreFromPorts } from '@companybrain/core';
+import { createDatabase } from '@companybrain/db';
+import { createQueue } from '@companybrain/queue';
+import { createAuth } from '@companybrain/auth';
 import { startMcpServer } from '@companybrain/mcp';
 
 // SECURITY: nothing in this process must log to stdout (that's the JSON-RPC channel).
@@ -1033,13 +1051,21 @@ async function main() {
     process.exit(2);
   }
 
-  const boot = await bootstrap(); // constructs Core + runs init(); workers NOT started here.
-  const core = boot.core;
+  // Minimal Core: same ports as bootstrap(), but we do NOT call registerWorkers — so the
+  // queue (required by the Core signature) has no handlers and any enqueue is a no-op.
+  const db = createDatabase();
+  const queue = createQueue();
+  const auth = createAuth();
+  await db.init();
+  await queue.init();
+  await auth.init();
+  const core = createCoreFromPorts({ db, queue, auth });
 
   const identity = await core.apiKeys.verify(rawKey);
   if (!identity) {
     warn('COMPANYBRAIN_MCP_KEY did not verify. Revoke and re-create the key from the web app.');
-    await boot.shutdown();
+    await db.close();
+    await queue.close();
     process.exit(3);
   }
 
