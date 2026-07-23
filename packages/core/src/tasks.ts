@@ -33,6 +33,8 @@ export function makeTasks(ctx: Context) {
         recur: input.recur ?? null,
         assignees: input.assignees ?? [input.actorId],
         createdBy: input.actorId,
+        completed: false,
+        completedAt: null,
         dueAt: input.dueAt ?? null,
         createdAt: now(),
       };
@@ -50,8 +52,10 @@ export function makeTasks(ctx: Context) {
     },
 
     async complete(id: string, actorId: string): Promise<Task> {
-      const task = await ctx.db.tasks.update(id, { day: 'today' });
-      await record(ctx, { orgId: task.orgId, type: 'task.completed', entityId: id, actorId });
+      const prev = await ctx.db.tasks.get(id);
+      if (!prev) throw new Error(`task ${id} not found`);
+      const task = await ctx.db.tasks.update(id, { completed: true, completedAt: now() });
+      await record(ctx, { orgId: task.orgId, type: 'task.completed', entityId: id, actorId, undo: { restoreCompleted: prev.completed ?? false, restoreCompletedAt: prev.completedAt ?? null } });
       return task;
     },
   };

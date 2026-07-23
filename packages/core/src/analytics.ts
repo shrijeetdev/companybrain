@@ -230,9 +230,10 @@ function computeLeads(leads: Lead[], windowStart: number): LeadsReport {
     pipeline,
     wonInWindow,
     conversionRate,
-    // pipelineValue is a placeholder: Lead currently has no monetary/value field. Returns 0
-    // rather than a fabricated number so the UI degrades honestly until value is modelled.
-    pipelineValue: 0,
+    // Pipeline value: sum of lead.value for open (non-won/lost) leads that have a value set.
+    pipelineValue: leads
+      .filter((l) => l.stage !== 'won' && l.stage !== 'lost' && typeof (l as any).value === 'number')
+      .reduce((sum, l) => sum + ((l as any).value as number), 0),
   };
 }
 

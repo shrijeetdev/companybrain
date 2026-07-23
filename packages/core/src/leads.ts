@@ -13,6 +13,7 @@ export interface CreateLeadInput {
   email?: string;
   source?: Channel;
   what?: string;
+  value?: number | null;
   assignedTo?: string[];
 }
 
@@ -34,6 +35,7 @@ export function makeLeads(ctx: Context) {
         stage: 'new',
         source: input.source ?? 'manual',
         what: input.what ?? '',
+        value: input.value ?? null,
         createdBy: input.actorId,
         assignedTo: input.assignedTo ?? [input.actorId],
         createdAt: now(),

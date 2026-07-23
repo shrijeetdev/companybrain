@@ -78,6 +78,7 @@ export const CreateLeadSchema = z.object({
   phone: z.string().trim().max(50).optional().default(''),
   email: z.string().trim().email().max(200).optional().default(''),
   what: z.string().trim().max(500).optional().default(''),
+  value: z.number().min(0).max(1e12).optional().nullable().default(null),
   source: z.enum(['email', 'slack', 'whatsapp', 'telegram', 'calendar', 'github', 'manual']).optional().default('manual'),
 });
 

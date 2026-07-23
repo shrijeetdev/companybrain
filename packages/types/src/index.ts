@@ -76,6 +76,10 @@ export interface Task {
   recur?: 'Daily' | 'Weekly' | 'Monthly' | null;
   assignees: string[];
   createdBy: string;
+  /** true when the task is done (persisted, not just an audit event) */
+  completed?: boolean;
+  /** when the task was marked complete */
+  completedAt?: number | null;
   /** optional subtasks */
   subtasks?: { id: string; title: string; done: boolean }[];
   /** comments / activity notes */
@@ -97,6 +101,8 @@ export interface Lead {
   stage: LeadStage;
   source: Channel;
   what: string;
+  /** deal value in the org's currency (major units, e.g. dollars) */
+  value?: number | null;
   createdBy: string;
   assignedTo: string[];
   createdAt: number;

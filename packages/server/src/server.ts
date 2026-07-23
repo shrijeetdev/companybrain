@@ -1088,6 +1088,77 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   // --- Dashboard KPIs ---
+  // --- Today dashboard — the "what needs my attention" landing view ---
+  app.get('/api/today', async (req) => {
+    const p = await principalOf(req);
+    const now = Date.now();
+    const STALE_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+    const DAY_START = new Date(); DAY_START.setHours(0, 0, 0, 0);
+    const dayStartMs = DAY_START.getTime();
+
+    const [loops, tasks, leads, approvals] = await Promise.all([
+      core.loops.list(p.orgId),
+      core.tasks.list(p.orgId),
+      core.leads.list(p.orgId),
+      core.approvals.list(p.orgId, 'pending'),
+    ]);
+
+    // Needs attention: overdue tasks + stale loops (your court, >3 days old)
+    const overdueTasks = tasks.filter((t: any) => !t.completed && t.dueAt && t.dueAt < now);
+    const staleLoops = loops.filter((l: any) => l.status !== 'closed' && l.side === 'yours' && (now - l.updatedAt) > STALE_MS);
+    const needsAttention = [
+      ...overdueTasks.map((t: any) => ({ id: t.id, kind: 'task' as const, title: t.title, dueAt: t.dueAt ?? null })),
+      ...staleLoops.map((l: any) => ({ id: l.id, kind: 'loop' as const, title: l.title, why: l.why ?? '', updatedAt: l.updatedAt })),
+    ];
+
+    // Waiting on them: their-court loops still open
+    const waitingOnThem = loops
+      .filter((l: any) => l.status !== 'closed' && l.side === 'theirs')
+      .sort((a: any, b: any) => b.updatedAt - a.updatedAt)
+      .slice(0, 10)
+      .map((l: any) => ({ id: l.id, title: l.title, updatedAt: l.updatedAt, createdAt: l.createdAt }));
+
+    // Wins today: tasks completed today + loops closed today
+    const winsToday = [
+      ...tasks.filter((t: any) => t.completed && (t.completedAt ?? 0) >= dayStartMs).map((t: any) => ({ id: t.id, kind: 'task', title: t.title })),
+      ...loops.filter((l: any) => l.status === 'closed' && (l.updatedAt ?? 0) >= dayStartMs).map((l: any) => ({ id: l.id, kind: 'loop', title: l.title })),
+    ];
+
+    // Team mini-status (managers+)
+    let teamStatus: any[] = [];
+    if (p.role === 'ceo' || p.role === 'manager') {
+      const userMap = new Map<string, { userId: string; openTasks: number; completedToday: number }>();
+      for (const t of tasks) {
+        for (const uid of t.assignees || []) {
+          if (!userMap.has(uid)) userMap.set(uid, { userId: uid, openTasks: 0, completedToday: 0 });
+          const u = userMap.get(uid)!;
+          if (t.completed && (t.completedAt ?? 0) >= dayStartMs) u.completedToday++;
+          else if (!t.completed) u.openTasks++;
+        }
+      }
+      teamStatus = Array.from(userMap.values()).sort((a, b) => b.openTasks - a.openTasks).slice(0, 5);
+      for (const u of teamStatus) {
+        try {
+          const user = await (auth as any).getUser?.(u.userId);
+          (u as any).name = user?.name ?? u.userId;
+        } catch { (u as any).name = u.userId; }
+      }
+    }
+
+    return {
+      needsAttention,
+      waitingOnThem,
+      pendingApprovals: approvals,
+      winsToday,
+      teamStatus,
+      stats: {
+        overdueCount: overdueTasks.length,
+        waitingOnMeCount: staleLoops.length,
+        completedTodayCount: winsToday.length,
+      },
+    };
+  });
+
   app.get('/api/dashboard', async (req) => {
     const p = await principalOf(req);
     const [loops, tasks, leads] = await Promise.all([

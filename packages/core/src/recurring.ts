@@ -64,6 +64,8 @@ export function makeRecurring(ctx: Context) {
           recur: task.recur,
           assignees: task.assignees,
           createdBy: task.createdBy,
+          completed: false,
+          completedAt: null,
           subtasks: [],
           comments: [],
           dueAt: null,
@@ -91,16 +93,17 @@ export function makeRecurring(ctx: Context) {
       const dayOfWeek = today.getDay(); // 0=Sun
       const dayOfMonth = today.getDate();
 
-      switch (recur) {
-        case 'Daily':
+      // ponytail: normalize case — UI sends lowercase, legacy code checked capitalized.
+      switch ((recur ?? '').toLowerCase()) {
+        case 'daily':
           return true;
-        case 'Weekly':
+        case 'weekly':
           return true; // Base task is weekly, check on creation day
-        case 'Monthly':
+        case 'monthly':
           return dayOfMonth === 1; // Create on 1st of month
-        case 'Weekdays':
+        case 'weekdays':
           return dayOfWeek >= 1 && dayOfWeek <= 5;
-        case 'Weekends':
+        case 'weekends':
           return dayOfWeek === 0 || dayOfWeek === 6;
         default:
           return false;
@@ -112,10 +115,10 @@ export function makeRecurring(ctx: Context) {
      */
     getNextRun(recur: string): Date {
       const now = new Date();
-      switch (recur) {
-        case 'Daily':
+      switch ((recur ?? '').toLowerCase()) {
+        case 'daily':
           return new Date(now.getTime() + 24 * 60 * 60 * 1000);
-        case 'Weekly':
+        case 'weekly':
           return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
         case 'Monthly': {
           const next = new Date(now);
@@ -146,12 +149,12 @@ export function makeRecurring(ctx: Context) {
      * Format schedule for display.
      */
     formatSchedule(recur: string): string {
-      switch (recur) {
-        case 'Daily': return 'Every day';
-        case 'Weekly': return 'Every week';
-        case 'Monthly': return 'Every month';
-        case 'Weekdays': return 'Weekdays only';
-        case 'Weekends': return 'Weekends only';
+      switch ((recur ?? '').toLowerCase()) {
+        case 'daily': return 'Every day';
+        case 'weekly': return 'Every week';
+        case 'monthly': return 'Every month';
+        case 'weekdays': return 'Weekdays only';
+        case 'weekends': return 'Weekends only';
         default: return recur;
       }
     },
