@@ -822,7 +822,15 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     var d=new Date(ts);
     return d.toLocaleDateString([],{month:'short',day:'numeric'});
   }
-  function userFor(id){return USERS[id]||{name:(id||'').replace(/_/g,' ').replace(/^user /,''),initials:(id||'??').slice(-2).toUpperCase(),color:'linear-gradient(140deg,#6b6b78,#9a9aa8)'};}
+  function userFor(id){
+    // Map the current logged-in user to "You" even if their ID differs from legacy seed IDs.
+    if(me&&(id===me.userId||(me.email&&id===me.email))) return {name:'You',initials:(me.initials||'YO'),role:me.role,color:'linear-gradient(140deg,var(--accent),var(--accent2))'};
+    if(USERS[id]) return USERS[id];
+    // ponytail: friendly fallback — strip prefixes like "user_" and title-case the rest.
+    var clean=(id||'').replace(/^user_/,'').replace(/_/g,' ').trim();
+    if(!clean) clean='Unknown';
+    return {name:clean.charAt(0).toUpperCase()+clean.slice(1),initials:(clean.slice(0,2)).toUpperCase(),color:'linear-gradient(140deg,#6b6b78,#9a9aa8)'};
+  }
   function avatarHtml(id,opts){
     opts=opts||{};
     var u=userFor(id);
@@ -1167,22 +1175,31 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       if(waitingItems.length){
         html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;margin:18px 0 8px;">WAITING ON THEM</div>';
         html+=waitingItems.slice(0,5).map(function(item){
-          return '<div class="gc" style="padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
+          var ageDays=Math.floor((Date.now()-(item.updatedAt||item.createdAt||Date.now()))/86400e3);
+          var ageColor=ageDays>=7?'var(--red)':ageDays>=3?'var(--amber)':'var(--faint)';
+          return '<div class="glass-premium glass-tile" style="padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:10px;margin-bottom:6px;border:1px solid var(--glassBorder);">'
             +'<div style="font-size:14px;opacity:.5;flex-shrink:0;">⏳</div>'
-            +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;color:var(--muted);">'+esc(item.title)+'</div></div>'
-            +'<span style="font-size:10px;color:var(--faint);font-family:&quot;JetBrains Mono&quot;,monospace;">'+ago(item.updatedAt||item.createdAt)+'</span></div>';
+            +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;color:var(--text);">'+esc(item.title)+'</div></div>'
+            +'<span style="font-size:10px;color:'+ageColor+';font-family:&quot;JetBrains Mono&quot;,monospace;font-weight:700;">'+ago(item.updatedAt||item.createdAt)+'</span>'
+            +(ageDays>=3?'<button class="btn-ghost home-nudge-btn" data-loop="'+item.id+'" style="font-size:10px;padding:5px 10px;color:var(--amber);">Nudge</button>':'')
+            +'</div>';
         }).join('');
       }
 
       // Team mini-status (managers+)
       if(team.length&&(me&&(me.role==='ceo'||me.role==='manager'))){
         html+='<div style="font-size:11px;font-weight:700;color:var(--muted);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;margin:18px 0 8px;">TEAM</div>';
+        html+='<div class="glass-premium" style="padding:14px 16px;border-radius:16px;border:1px solid var(--glassBorder);">';
         html+=team.slice(0,4).map(function(t){
-          return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;">'
+          var openColor=t.openTasks>5?'var(--red)':t.openTasks>0?'var(--amber)':'var(--green)';
+          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;'+(team.indexOf(t)<Math.min(team.length,4)-1?'border-bottom:1px solid var(--glassBorder);':'')+'">'
             +avatarHtml(t.userId)
-            +'<div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+esc(t.name||t.userId)+'</div></div>'
-            +'<div style="font-size:11px;color:var(--muted);"><span style="color:var(--red);font-weight:600;">'+t.openTasks+'</span> open</div></div>';
+            +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;">'+esc(t.name||t.userId)+'</div>'
+            +(t.completedToday>0?'<div style="font-size:10px;color:var(--green);font-family:&quot;JetBrains Mono&quot;,monospace;margin-top:1px;">'+t.completedToday+' done today</div>':'')
+            +'</div>'
+            +'<div style="text-align:right;"><div style="font-size:18px;font-weight:700;color:'+openColor+';font-family:&quot;JetBrains Mono&quot;,monospace;line-height:1;">'+t.openTasks+'</div><div style="font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.3px;">open</div></div></div>';
         }).join('');
+        html+='</div>';
       }
 
       // Wins today
@@ -1216,6 +1233,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         };
       });
       view.querySelectorAll('.home-snooze-btn').forEach(function(b){b.onclick=function(){post('/api/loops/'+b.dataset.loop+'/snooze',{hours:24}).then(function(){toast('Snoozed 24h');loadToday();});};});
+      view.querySelectorAll('.home-nudge-btn').forEach(function(b){b.onclick=function(){b.disabled=true;b.textContent='...';post('/api/loops/'+b.dataset.loop+'/snooze',{hours:1}).then(function(){toast('Reminder queued');loadToday();}).catch(function(){b.disabled=false;b.textContent='Nudge';});};});
     }).catch(function(e){
       view.innerHTML='<div class="gc" style="padding:20px;color:var(--muted);">Could not load your dashboard. '+(e&&e.message?esc(e.message):'')+' <button class="btn-ghost" onclick="loadToday()" style="margin-left:8px;">Retry</button></div>';
     });
@@ -1605,6 +1623,9 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   function loadNotifications(){
     api('/api/events').then(function(events){
       events=events||[];
+      // Filter out noisy internal automation events — a businessman cares about leads, tasks, loops, and approvals, not routine agent briefings.
+      var HIDDEN_NOTIF_TYPES={'briefing.delivered':1};
+      events=events.filter(function(e){return !HIDDEN_NOTIF_TYPES[e.type];});
       var recent=events.slice(0,20);
       var unread=events.filter(function(e){return Date.now()-e.at<86400e3;}).length;
       if(unread>0){notifCount.textContent=unread>9?'9+':unread;notifCount.style.display='flex';}

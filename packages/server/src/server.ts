@@ -1137,11 +1137,18 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
         }
       }
       teamStatus = Array.from(userMap.values()).sort((a, b) => b.openTasks - a.openTasks).slice(0, 5);
+      const myUser = await userFromPrincipal(p);
       for (const u of teamStatus) {
         try {
           const user = await (auth as any).getUser?.(u.userId);
-          (u as any).name = user?.name ?? u.userId;
-        } catch { (u as any).name = u.userId; }
+          // ponytail: legacy seed data references 'user_local' which has no row in password-auth mode.
+          // In single-user local mode any unresolvable user is the operator. Upgrade: real multi-user roster.
+          if (user) (u as any).name = user.name;
+          else if (u.userId === p.userId || u.userId === 'user_local') (u as any).name = myUser.name ?? 'You';
+          else (u as any).name = u.userId;
+        } catch {
+          (u as any).name = (u.userId === p.userId || u.userId === 'user_local') ? (myUser.name ?? 'You') : u.userId;
+        }
       }
     }
 
