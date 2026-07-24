@@ -508,6 +508,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   app.get('/api/tasks/:id/time', async (req) => {
+    await ownedTask(req); // B1: verify org ownership before returning time entries
     const taskId = params(req).id;
     const entries = await core.timeTracking.listByTask(taskId);
     const total = await core.timeTracking.getTotalTime(taskId);
@@ -579,6 +580,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   app.post('/api/leads/extract-card', {
     preHandler: validateBody(schemas.ExtractCardSchema),
   }, async (req) => {
+    await principalOf(req); // require auth — prevents anonymous API credit abuse
     const b = (req as any).validatedBody;
 
     if (llm && b.text) {

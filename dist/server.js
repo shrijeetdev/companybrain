@@ -9,6 +9,967 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
+// packages/db/src/crypto.ts
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
+function getKey() {
+  const secret = process.env.COMPANYBRAIN_ENC_KEY;
+  if (!secret) {
+    return scryptSync("companybrain-dev-key", "salt", KEY_LEN);
+  }
+  return scryptSync(secret, "companybrain-salt", KEY_LEN);
+}
+function encryptJSON(data) {
+  const iv = randomBytes(IV_LEN);
+  const cipher = createCipheriv(ALGO, getKey(), iv);
+  const plaintext = JSON.stringify(data);
+  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `enc:v1:${iv.toString("hex")}:${tag.toString("hex")}:${encrypted.toString("hex")}`;
+}
+function decryptJSON(encrypted) {
+  if (!encrypted.startsWith("enc:v1:")) {
+    try {
+      return JSON.parse(encrypted);
+    } catch {
+      return {};
+    }
+  }
+  const parts = encrypted.split(":");
+  const iv = Buffer.from(parts[2], "hex");
+  const tag = Buffer.from(parts[3], "hex");
+  const data = Buffer.from(parts[4], "hex");
+  const decipher = createDecipheriv(ALGO, getKey(), iv);
+  decipher.setAuthTag(tag);
+  const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
+  return JSON.parse(decrypted.toString("utf8"));
+}
+var ALGO, KEY_LEN, IV_LEN;
+var init_crypto = __esm({
+  "packages/db/src/crypto.ts"() {
+    "use strict";
+    ALGO = "aes-256-gcm";
+    KEY_LEN = 32;
+    IV_LEN = 16;
+  }
+});
+
+// packages/db/src/sqlite.ts
+import Database from "better-sqlite3";
+function rowToCustomField(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    fieldName: row.field_name,
+    fieldType: row.field_type,
+    fieldValue: row.field_value,
+    createdAt: row.created_at
+  };
+}
+function rowToConnection(row) {
+  const raw = typeof row.credentials === "string" ? row.credentials : "";
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    channel: row.channel,
+    status: row.status,
+    credentials: raw ? decryptJSON(raw) : {},
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+var DDL, SqliteDatabase;
+var init_sqlite = __esm({
+  "packages/db/src/sqlite.ts"() {
+    "use strict";
+    init_crypto();
+    DDL = `
+CREATE TABLE IF NOT EXISTS loops  (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, side TEXT, status TEXT, updated_at INTEGER, doc TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS tasks  (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, day TEXT, doc TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS leads  (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, stage TEXT, doc TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, type TEXT, at INTEGER, doc TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS settings  (org_id TEXT PRIMARY KEY, doc TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS approvals (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, status TEXT, at INTEGER, doc TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS time_entries (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, task_id TEXT NOT NULL, user_id TEXT NOT NULL, started_at INTEGER, ended_at INTEGER, duration INTEGER, note TEXT, doc TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS custom_fields (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, field_name TEXT NOT NULL, field_type TEXT NOT NULL DEFAULT 'text', field_value TEXT NOT NULL, created_at INTEGER);
+CREATE TABLE IF NOT EXISTS connections (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'disconnected', credentials TEXT NOT NULL DEFAULT '{}', created_at INTEGER, updated_at INTEGER);
+CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, name TEXT, prefix TEXT, key_hash TEXT NOT NULL UNIQUE, scopes TEXT NOT NULL, actor_id TEXT, created_at INTEGER, last_used_at INTEGER, expires_at INTEGER);
+CREATE INDEX IF NOT EXISTS idx_loops_org  ON loops(org_id, side);
+CREATE INDEX IF NOT EXISTS idx_tasks_org  ON tasks(org_id);
+CREATE INDEX IF NOT EXISTS idx_leads_org  ON leads(org_id);
+CREATE INDEX IF NOT EXISTS idx_events_org ON events(org_id, at);
+CREATE INDEX IF NOT EXISTS idx_approvals_org ON approvals(org_id, status, at);
+CREATE INDEX IF NOT EXISTS idx_time_entries_task ON time_entries(task_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id, org_id);
+CREATE INDEX IF NOT EXISTS idx_custom_fields_entity ON custom_fields(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_custom_fields_org ON custom_fields(org_id);
+CREATE INDEX IF NOT EXISTS idx_connections_org_channel ON connections(org_id, channel);
+CREATE INDEX IF NOT EXISTS idx_api_keys_org ON api_keys(org_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
+`;
+    SqliteDatabase = class {
+      db;
+      loops;
+      tasks;
+      leads;
+      events;
+      settings;
+      approvals;
+      timeEntries;
+      customFields;
+      connections;
+      apiKeys;
+      constructor(filePath) {
+        this.db = new Database(filePath);
+        this.db.pragma("journal_mode = WAL");
+        const db = this.db;
+        this.loops = {
+          async list(orgId, side) {
+            const rows = side ? db.prepare("SELECT doc FROM loops WHERE org_id=? AND side=? ORDER BY updated_at DESC").all(orgId, side) : db.prepare("SELECT doc FROM loops WHERE org_id=? ORDER BY updated_at DESC").all(orgId);
+            return rows.map((r) => JSON.parse(r.doc));
+          },
+          async get(id) {
+            const row = db.prepare("SELECT doc FROM loops WHERE id=?").get(id);
+            return row ? JSON.parse(row.doc) : null;
+          },
+          async insert(loop) {
+            db.prepare("INSERT INTO loops (id, org_id, side, status, updated_at, doc) VALUES (?,?,?,?,?,?)").run(loop.id, loop.orgId, loop.side, loop.status, loop.updatedAt, JSON.stringify(loop));
+            return loop;
+          },
+          async update(id, patch) {
+            const cur = await this.get(id);
+            if (!cur) throw new Error(`loop ${id} not found`);
+            const next = { ...cur, ...patch, updatedAt: Date.now() };
+            db.prepare("UPDATE loops SET side=?, status=?, updated_at=?, doc=? WHERE id=?").run(next.side, next.status, next.updatedAt, JSON.stringify(next), id);
+            return next;
+          },
+          async remove(id) {
+            db.prepare("DELETE FROM loops WHERE id=?").run(id);
+          }
+        };
+        this.tasks = {
+          async list(orgId) {
+            const rows = db.prepare("SELECT doc FROM tasks WHERE org_id=?").all(orgId);
+            return rows.map((r) => JSON.parse(r.doc));
+          },
+          async get(id) {
+            const row = db.prepare("SELECT doc FROM tasks WHERE id=?").get(id);
+            return row ? JSON.parse(row.doc) : null;
+          },
+          async insert(task) {
+            db.prepare("INSERT INTO tasks (id, org_id, day, doc) VALUES (?,?,?,?)").run(task.id, task.orgId, task.day, JSON.stringify(task));
+            return task;
+          },
+          async update(id, patch) {
+            const cur = await this.get(id);
+            if (!cur) throw new Error(`task ${id} not found`);
+            const next = { ...cur, ...patch };
+            db.prepare("UPDATE tasks SET day=?, doc=? WHERE id=?").run(next.day, JSON.stringify(next), id);
+            return next;
+          },
+          async remove(id) {
+            db.prepare("DELETE FROM tasks WHERE id=?").run(id);
+          }
+        };
+        this.leads = {
+          async list(orgId) {
+            const rows = db.prepare("SELECT doc FROM leads WHERE org_id=?").all(orgId);
+            return rows.map((r) => JSON.parse(r.doc));
+          },
+          async get(id) {
+            const row = db.prepare("SELECT doc FROM leads WHERE id=?").get(id);
+            return row ? JSON.parse(row.doc) : null;
+          },
+          async insert(lead) {
+            db.prepare("INSERT INTO leads (id, org_id, stage, doc) VALUES (?,?,?,?)").run(lead.id, lead.orgId, lead.stage, JSON.stringify(lead));
+            return lead;
+          },
+          async update(id, patch) {
+            const cur = await this.get(id);
+            if (!cur) throw new Error(`lead ${id} not found`);
+            const next = { ...cur, ...patch };
+            db.prepare("UPDATE leads SET stage=?, doc=? WHERE id=?").run(next.stage, JSON.stringify(next), id);
+            return next;
+          },
+          async remove(id) {
+            db.prepare("DELETE FROM leads WHERE id=?").run(id);
+          }
+        };
+        this.events = {
+          async append(event) {
+            db.prepare("INSERT INTO events (id, org_id, type, at, doc) VALUES (?,?,?,?,?)").run(event.id, event.orgId, event.type, event.at, JSON.stringify(event));
+            return event;
+          },
+          async list(orgId, limit = 100) {
+            const rows = db.prepare("SELECT doc FROM events WHERE org_id=? ORDER BY at DESC LIMIT ?").all(orgId, limit);
+            return rows.map((r) => JSON.parse(r.doc));
+          },
+          async get(id) {
+            const row = db.prepare("SELECT doc FROM events WHERE id=?").get(id);
+            return row ? JSON.parse(row.doc) : null;
+          }
+        };
+        this.settings = {
+          async getAutonomy(orgId) {
+            const row = db.prepare("SELECT doc FROM settings WHERE org_id=?").get(orgId);
+            return row ? JSON.parse(row.doc) : null;
+          },
+          async setAutonomy(orgId, settings) {
+            db.prepare("INSERT INTO settings (org_id, doc) VALUES (?,?) ON CONFLICT(org_id) DO UPDATE SET doc=excluded.doc").run(orgId, JSON.stringify(settings));
+          }
+        };
+        this.approvals = {
+          async insert(approval) {
+            db.prepare("INSERT INTO approvals (id, org_id, status, at, doc) VALUES (?,?,?,?,?)").run(approval.id, approval.orgId, approval.status, approval.createdAt, JSON.stringify(approval));
+            return approval;
+          },
+          async list(orgId, status) {
+            const rows = status ? db.prepare("SELECT doc FROM approvals WHERE org_id=? AND status=? ORDER BY at DESC").all(orgId, status) : db.prepare("SELECT doc FROM approvals WHERE org_id=? ORDER BY at DESC").all(orgId);
+            return rows.map((r) => JSON.parse(r.doc));
+          },
+          async get(id) {
+            const row = db.prepare("SELECT doc FROM approvals WHERE id=?").get(id);
+            return row ? JSON.parse(row.doc) : null;
+          },
+          async update(id, patch) {
+            const cur = await this.get(id);
+            if (!cur) throw new Error(`approval ${id} not found`);
+            const next = { ...cur, ...patch };
+            db.prepare("UPDATE approvals SET status=?, doc=? WHERE id=?").run(next.status, JSON.stringify(next), id);
+            return next;
+          }
+        };
+        this.timeEntries = {
+          async insert(entry) {
+            db.prepare("INSERT INTO time_entries (id, org_id, task_id, user_id, started_at, ended_at, duration, note, doc) VALUES (?,?,?,?,?,?,?,?,?)").run(entry.id, entry.orgId, entry.taskId, entry.userId, entry.startedAt, entry.endedAt ?? null, entry.duration ?? null, entry.note ?? null, JSON.stringify(entry));
+            return entry;
+          },
+          async get(id) {
+            const row = db.prepare("SELECT doc FROM time_entries WHERE id=?").get(id);
+            return row ? JSON.parse(row.doc) : null;
+          },
+          async listByTask(taskId) {
+            const rows = db.prepare("SELECT doc FROM time_entries WHERE task_id=? ORDER BY started_at DESC").all(taskId);
+            return rows.map((r) => JSON.parse(r.doc));
+          },
+          async listByUser(userId, orgId) {
+            const rows = db.prepare("SELECT doc FROM time_entries WHERE user_id=? AND org_id=? ORDER BY started_at DESC").all(userId, orgId);
+            return rows.map((r) => JSON.parse(r.doc));
+          },
+          async update(id, patch) {
+            const cur = await this.get(id);
+            if (!cur) throw new Error(`time entry ${id} not found`);
+            const next = { ...cur, ...patch };
+            db.prepare("UPDATE time_entries SET ended_at=?, duration=?, note=?, doc=? WHERE id=?").run(next.endedAt ?? null, next.duration ?? null, next.note ?? null, JSON.stringify(next), id);
+            return next;
+          },
+          async delete(id) {
+            db.prepare("DELETE FROM time_entries WHERE id=?").run(id);
+          }
+        };
+        this.customFields = {
+          async insert(field) {
+            db.prepare("INSERT INTO custom_fields (id, org_id, entity_type, entity_id, field_name, field_type, field_value, created_at) VALUES (?,?,?,?,?,?,?,?)").run(field.id, field.orgId, field.entityType, field.entityId, field.fieldName, field.fieldType, field.fieldValue, field.createdAt);
+            return field;
+          },
+          async get(id) {
+            const row = db.prepare("SELECT * FROM custom_fields WHERE id=?").get(id);
+            return row ? rowToCustomField(row) : null;
+          },
+          async listByEntity(entityType, entityId) {
+            const rows = db.prepare("SELECT * FROM custom_fields WHERE entity_type=? AND entity_id=? ORDER BY created_at ASC").all(entityType, entityId);
+            return rows.map(rowToCustomField);
+          },
+          async listByOrg(orgId, entityType) {
+            const rows = entityType ? db.prepare("SELECT * FROM custom_fields WHERE org_id=? AND entity_type=? ORDER BY created_at ASC").all(orgId, entityType) : db.prepare("SELECT * FROM custom_fields WHERE org_id=? ORDER BY created_at ASC").all(orgId);
+            return rows.map(rowToCustomField);
+          },
+          async update(id, patch) {
+            const cur = await this.get(id);
+            if (!cur) throw new Error(`custom field ${id} not found`);
+            const next = { ...cur, ...patch };
+            db.prepare("UPDATE custom_fields SET field_value=?, field_name=?, field_type=? WHERE id=?").run(next.fieldValue, next.fieldName, next.fieldType, id);
+            return next;
+          },
+          async delete(id) {
+            db.prepare("DELETE FROM custom_fields WHERE id=?").run(id);
+          },
+          async deleteByEntity(entityType, entityId) {
+            db.prepare("DELETE FROM custom_fields WHERE entity_type=? AND entity_id=?").run(entityType, entityId);
+          }
+        };
+        const connectionRepo = {
+          async list(orgId) {
+            const rows = db.prepare("SELECT id, org_id, channel, status, credentials, created_at, updated_at FROM connections WHERE org_id=? ORDER BY channel ASC").all(orgId);
+            return rows.map(rowToConnection);
+          },
+          async get(orgId, channel) {
+            const row = db.prepare("SELECT id, org_id, channel, status, credentials, created_at, updated_at FROM connections WHERE org_id=? AND channel=?").get(orgId, channel);
+            return row ? rowToConnection(row) : null;
+          },
+          async upsert(orgId, channel, patch) {
+            const existing = await connectionRepo.get(orgId, channel);
+            const now2 = Date.now();
+            if (existing) {
+              const merged = { ...existing, ...patch, channel, updatedAt: now2 };
+              db.prepare("UPDATE connections SET status=?, credentials=?, updated_at=? WHERE org_id=? AND channel=?").run(merged.status, encryptJSON(merged.credentials), now2, orgId, channel);
+              return merged;
+            }
+            const conn = {
+              id: `conn_${channel}_${Date.now()}`,
+              orgId,
+              channel,
+              status: patch.status ?? "disconnected",
+              credentials: patch.credentials ?? {},
+              createdAt: patch.createdAt ?? now2,
+              updatedAt: now2
+            };
+            db.prepare("INSERT INTO connections (id, org_id, channel, status, credentials, created_at, updated_at) VALUES (?,?,?,?,?,?,?)").run(conn.id, conn.orgId, conn.channel, conn.status, encryptJSON(conn.credentials), conn.createdAt, conn.updatedAt);
+            return conn;
+          },
+          async delete(orgId, channel) {
+            db.prepare("DELETE FROM connections WHERE org_id=? AND channel=?").run(orgId, channel);
+          }
+        };
+        this.connections = connectionRepo;
+        this.apiKeys = {
+          async insert(row) {
+            db.prepare(
+              "INSERT INTO api_keys (id, org_id, name, prefix, key_hash, scopes, actor_id, created_at, last_used_at, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?)"
+            ).run(row.id, row.orgId, row.name, row.prefix, row.keyHash, JSON.stringify(row.scopes), row.actorId ?? null, row.createdAt, row.lastUsedAt ?? null, row.expiresAt ?? null);
+          },
+          async findByHash(keyHash) {
+            const row = db.prepare("SELECT * FROM api_keys WHERE key_hash=?").get(keyHash);
+            if (!row) return null;
+            return {
+              id: row.id,
+              orgId: row.org_id,
+              name: row.name,
+              prefix: row.prefix,
+              keyHash: row.key_hash,
+              scopes: JSON.parse(row.scopes),
+              actorId: row.actor_id ?? void 0,
+              createdAt: row.created_at,
+              lastUsedAt: row.last_used_at ?? void 0,
+              expiresAt: row.expires_at ?? void 0
+            };
+          },
+          async touch(id, at) {
+            db.prepare("UPDATE api_keys SET last_used_at=? WHERE id=?").run(at, id);
+          },
+          async listByOrg(orgId) {
+            const rows = db.prepare("SELECT * FROM api_keys WHERE org_id=? ORDER BY created_at DESC").all(orgId);
+            return rows.map((row) => ({
+              id: row.id,
+              orgId: row.org_id,
+              name: row.name,
+              prefix: row.prefix,
+              keyHash: row.key_hash,
+              scopes: JSON.parse(row.scopes),
+              actorId: row.actor_id ?? void 0,
+              createdAt: row.created_at,
+              lastUsedAt: row.last_used_at ?? void 0,
+              expiresAt: row.expires_at ?? void 0
+            }));
+          },
+          async delete(id) {
+            db.prepare("DELETE FROM api_keys WHERE id=?").run(id);
+          }
+        };
+      }
+      async init() {
+        this.db.exec(DDL);
+      }
+      async close() {
+        this.db.close();
+      }
+    };
+  }
+});
+
+// packages/db/src/supabase.ts
+import { createClient } from "@supabase/supabase-js";
+function rowToLoop(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    title: row.title,
+    why: row.why ?? "",
+    side: row.side,
+    status: row.status,
+    channel: row.channel,
+    sourceRef: row.source_ref ?? void 0,
+    replyTo: row.reply_to ?? void 0,
+    ownerId: row.owner_id ?? void 0,
+    createdBy: row.created_by,
+    assignedTo: JSON.parse(row.assigned_to ?? "[]"),
+    dueAt: row.due_at ?? void 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+function loopToRow(loop) {
+  return {
+    id: loop.id,
+    org_id: loop.orgId,
+    title: loop.title,
+    why: loop.why,
+    side: loop.side,
+    status: loop.status,
+    channel: loop.channel,
+    source_ref: loop.sourceRef ?? null,
+    reply_to: loop.replyTo ?? null,
+    owner_id: loop.ownerId ?? null,
+    created_by: loop.createdBy,
+    assigned_to: JSON.stringify(loop.assignedTo),
+    due_at: loop.dueAt ?? null,
+    created_at: loop.createdAt,
+    updated_at: loop.updatedAt
+  };
+}
+function rowToTask(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    emoji: row.emoji ?? "",
+    title: row.title,
+    list: row.list ?? "Inbox",
+    day: row.day,
+    priority: row.priority,
+    recurring: row.recurring ?? false,
+    recur: row.recur,
+    assignees: JSON.parse(row.assignees ?? "[]"),
+    createdBy: row.created_by,
+    subtasks: JSON.parse(row.subtasks ?? "[]"),
+    comments: JSON.parse(row.comments ?? "[]"),
+    dueAt: row.due_at ?? void 0,
+    createdAt: row.created_at
+  };
+}
+function taskToRow(task) {
+  return {
+    id: task.id,
+    org_id: task.orgId,
+    emoji: task.emoji,
+    title: task.title,
+    list: task.list,
+    day: task.day,
+    priority: task.priority,
+    recurring: task.recurring,
+    recur: task.recur,
+    assignees: JSON.stringify(task.assignees),
+    created_by: task.createdBy,
+    subtasks: JSON.stringify(task.subtasks ?? []),
+    comments: JSON.stringify(task.comments ?? []),
+    due_at: task.dueAt ?? null,
+    created_at: task.createdAt
+  };
+}
+function rowToLead(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    name: row.name,
+    company: row.company ?? "",
+    title: row.title ?? "",
+    phone: row.phone ?? "",
+    email: row.email ?? "",
+    stage: row.stage,
+    source: row.source,
+    what: row.what ?? "",
+    createdBy: row.created_by,
+    assignedTo: JSON.parse(row.assigned_to ?? "[]"),
+    createdAt: row.created_at
+  };
+}
+function leadToRow(lead) {
+  return {
+    id: lead.id,
+    org_id: lead.orgId,
+    name: lead.name,
+    company: lead.company,
+    title: lead.title,
+    phone: lead.phone,
+    email: lead.email,
+    stage: lead.stage,
+    source: lead.source,
+    what: lead.what,
+    created_by: lead.createdBy,
+    assigned_to: JSON.stringify(lead.assignedTo),
+    created_at: lead.createdAt
+  };
+}
+function rowToEvent(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    type: row.type,
+    entityId: row.entity_id,
+    actorId: row.actor_id,
+    undo: row.undo ? JSON.parse(row.undo) : null,
+    reversible: row.reversible ?? true,
+    channel: row.channel ?? void 0,
+    at: row.at
+  };
+}
+function eventToRow(event) {
+  return {
+    id: event.id,
+    org_id: event.orgId,
+    type: event.type,
+    entity_id: event.entityId,
+    actor_id: event.actorId,
+    undo: event.undo ? JSON.stringify(event.undo) : null,
+    reversible: event.reversible,
+    channel: event.channel ?? null,
+    at: event.at
+  };
+}
+function rowToApproval(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    action: row.action,
+    loopId: row.loop_id ?? void 0,
+    title: row.title,
+    status: row.status,
+    createdAt: row.created_at
+  };
+}
+function approvalToRow(approval) {
+  return {
+    id: approval.id,
+    org_id: approval.orgId,
+    action: approval.action,
+    loop_id: approval.loopId ?? null,
+    title: approval.title,
+    status: approval.status,
+    created_at: approval.createdAt
+  };
+}
+function rowToTimeEntry(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    taskId: row.task_id,
+    userId: row.user_id,
+    startedAt: row.started_at,
+    endedAt: row.ended_at ?? void 0,
+    duration: row.duration ?? void 0,
+    note: row.note ?? void 0
+  };
+}
+function timeEntryToRow(entry) {
+  return {
+    id: entry.id,
+    org_id: entry.orgId,
+    task_id: entry.taskId,
+    user_id: entry.userId,
+    started_at: entry.startedAt,
+    ended_at: entry.endedAt ?? null,
+    duration: entry.duration ?? null,
+    note: entry.note ?? null
+  };
+}
+function rowToCustomField2(row) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    fieldName: row.field_name,
+    fieldType: row.field_type,
+    fieldValue: row.field_value,
+    createdAt: row.created_at
+  };
+}
+function customFieldToRow(field) {
+  return {
+    id: field.id,
+    org_id: field.orgId,
+    entity_type: field.entityType,
+    entity_id: field.entityId,
+    field_name: field.fieldName,
+    field_type: field.fieldType,
+    field_value: field.fieldValue,
+    created_at: field.createdAt
+  };
+}
+var SupabaseDatabase;
+var init_supabase = __esm({
+  "packages/db/src/supabase.ts"() {
+    "use strict";
+    SupabaseDatabase = class {
+      client;
+      adminClient = null;
+      loops;
+      tasks;
+      leads;
+      events;
+      settings;
+      approvals;
+      timeEntries;
+      customFields;
+      connections = {
+        async list() {
+          return [];
+        },
+        async get() {
+          return null;
+        },
+        async upsert() {
+          throw new Error("Connections not supported in Supabase mode yet");
+        },
+        async delete() {
+        }
+      };
+      apiKeys = {
+        async insert() {
+          throw new Error("apiKeys not implemented for Supabase");
+        },
+        async findByHash() {
+          throw new Error("apiKeys not implemented for Supabase");
+        },
+        async touch() {
+          throw new Error("apiKeys not implemented for Supabase");
+        },
+        async listByOrg() {
+          throw new Error("apiKeys not implemented for Supabase");
+        },
+        async delete() {
+          throw new Error("apiKeys not implemented for Supabase");
+        }
+      };
+      constructor(opts) {
+        this.client = createClient(opts.url, opts.anonKey);
+        this.adminClient = opts.serviceRoleKey ? createClient(opts.url, opts.serviceRoleKey) : null;
+        const db = this.adminClient ?? this.client;
+        this.loops = {
+          async list(orgId, side) {
+            let query = db.from("loops").select("*").eq("org_id", orgId);
+            if (side) query = query.eq("side", side);
+            const { data, error } = await query.order("updated_at", { ascending: false });
+            if (error) throw error;
+            return (data ?? []).map(rowToLoop);
+          },
+          async get(id) {
+            const { data, error } = await db.from("loops").select("*").eq("id", id).single();
+            if (error || !data) return null;
+            return rowToLoop(data);
+          },
+          async insert(loop) {
+            const { error } = await db.from("loops").insert(loopToRow(loop));
+            if (error) throw error;
+            return loop;
+          },
+          async update(id, patch) {
+            const current = await this.get(id);
+            if (!current) throw new Error(`loop ${id} not found`);
+            const next = { ...current, ...patch, updatedAt: Date.now() };
+            const { error } = await db.from("loops").update(loopToRow(next)).eq("id", id);
+            if (error) throw error;
+            return next;
+          },
+          async remove(id) {
+            const { error } = await db.from("loops").delete().eq("id", id);
+            if (error) throw error;
+          }
+        };
+        this.tasks = {
+          async list(orgId) {
+            const { data, error } = await db.from("tasks").select("*").eq("org_id", orgId);
+            if (error) throw error;
+            return (data ?? []).map(rowToTask);
+          },
+          async get(id) {
+            const { data, error } = await db.from("tasks").select("*").eq("id", id).single();
+            if (error || !data) return null;
+            return rowToTask(data);
+          },
+          async insert(task) {
+            const { error } = await db.from("tasks").insert(taskToRow(task));
+            if (error) throw error;
+            return task;
+          },
+          async update(id, patch) {
+            const current = await this.get(id);
+            if (!current) throw new Error(`task ${id} not found`);
+            const next = { ...current, ...patch };
+            const { error } = await db.from("tasks").update(taskToRow(next)).eq("id", id);
+            if (error) throw error;
+            return next;
+          },
+          async remove(id) {
+            const { error } = await db.from("tasks").delete().eq("id", id);
+            if (error) throw error;
+          }
+        };
+        this.leads = {
+          async list(orgId) {
+            const { data, error } = await db.from("leads").select("*").eq("org_id", orgId);
+            if (error) throw error;
+            return (data ?? []).map(rowToLead);
+          },
+          async get(id) {
+            const { data, error } = await db.from("leads").select("*").eq("id", id).single();
+            if (error || !data) return null;
+            return rowToLead(data);
+          },
+          async insert(lead) {
+            const { error } = await db.from("leads").insert(leadToRow(lead));
+            if (error) throw error;
+            return lead;
+          },
+          async update(id, patch) {
+            const current = await this.get(id);
+            if (!current) throw new Error(`lead ${id} not found`);
+            const next = { ...current, ...patch };
+            const { error } = await db.from("leads").update(leadToRow(next)).eq("id", id);
+            if (error) throw error;
+            return next;
+          },
+          async remove(id) {
+            const { error } = await db.from("leads").delete().eq("id", id);
+            if (error) throw error;
+          }
+        };
+        this.events = {
+          async append(event) {
+            const { error } = await db.from("events").insert(eventToRow(event));
+            if (error) throw error;
+            return event;
+          },
+          async list(orgId, limit = 100) {
+            const { data, error } = await db.from("events").select("*").eq("org_id", orgId).order("at", { ascending: false }).limit(limit);
+            if (error) throw error;
+            return (data ?? []).map(rowToEvent);
+          },
+          async get(id) {
+            const { data, error } = await db.from("events").select("*").eq("id", id).single();
+            if (error || !data) return null;
+            return rowToEvent(data);
+          }
+        };
+        this.settings = {
+          async getAutonomy(orgId) {
+            const { data, error } = await db.from("settings").select("*").eq("org_id", orgId).single();
+            if (error || !data) return null;
+            return JSON.parse(data.doc);
+          },
+          async setAutonomy(orgId, settings) {
+            const { error } = await db.from("settings").upsert({ org_id: orgId, doc: JSON.stringify(settings) }, { onConflict: "org_id" });
+            if (error) throw error;
+          }
+        };
+        this.approvals = {
+          async insert(approval) {
+            const { error } = await db.from("approvals").insert(approvalToRow(approval));
+            if (error) throw error;
+            return approval;
+          },
+          async list(orgId, status) {
+            let query = db.from("approvals").select("*").eq("org_id", orgId);
+            if (status) query = query.eq("status", status);
+            const { data, error } = await query.order("created_at", { ascending: false });
+            if (error) throw error;
+            return (data ?? []).map(rowToApproval);
+          },
+          async get(id) {
+            const { data, error } = await db.from("approvals").select("*").eq("id", id).single();
+            if (error || !data) return null;
+            return rowToApproval(data);
+          },
+          async update(id, patch) {
+            const current = await this.get(id);
+            if (!current) throw new Error(`approval ${id} not found`);
+            const next = { ...current, ...patch };
+            const { error } = await db.from("approvals").update(approvalToRow(next)).eq("id", id);
+            if (error) throw error;
+            return next;
+          }
+        };
+        this.timeEntries = {
+          async insert(entry) {
+            const { error } = await db.from("time_entries").insert(timeEntryToRow(entry));
+            if (error) throw error;
+            return entry;
+          },
+          async get(id) {
+            const { data, error } = await db.from("time_entries").select("*").eq("id", id).single();
+            if (error || !data) return null;
+            return rowToTimeEntry(data);
+          },
+          async listByTask(taskId) {
+            const { data, error } = await db.from("time_entries").select("*").eq("task_id", taskId).order("started_at", { ascending: false });
+            if (error) throw error;
+            return (data ?? []).map(rowToTimeEntry);
+          },
+          async listByUser(userId, orgId) {
+            const { data, error } = await db.from("time_entries").select("*").eq("user_id", userId).eq("org_id", orgId).order("started_at", { ascending: false });
+            if (error) throw error;
+            return (data ?? []).map(rowToTimeEntry);
+          },
+          async update(id, patch) {
+            const current = await this.get(id);
+            if (!current) throw new Error(`time entry ${id} not found`);
+            const next = { ...current, ...patch };
+            const { error } = await db.from("time_entries").update(timeEntryToRow(next)).eq("id", id);
+            if (error) throw error;
+            return next;
+          },
+          async delete(id) {
+            const { error } = await db.from("time_entries").delete().eq("id", id);
+            if (error) throw error;
+          }
+        };
+        this.customFields = {
+          async insert(field) {
+            const { error } = await db.from("custom_fields").insert(customFieldToRow(field));
+            if (error) throw error;
+            return field;
+          },
+          async get(id) {
+            const { data, error } = await db.from("custom_fields").select("*").eq("id", id).single();
+            if (error || !data) return null;
+            return rowToCustomField2(data);
+          },
+          async listByEntity(entityType, entityId) {
+            const { data, error } = await db.from("custom_fields").select("*").eq("entity_type", entityType).eq("entity_id", entityId).order("created_at", { ascending: true });
+            if (error) throw error;
+            return (data ?? []).map(rowToCustomField2);
+          },
+          async listByOrg(orgId, entityType) {
+            let query = db.from("custom_fields").select("*").eq("org_id", orgId);
+            if (entityType) query = query.eq("entity_type", entityType);
+            const { data, error } = await query.order("created_at", { ascending: true });
+            if (error) throw error;
+            return (data ?? []).map(rowToCustomField2);
+          },
+          async update(id, patch) {
+            const current = await this.get(id);
+            if (!current) throw new Error(`custom field ${id} not found`);
+            const next = { ...current, ...patch };
+            const { error } = await db.from("custom_fields").update(customFieldToRow(next)).eq("id", id);
+            if (error) throw error;
+            return next;
+          },
+          async delete(id) {
+            const { error } = await db.from("custom_fields").delete().eq("id", id);
+            if (error) throw error;
+          },
+          async deleteByEntity(entityType, entityId) {
+            const { error } = await db.from("custom_fields").delete().eq("entity_type", entityType).eq("entity_id", entityId);
+            if (error) throw error;
+          }
+        };
+      }
+      async init() {
+      }
+      async close() {
+      }
+    };
+  }
+});
+
+// packages/db/src/index.ts
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { mkdirSync } from "node:fs";
+function createDatabase(opts = {}) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  if (supabaseUrl && supabaseAnonKey) {
+    return new SupabaseDatabase({
+      url: supabaseUrl,
+      anonKey: supabaseAnonKey,
+      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY
+    });
+  }
+  const fromEnv = process.env.COMPANYBRAIN_DB_PATH;
+  const dir = join(homedir(), ".companybrain");
+  mkdirSync(dir, { recursive: true });
+  return new SqliteDatabase(opts.sqlitePath ?? fromEnv ?? join(dir, "companybrain.sqlite"));
+}
+var init_src = __esm({
+  "packages/db/src/index.ts"() {
+    "use strict";
+    init_sqlite();
+    init_supabase();
+    init_sqlite();
+    init_supabase();
+  }
+});
+
+// packages/queue/src/in-process.ts
+var InProcessQueue;
+var init_in_process = __esm({
+  "packages/queue/src/in-process.ts"() {
+    "use strict";
+    InProcessQueue = class {
+      handlers = /* @__PURE__ */ new Map();
+      timers = /* @__PURE__ */ new Set();
+      started = false;
+      async init() {
+      }
+      on(name, handler) {
+        this.handlers.set(name, handler);
+      }
+      async run(name, data) {
+        const handler = this.handlers.get(name);
+        if (!handler) {
+          console.warn(`[queue] no handler registered for "${name}" \u2014 dropping job`);
+          return;
+        }
+        try {
+          await handler(data);
+        } catch (err) {
+          console.error(`[queue] job "${name}" failed:`, err);
+        }
+      }
+      async enqueue(name, data, opts = {}) {
+        const fire = () => void this.run(name, data);
+        if (opts.delayMs && opts.delayMs > 0) {
+          const t = setTimeout(() => {
+            this.timers.delete(t);
+            fire();
+          }, opts.delayMs);
+          this.timers.add(t);
+        } else {
+          queueMicrotask(fire);
+        }
+      }
+      async schedule(name, data, everyMs) {
+        const t = setInterval(() => void this.run(name, data), everyMs);
+        this.timers.add(t);
+      }
+      async start() {
+        this.started = true;
+      }
+      async close() {
+        for (const t of this.timers) {
+          clearTimeout(t);
+          clearInterval(t);
+        }
+        this.timers.clear();
+        this.started = false;
+      }
+    };
+  }
+});
+
+// packages/queue/src/index.ts
+function createQueue() {
+  return new InProcessQueue();
+}
+var init_src2 = __esm({
+  "packages/queue/src/index.ts"() {
+    "use strict";
+    init_in_process();
+    init_in_process();
+  }
+});
+
 // packages/auth/src/local.ts
 var LOCAL_ORG_ID, LOCAL_USER_ID, LocalAuth;
 var init_local = __esm({
@@ -258,8 +1219,8 @@ var init_key = __esm({
 import { randomBytes as randomBytes3, scryptSync as scryptSync2, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
 function hashPassword(password) {
   const salt = randomBytes3(16).toString("hex");
-  const hash = scryptSync2(password, salt, KEY_LENGTH).toString("hex");
-  return `scrypt$${salt}$${hash}`;
+  const hash2 = scryptSync2(password, salt, KEY_LENGTH).toString("hex");
+  return `scrypt$${salt}$${hash2}`;
 }
 function verifyPassword(password, stored) {
   const parts = stored.split("$");
@@ -512,7 +1473,7 @@ var init_password = __esm({
 // packages/auth/src/supabase.ts
 import { createClient as createClient2 } from "@supabase/supabase-js";
 var ROLE_CAPABILITIES, SupabaseAuth;
-var init_supabase = __esm({
+var init_supabase2 = __esm({
   "packages/auth/src/supabase.ts"() {
     "use strict";
     ROLE_CAPABILITIES = {
@@ -721,18 +1682,1657 @@ function createAuth() {
   }
   return new LocalAuth();
 }
-var init_src = __esm({
+var init_src3 = __esm({
   "packages/auth/src/index.ts"() {
     "use strict";
     init_local();
     init_key();
     init_password();
-    init_supabase();
+    init_supabase2();
     init_local();
     init_key();
     init_password();
-    init_supabase();
+    init_supabase2();
     init_capabilities();
+  }
+});
+
+// packages/core/src/context.ts
+import { randomUUID as randomUUID2 } from "node:crypto";
+async function record(ctx, input) {
+  const event = {
+    id: newId("evt"),
+    orgId: input.orgId,
+    type: input.type,
+    entityId: input.entityId,
+    actorId: input.actorId,
+    reversible: input.reversible ?? true,
+    undo: input.undo ?? null,
+    channel: input.channel,
+    at: now()
+  };
+  return ctx.db.events.append(event);
+}
+var consoleMessenger, templateDrafter, newId, now;
+var init_context = __esm({
+  "packages/core/src/context.ts"() {
+    "use strict";
+    consoleMessenger = {
+      async send({ channel, to, text }) {
+        console.log(`[messenger:noop] would send via ${channel} \u2192 ${to}: ${text}`);
+      }
+    };
+    templateDrafter = {
+      async draftReply({ title }) {
+        return `Thanks \u2014 we\u2019ve logged \u201C${title}\u201D and someone will get back to you shortly. \u{1F91D}`;
+      }
+    };
+    newId = (prefix) => `${prefix}_${randomUUID2().slice(0, 8)}`;
+    now = () => Date.now();
+  }
+});
+
+// packages/core/src/autonomy.ts
+async function resolveAutonomy(db, orgId) {
+  const stored = await db.settings.getAutonomy(orgId);
+  return { ...DEFAULT_AUTONOMY, ...stored ?? {} };
+}
+async function dispatch(ctx, action, loopId, orgId, delayMs = 0) {
+  const job = ACTION_JOB[action];
+  if (!job || !loopId) return;
+  await ctx.queue.enqueue(job, { loopId, orgId }, delayMs > 0 ? { delayMs } : void 0);
+}
+async function queueForApproval(ctx, action, opts) {
+  const approval = {
+    id: newId("appr"),
+    orgId: opts.orgId,
+    action,
+    loopId: opts.loopId,
+    title: opts.title,
+    status: "pending",
+    createdAt: now()
+  };
+  await ctx.db.approvals.insert(approval);
+  await record(ctx, { orgId: opts.orgId, type: "approval.created", entityId: approval.id, actorId: "agent_scout" });
+  return approval;
+}
+async function gateAction(ctx, action, opts) {
+  const level2 = (await resolveAutonomy(ctx.db, opts.orgId))[action];
+  if (level2 === "auto") await dispatch(ctx, action, opts.loopId, opts.orgId, opts.delayMs);
+  else if (level2 === "ask") await queueForApproval(ctx, action, opts);
+  return level2;
+}
+function makeAutonomy(ctx) {
+  return {
+    get: (orgId) => resolveAutonomy(ctx.db, orgId),
+    async set(orgId, action, level2) {
+      const next = { ...await resolveAutonomy(ctx.db, orgId), [action]: level2 };
+      await ctx.db.settings.setAutonomy(orgId, next);
+      await record(ctx, { orgId, type: "autonomy.changed", entityId: orgId, actorId: "user_local" });
+      return next;
+    },
+    /** Gate an action through the org's autonomy config. */
+    gate: (action, opts) => gateAction(ctx, action, opts)
+  };
+}
+function makeApprovals(ctx) {
+  return {
+    list: (orgId, status = "pending") => ctx.db.approvals.list(orgId, status),
+    async approve(id) {
+      const a = await ctx.db.approvals.get(id);
+      if (!a) throw new Error(`approval ${id} not found`);
+      if (a.status === "pending") await dispatch(ctx, a.action, a.loopId, a.orgId);
+      const next = await ctx.db.approvals.update(id, { status: "approved" });
+      await record(ctx, { orgId: a.orgId, type: "approval.approved", entityId: id, actorId: "user_local" });
+      return next;
+    },
+    async dismiss(id) {
+      const a = await ctx.db.approvals.get(id);
+      if (!a) throw new Error(`approval ${id} not found`);
+      const next = await ctx.db.approvals.update(id, { status: "dismissed" });
+      await record(ctx, { orgId: a.orgId, type: "approval.dismissed", entityId: id, actorId: "user_local" });
+      return next;
+    }
+  };
+}
+var DEFAULT_AUTONOMY, ACTION_JOB;
+var init_autonomy = __esm({
+  "packages/core/src/autonomy.ts"() {
+    "use strict";
+    init_context();
+    DEFAULT_AUTONOMY = {
+      draftReplies: "auto",
+      chase: "auto",
+      sendReminders: "auto",
+      createTasks: "off",
+      joinMeetings: "off",
+      manageRecords: "off"
+    };
+    ACTION_JOB = {
+      draftReplies: "replyLoop",
+      chase: "chaseLoop",
+      sendReminders: "sendReminder"
+    };
+  }
+});
+
+// packages/core/src/loops.ts
+function makeLoops(ctx) {
+  return {
+    list(orgId, side) {
+      return ctx.db.loops.list(orgId, side);
+    },
+    get(id) {
+      return ctx.db.loops.get(id);
+    },
+    /** Turn anything that needs a human into a tracked loop, and schedule the chase. */
+    async capture(input) {
+      const loop = {
+        id: newId("loop"),
+        orgId: input.orgId,
+        title: input.title,
+        why: input.why,
+        side: input.side,
+        status: "open",
+        channel: input.channel,
+        sourceRef: input.sourceRef,
+        replyTo: input.replyTo,
+        ownerId: input.ownerId,
+        dueAt: input.dueAt ?? null,
+        createdBy: input.actorId,
+        assignedTo: input.ownerId ? [input.ownerId] : [input.actorId],
+        createdAt: now(),
+        updatedAt: now()
+      };
+      await ctx.db.loops.insert(loop);
+      await record(ctx, {
+        orgId: loop.orgId,
+        type: "loop.captured",
+        entityId: loop.id,
+        actorId: input.actorId,
+        channel: loop.channel,
+        undo: { delete: loop.id }
+      });
+      if (loop.side === "theirs") {
+        await gateAction(ctx, "chase", { orgId: loop.orgId, loopId: loop.id, title: `Chase: ${loop.title}`, delayMs: CHASE_DELAY_MS });
+      }
+      return loop;
+    },
+    async close(id, actorId) {
+      const prev = await ctx.db.loops.get(id);
+      if (!prev) throw new Error(`loop ${id} not found`);
+      const loop = await ctx.db.loops.update(id, { status: "closed" });
+      await record(ctx, {
+        orgId: loop.orgId,
+        type: "loop.closed",
+        entityId: loop.id,
+        actorId,
+        undo: { restoreStatus: prev.status }
+      });
+      return loop;
+    },
+    async snooze(id, actorId, untilAt) {
+      const loop = await ctx.db.loops.update(id, { status: "snoozed", dueAt: untilAt });
+      await record(ctx, { orgId: loop.orgId, type: "loop.snoozed", entityId: loop.id, actorId });
+      await ctx.queue.enqueue("sendReminder", { loopId: loop.id, orgId: loop.orgId }, { delayMs: Math.max(0, untilAt - now()) });
+      return loop;
+    }
+  };
+}
+var CHASE_DELAY_MS;
+var init_loops = __esm({
+  "packages/core/src/loops.ts"() {
+    "use strict";
+    init_context();
+    init_autonomy();
+    CHASE_DELAY_MS = 6e4;
+  }
+});
+
+// packages/core/src/tasks.ts
+function makeTasks(ctx) {
+  return {
+    list(orgId) {
+      return ctx.db.tasks.list(orgId);
+    },
+    async create(input) {
+      const task = {
+        id: newId("task"),
+        orgId: input.orgId,
+        emoji: input.emoji ?? "\u2705",
+        title: input.title,
+        list: input.list ?? "Inbox",
+        day: input.day ?? "today",
+        priority: input.priority ?? null,
+        recurring: Boolean(input.recur),
+        recur: input.recur ?? null,
+        assignees: input.assignees ?? [input.actorId],
+        createdBy: input.actorId,
+        completed: false,
+        completedAt: null,
+        dueAt: input.dueAt ?? null,
+        createdAt: now()
+      };
+      await ctx.db.tasks.insert(task);
+      await record(ctx, { orgId: task.orgId, type: "task.created", entityId: task.id, actorId: input.actorId, undo: { delete: task.id } });
+      return task;
+    },
+    async move(id, day, actorId) {
+      const prev = await ctx.db.tasks.get(id);
+      if (!prev) throw new Error(`task ${id} not found`);
+      const task = await ctx.db.tasks.update(id, { day });
+      await record(ctx, { orgId: task.orgId, type: "task.moved", entityId: id, actorId, undo: { restoreDay: prev.day } });
+      return task;
+    },
+    async complete(id, actorId) {
+      const prev = await ctx.db.tasks.get(id);
+      if (!prev) throw new Error(`task ${id} not found`);
+      const task = await ctx.db.tasks.update(id, { completed: true, completedAt: now() });
+      await record(ctx, { orgId: task.orgId, type: "task.completed", entityId: id, actorId, undo: { restoreCompleted: prev.completed ?? false, restoreCompletedAt: prev.completedAt ?? null } });
+      return task;
+    }
+  };
+}
+var init_tasks = __esm({
+  "packages/core/src/tasks.ts"() {
+    "use strict";
+    init_context();
+  }
+});
+
+// packages/core/src/leads.ts
+function makeLeads(ctx) {
+  return {
+    list(orgId) {
+      return ctx.db.leads.list(orgId);
+    },
+    async create(input) {
+      const lead = {
+        id: newId("lead"),
+        orgId: input.orgId,
+        name: input.name,
+        company: input.company ?? "",
+        title: input.title ?? "",
+        phone: input.phone ?? "",
+        email: input.email ?? "",
+        stage: "new",
+        source: input.source ?? "manual",
+        what: input.what ?? "",
+        value: input.value ?? null,
+        createdBy: input.actorId,
+        assignedTo: input.assignedTo ?? [input.actorId],
+        createdAt: now()
+      };
+      await ctx.db.leads.insert(lead);
+      await record(ctx, { orgId: lead.orgId, type: "lead.created", entityId: lead.id, actorId: input.actorId, channel: lead.source, undo: { delete: lead.id } });
+      return lead;
+    },
+    async advance(id, actorId) {
+      const cur = await ctx.db.leads.get(id);
+      if (!cur) throw new Error(`lead ${id} not found`);
+      const idx = STAGE_ORDER.indexOf(cur.stage);
+      const next = STAGE_ORDER[Math.min(idx + 1, STAGE_ORDER.indexOf("won"))];
+      const lead = await ctx.db.leads.update(id, { stage: next });
+      await record(ctx, { orgId: lead.orgId, type: "lead.advanced", entityId: id, actorId, undo: { restoreStage: cur.stage } });
+      return lead;
+    },
+    /** Move a lead directly to any stage — used by pipeline drag-and-drop. */
+    async setStage(id, stage, actorId) {
+      const cur = await ctx.db.leads.get(id);
+      if (!cur) throw new Error(`lead ${id} not found`);
+      if (!STAGE_ORDER.includes(stage)) throw new Error(`invalid stage ${stage}`);
+      if (cur.stage === stage) return cur;
+      const lead = await ctx.db.leads.update(id, { stage });
+      await record(ctx, { orgId: lead.orgId, type: "lead.advanced", entityId: id, actorId, undo: { restoreStage: cur.stage } });
+      return lead;
+    },
+    /**
+     * "Quick-add from a phone number + rough note" → a structured lead.
+     * The AI extraction is stubbed here; the server injects the real LLM call server-side.
+     */
+    async quickAddFromNote(input, extract) {
+      const guessed = extract ? await extract(input.note) : { name: input.note.split(/\s+/).slice(0, 2).join(" ") || "New lead", what: input.note };
+      return this.create({
+        orgId: input.orgId,
+        actorId: input.actorId,
+        name: guessed.name ?? "New lead",
+        company: guessed.company,
+        title: guessed.title,
+        phone: input.phone,
+        email: guessed.email,
+        source: "whatsapp",
+        what: guessed.what ?? input.note
+      });
+    }
+  };
+}
+var STAGE_ORDER;
+var init_leads = __esm({
+  "packages/core/src/leads.ts"() {
+    "use strict";
+    init_context();
+    STAGE_ORDER = ["new", "contacted", "meeting", "proposal", "won", "lost"];
+  }
+});
+
+// packages/core/src/agents.ts
+function makeAgents() {
+  return {
+    roster() {
+      return AGENT_ROSTER;
+    }
+  };
+}
+var AGENT_ROSTER;
+var init_agents = __esm({
+  "packages/core/src/agents.ts"() {
+    "use strict";
+    AGENT_ROSTER = [
+      { id: "agent_scout", name: "Scout", emoji: "\u{1F52D}", role: "Watches channels, captures loops", autonomy: "auto", done: 142, pending: 3 },
+      { id: "agent_atlas", name: "Atlas", emoji: "\u{1F5FA}\uFE0F", role: "Plans projects, breaks down tasks", autonomy: "ask", done: 38, pending: 1 },
+      { id: "agent_ledger", name: "Ledger", emoji: "\u{1F4D2}", role: "Chases leads, drafts follow-ups", autonomy: "ask", done: 64, pending: 5 }
+    ];
+  }
+});
+
+// packages/core/src/time-tracking.ts
+function makeTimeTracking(ctx) {
+  return {
+    /**
+     * Start tracking time on a task.
+     * If there's already an active entry for this task, stop it first.
+     */
+    async start(input) {
+      const active = await this.getActive(input.taskId);
+      if (active) {
+        await this.stop(active.id);
+      }
+      const entry = {
+        id: newId("time"),
+        orgId: input.orgId,
+        taskId: input.taskId,
+        userId: input.userId,
+        startedAt: now(),
+        note: input.note
+      };
+      await ctx.db.timeEntries.insert(entry);
+      return entry;
+    },
+    /**
+     * Stop tracking time on a task.
+     */
+    async stop(entryId) {
+      const entry = await ctx.db.timeEntries.get(entryId);
+      if (!entry) throw new Error(`time entry ${entryId} not found`);
+      if (entry.endedAt) throw new Error(`time entry ${entryId} already stopped`);
+      const endedAt = now();
+      const duration = Math.floor((endedAt - entry.startedAt) / 1e3);
+      return ctx.db.timeEntries.update(entryId, {
+        endedAt,
+        duration
+      });
+    },
+    /**
+     * Get active (running) time entry for a task.
+     */
+    async getActive(taskId) {
+      const entries = await ctx.db.timeEntries.listByTask(taskId);
+      return entries.find((e) => !e.endedAt) ?? null;
+    },
+    /**
+     * Get all time entries for a task.
+     */
+    async listByTask(taskId) {
+      return ctx.db.timeEntries.listByTask(taskId);
+    },
+    /**
+     * Get all time entries for a user.
+     */
+    async listByUser(userId, orgId) {
+      return ctx.db.timeEntries.listByUser(userId, orgId);
+    },
+    /**
+     * Get total time spent on a task (in seconds).
+     */
+    async getTotalTime(taskId) {
+      const entries = await ctx.db.timeEntries.listByTask(taskId);
+      return entries.reduce((total, e) => total + (e.duration ?? 0), 0);
+    },
+    /**
+     * Get total time for a user today.
+     */
+    async getTodayTime(userId, orgId) {
+      const entries = await ctx.db.timeEntries.listByUser(userId, orgId);
+      const todayStart = /* @__PURE__ */ new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayMs = todayStart.getTime();
+      return entries.filter((e) => e.startedAt >= todayMs).reduce((total, e) => total + (e.duration ?? 0), 0);
+    },
+    /**
+     * Update a time entry (edit note, adjust end time).
+     */
+    async update(entryId, patch) {
+      const entry = await ctx.db.timeEntries.get(entryId);
+      if (!entry) throw new Error(`time entry ${entryId} not found`);
+      const updates = {};
+      if (patch.note !== void 0) updates.note = patch.note;
+      if (patch.endedAt !== void 0) {
+        updates.endedAt = patch.endedAt;
+        updates.duration = Math.floor((patch.endedAt - entry.startedAt) / 1e3);
+      }
+      return ctx.db.timeEntries.update(entryId, updates);
+    },
+    /**
+     * Delete a time entry.
+     */
+    async delete(entryId) {
+      await ctx.db.timeEntries.delete(entryId);
+    },
+    /**
+     * Format duration for display.
+     */
+    formatDuration(seconds) {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor(seconds % 3600 / 60);
+      const s = seconds % 60;
+      if (h > 0) return `${h}h ${m}m`;
+      if (m > 0) return `${m}m ${s}s`;
+      return `${s}s`;
+    }
+  };
+}
+var init_time_tracking = __esm({
+  "packages/core/src/time-tracking.ts"() {
+    "use strict";
+    init_context();
+  }
+});
+
+// packages/core/src/bulk.ts
+function makeBulkOps(ctx) {
+  return {
+    /**
+     * Close multiple loops at once.
+     */
+    async closeLoops(ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          await ctx.db.loops.update(id, { status: "closed", updatedAt: Date.now() });
+          await record(ctx, { orgId: (await ctx.db.loops.get(id))?.orgId ?? "", type: "loop.closed", entityId: id, actorId });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Snooze multiple loops.
+     */
+    async snoozeLoops(ids, hours, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      const untilAt = Date.now() + Math.max(1, hours) * 60 * 60 * 1e3;
+      for (const id of ids) {
+        try {
+          await ctx.db.loops.update(id, { status: "snoozed", updatedAt: untilAt });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Move multiple tasks to a different day.
+     */
+    async moveTasks(ids, day, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          const prev = await ctx.db.tasks.get(id);
+          if (!prev) throw new Error("task not found");
+          await ctx.db.tasks.update(id, { day });
+          await record(ctx, { orgId: prev.orgId, type: "task.moved", entityId: id, actorId, undo: { restoreDay: prev.day } });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Complete multiple tasks.
+     */
+    async completeTasks(ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          const task = await ctx.db.tasks.get(id);
+          if (!task) throw new Error("task not found");
+          await ctx.db.tasks.update(id, { day: "today" });
+          await record(ctx, { orgId: task.orgId, type: "task.completed", entityId: id, actorId });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Delete multiple tasks.
+     */
+    async deleteTasks(ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          const task = await ctx.db.tasks.get(id);
+          if (!task) throw new Error("task not found");
+          await ctx.db.tasks.remove(id);
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Advance multiple leads to next stage.
+     */
+    async advanceLeads(ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      const stageOrder = ["new", "contacted", "meeting", "proposal", "won"];
+      for (const id of ids) {
+        try {
+          const lead = await ctx.db.leads.get(id);
+          if (!lead) throw new Error("lead not found");
+          const currentIdx = stageOrder.indexOf(lead.stage);
+          const nextStage = stageOrder[Math.min(currentIdx + 1, stageOrder.length - 1)];
+          await ctx.db.leads.update(id, { stage: nextStage });
+          await record(ctx, { orgId: lead.orgId, type: "lead.advanced", entityId: id, actorId });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Assign multiple entities to a user.
+     */
+    async assignMany(entityType, ids, userIds, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          if (entityType === "loop") {
+            await ctx.db.loops.update(id, { assignedTo: userIds });
+          } else if (entityType === "task") {
+            await ctx.db.tasks.update(id, { assignees: userIds });
+          } else if (entityType === "lead") {
+            await ctx.db.leads.update(id, { assignedTo: userIds });
+          }
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Delete multiple entities.
+     */
+    async deleteMany(entityType, ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          if (entityType === "loop") {
+            await ctx.db.loops.remove(id);
+          } else if (entityType === "task") {
+            await ctx.db.tasks.remove(id);
+          } else if (entityType === "lead") {
+            await ctx.db.leads.remove(id);
+          }
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    }
+  };
+}
+var init_bulk = __esm({
+  "packages/core/src/bulk.ts"() {
+    "use strict";
+    init_context();
+  }
+});
+
+// packages/core/src/recurring.ts
+function makeRecurring(ctx) {
+  return {
+    /**
+     * Process all recurring tasks and create new instances where needed.
+     * Should be called daily (e.g., by a cron job or worker).
+     */
+    async processDaily(orgId) {
+      let created = 0;
+      let skipped = 0;
+      const tasks = await ctx.db.tasks.list(orgId);
+      const recurringTasks = tasks.filter((t) => t.recurring && t.recur);
+      for (const task of recurringTasks) {
+        const shouldCreate = this.shouldCreateToday(task.recur);
+        if (!shouldCreate) {
+          skipped++;
+          continue;
+        }
+        const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+        const existingToday = tasks.find(
+          (t) => t.title === task.title && t.createdBy === task.createdBy && new Date(t.createdAt).toISOString().split("T")[0] === today
+        );
+        if (existingToday) {
+          skipped++;
+          continue;
+        }
+        await ctx.db.tasks.insert({
+          id: newId("task"),
+          orgId: task.orgId,
+          emoji: task.emoji,
+          title: task.title,
+          list: task.list,
+          day: "today",
+          priority: task.priority,
+          recurring: true,
+          recur: task.recur,
+          assignees: task.assignees,
+          createdBy: task.createdBy,
+          completed: false,
+          completedAt: null,
+          subtasks: [],
+          comments: [],
+          dueAt: null,
+          createdAt: now()
+        });
+        await record(ctx, {
+          orgId: task.orgId,
+          type: "task.created",
+          entityId: task.id,
+          actorId: task.createdBy
+        });
+        created++;
+      }
+      return { created, skipped };
+    },
+    /**
+     * Check if a recurring task should be created today.
+     */
+    shouldCreateToday(recur) {
+      const today = /* @__PURE__ */ new Date();
+      const dayOfWeek = today.getDay();
+      const dayOfMonth = today.getDate();
+      switch ((recur ?? "").toLowerCase()) {
+        case "daily":
+          return true;
+        case "weekly":
+          return true;
+        // Base task is weekly, check on creation day
+        case "monthly":
+          return dayOfMonth === 1;
+        // Create on 1st of month
+        case "weekdays":
+          return dayOfWeek >= 1 && dayOfWeek <= 5;
+        case "weekends":
+          return dayOfWeek === 0 || dayOfWeek === 6;
+        default:
+          return false;
+      }
+    },
+    /**
+     * Get next run date for a recurring task.
+     */
+    getNextRun(recur) {
+      const now2 = /* @__PURE__ */ new Date();
+      switch ((recur ?? "").toLowerCase()) {
+        case "daily":
+          return new Date(now2.getTime() + 24 * 60 * 60 * 1e3);
+        case "weekly":
+          return new Date(now2.getTime() + 7 * 24 * 60 * 60 * 1e3);
+        case "Monthly": {
+          const next = new Date(now2);
+          next.setMonth(next.getMonth() + 1);
+          next.setDate(1);
+          return next;
+        }
+        case "Weekdays": {
+          const next = new Date(now2);
+          do {
+            next.setDate(next.getDate() + 1);
+          } while (next.getDay() === 0 || next.getDay() === 6);
+          return next;
+        }
+        case "Weekends": {
+          const next = new Date(now2);
+          do {
+            next.setDate(next.getDate() + 1);
+          } while (next.getDay() !== 0 && next.getDay() !== 6);
+          return next;
+        }
+        default:
+          return new Date(now2.getTime() + 24 * 60 * 60 * 1e3);
+      }
+    },
+    /**
+     * Format schedule for display.
+     */
+    formatSchedule(recur) {
+      switch ((recur ?? "").toLowerCase()) {
+        case "daily":
+          return "Every day";
+        case "weekly":
+          return "Every week";
+        case "monthly":
+          return "Every month";
+        case "weekdays":
+          return "Weekdays only";
+        case "weekends":
+          return "Weekends only";
+        default:
+          return recur;
+      }
+    }
+  };
+}
+var init_recurring = __esm({
+  "packages/core/src/recurring.ts"() {
+    "use strict";
+    init_context();
+  }
+});
+
+// packages/core/src/subtasks.ts
+function makeSubtasks(ctx) {
+  return {
+    /**
+     * Add a subtask to a task (appends to Task.subtasks array).
+     */
+    async add(taskId, title) {
+      const task = await ctx.db.tasks.get(taskId);
+      if (!task) throw new Error(`task ${taskId} not found`);
+      const subtask = { id: newId("sub"), title, done: false };
+      const subtasks = [...task.subtasks ?? [], subtask];
+      await ctx.db.tasks.update(taskId, { subtasks });
+      return subtask;
+    },
+    /**
+     * Complete a subtask.
+     */
+    async complete(taskId, subtaskId) {
+      const task = await ctx.db.tasks.get(taskId);
+      if (!task) throw new Error(`task ${taskId} not found`);
+      const subtasks = (task.subtasks ?? []).map(
+        (s) => s.id === subtaskId ? { ...s, done: true } : s
+      );
+      await ctx.db.tasks.update(taskId, { subtasks });
+      const allDone = subtasks.every((s) => s.done);
+      if (allDone && subtasks.length > 0) {
+        await record(ctx, {
+          orgId: task.orgId,
+          type: "task.completed",
+          entityId: taskId,
+          actorId: "system"
+        });
+      }
+    },
+    /**
+     * Remove a subtask.
+     */
+    async remove(taskId, subtaskId) {
+      const task = await ctx.db.tasks.get(taskId);
+      if (!task) throw new Error(`task ${taskId} not found`);
+      const subtasks = (task.subtasks ?? []).filter((s) => s.id !== subtaskId);
+      await ctx.db.tasks.update(taskId, { subtasks });
+    },
+    /**
+     * Toggle a subtask done state.
+     */
+    async toggle(taskId, subtaskId) {
+      const task = await ctx.db.tasks.get(taskId);
+      if (!task) throw new Error(`task ${taskId} not found`);
+      const subtasks = (task.subtasks ?? []).map(
+        (s) => s.id === subtaskId ? { ...s, done: !s.done } : s
+      );
+      await ctx.db.tasks.update(taskId, { subtasks });
+    },
+    /**
+     * List subtasks for a task.
+     */
+    async list(taskId) {
+      const task = await ctx.db.tasks.get(taskId);
+      return task?.subtasks ?? [];
+    },
+    /**
+     * Get progress percentage.
+     */
+    getProgress(subtasks) {
+      if (subtasks.length === 0) return 0;
+      const done = subtasks.filter((s) => s.done).length;
+      return Math.round(done / subtasks.length * 100);
+    }
+  };
+}
+var init_subtasks = __esm({
+  "packages/core/src/subtasks.ts"() {
+    "use strict";
+    init_context();
+  }
+});
+
+// packages/core/src/ai.ts
+function makeAi(ctx) {
+  const suggestions = /* @__PURE__ */ new Map();
+  async function getSuggestions(entityType, entityId) {
+    const results = [];
+    if (entityType === "task") {
+      const task = await ctx.db.tasks.get(entityId);
+      if (task) {
+        if (task.dueAt && task.dueAt < Date.now()) {
+          results.push({
+            id: `sug_${Date.now()}_overdue`,
+            type: "priority",
+            entityType,
+            entityId,
+            reason: "Task is overdue \u2014 consider bumping priority",
+            confidence: 0.9,
+            createdAt: Date.now()
+          });
+        }
+        const subtasks = task.subtasks ?? [];
+        if (subtasks.length > 0 && subtasks.every((s) => s.done)) {
+          results.push({
+            id: `sug_${Date.now()}_done`,
+            type: "close",
+            entityType,
+            entityId,
+            reason: "All subtasks complete \u2014 ready to close",
+            confidence: 0.95,
+            createdAt: Date.now()
+          });
+        }
+      }
+    }
+    if (entityType === "loop") {
+      const loop = await ctx.db.loops.get(entityId);
+      if (loop) {
+        const age = Date.now() - loop.createdAt;
+        const threeDays = 3 * 24 * 60 * 60 * 1e3;
+        if (loop.status === "open" && age > threeDays) {
+          results.push({
+            id: `sug_${Date.now()}_stale`,
+            type: "follow_up",
+            entityType,
+            entityId,
+            reason: "Loop open for 3+ days \u2014 consider following up",
+            confidence: 0.7,
+            createdAt: Date.now()
+          });
+        }
+      }
+    }
+    for (const s of results) {
+      suggestions.set(s.id, s);
+    }
+    return results;
+  }
+  async function autoAssign(taskId) {
+    const task = await ctx.db.tasks.get(taskId);
+    if (!task || task.assignees?.length) return null;
+    const allTasks = await ctx.db.tasks.list(task.orgId);
+    const recentTasks = allTasks.filter((t) => t.assignees?.length && t.subtasks?.some((s) => s.done)).slice(-20);
+    const counts = /* @__PURE__ */ new Map();
+    for (const t of recentTasks) {
+      for (const a of t.assignees ?? []) {
+        counts.set(a, (counts.get(a) ?? 0) + 1);
+      }
+    }
+    let best = null;
+    let bestCount = 0;
+    for (const [assignee, count] of counts) {
+      if (count > bestCount) {
+        best = assignee;
+        bestCount = count;
+      }
+    }
+    if (best) {
+      await ctx.db.tasks.update(taskId, { assignees: [best] });
+    }
+    return best;
+  }
+  async function getPatterns(orgId) {
+    const tasks = await ctx.db.tasks.list(orgId);
+    const loops = await ctx.db.loops.list(orgId);
+    const assigneeCounts = /* @__PURE__ */ new Map();
+    for (const t of tasks) {
+      for (const a of t.assignees ?? []) {
+        assigneeCounts.set(a, (assigneeCounts.get(a) ?? 0) + 1);
+      }
+    }
+    const channelCounts = /* @__PURE__ */ new Map();
+    for (const l of loops) {
+      channelCounts.set(l.channel, (channelCounts.get(l.channel) ?? 0) + 1);
+    }
+    return {
+      topAssignees: [...assigneeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+      topChannels: [...channelCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+      taskCompletionRate: tasks.length > 0 ? tasks.filter((t) => t.subtasks?.some((s) => s.done)).length / tasks.length : 0,
+      totalLoops: loops.length,
+      totalTasks: tasks.length
+    };
+  }
+  async function dismiss(suggestionId) {
+    suggestions.delete(suggestionId);
+  }
+  return { getSuggestions, autoAssign, getPatterns, dismiss };
+}
+var init_ai = __esm({
+  "packages/core/src/ai.ts"() {
+    "use strict";
+  }
+});
+
+// packages/core/src/api-keys.ts
+import { createHash } from "node:crypto";
+function hash(raw) {
+  return createHash("sha256").update(raw).digest("hex");
+}
+function makeApiKeys(ctx) {
+  const db = ctx.db;
+  async function create(orgId, name, scopes = ["read"], actorId) {
+    const raw = `cb_${newId("key")}`;
+    const row = {
+      id: newId("apikey"),
+      orgId,
+      name,
+      prefix: raw.slice(0, 8),
+      keyHash: hash(raw),
+      scopes,
+      actorId,
+      createdAt: Date.now()
+    };
+    await db.apiKeys.insert(row);
+    const { keyHash: _omit, ...safe } = row;
+    return { raw, row: safe };
+  }
+  async function verify(rawKey) {
+    const row = await db.apiKeys.findByHash(hash(rawKey));
+    if (!row) return null;
+    await db.apiKeys.touch(row.id, Date.now());
+    return { orgId: row.orgId, actorId: row.actorId, scopes: row.scopes };
+  }
+  async function list(orgId) {
+    const rows = await db.apiKeys.listByOrg(orgId);
+    return rows.map(({ keyHash: _omit, ...safe }) => safe);
+  }
+  async function revoke(id) {
+    await db.apiKeys.delete(id);
+  }
+  async function getByPrefix(orgId, prefix) {
+    const rows = await db.apiKeys.listByOrg(orgId);
+    const found = rows.find((k) => k.orgId === orgId && k.prefix === prefix);
+    if (!found) return void 0;
+    const { keyHash: _omit, ...safe } = found;
+    return safe;
+  }
+  return { create, verify, revoke, list, getByPrefix };
+}
+var init_api_keys = __esm({
+  "packages/core/src/api-keys.ts"() {
+    "use strict";
+    init_context();
+  }
+});
+
+// packages/core/src/undo.ts
+async function undoEvent(ctx, eventId) {
+  const ev = await ctx.db.events.get(eventId);
+  if (!ev) throw notReversible(`event ${eventId} not found`);
+  if (!ev.reversible || !ev.undo) throw notReversible(`event ${eventId} is not reversible`);
+  const u = ev.undo;
+  if (u.delete) {
+    const id = u.delete;
+    if (id.startsWith("loop_")) await ctx.db.loops.remove(id);
+    else if (id.startsWith("task_")) await ctx.db.tasks.remove(id);
+    else if (id.startsWith("lead_")) await ctx.db.leads.remove(id);
+    else throw notReversible(`don't know how to delete ${id}`);
+  } else if (u.restoreStatus) {
+    await ctx.db.loops.update(ev.entityId, { status: u.restoreStatus });
+  } else if (u.restoreDay) {
+    await ctx.db.tasks.update(ev.entityId, { day: u.restoreDay });
+  } else if (u.restoreStage) {
+    await ctx.db.leads.update(ev.entityId, { stage: u.restoreStage });
+  } else {
+    throw notReversible(`event ${eventId} has no known undo action`);
+  }
+  await record(ctx, { orgId: ev.orgId, type: "event.undone", entityId: eventId, actorId: "user_local", reversible: false });
+  return { undone: eventId, type: ev.type };
+}
+function notReversible(message) {
+  const err = new Error(message);
+  err.statusCode = 400;
+  return err;
+}
+var init_undo = __esm({
+  "packages/core/src/undo.ts"() {
+    "use strict";
+    init_context();
+  }
+});
+
+// packages/core/src/workers.ts
+function registerWorkers(ctx) {
+  ctx.queue.on("replyLoop", async ({ loopId, orgId }) => {
+    const loop = await ctx.db.loops.get(loopId);
+    if (!loop || loop.status === "closed") return;
+    if (!loop.replyTo) {
+      console.warn(`[worker] replyLoop ${loopId}: no replyTo address \u2014 skipping send`);
+      return;
+    }
+    const text = await ctx.drafter.draftReply({ title: loop.title, why: loop.why, channel: loop.channel });
+    await ctx.messenger.send({ channel: loop.channel, to: loop.replyTo, text });
+    await record(ctx, { orgId, type: "reply.sent", entityId: loopId, actorId: "agent_scout", channel: loop.channel });
+    console.log(`[worker] replied to ${loop.replyTo} for loop ${loopId}`);
+  });
+  ctx.queue.on("chaseLoop", async ({ loopId, orgId }) => {
+    const loop = await ctx.db.loops.get(loopId);
+    if (!loop || loop.status === "closed") return;
+    if (loop.replyTo) {
+      await ctx.messenger.send({ channel: loop.channel, to: loop.replyTo, text: `Just following up on: ${loop.title} \u{1F642}` });
+    }
+    await record(ctx, { orgId, type: "reminder.sent", entityId: loopId, actorId: "agent_scout", channel: loop.channel });
+    console.log(`[worker] chased loop ${loopId}: "${loop.title}"`);
+  });
+  ctx.queue.on("sendReminder", async ({ loopId, orgId }) => {
+    const loop = await ctx.db.loops.get(loopId);
+    if (!loop || loop.status === "closed") return;
+    await record(ctx, { orgId, type: "reminder.sent", entityId: loopId, actorId: "agent_scout" });
+    console.log(`[worker] reminder fired for loop ${loopId}`);
+  });
+  ctx.queue.on("sendBriefing", async ({ orgId }) => {
+    const open = await ctx.db.loops.list(orgId);
+    const yours = open.filter((l) => l.side === "yours" && l.status !== "closed").length;
+    console.log(`[worker] briefing for ${orgId}: ${yours} loop(s) in your court`);
+    await record(ctx, { orgId, type: "briefing.delivered", entityId: orgId, actorId: "agent_scout" });
+  });
+  ctx.queue.on("autoSweep", async ({ orgId }) => {
+    const open = await ctx.db.loops.list(orgId);
+    console.log(`[worker] nightly sweep for ${orgId}: ${open.length} loop(s) reviewed`);
+  });
+}
+var init_workers = __esm({
+  "packages/core/src/workers.ts"() {
+    "use strict";
+    init_context();
+  }
+});
+
+// packages/core/src/seed.ts
+async function seedIfEmpty(core) {
+  const existing = await core.loops.list(LOCAL_ORG_ID);
+  if (existing.length > 0) return;
+  const org = LOCAL_ORG_ID;
+  const me = LOCAL_USER_ID;
+  await core.loops.capture({ orgId: org, actorId: me, title: "Reply to Priya re: contract", why: "She asked 2 days ago", side: "yours", channel: "email" });
+  await core.loops.capture({ orgId: org, actorId: me, title: "Waiting on design files from Sam", why: "Promised Monday", side: "theirs", channel: "slack" });
+  await core.loops.capture({ orgId: org, actorId: me, title: "Confirm Thursday demo time", why: "WhatsApp from lead", side: "yours", channel: "whatsapp" });
+  await core.tasks.create({ orgId: org, actorId: me, emoji: "\u{1F4DD}", title: "Draft Q3 plan", day: "today", priority: "high" });
+  await core.tasks.create({ orgId: org, actorId: me, emoji: "\u{1F4DE}", title: "Call supplier", day: "tomorrow", priority: "med" });
+  await core.leads.create({ orgId: org, actorId: me, name: "Aisha Khan", company: "Northwind", title: "Head of Ops", phone: "+971500000000", what: "Interested in team plan" });
+}
+var init_seed = __esm({
+  "packages/core/src/seed.ts"() {
+    "use strict";
+    init_src3();
+  }
+});
+
+// packages/core/src/methods.ts
+var methods_exports = {};
+__export(methods_exports, {
+  METHODS: () => METHODS,
+  METHOD_LIST: () => METHOD_LIST,
+  abcde: () => abcde,
+  eatThatFrog: () => eatThatFrog,
+  eisenhower: () => eisenhower,
+  gtd: () => gtd,
+  moscow: () => moscow,
+  pareto: () => pareto,
+  pomodoro: () => pomodoro,
+  threeThree: () => threeThree,
+  timeBlocking: () => timeBlocking,
+  twoMinute: () => twoMinute
+});
+function isUrgent(t, now2 = Date.now()) {
+  if (t.day === "today") return true;
+  if (t.dueAt && t.dueAt - now2 <= MS_PER_DAY) return true;
+  return false;
+}
+function isImportant(t) {
+  return t.priority === "high";
+}
+function isOverdue(t, now2 = Date.now()) {
+  if (!t.dueAt) return false;
+  return t.dueAt < now2;
+}
+function isComplete(t) {
+  if (!t.subtasks || t.subtasks.length === 0) return false;
+  return t.subtasks.every((s) => s.done);
+}
+function eisenhower(tasks, now2 = Date.now()) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const result = { q1: [], q2: [], q3: [], q4: [] };
+  for (const t of open) {
+    const u = isUrgent(t, now2);
+    const i = isImportant(t);
+    if (u && i) result.q1.push(t);
+    else if (!u && i) result.q2.push(t);
+    else if (u && !i) result.q3.push(t);
+    else result.q4.push(t);
+  }
+  return result;
+}
+function moscow(tasks, now2 = Date.now()) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const result = { must: [], should: [], could: [], wont: [] };
+  for (const t of open) {
+    if (t.priority === "high") result.must.push(t);
+    else if (t.priority === "med") result.should.push(t);
+    else if (t.priority === "low") result.could.push(t);
+    else if (isOverdue(t, now2)) result.wont.push(t);
+    else result.could.push(t);
+  }
+  return result;
+}
+function abcde(tasks, now2 = Date.now()) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const ranked = open.map((task) => {
+    let rank;
+    if (task.priority === "high" && isOverdue(task, now2)) rank = "A";
+    else if (task.priority === "high") rank = "B";
+    else if (task.priority === "med" && task.day === "today") rank = "C";
+    else if (task.priority === "med") rank = "D";
+    else rank = "E";
+    return { task, rank };
+  });
+  ranked.sort((a, b) => (RANK_WEIGHT[a.rank] ?? 9) - (RANK_WEIGHT[b.rank] ?? 9));
+  return { ranked };
+}
+function inferContext(task) {
+  const lower = task.title.toLowerCase();
+  for (const ctx of GTD_CONTEXTS) {
+    if (lower.includes(ctx)) return ctx;
+  }
+  if (task.emoji && EMOJI_TO_CONTEXT[task.emoji]) return EMOJI_TO_CONTEXT[task.emoji];
+  return null;
+}
+function gtd(tasks) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const contexts = {
+    "@email": [],
+    "@call": [],
+    "@computer": [],
+    "@errands": [],
+    "@home": [],
+    "@anywhere": []
+  };
+  const inbox = [];
+  for (const t of open) {
+    const ctx = inferContext(t);
+    if (ctx) contexts[ctx].push(t);
+    else inbox.push(t);
+  }
+  return { contexts, inbox };
+}
+function twoMinute(tasks) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const twoMinute2 = [];
+  const longer = [];
+  for (const t of open) {
+    const lower = t.title.toLowerCase();
+    const isQuick = QUICK_VERBS.some((v) => lower.includes(v));
+    if (isQuick) twoMinute2.push(t);
+    else longer.push(t);
+  }
+  return { twoMinute: twoMinute2, longer };
+}
+function frogScore(t, now2) {
+  const pWeight = t.priority === "high" ? 3 : t.priority === "med" ? 2 : t.priority === "low" ? 1 : 0;
+  let uWeight = 0;
+  if (isOverdue(t, now2)) uWeight = 3;
+  else if (t.day === "today") uWeight = 2;
+  else if (t.day === "tomorrow") uWeight = 1;
+  return pWeight * 3 + uWeight;
+}
+function eatThatFrog(tasks, now2 = Date.now()) {
+  const open = tasks.filter((t) => !isComplete(t));
+  if (open.length === 0) return { frog: null, why: "No open tasks \u2014 nothing to eat." };
+  let best = open[0];
+  let bestScore = frogScore(best, now2);
+  for (const t of open) {
+    const s = frogScore(t, now2);
+    if (s > bestScore) {
+      best = t;
+      bestScore = s;
+    }
+  }
+  const reasons = [];
+  if (best.priority === "high") reasons.push("highest priority");
+  if (isOverdue(best, now2)) reasons.push("overdue");
+  else if (best.day === "today") reasons.push("due today");
+  const why = reasons.length > 0 ? `Your frog: the task that is ${reasons.join(" and ")}. Do it first.` : "Your frog: the highest-impact task right now. Do it first.";
+  return { frog: best, why };
+}
+function threeThree(tasks) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const deep = open.filter((t) => t.priority === "high").slice(0, 3);
+  const deepIds = new Set(deep.map((t) => t.id));
+  const remaining = open.filter((t) => !deepIds.has(t.id));
+  const medium = remaining.filter((t) => t.priority === "med").slice(0, 3);
+  const mediumIds = new Set(medium.map((t) => t.id));
+  const small = remaining.filter((t) => !mediumIds.has(t.id) && (t.priority === "low" || t.priority === null)).slice(0, 3);
+  return { deep, medium, small };
+}
+function paretoScore(t) {
+  const p = t.priority === "high" ? 3 : t.priority === "med" ? 2 : t.priority === "low" ? 1 : 0;
+  const subtasks = t.subtasks?.length ?? 0;
+  const recurring = t.recurring ? 2 : 0;
+  return p * 2 + subtasks + recurring;
+}
+function pareto(tasks) {
+  const open = tasks.filter((t) => !isComplete(t));
+  if (open.length === 0) return { vital: [], useful: [] };
+  const sorted = [...open].sort((a, b) => paretoScore(b) - paretoScore(a));
+  const vitalCount = Math.max(1, Math.ceil(open.length * 0.2));
+  return { vital: sorted.slice(0, vitalCount), useful: sorted.slice(vitalCount) };
+}
+function timeBlocking(tasks) {
+  const open = tasks.filter((t) => !isComplete(t));
+  const meeting = open.filter((t) => {
+    const lower = t.title.toLowerCase();
+    return lower.includes("call") || lower.includes("meet") || lower.includes("sync") || lower.includes("standup");
+  });
+  const meetingIds = new Set(meeting.map((t) => t.id));
+  const deep = open.filter((t) => !meetingIds.has(t.id) && t.priority === "high");
+  const deepIds = new Set(deep.map((t) => t.id));
+  const admin = open.filter((t) => !meetingIds.has(t.id) && !deepIds.has(t.id));
+  const blocks = [];
+  let clock = 9 * 60;
+  const place = (list, blockType) => {
+    for (const task of list) {
+      const dur = 30;
+      blocks.push({ start: toClock(clock), end: toClock(clock + dur), task, blockType });
+      clock += dur;
+    }
+  };
+  place(deep, "deep");
+  place(admin.slice(0, 4), "admin");
+  place(meeting, "meeting");
+  place(admin.slice(4), "admin");
+  return blocks.slice(0, 18);
+}
+function pomodoro(tasks) {
+  const open = tasks.filter((t) => !isComplete(t));
+  return open.map((task) => {
+    const words = task.title.trim().split(/\s+/).filter(Boolean).length;
+    let sessions = 1;
+    if (words > 15) sessions = 4;
+    else if (words > 10) sessions = 3;
+    else if (words > 5) sessions = 2;
+    const subtaskCount = task.subtasks?.length ?? 0;
+    sessions += subtaskCount;
+    return { task, sessions, minutes: sessions * 25 };
+  });
+}
+var MS_PER_DAY, RANK_WEIGHT, GTD_CONTEXTS, EMOJI_TO_CONTEXT, QUICK_VERBS, toClock, METHODS, METHOD_LIST;
+var init_methods = __esm({
+  "packages/core/src/methods.ts"() {
+    "use strict";
+    MS_PER_DAY = 864e5;
+    RANK_WEIGHT = { A: 0, B: 1, C: 2, D: 3, E: 4 };
+    GTD_CONTEXTS = ["@email", "@call", "@computer", "@errands", "@home", "@anywhere"];
+    EMOJI_TO_CONTEXT = {
+      "\u{1F4DE}": "@call",
+      "\u260E\uFE0F": "@call",
+      "\u{1F4BB}": "@computer",
+      "\u{1F5A5}\uFE0F": "@computer",
+      "\u2709\uFE0F": "@email",
+      "\u{1F4E7}": "@email",
+      "\u{1F697}": "@errands",
+      "\u{1F6D2}": "@errands",
+      "\u{1F3E0}": "@home",
+      "\u{1F3E1}": "@home"
+    };
+    QUICK_VERBS = ["call", "email", "reply", "send", "pay", "file", "book", "text", "sign", "approve", "confirm"];
+    toClock = (minutes) => {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    };
+    METHODS = {
+      eisenhower: {
+        meta: { id: "eisenhower", name: "Eisenhower Matrix", icon: "\u{1F532}", description: "Sort by urgent vs important into 4 quadrants." },
+        run: (tasks) => eisenhower(tasks)
+      },
+      moscow: {
+        meta: { id: "moscow", name: "MoSCoW", icon: "\u{1F3AF}", description: "Must / Should / Could / Won\u2019t \u2014 prioritize by commitment." },
+        run: (tasks) => moscow(tasks)
+      },
+      abcde: {
+        meta: { id: "abcde", name: "ABCDE Method", icon: "\u{1F524}", description: "Rank A (critical) through E (eliminate)." },
+        run: (tasks) => abcde(tasks)
+      },
+      gtd: {
+        meta: { id: "gtd", name: "Getting Things Done", icon: "\u{1F5C2}\uFE0F", description: "Group tasks by context (@call, @computer, @email\u2026)." },
+        run: (tasks) => gtd(tasks)
+      },
+      twominute: {
+        meta: { id: "twominute", name: "2-Minute Rule", icon: "\u26A1", description: "Flag quick tasks you can knock out right now." },
+        run: (tasks) => twoMinute(tasks)
+      },
+      frog: {
+        meta: { id: "frog", name: "Eat That Frog", icon: "\u{1F438}", description: "The one highest-impact task to do first today." },
+        run: (tasks) => eatThatFrog(tasks)
+      },
+      threethree: {
+        meta: { id: "threethree", name: "3-3-3 Method", icon: "3\uFE0F\u20E3", description: "3 deep + 3 medium + 3 small tasks for a focused day." },
+        run: (tasks) => threeThree(tasks)
+      },
+      pareto: {
+        meta: { id: "pareto", name: "80/20 Rule", icon: "\u{1F4CA}", description: "The vital 20% of tasks driving 80% of value." },
+        run: (tasks) => pareto(tasks)
+      },
+      timeblock: {
+        meta: { id: "timeblock", name: "Time Blocking", icon: "\u{1F5D3}\uFE0F", description: "Lay tasks out across a 9am\u20136pm workday." },
+        run: (tasks) => timeBlocking(tasks)
+      },
+      pomodoro: {
+        meta: { id: "pomodoro", name: "Pomodoro Estimate", icon: "\u{1F345}", description: "Estimate focus sessions (25 min) per task." },
+        run: (tasks) => pomodoro(tasks)
+      }
+    };
+    METHOD_LIST = Object.values(METHODS).map((m) => m.meta);
+  }
+});
+
+// packages/core/src/analytics.ts
+var analytics_exports = {};
+__export(analytics_exports, {
+  computeReport: () => computeReport
+});
+function isTaskComplete(task) {
+  return !!task.subtasks && task.subtasks.length > 0 && task.subtasks.every((s) => s.done);
+}
+function round(n) {
+  return Math.round(n);
+}
+function computeLoops(loops, windowStart) {
+  let open = 0;
+  let closed = 0;
+  let snoozed = 0;
+  let overdue = 0;
+  let closedInWindow = 0;
+  let onTime = 0;
+  let totalCloseMs = 0;
+  for (const l of loops) {
+    const status = l.status;
+    if (status === "open") open++;
+    else if (status === "snoozed") snoozed++;
+    else if (status === "overdue") overdue++;
+    if (status === "closed") {
+      closed++;
+      if (l.updatedAt >= windowStart) closedInWindow++;
+      const closeMs = l.updatedAt - l.createdAt;
+      totalCloseMs += closeMs;
+      if (closeMs <= ON_TIME_HOURS * MS_PER_HOUR) onTime++;
+    }
+  }
+  const avgCloseHours = closed > 0 ? totalCloseMs / closed / MS_PER_HOUR : 0;
+  const onTimeRate = closed > 0 ? round(onTime / closed * 100) : 0;
+  return {
+    total: loops.length,
+    open,
+    closed,
+    closedInWindow,
+    onTimeRate,
+    snoozed,
+    overdue,
+    avgCloseHours: round(avgCloseHours * 10) / 10
+    // one decimal place
+  };
+}
+function computeTasks(tasks, windowStart, now2) {
+  let completedInWindow = 0;
+  let createdInWindow = 0;
+  let overdue = 0;
+  const byPriority = { high: 0, med: 0, low: 0, none: 0 };
+  for (const t of tasks) {
+    const p = t.priority ?? null;
+    if (p === "high") byPriority.high++;
+    else if (p === "med") byPriority.med++;
+    else if (p === "low") byPriority.low++;
+    else byPriority.none++;
+    if (t.createdAt >= windowStart) createdInWindow++;
+    if (isTaskComplete(t)) {
+      if (t.createdAt >= windowStart) completedInWindow++;
+    } else if (t.dueAt != null && t.dueAt < now2) {
+      overdue++;
+    }
+  }
+  const completionRate = createdInWindow > 0 ? round(completedInWindow / createdInWindow * 100) : 0;
+  return { total: tasks.length, completedInWindow, createdInWindow, completionRate, overdue, byPriority };
+}
+function computeLeads(leads, windowStart) {
+  let won = 0;
+  let lost = 0;
+  let pipeline = 0;
+  let wonInWindow = 0;
+  for (const lead of leads) {
+    const stage = lead.stage;
+    if (stage === "won") {
+      won++;
+      if (lead.createdAt >= windowStart) wonInWindow++;
+    } else if (stage === "lost") {
+      lost++;
+    } else {
+      pipeline++;
+    }
+  }
+  const conversionRate = won + lost > 0 ? round(won / (won + lost) * 100) : 0;
+  return {
+    total: leads.length,
+    won,
+    lost,
+    pipeline,
+    wonInWindow,
+    conversionRate,
+    // Pipeline value: sum of lead.value for open (non-won/lost) leads that have a value set.
+    pipelineValue: leads.filter((l) => l.stage !== "won" && l.stage !== "lost" && typeof l.value === "number").reduce((sum, l) => sum + l.value, 0)
+  };
+}
+function computeProductivity(tasks, timeEntries, windowStart, now2, windowDays) {
+  const focusSeconds = (timeEntries ?? []).reduce((sum, e) => sum + (e.duration ?? 0), 0);
+  const focusHours = round(focusSeconds / SECONDS_PER_HOUR * 10) / 10;
+  const trend = [0, 0, 0, 0, 0, 0, 0];
+  const dayBuckets = new Array(7).fill(0);
+  const completedByCreatedAt = tasks.filter(isTaskComplete);
+  for (const t of completedByCreatedAt) {
+    const dow = new Date(t.createdAt).getDay();
+    if (dayBuckets[dow] === void 0) dayBuckets[dow] = 0;
+    dayBuckets[dow]++;
+    const ageDays = Math.floor((now2 - t.createdAt) / MS_PER_DAY2);
+    if (ageDays >= 0 && ageDays <= 6) {
+      const idx = 6 - ageDays;
+      const slot = trend[idx];
+      if (slot !== void 0) trend[idx] = slot + 1;
+    }
+  }
+  const tasksPerDay = windowDays > 0 ? round(completedByCreatedAt.length / windowDays * 10) / 10 : 0;
+  let bestDay = "\u2014";
+  let bestCount = -1;
+  for (let i = 0; i < 7; i++) {
+    const count = dayBuckets[i] ?? 0;
+    if (count > bestCount) {
+      bestCount = count;
+      bestDay = WEEKDAYS[i] ?? "\u2014";
+    }
+  }
+  if (bestCount <= 0) bestDay = "\u2014";
+  return { focusHours, tasksPerDay, velocityTrend: trend, bestDay };
+}
+function computeLeaderboard(users, loops, tasks, timeEntries) {
+  if (!users || users.length === 0) return [];
+  const focusMinutes = /* @__PURE__ */ new Map();
+  for (const e of timeEntries ?? []) {
+    const minutes = Math.floor((e.duration ?? 0) / 60);
+    focusMinutes.set(e.userId, (focusMinutes.get(e.userId) ?? 0) + minutes);
+  }
+  const tasksDone = /* @__PURE__ */ new Map();
+  for (const t of tasks) {
+    if (!isTaskComplete(t)) continue;
+    for (const uid of t.assignees) tasksDone.set(uid, (tasksDone.get(uid) ?? 0) + 1);
+  }
+  const loopsClosed = /* @__PURE__ */ new Map();
+  for (const l of loops) {
+    if (l.status !== "closed") continue;
+    for (const uid of l.assignedTo) loopsClosed.set(uid, (loopsClosed.get(uid) ?? 0) + 1);
+  }
+  const rows = users.map((u) => {
+    const done = tasksDone.get(u.userId) ?? 0;
+    const closed = loopsClosed.get(u.userId) ?? 0;
+    const minutes = focusMinutes.get(u.userId) ?? 0;
+    const points = done * 3 + closed * 2 + Math.floor(minutes / 25);
+    return { userId: u.userId, name: u.name, points, tasksDone: done, loopsClosed: closed, focusMinutes: minutes };
+  });
+  rows.sort((a, b) => b.points - a.points || b.tasksDone - a.tasksDone);
+  return rows;
+}
+function buildSummary(loops, tasks, leads, windowDays) {
+  const period = windowDays >= 30 ? "this period" : `over the last ${windowDays} days`;
+  const headline = `${loops.onTimeRate}% of loops closed on time ${period}.`;
+  const sub = `${tasks.completedInWindow} tasks completed, ${leads.wonInWindow} leads won.`;
+  return { headline, sub };
+}
+function computeReport(input) {
+  const { loops = [], tasks = [], leads = [], timeEntries, users, windowDays = 30 } = input ?? {};
+  const now2 = Date.now();
+  const windowStart = now2 - windowDays * MS_PER_DAY2;
+  const loopsReport = computeLoops(loops, windowStart);
+  const tasksReport = computeTasks(tasks, windowStart, now2);
+  const leadsReport = computeLeads(leads, windowStart);
+  const productivity = computeProductivity(tasks, timeEntries, windowStart, now2, windowDays);
+  const leaderboard = computeLeaderboard(users, loops, tasks, timeEntries);
+  const summary = buildSummary(loopsReport, tasksReport, leadsReport, windowDays);
+  return {
+    windowDays,
+    generatedAt: now2,
+    loops: loopsReport,
+    tasks: tasksReport,
+    leads: leadsReport,
+    productivity,
+    leaderboard,
+    summary
+  };
+}
+var MS_PER_HOUR, MS_PER_DAY2, SECONDS_PER_HOUR, ON_TIME_HOURS, WEEKDAYS;
+var init_analytics = __esm({
+  "packages/core/src/analytics.ts"() {
+    "use strict";
+    MS_PER_HOUR = 36e5;
+    MS_PER_DAY2 = 864e5;
+    SECONDS_PER_HOUR = 3600;
+    ON_TIME_HOURS = 72;
+    WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  }
+});
+
+// packages/core/src/index.ts
+function createCoreFromPorts(ports) {
+  const ctx = {
+    db: ports.db,
+    queue: ports.queue,
+    auth: ports.auth,
+    messenger: ports.messenger ?? consoleMessenger,
+    drafter: ports.drafter ?? templateDrafter
+  };
+  return {
+    ctx,
+    loops: makeLoops(ctx),
+    tasks: makeTasks(ctx),
+    leads: makeLeads(ctx),
+    agents: makeAgents(),
+    autonomy: makeAutonomy(ctx),
+    approvals: makeApprovals(ctx),
+    timeTracking: makeTimeTracking(ctx),
+    bulk: makeBulkOps(ctx),
+    recurring: makeRecurring(ctx),
+    subtasks: makeSubtasks(ctx),
+    ai: makeAi(ctx),
+    apiKeys: makeApiKeys(ctx),
+    events: {
+      list: (orgId, limit) => ctx.db.events.list(orgId, limit),
+      undo: (eventId) => undoEvent(ctx, eventId)
+    }
+  };
+}
+async function bootstrap(opts = {}) {
+  const db = createDatabase(opts.db);
+  const queue = createQueue();
+  const auth = createAuth();
+  await db.init();
+  await queue.init();
+  await auth.init();
+  const core = createCoreFromPorts({ db, queue, auth, messenger: opts.messenger, drafter: opts.drafter });
+  registerWorkers(core.ctx);
+  return {
+    core,
+    db,
+    queue,
+    auth,
+    async startWorkers() {
+      await queue.start();
+    },
+    async shutdown() {
+      await queue.close();
+      await db.close();
+    }
+  };
+}
+var init_src4 = __esm({
+  "packages/core/src/index.ts"() {
+    "use strict";
+    init_src();
+    init_src2();
+    init_src3();
+    init_context();
+    init_loops();
+    init_tasks();
+    init_leads();
+    init_agents();
+    init_autonomy();
+    init_time_tracking();
+    init_bulk();
+    init_recurring();
+    init_subtasks();
+    init_ai();
+    init_api_keys();
+    init_undo();
+    init_workers();
+    init_context();
+    init_agents();
+    init_autonomy();
+    init_undo();
+    init_workers();
+    init_seed();
+    init_methods();
+    init_analytics();
   }
 });
 
@@ -1086,7 +3686,7 @@ function requireCapability(...capabilities) {
     if (!principal) {
       return reply.code(401).send({ error: "Authentication required" });
     }
-    const { createAuth: createAuth2 } = await Promise.resolve().then(() => (init_src(), src_exports));
+    const { createAuth: createAuth2 } = await Promise.resolve().then(() => (init_src3(), src_exports));
     const auth = createAuth2();
     const missing = capabilities.filter((cap) => !auth.can(principal, cap));
     if (missing.length > 0) {
@@ -1297,2328 +3897,457 @@ var init_middleware = __esm({
   }
 });
 
-// cli/bin/companybrain.ts
-import { spawn } from "node:child_process";
-import { platform } from "node:os";
-
-// packages/db/src/index.ts
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { mkdirSync } from "node:fs";
-
-// packages/db/src/sqlite.ts
-import Database from "better-sqlite3";
-
-// packages/db/src/crypto.ts
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
-var ALGO = "aes-256-gcm";
-var KEY_LEN = 32;
-var IV_LEN = 16;
-function getKey() {
-  const secret = process.env.COMPANYBRAIN_ENC_KEY;
-  if (!secret) {
-    return scryptSync("companybrain-dev-key", "salt", KEY_LEN);
-  }
-  return scryptSync(secret, "companybrain-salt", KEY_LEN);
-}
-function encryptJSON(data) {
-  const iv = randomBytes(IV_LEN);
-  const cipher = createCipheriv(ALGO, getKey(), iv);
-  const plaintext = JSON.stringify(data);
-  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return `enc:v1:${iv.toString("hex")}:${tag.toString("hex")}:${encrypted.toString("hex")}`;
-}
-function decryptJSON(encrypted) {
-  if (!encrypted.startsWith("enc:v1:")) {
-    try {
-      return JSON.parse(encrypted);
-    } catch {
-      return {};
-    }
-  }
-  const parts = encrypted.split(":");
-  const iv = Buffer.from(parts[2], "hex");
-  const tag = Buffer.from(parts[3], "hex");
-  const data = Buffer.from(parts[4], "hex");
-  const decipher = createDecipheriv(ALGO, getKey(), iv);
-  decipher.setAuthTag(tag);
-  const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
-  return JSON.parse(decrypted.toString("utf8"));
-}
-
-// packages/db/src/sqlite.ts
-var DDL = `
-CREATE TABLE IF NOT EXISTS loops  (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, side TEXT, status TEXT, updated_at INTEGER, doc TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS tasks  (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, day TEXT, doc TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS leads  (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, stage TEXT, doc TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, type TEXT, at INTEGER, doc TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS settings  (org_id TEXT PRIMARY KEY, doc TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS approvals (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, status TEXT, at INTEGER, doc TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS time_entries (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, task_id TEXT NOT NULL, user_id TEXT NOT NULL, started_at INTEGER, ended_at INTEGER, duration INTEGER, note TEXT, doc TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS custom_fields (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, field_name TEXT NOT NULL, field_type TEXT NOT NULL DEFAULT 'text', field_value TEXT NOT NULL, created_at INTEGER);
-CREATE TABLE IF NOT EXISTS connections (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'disconnected', credentials TEXT NOT NULL DEFAULT '{}', created_at INTEGER, updated_at INTEGER);
-CREATE INDEX IF NOT EXISTS idx_loops_org  ON loops(org_id, side);
-CREATE INDEX IF NOT EXISTS idx_tasks_org  ON tasks(org_id);
-CREATE INDEX IF NOT EXISTS idx_leads_org  ON leads(org_id);
-CREATE INDEX IF NOT EXISTS idx_events_org ON events(org_id, at);
-CREATE INDEX IF NOT EXISTS idx_approvals_org ON approvals(org_id, status, at);
-CREATE INDEX IF NOT EXISTS idx_time_entries_task ON time_entries(task_id);
-CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id, org_id);
-CREATE INDEX IF NOT EXISTS idx_custom_fields_entity ON custom_fields(entity_type, entity_id);
-CREATE INDEX IF NOT EXISTS idx_custom_fields_org ON custom_fields(org_id);
-CREATE INDEX IF NOT EXISTS idx_connections_org_channel ON connections(org_id, channel);
-`;
-var SqliteDatabase = class {
-  db;
-  loops;
-  tasks;
-  leads;
-  events;
-  settings;
-  approvals;
-  timeEntries;
-  customFields;
-  connections;
-  constructor(filePath) {
-    this.db = new Database(filePath);
-    this.db.pragma("journal_mode = WAL");
-    const db = this.db;
-    this.loops = {
-      async list(orgId, side) {
-        const rows = side ? db.prepare("SELECT doc FROM loops WHERE org_id=? AND side=? ORDER BY updated_at DESC").all(orgId, side) : db.prepare("SELECT doc FROM loops WHERE org_id=? ORDER BY updated_at DESC").all(orgId);
-        return rows.map((r) => JSON.parse(r.doc));
-      },
-      async get(id) {
-        const row = db.prepare("SELECT doc FROM loops WHERE id=?").get(id);
-        return row ? JSON.parse(row.doc) : null;
-      },
-      async insert(loop) {
-        db.prepare("INSERT INTO loops (id, org_id, side, status, updated_at, doc) VALUES (?,?,?,?,?,?)").run(loop.id, loop.orgId, loop.side, loop.status, loop.updatedAt, JSON.stringify(loop));
-        return loop;
-      },
-      async update(id, patch) {
-        const cur = await this.get(id);
-        if (!cur) throw new Error(`loop ${id} not found`);
-        const next = { ...cur, ...patch, updatedAt: Date.now() };
-        db.prepare("UPDATE loops SET side=?, status=?, updated_at=?, doc=? WHERE id=?").run(next.side, next.status, next.updatedAt, JSON.stringify(next), id);
-        return next;
-      },
-      async remove(id) {
-        db.prepare("DELETE FROM loops WHERE id=?").run(id);
-      }
-    };
-    this.tasks = {
-      async list(orgId) {
-        const rows = db.prepare("SELECT doc FROM tasks WHERE org_id=?").all(orgId);
-        return rows.map((r) => JSON.parse(r.doc));
-      },
-      async get(id) {
-        const row = db.prepare("SELECT doc FROM tasks WHERE id=?").get(id);
-        return row ? JSON.parse(row.doc) : null;
-      },
-      async insert(task) {
-        db.prepare("INSERT INTO tasks (id, org_id, day, doc) VALUES (?,?,?,?)").run(task.id, task.orgId, task.day, JSON.stringify(task));
-        return task;
-      },
-      async update(id, patch) {
-        const cur = await this.get(id);
-        if (!cur) throw new Error(`task ${id} not found`);
-        const next = { ...cur, ...patch };
-        db.prepare("UPDATE tasks SET day=?, doc=? WHERE id=?").run(next.day, JSON.stringify(next), id);
-        return next;
-      },
-      async remove(id) {
-        db.prepare("DELETE FROM tasks WHERE id=?").run(id);
-      }
-    };
-    this.leads = {
-      async list(orgId) {
-        const rows = db.prepare("SELECT doc FROM leads WHERE org_id=?").all(orgId);
-        return rows.map((r) => JSON.parse(r.doc));
-      },
-      async get(id) {
-        const row = db.prepare("SELECT doc FROM leads WHERE id=?").get(id);
-        return row ? JSON.parse(row.doc) : null;
-      },
-      async insert(lead) {
-        db.prepare("INSERT INTO leads (id, org_id, stage, doc) VALUES (?,?,?,?)").run(lead.id, lead.orgId, lead.stage, JSON.stringify(lead));
-        return lead;
-      },
-      async update(id, patch) {
-        const cur = await this.get(id);
-        if (!cur) throw new Error(`lead ${id} not found`);
-        const next = { ...cur, ...patch };
-        db.prepare("UPDATE leads SET stage=?, doc=? WHERE id=?").run(next.stage, JSON.stringify(next), id);
-        return next;
-      },
-      async remove(id) {
-        db.prepare("DELETE FROM leads WHERE id=?").run(id);
-      }
-    };
-    this.events = {
-      async append(event) {
-        db.prepare("INSERT INTO events (id, org_id, type, at, doc) VALUES (?,?,?,?,?)").run(event.id, event.orgId, event.type, event.at, JSON.stringify(event));
-        return event;
-      },
-      async list(orgId, limit = 100) {
-        const rows = db.prepare("SELECT doc FROM events WHERE org_id=? ORDER BY at DESC LIMIT ?").all(orgId, limit);
-        return rows.map((r) => JSON.parse(r.doc));
-      },
-      async get(id) {
-        const row = db.prepare("SELECT doc FROM events WHERE id=?").get(id);
-        return row ? JSON.parse(row.doc) : null;
-      }
-    };
-    this.settings = {
-      async getAutonomy(orgId) {
-        const row = db.prepare("SELECT doc FROM settings WHERE org_id=?").get(orgId);
-        return row ? JSON.parse(row.doc) : null;
-      },
-      async setAutonomy(orgId, settings) {
-        db.prepare("INSERT INTO settings (org_id, doc) VALUES (?,?) ON CONFLICT(org_id) DO UPDATE SET doc=excluded.doc").run(orgId, JSON.stringify(settings));
-      }
-    };
-    this.approvals = {
-      async insert(approval) {
-        db.prepare("INSERT INTO approvals (id, org_id, status, at, doc) VALUES (?,?,?,?,?)").run(approval.id, approval.orgId, approval.status, approval.createdAt, JSON.stringify(approval));
-        return approval;
-      },
-      async list(orgId, status) {
-        const rows = status ? db.prepare("SELECT doc FROM approvals WHERE org_id=? AND status=? ORDER BY at DESC").all(orgId, status) : db.prepare("SELECT doc FROM approvals WHERE org_id=? ORDER BY at DESC").all(orgId);
-        return rows.map((r) => JSON.parse(r.doc));
-      },
-      async get(id) {
-        const row = db.prepare("SELECT doc FROM approvals WHERE id=?").get(id);
-        return row ? JSON.parse(row.doc) : null;
-      },
-      async update(id, patch) {
-        const cur = await this.get(id);
-        if (!cur) throw new Error(`approval ${id} not found`);
-        const next = { ...cur, ...patch };
-        db.prepare("UPDATE approvals SET status=?, doc=? WHERE id=?").run(next.status, JSON.stringify(next), id);
-        return next;
-      }
-    };
-    this.timeEntries = {
-      async insert(entry) {
-        db.prepare("INSERT INTO time_entries (id, org_id, task_id, user_id, started_at, ended_at, duration, note, doc) VALUES (?,?,?,?,?,?,?,?,?)").run(entry.id, entry.orgId, entry.taskId, entry.userId, entry.startedAt, entry.endedAt ?? null, entry.duration ?? null, entry.note ?? null, JSON.stringify(entry));
-        return entry;
-      },
-      async get(id) {
-        const row = db.prepare("SELECT doc FROM time_entries WHERE id=?").get(id);
-        return row ? JSON.parse(row.doc) : null;
-      },
-      async listByTask(taskId) {
-        const rows = db.prepare("SELECT doc FROM time_entries WHERE task_id=? ORDER BY started_at DESC").all(taskId);
-        return rows.map((r) => JSON.parse(r.doc));
-      },
-      async listByUser(userId, orgId) {
-        const rows = db.prepare("SELECT doc FROM time_entries WHERE user_id=? AND org_id=? ORDER BY started_at DESC").all(userId, orgId);
-        return rows.map((r) => JSON.parse(r.doc));
-      },
-      async update(id, patch) {
-        const cur = await this.get(id);
-        if (!cur) throw new Error(`time entry ${id} not found`);
-        const next = { ...cur, ...patch };
-        db.prepare("UPDATE time_entries SET ended_at=?, duration=?, note=?, doc=? WHERE id=?").run(next.endedAt ?? null, next.duration ?? null, next.note ?? null, JSON.stringify(next), id);
-        return next;
-      },
-      async delete(id) {
-        db.prepare("DELETE FROM time_entries WHERE id=?").run(id);
-      }
-    };
-    this.customFields = {
-      async insert(field) {
-        db.prepare("INSERT INTO custom_fields (id, org_id, entity_type, entity_id, field_name, field_type, field_value, created_at) VALUES (?,?,?,?,?,?,?,?)").run(field.id, field.orgId, field.entityType, field.entityId, field.fieldName, field.fieldType, field.fieldValue, field.createdAt);
-        return field;
-      },
-      async get(id) {
-        const row = db.prepare("SELECT * FROM custom_fields WHERE id=?").get(id);
-        return row ? rowToCustomField(row) : null;
-      },
-      async listByEntity(entityType, entityId) {
-        const rows = db.prepare("SELECT * FROM custom_fields WHERE entity_type=? AND entity_id=? ORDER BY created_at ASC").all(entityType, entityId);
-        return rows.map(rowToCustomField);
-      },
-      async listByOrg(orgId, entityType) {
-        const rows = entityType ? db.prepare("SELECT * FROM custom_fields WHERE org_id=? AND entity_type=? ORDER BY created_at ASC").all(orgId, entityType) : db.prepare("SELECT * FROM custom_fields WHERE org_id=? ORDER BY created_at ASC").all(orgId);
-        return rows.map(rowToCustomField);
-      },
-      async update(id, patch) {
-        const cur = await this.get(id);
-        if (!cur) throw new Error(`custom field ${id} not found`);
-        const next = { ...cur, ...patch };
-        db.prepare("UPDATE custom_fields SET field_value=?, field_name=?, field_type=? WHERE id=?").run(next.fieldValue, next.fieldName, next.fieldType, id);
-        return next;
-      },
-      async delete(id) {
-        db.prepare("DELETE FROM custom_fields WHERE id=?").run(id);
-      },
-      async deleteByEntity(entityType, entityId) {
-        db.prepare("DELETE FROM custom_fields WHERE entity_type=? AND entity_id=?").run(entityType, entityId);
-      }
-    };
-    const connectionRepo = {
-      async list(orgId) {
-        const rows = db.prepare("SELECT id, org_id, channel, status, credentials, created_at, updated_at FROM connections WHERE org_id=? ORDER BY channel ASC").all(orgId);
-        return rows.map(rowToConnection);
-      },
-      async get(orgId, channel) {
-        const row = db.prepare("SELECT id, org_id, channel, status, credentials, created_at, updated_at FROM connections WHERE org_id=? AND channel=?").get(orgId, channel);
-        return row ? rowToConnection(row) : null;
-      },
-      async upsert(orgId, channel, patch) {
-        const existing = await connectionRepo.get(orgId, channel);
-        const now2 = Date.now();
-        if (existing) {
-          const merged = { ...existing, ...patch, channel, updatedAt: now2 };
-          db.prepare("UPDATE connections SET status=?, credentials=?, updated_at=? WHERE org_id=? AND channel=?").run(merged.status, encryptJSON(merged.credentials), now2, orgId, channel);
-          return merged;
-        }
-        const conn = {
-          id: `conn_${channel}_${Date.now()}`,
-          orgId,
-          channel,
-          status: patch.status ?? "disconnected",
-          credentials: patch.credentials ?? {},
-          createdAt: patch.createdAt ?? now2,
-          updatedAt: now2
-        };
-        db.prepare("INSERT INTO connections (id, org_id, channel, status, credentials, created_at, updated_at) VALUES (?,?,?,?,?,?,?)").run(conn.id, conn.orgId, conn.channel, conn.status, encryptJSON(conn.credentials), conn.createdAt, conn.updatedAt);
-        return conn;
-      },
-      async delete(orgId, channel) {
-        db.prepare("DELETE FROM connections WHERE org_id=? AND channel=?").run(orgId, channel);
-      }
-    };
-    this.connections = connectionRepo;
-  }
-  async init() {
-    this.db.exec(DDL);
-  }
-  async close() {
-    this.db.close();
-  }
-};
-function rowToCustomField(row) {
-  return {
-    id: row.id,
-    orgId: row.org_id,
-    entityType: row.entity_type,
-    entityId: row.entity_id,
-    fieldName: row.field_name,
-    fieldType: row.field_type,
-    fieldValue: row.field_value,
-    createdAt: row.created_at
-  };
-}
-function rowToConnection(row) {
-  const raw = typeof row.credentials === "string" ? row.credentials : "";
-  return {
-    id: row.id,
-    orgId: row.org_id,
-    channel: row.channel,
-    status: row.status,
-    credentials: raw ? decryptJSON(raw) : {},
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
-  };
-}
-
-// packages/db/src/supabase.ts
-import { createClient } from "@supabase/supabase-js";
-var SupabaseDatabase = class {
-  client;
-  adminClient = null;
-  loops;
-  tasks;
-  leads;
-  events;
-  settings;
-  approvals;
-  timeEntries;
-  customFields;
-  connections = {
-    async list() {
-      return [];
-    },
-    async get() {
-      return null;
-    },
-    async upsert() {
-      throw new Error("Connections not supported in Supabase mode yet");
-    },
-    async delete() {
-    }
-  };
-  constructor(opts) {
-    this.client = createClient(opts.url, opts.anonKey);
-    this.adminClient = opts.serviceRoleKey ? createClient(opts.url, opts.serviceRoleKey) : null;
-    const db = this.adminClient ?? this.client;
-    this.loops = {
-      async list(orgId, side) {
-        let query = db.from("loops").select("*").eq("org_id", orgId);
-        if (side) query = query.eq("side", side);
-        const { data, error } = await query.order("updated_at", { ascending: false });
-        if (error) throw error;
-        return (data ?? []).map(rowToLoop);
-      },
-      async get(id) {
-        const { data, error } = await db.from("loops").select("*").eq("id", id).single();
-        if (error || !data) return null;
-        return rowToLoop(data);
-      },
-      async insert(loop) {
-        const { error } = await db.from("loops").insert(loopToRow(loop));
-        if (error) throw error;
-        return loop;
-      },
-      async update(id, patch) {
-        const current = await this.get(id);
-        if (!current) throw new Error(`loop ${id} not found`);
-        const next = { ...current, ...patch, updatedAt: Date.now() };
-        const { error } = await db.from("loops").update(loopToRow(next)).eq("id", id);
-        if (error) throw error;
-        return next;
-      },
-      async remove(id) {
-        const { error } = await db.from("loops").delete().eq("id", id);
-        if (error) throw error;
-      }
-    };
-    this.tasks = {
-      async list(orgId) {
-        const { data, error } = await db.from("tasks").select("*").eq("org_id", orgId);
-        if (error) throw error;
-        return (data ?? []).map(rowToTask);
-      },
-      async get(id) {
-        const { data, error } = await db.from("tasks").select("*").eq("id", id).single();
-        if (error || !data) return null;
-        return rowToTask(data);
-      },
-      async insert(task) {
-        const { error } = await db.from("tasks").insert(taskToRow(task));
-        if (error) throw error;
-        return task;
-      },
-      async update(id, patch) {
-        const current = await this.get(id);
-        if (!current) throw new Error(`task ${id} not found`);
-        const next = { ...current, ...patch };
-        const { error } = await db.from("tasks").update(taskToRow(next)).eq("id", id);
-        if (error) throw error;
-        return next;
-      },
-      async remove(id) {
-        const { error } = await db.from("tasks").delete().eq("id", id);
-        if (error) throw error;
-      }
-    };
-    this.leads = {
-      async list(orgId) {
-        const { data, error } = await db.from("leads").select("*").eq("org_id", orgId);
-        if (error) throw error;
-        return (data ?? []).map(rowToLead);
-      },
-      async get(id) {
-        const { data, error } = await db.from("leads").select("*").eq("id", id).single();
-        if (error || !data) return null;
-        return rowToLead(data);
-      },
-      async insert(lead) {
-        const { error } = await db.from("leads").insert(leadToRow(lead));
-        if (error) throw error;
-        return lead;
-      },
-      async update(id, patch) {
-        const current = await this.get(id);
-        if (!current) throw new Error(`lead ${id} not found`);
-        const next = { ...current, ...patch };
-        const { error } = await db.from("leads").update(leadToRow(next)).eq("id", id);
-        if (error) throw error;
-        return next;
-      },
-      async remove(id) {
-        const { error } = await db.from("leads").delete().eq("id", id);
-        if (error) throw error;
-      }
-    };
-    this.events = {
-      async append(event) {
-        const { error } = await db.from("events").insert(eventToRow(event));
-        if (error) throw error;
-        return event;
-      },
-      async list(orgId, limit = 100) {
-        const { data, error } = await db.from("events").select("*").eq("org_id", orgId).order("at", { ascending: false }).limit(limit);
-        if (error) throw error;
-        return (data ?? []).map(rowToEvent);
-      },
-      async get(id) {
-        const { data, error } = await db.from("events").select("*").eq("id", id).single();
-        if (error || !data) return null;
-        return rowToEvent(data);
-      }
-    };
-    this.settings = {
-      async getAutonomy(orgId) {
-        const { data, error } = await db.from("settings").select("*").eq("org_id", orgId).single();
-        if (error || !data) return null;
-        return JSON.parse(data.doc);
-      },
-      async setAutonomy(orgId, settings) {
-        const { error } = await db.from("settings").upsert({ org_id: orgId, doc: JSON.stringify(settings) }, { onConflict: "org_id" });
-        if (error) throw error;
-      }
-    };
-    this.approvals = {
-      async insert(approval) {
-        const { error } = await db.from("approvals").insert(approvalToRow(approval));
-        if (error) throw error;
-        return approval;
-      },
-      async list(orgId, status) {
-        let query = db.from("approvals").select("*").eq("org_id", orgId);
-        if (status) query = query.eq("status", status);
-        const { data, error } = await query.order("created_at", { ascending: false });
-        if (error) throw error;
-        return (data ?? []).map(rowToApproval);
-      },
-      async get(id) {
-        const { data, error } = await db.from("approvals").select("*").eq("id", id).single();
-        if (error || !data) return null;
-        return rowToApproval(data);
-      },
-      async update(id, patch) {
-        const current = await this.get(id);
-        if (!current) throw new Error(`approval ${id} not found`);
-        const next = { ...current, ...patch };
-        const { error } = await db.from("approvals").update(approvalToRow(next)).eq("id", id);
-        if (error) throw error;
-        return next;
-      }
-    };
-    this.timeEntries = {
-      async insert(entry) {
-        const { error } = await db.from("time_entries").insert(timeEntryToRow(entry));
-        if (error) throw error;
-        return entry;
-      },
-      async get(id) {
-        const { data, error } = await db.from("time_entries").select("*").eq("id", id).single();
-        if (error || !data) return null;
-        return rowToTimeEntry(data);
-      },
-      async listByTask(taskId) {
-        const { data, error } = await db.from("time_entries").select("*").eq("task_id", taskId).order("started_at", { ascending: false });
-        if (error) throw error;
-        return (data ?? []).map(rowToTimeEntry);
-      },
-      async listByUser(userId, orgId) {
-        const { data, error } = await db.from("time_entries").select("*").eq("user_id", userId).eq("org_id", orgId).order("started_at", { ascending: false });
-        if (error) throw error;
-        return (data ?? []).map(rowToTimeEntry);
-      },
-      async update(id, patch) {
-        const current = await this.get(id);
-        if (!current) throw new Error(`time entry ${id} not found`);
-        const next = { ...current, ...patch };
-        const { error } = await db.from("time_entries").update(timeEntryToRow(next)).eq("id", id);
-        if (error) throw error;
-        return next;
-      },
-      async delete(id) {
-        const { error } = await db.from("time_entries").delete().eq("id", id);
-        if (error) throw error;
-      }
-    };
-    this.customFields = {
-      async insert(field) {
-        const { error } = await db.from("custom_fields").insert(customFieldToRow(field));
-        if (error) throw error;
-        return field;
-      },
-      async get(id) {
-        const { data, error } = await db.from("custom_fields").select("*").eq("id", id).single();
-        if (error || !data) return null;
-        return rowToCustomField2(data);
-      },
-      async listByEntity(entityType, entityId) {
-        const { data, error } = await db.from("custom_fields").select("*").eq("entity_type", entityType).eq("entity_id", entityId).order("created_at", { ascending: true });
-        if (error) throw error;
-        return (data ?? []).map(rowToCustomField2);
-      },
-      async listByOrg(orgId, entityType) {
-        let query = db.from("custom_fields").select("*").eq("org_id", orgId);
-        if (entityType) query = query.eq("entity_type", entityType);
-        const { data, error } = await query.order("created_at", { ascending: true });
-        if (error) throw error;
-        return (data ?? []).map(rowToCustomField2);
-      },
-      async update(id, patch) {
-        const current = await this.get(id);
-        if (!current) throw new Error(`custom field ${id} not found`);
-        const next = { ...current, ...patch };
-        const { error } = await db.from("custom_fields").update(customFieldToRow(next)).eq("id", id);
-        if (error) throw error;
-        return next;
-      },
-      async delete(id) {
-        const { error } = await db.from("custom_fields").delete().eq("id", id);
-        if (error) throw error;
-      },
-      async deleteByEntity(entityType, entityId) {
-        const { error } = await db.from("custom_fields").delete().eq("entity_type", entityType).eq("entity_id", entityId);
-        if (error) throw error;
-      }
-    };
-  }
-  async init() {
-  }
-  async close() {
-  }
-};
-function rowToLoop(row) {
-  return {
-    id: row.id,
-    orgId: row.org_id,
-    title: row.title,
-    why: row.why ?? "",
-    side: row.side,
-    status: row.status,
-    channel: row.channel,
-    sourceRef: row.source_ref ?? void 0,
-    replyTo: row.reply_to ?? void 0,
-    ownerId: row.owner_id ?? void 0,
-    createdBy: row.created_by,
-    assignedTo: JSON.parse(row.assigned_to ?? "[]"),
-    dueAt: row.due_at ?? void 0,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
-  };
-}
-function loopToRow(loop) {
-  return {
-    id: loop.id,
-    org_id: loop.orgId,
-    title: loop.title,
-    why: loop.why,
-    side: loop.side,
-    status: loop.status,
-    channel: loop.channel,
-    source_ref: loop.sourceRef ?? null,
-    reply_to: loop.replyTo ?? null,
-    owner_id: loop.ownerId ?? null,
-    created_by: loop.createdBy,
-    assigned_to: JSON.stringify(loop.assignedTo),
-    due_at: loop.dueAt ?? null,
-    created_at: loop.createdAt,
-    updated_at: loop.updatedAt
-  };
-}
-function rowToTask(row) {
-  return {
-    id: row.id,
-    orgId: row.org_id,
-    emoji: row.emoji ?? "",
-    title: row.title,
-    list: row.list ?? "Inbox",
-    day: row.day,
-    priority: row.priority,
-    recurring: row.recurring ?? false,
-    recur: row.recur,
-    assignees: JSON.parse(row.assignees ?? "[]"),
-    createdBy: row.created_by,
-    subtasks: JSON.parse(row.subtasks ?? "[]"),
-    comments: JSON.parse(row.comments ?? "[]"),
-    dueAt: row.due_at ?? void 0,
-    createdAt: row.created_at
-  };
-}
-function taskToRow(task) {
-  return {
-    id: task.id,
-    org_id: task.orgId,
-    emoji: task.emoji,
-    title: task.title,
-    list: task.list,
-    day: task.day,
-    priority: task.priority,
-    recurring: task.recurring,
-    recur: task.recur,
-    assignees: JSON.stringify(task.assignees),
-    created_by: task.createdBy,
-    subtasks: JSON.stringify(task.subtasks ?? []),
-    comments: JSON.stringify(task.comments ?? []),
-    due_at: task.dueAt ?? null,
-    created_at: task.createdAt
-  };
-}
-function rowToLead(row) {
-  return {
-    id: row.id,
-    orgId: row.org_id,
-    name: row.name,
-    company: row.company ?? "",
-    title: row.title ?? "",
-    phone: row.phone ?? "",
-    email: row.email ?? "",
-    stage: row.stage,
-    source: row.source,
-    what: row.what ?? "",
-    createdBy: row.created_by,
-    assignedTo: JSON.parse(row.assigned_to ?? "[]"),
-    createdAt: row.created_at
-  };
-}
-function leadToRow(lead) {
-  return {
-    id: lead.id,
-    org_id: lead.orgId,
-    name: lead.name,
-    company: lead.company,
-    title: lead.title,
-    phone: lead.phone,
-    email: lead.email,
-    stage: lead.stage,
-    source: lead.source,
-    what: lead.what,
-    created_by: lead.createdBy,
-    assigned_to: JSON.stringify(lead.assignedTo),
-    created_at: lead.createdAt
-  };
-}
-function rowToEvent(row) {
-  return {
-    id: row.id,
-    orgId: row.org_id,
-    type: row.type,
-    entityId: row.entity_id,
-    actorId: row.actor_id,
-    undo: row.undo ? JSON.parse(row.undo) : null,
-    reversible: row.reversible ?? true,
-    channel: row.channel ?? void 0,
-    at: row.at
-  };
-}
-function eventToRow(event) {
-  return {
-    id: event.id,
-    org_id: event.orgId,
-    type: event.type,
-    entity_id: event.entityId,
-    actor_id: event.actorId,
-    undo: event.undo ? JSON.stringify(event.undo) : null,
-    reversible: event.reversible,
-    channel: event.channel ?? null,
-    at: event.at
-  };
-}
-function rowToApproval(row) {
-  return {
-    id: row.id,
-    orgId: row.org_id,
-    action: row.action,
-    loopId: row.loop_id ?? void 0,
-    title: row.title,
-    status: row.status,
-    createdAt: row.created_at
-  };
-}
-function approvalToRow(approval) {
-  return {
-    id: approval.id,
-    org_id: approval.orgId,
-    action: approval.action,
-    loop_id: approval.loopId ?? null,
-    title: approval.title,
-    status: approval.status,
-    created_at: approval.createdAt
-  };
-}
-function rowToTimeEntry(row) {
-  return {
-    id: row.id,
-    orgId: row.org_id,
-    taskId: row.task_id,
-    userId: row.user_id,
-    startedAt: row.started_at,
-    endedAt: row.ended_at ?? void 0,
-    duration: row.duration ?? void 0,
-    note: row.note ?? void 0
-  };
-}
-function timeEntryToRow(entry) {
-  return {
-    id: entry.id,
-    org_id: entry.orgId,
-    task_id: entry.taskId,
-    user_id: entry.userId,
-    started_at: entry.startedAt,
-    ended_at: entry.endedAt ?? null,
-    duration: entry.duration ?? null,
-    note: entry.note ?? null
-  };
-}
-function rowToCustomField2(row) {
-  return {
-    id: row.id,
-    orgId: row.org_id,
-    entityType: row.entity_type,
-    entityId: row.entity_id,
-    fieldName: row.field_name,
-    fieldType: row.field_type,
-    fieldValue: row.field_value,
-    createdAt: row.created_at
-  };
-}
-function customFieldToRow(field) {
-  return {
-    id: field.id,
-    org_id: field.orgId,
-    entity_type: field.entityType,
-    entity_id: field.entityId,
-    field_name: field.fieldName,
-    field_type: field.fieldType,
-    field_value: field.fieldValue,
-    created_at: field.createdAt
-  };
-}
-
-// packages/db/src/index.ts
-function createDatabase(opts = {}) {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-  if (supabaseUrl && supabaseAnonKey) {
-    return new SupabaseDatabase({
-      url: supabaseUrl,
-      anonKey: supabaseAnonKey,
-      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY
-    });
-  }
-  const fromEnv = process.env.COMPANYBRAIN_DB_PATH;
-  const dir = join(homedir(), ".companybrain");
-  mkdirSync(dir, { recursive: true });
-  return new SqliteDatabase(opts.sqlitePath ?? fromEnv ?? join(dir, "companybrain.sqlite"));
-}
-
-// packages/queue/src/in-process.ts
-var InProcessQueue = class {
-  handlers = /* @__PURE__ */ new Map();
-  timers = /* @__PURE__ */ new Set();
-  started = false;
-  async init() {
-  }
-  on(name, handler) {
-    this.handlers.set(name, handler);
-  }
-  async run(name, data) {
-    const handler = this.handlers.get(name);
-    if (!handler) {
-      console.warn(`[queue] no handler registered for "${name}" \u2014 dropping job`);
-      return;
-    }
-    try {
-      await handler(data);
-    } catch (err) {
-      console.error(`[queue] job "${name}" failed:`, err);
-    }
-  }
-  async enqueue(name, data, opts = {}) {
-    const fire = () => void this.run(name, data);
-    if (opts.delayMs && opts.delayMs > 0) {
-      const t = setTimeout(() => {
-        this.timers.delete(t);
-        fire();
-      }, opts.delayMs);
-      this.timers.add(t);
-    } else {
-      queueMicrotask(fire);
-    }
-  }
-  async schedule(name, data, everyMs) {
-    const t = setInterval(() => void this.run(name, data), everyMs);
-    this.timers.add(t);
-  }
-  async start() {
-    this.started = true;
-  }
-  async close() {
-    for (const t of this.timers) {
-      clearTimeout(t);
-      clearInterval(t);
-    }
-    this.timers.clear();
-    this.started = false;
-  }
-};
-
-// packages/queue/src/index.ts
-function createQueue() {
-  return new InProcessQueue();
-}
-
-// packages/core/src/index.ts
-init_src();
-
-// packages/core/src/context.ts
-import { randomUUID as randomUUID2 } from "node:crypto";
-var consoleMessenger = {
-  async send({ channel, to, text }) {
-    console.log(`[messenger:noop] would send via ${channel} \u2192 ${to}: ${text}`);
-  }
-};
-var templateDrafter = {
-  async draftReply({ title }) {
-    return `Thanks \u2014 we\u2019ve logged \u201C${title}\u201D and someone will get back to you shortly. \u{1F91D}`;
-  }
-};
-var newId = (prefix) => `${prefix}_${randomUUID2().slice(0, 8)}`;
-var now = () => Date.now();
-async function record(ctx, input) {
-  const event = {
-    id: newId("evt"),
-    orgId: input.orgId,
-    type: input.type,
-    entityId: input.entityId,
-    actorId: input.actorId,
-    reversible: input.reversible ?? true,
-    undo: input.undo ?? null,
-    channel: input.channel,
-    at: now()
-  };
-  return ctx.db.events.append(event);
-}
-
-// packages/core/src/autonomy.ts
-var DEFAULT_AUTONOMY = {
-  draftReplies: "auto",
-  chase: "auto",
-  sendReminders: "auto",
-  createTasks: "off",
-  joinMeetings: "off"
-};
-var ACTION_JOB = {
-  draftReplies: "replyLoop",
-  chase: "chaseLoop",
-  sendReminders: "sendReminder"
-};
-async function resolveAutonomy(db, orgId) {
-  const stored = await db.settings.getAutonomy(orgId);
-  return { ...DEFAULT_AUTONOMY, ...stored ?? {} };
-}
-async function dispatch(ctx, action, loopId, orgId, delayMs = 0) {
-  const job = ACTION_JOB[action];
-  if (!job || !loopId) return;
-  await ctx.queue.enqueue(job, { loopId, orgId }, delayMs > 0 ? { delayMs } : void 0);
-}
-async function queueForApproval(ctx, action, opts) {
-  const approval = {
-    id: newId("appr"),
-    orgId: opts.orgId,
-    action,
-    loopId: opts.loopId,
-    title: opts.title,
-    status: "pending",
-    createdAt: now()
-  };
-  await ctx.db.approvals.insert(approval);
-  await record(ctx, { orgId: opts.orgId, type: "approval.created", entityId: approval.id, actorId: "agent_scout" });
-  return approval;
-}
-async function gateAction(ctx, action, opts) {
-  const level2 = (await resolveAutonomy(ctx.db, opts.orgId))[action];
-  if (level2 === "auto") await dispatch(ctx, action, opts.loopId, opts.orgId, opts.delayMs);
-  else if (level2 === "ask") await queueForApproval(ctx, action, opts);
-  return level2;
-}
-function makeAutonomy(ctx) {
-  return {
-    get: (orgId) => resolveAutonomy(ctx.db, orgId),
-    async set(orgId, action, level2) {
-      const next = { ...await resolveAutonomy(ctx.db, orgId), [action]: level2 };
-      await ctx.db.settings.setAutonomy(orgId, next);
-      await record(ctx, { orgId, type: "autonomy.changed", entityId: orgId, actorId: "user_local" });
-      return next;
-    },
-    /** Gate an action through the org's autonomy config. */
-    gate: (action, opts) => gateAction(ctx, action, opts)
-  };
-}
-function makeApprovals(ctx) {
-  return {
-    list: (orgId, status = "pending") => ctx.db.approvals.list(orgId, status),
-    async approve(id) {
-      const a = await ctx.db.approvals.get(id);
-      if (!a) throw new Error(`approval ${id} not found`);
-      if (a.status === "pending") await dispatch(ctx, a.action, a.loopId, a.orgId);
-      const next = await ctx.db.approvals.update(id, { status: "approved" });
-      await record(ctx, { orgId: a.orgId, type: "approval.approved", entityId: id, actorId: "user_local" });
-      return next;
-    },
-    async dismiss(id) {
-      const a = await ctx.db.approvals.get(id);
-      if (!a) throw new Error(`approval ${id} not found`);
-      const next = await ctx.db.approvals.update(id, { status: "dismissed" });
-      await record(ctx, { orgId: a.orgId, type: "approval.dismissed", entityId: id, actorId: "user_local" });
-      return next;
-    }
-  };
-}
-
-// packages/core/src/loops.ts
-var CHASE_DELAY_MS = 6e4;
-function makeLoops(ctx) {
-  return {
-    list(orgId, side) {
-      return ctx.db.loops.list(orgId, side);
-    },
-    get(id) {
-      return ctx.db.loops.get(id);
-    },
-    /** Turn anything that needs a human into a tracked loop, and schedule the chase. */
-    async capture(input) {
-      const loop = {
-        id: newId("loop"),
-        orgId: input.orgId,
-        title: input.title,
-        why: input.why,
-        side: input.side,
-        status: "open",
-        channel: input.channel,
-        sourceRef: input.sourceRef,
-        replyTo: input.replyTo,
-        ownerId: input.ownerId,
-        dueAt: input.dueAt ?? null,
-        createdBy: input.actorId,
-        assignedTo: input.ownerId ? [input.ownerId] : [input.actorId],
-        createdAt: now(),
-        updatedAt: now()
-      };
-      await ctx.db.loops.insert(loop);
-      await record(ctx, {
-        orgId: loop.orgId,
-        type: "loop.captured",
-        entityId: loop.id,
-        actorId: input.actorId,
-        channel: loop.channel,
-        undo: { delete: loop.id }
-      });
-      if (loop.side === "theirs") {
-        await gateAction(ctx, "chase", { orgId: loop.orgId, loopId: loop.id, title: `Chase: ${loop.title}`, delayMs: CHASE_DELAY_MS });
-      }
-      return loop;
-    },
-    async close(id, actorId) {
-      const prev = await ctx.db.loops.get(id);
-      if (!prev) throw new Error(`loop ${id} not found`);
-      const loop = await ctx.db.loops.update(id, { status: "closed" });
-      await record(ctx, {
-        orgId: loop.orgId,
-        type: "loop.closed",
-        entityId: loop.id,
-        actorId,
-        undo: { restoreStatus: prev.status }
-      });
-      return loop;
-    },
-    async snooze(id, actorId, untilAt) {
-      const loop = await ctx.db.loops.update(id, { status: "snoozed", dueAt: untilAt });
-      await record(ctx, { orgId: loop.orgId, type: "loop.snoozed", entityId: loop.id, actorId });
-      await ctx.queue.enqueue("sendReminder", { loopId: loop.id, orgId: loop.orgId }, { delayMs: Math.max(0, untilAt - now()) });
-      return loop;
-    }
-  };
-}
-
-// packages/core/src/tasks.ts
-function makeTasks(ctx) {
-  return {
-    list(orgId) {
-      return ctx.db.tasks.list(orgId);
-    },
-    async create(input) {
-      const task = {
-        id: newId("task"),
-        orgId: input.orgId,
-        emoji: input.emoji ?? "\u2705",
-        title: input.title,
-        list: input.list ?? "Inbox",
-        day: input.day ?? "today",
-        priority: input.priority ?? null,
-        recurring: Boolean(input.recur),
-        recur: input.recur ?? null,
-        assignees: input.assignees ?? [input.actorId],
-        createdBy: input.actorId,
-        completed: false,
-        completedAt: null,
-        dueAt: input.dueAt ?? null,
-        createdAt: now()
-      };
-      await ctx.db.tasks.insert(task);
-      await record(ctx, { orgId: task.orgId, type: "task.created", entityId: task.id, actorId: input.actorId, undo: { delete: task.id } });
-      return task;
-    },
-    async move(id, day, actorId) {
-      const prev = await ctx.db.tasks.get(id);
-      if (!prev) throw new Error(`task ${id} not found`);
-      const task = await ctx.db.tasks.update(id, { day });
-      await record(ctx, { orgId: task.orgId, type: "task.moved", entityId: id, actorId, undo: { restoreDay: prev.day } });
-      return task;
-    },
-    async complete(id, actorId) {
-      const prev = await ctx.db.tasks.get(id);
-      if (!prev) throw new Error(`task ${id} not found`);
-      const task = await ctx.db.tasks.update(id, { completed: true, completedAt: now() });
-      await record(ctx, { orgId: task.orgId, type: "task.completed", entityId: id, actorId, undo: { restoreCompleted: prev.completed ?? false, restoreCompletedAt: prev.completedAt ?? null } });
-      return task;
-    }
-  };
-}
-
-// packages/core/src/leads.ts
-var STAGE_ORDER = ["new", "contacted", "meeting", "proposal", "won", "lost"];
-function makeLeads(ctx) {
-  return {
-    list(orgId) {
-      return ctx.db.leads.list(orgId);
-    },
-    async create(input) {
-      const lead = {
-        id: newId("lead"),
-        orgId: input.orgId,
-        name: input.name,
-        company: input.company ?? "",
-        title: input.title ?? "",
-        phone: input.phone ?? "",
-        email: input.email ?? "",
-        stage: "new",
-        source: input.source ?? "manual",
-        what: input.what ?? "",
-        value: input.value ?? null,
-        createdBy: input.actorId,
-        assignedTo: input.assignedTo ?? [input.actorId],
-        createdAt: now()
-      };
-      await ctx.db.leads.insert(lead);
-      await record(ctx, { orgId: lead.orgId, type: "lead.created", entityId: lead.id, actorId: input.actorId, channel: lead.source, undo: { delete: lead.id } });
-      return lead;
-    },
-    async advance(id, actorId) {
-      const cur = await ctx.db.leads.get(id);
-      if (!cur) throw new Error(`lead ${id} not found`);
-      const idx = STAGE_ORDER.indexOf(cur.stage);
-      const next = STAGE_ORDER[Math.min(idx + 1, STAGE_ORDER.indexOf("won"))];
-      const lead = await ctx.db.leads.update(id, { stage: next });
-      await record(ctx, { orgId: lead.orgId, type: "lead.advanced", entityId: id, actorId, undo: { restoreStage: cur.stage } });
-      return lead;
-    },
-    /** Move a lead directly to any stage — used by pipeline drag-and-drop. */
-    async setStage(id, stage, actorId) {
-      const cur = await ctx.db.leads.get(id);
-      if (!cur) throw new Error(`lead ${id} not found`);
-      if (!STAGE_ORDER.includes(stage)) throw new Error(`invalid stage ${stage}`);
-      if (cur.stage === stage) return cur;
-      const lead = await ctx.db.leads.update(id, { stage });
-      await record(ctx, { orgId: lead.orgId, type: "lead.advanced", entityId: id, actorId, undo: { restoreStage: cur.stage } });
-      return lead;
-    },
-    /**
-     * "Quick-add from a phone number + rough note" → a structured lead.
-     * The AI extraction is stubbed here; the server injects the real LLM call server-side.
-     */
-    async quickAddFromNote(input, extract) {
-      const guessed = extract ? await extract(input.note) : { name: input.note.split(/\s+/).slice(0, 2).join(" ") || "New lead", what: input.note };
-      return this.create({
-        orgId: input.orgId,
-        actorId: input.actorId,
-        name: guessed.name ?? "New lead",
-        company: guessed.company,
-        title: guessed.title,
-        phone: input.phone,
-        email: guessed.email,
-        source: "whatsapp",
-        what: guessed.what ?? input.note
-      });
-    }
-  };
-}
-
-// packages/core/src/agents.ts
-var AGENT_ROSTER = [
-  { id: "agent_scout", name: "Scout", emoji: "\u{1F52D}", role: "Watches channels, captures loops", autonomy: "auto", done: 142, pending: 3 },
-  { id: "agent_atlas", name: "Atlas", emoji: "\u{1F5FA}\uFE0F", role: "Plans projects, breaks down tasks", autonomy: "ask", done: 38, pending: 1 },
-  { id: "agent_ledger", name: "Ledger", emoji: "\u{1F4D2}", role: "Chases leads, drafts follow-ups", autonomy: "ask", done: 64, pending: 5 }
-];
-function makeAgents() {
-  return {
-    roster() {
-      return AGENT_ROSTER;
-    }
-  };
-}
-
-// packages/core/src/time-tracking.ts
-function makeTimeTracking(ctx) {
-  return {
-    /**
-     * Start tracking time on a task.
-     * If there's already an active entry for this task, stop it first.
-     */
-    async start(input) {
-      const active = await this.getActive(input.taskId);
-      if (active) {
-        await this.stop(active.id);
-      }
-      const entry = {
-        id: newId("time"),
-        orgId: input.orgId,
-        taskId: input.taskId,
-        userId: input.userId,
-        startedAt: now(),
-        note: input.note
-      };
-      await ctx.db.timeEntries.insert(entry);
-      return entry;
-    },
-    /**
-     * Stop tracking time on a task.
-     */
-    async stop(entryId) {
-      const entry = await ctx.db.timeEntries.get(entryId);
-      if (!entry) throw new Error(`time entry ${entryId} not found`);
-      if (entry.endedAt) throw new Error(`time entry ${entryId} already stopped`);
-      const endedAt = now();
-      const duration = Math.floor((endedAt - entry.startedAt) / 1e3);
-      return ctx.db.timeEntries.update(entryId, {
-        endedAt,
-        duration
-      });
-    },
-    /**
-     * Get active (running) time entry for a task.
-     */
-    async getActive(taskId) {
-      const entries = await ctx.db.timeEntries.listByTask(taskId);
-      return entries.find((e) => !e.endedAt) ?? null;
-    },
-    /**
-     * Get all time entries for a task.
-     */
-    async listByTask(taskId) {
-      return ctx.db.timeEntries.listByTask(taskId);
-    },
-    /**
-     * Get all time entries for a user.
-     */
-    async listByUser(userId, orgId) {
-      return ctx.db.timeEntries.listByUser(userId, orgId);
-    },
-    /**
-     * Get total time spent on a task (in seconds).
-     */
-    async getTotalTime(taskId) {
-      const entries = await ctx.db.timeEntries.listByTask(taskId);
-      return entries.reduce((total, e) => total + (e.duration ?? 0), 0);
-    },
-    /**
-     * Get total time for a user today.
-     */
-    async getTodayTime(userId, orgId) {
-      const entries = await ctx.db.timeEntries.listByUser(userId, orgId);
-      const todayStart = /* @__PURE__ */ new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      const todayMs = todayStart.getTime();
-      return entries.filter((e) => e.startedAt >= todayMs).reduce((total, e) => total + (e.duration ?? 0), 0);
-    },
-    /**
-     * Update a time entry (edit note, adjust end time).
-     */
-    async update(entryId, patch) {
-      const entry = await ctx.db.timeEntries.get(entryId);
-      if (!entry) throw new Error(`time entry ${entryId} not found`);
-      const updates = {};
-      if (patch.note !== void 0) updates.note = patch.note;
-      if (patch.endedAt !== void 0) {
-        updates.endedAt = patch.endedAt;
-        updates.duration = Math.floor((patch.endedAt - entry.startedAt) / 1e3);
-      }
-      return ctx.db.timeEntries.update(entryId, updates);
-    },
-    /**
-     * Delete a time entry.
-     */
-    async delete(entryId) {
-      await ctx.db.timeEntries.delete(entryId);
-    },
-    /**
-     * Format duration for display.
-     */
-    formatDuration(seconds) {
-      const h = Math.floor(seconds / 3600);
-      const m = Math.floor(seconds % 3600 / 60);
-      const s = seconds % 60;
-      if (h > 0) return `${h}h ${m}m`;
-      if (m > 0) return `${m}m ${s}s`;
-      return `${s}s`;
-    }
-  };
-}
-
-// packages/core/src/bulk.ts
-function makeBulkOps(ctx) {
-  return {
-    /**
-     * Close multiple loops at once.
-     */
-    async closeLoops(ids, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      for (const id of ids) {
-        try {
-          await ctx.db.loops.update(id, { status: "closed", updatedAt: Date.now() });
-          await record(ctx, { orgId: (await ctx.db.loops.get(id))?.orgId ?? "", type: "loop.closed", entityId: id, actorId });
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Snooze multiple loops.
-     */
-    async snoozeLoops(ids, hours, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      const untilAt = Date.now() + Math.max(1, hours) * 60 * 60 * 1e3;
-      for (const id of ids) {
-        try {
-          await ctx.db.loops.update(id, { status: "snoozed", updatedAt: untilAt });
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Move multiple tasks to a different day.
-     */
-    async moveTasks(ids, day, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      for (const id of ids) {
-        try {
-          const prev = await ctx.db.tasks.get(id);
-          if (!prev) throw new Error("task not found");
-          await ctx.db.tasks.update(id, { day });
-          await record(ctx, { orgId: prev.orgId, type: "task.moved", entityId: id, actorId, undo: { restoreDay: prev.day } });
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Complete multiple tasks.
-     */
-    async completeTasks(ids, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      for (const id of ids) {
-        try {
-          const task = await ctx.db.tasks.get(id);
-          if (!task) throw new Error("task not found");
-          await ctx.db.tasks.update(id, { day: "today" });
-          await record(ctx, { orgId: task.orgId, type: "task.completed", entityId: id, actorId });
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Delete multiple tasks.
-     */
-    async deleteTasks(ids, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      for (const id of ids) {
-        try {
-          const task = await ctx.db.tasks.get(id);
-          if (!task) throw new Error("task not found");
-          await ctx.db.tasks.remove(id);
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Advance multiple leads to next stage.
-     */
-    async advanceLeads(ids, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      const stageOrder = ["new", "contacted", "meeting", "proposal", "won"];
-      for (const id of ids) {
-        try {
-          const lead = await ctx.db.leads.get(id);
-          if (!lead) throw new Error("lead not found");
-          const currentIdx = stageOrder.indexOf(lead.stage);
-          const nextStage = stageOrder[Math.min(currentIdx + 1, stageOrder.length - 1)];
-          await ctx.db.leads.update(id, { stage: nextStage });
-          await record(ctx, { orgId: lead.orgId, type: "lead.advanced", entityId: id, actorId });
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Assign multiple entities to a user.
-     */
-    async assignMany(entityType, ids, userIds, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      for (const id of ids) {
-        try {
-          if (entityType === "loop") {
-            await ctx.db.loops.update(id, { assignedTo: userIds });
-          } else if (entityType === "task") {
-            await ctx.db.tasks.update(id, { assignees: userIds });
-          } else if (entityType === "lead") {
-            await ctx.db.leads.update(id, { assignedTo: userIds });
-          }
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Delete multiple entities.
-     */
-    async deleteMany(entityType, ids, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      for (const id of ids) {
-        try {
-          if (entityType === "loop") {
-            await ctx.db.loops.remove(id);
-          } else if (entityType === "task") {
-            await ctx.db.tasks.remove(id);
-          } else if (entityType === "lead") {
-            await ctx.db.leads.remove(id);
-          }
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    }
-  };
-}
-
-// packages/core/src/recurring.ts
-function makeRecurring(ctx) {
-  return {
-    /**
-     * Process all recurring tasks and create new instances where needed.
-     * Should be called daily (e.g., by a cron job or worker).
-     */
-    async processDaily(orgId) {
-      let created = 0;
-      let skipped = 0;
-      const tasks = await ctx.db.tasks.list(orgId);
-      const recurringTasks = tasks.filter((t) => t.recurring && t.recur);
-      for (const task of recurringTasks) {
-        const shouldCreate = this.shouldCreateToday(task.recur);
-        if (!shouldCreate) {
-          skipped++;
-          continue;
-        }
-        const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-        const existingToday = tasks.find(
-          (t) => t.title === task.title && t.createdBy === task.createdBy && new Date(t.createdAt).toISOString().split("T")[0] === today
-        );
-        if (existingToday) {
-          skipped++;
-          continue;
-        }
-        await ctx.db.tasks.insert({
-          id: newId("task"),
-          orgId: task.orgId,
-          emoji: task.emoji,
-          title: task.title,
-          list: task.list,
-          day: "today",
-          priority: task.priority,
-          recurring: true,
-          recur: task.recur,
-          assignees: task.assignees,
-          createdBy: task.createdBy,
-          completed: false,
-          completedAt: null,
-          subtasks: [],
-          comments: [],
-          dueAt: null,
-          createdAt: now()
-        });
-        await record(ctx, {
-          orgId: task.orgId,
-          type: "task.created",
-          entityId: task.id,
-          actorId: task.createdBy
-        });
-        created++;
-      }
-      return { created, skipped };
-    },
-    /**
-     * Check if a recurring task should be created today.
-     */
-    shouldCreateToday(recur) {
-      const today = /* @__PURE__ */ new Date();
-      const dayOfWeek = today.getDay();
-      const dayOfMonth = today.getDate();
-      switch ((recur ?? "").toLowerCase()) {
-        case "daily":
-          return true;
-        case "weekly":
-          return true;
-        // Base task is weekly, check on creation day
-        case "monthly":
-          return dayOfMonth === 1;
-        // Create on 1st of month
-        case "weekdays":
-          return dayOfWeek >= 1 && dayOfWeek <= 5;
-        case "weekends":
-          return dayOfWeek === 0 || dayOfWeek === 6;
-        default:
-          return false;
-      }
-    },
-    /**
-     * Get next run date for a recurring task.
-     */
-    getNextRun(recur) {
-      const now2 = /* @__PURE__ */ new Date();
-      switch ((recur ?? "").toLowerCase()) {
-        case "daily":
-          return new Date(now2.getTime() + 24 * 60 * 60 * 1e3);
-        case "weekly":
-          return new Date(now2.getTime() + 7 * 24 * 60 * 60 * 1e3);
-        case "Monthly": {
-          const next = new Date(now2);
-          next.setMonth(next.getMonth() + 1);
-          next.setDate(1);
-          return next;
-        }
-        case "Weekdays": {
-          const next = new Date(now2);
-          do {
-            next.setDate(next.getDate() + 1);
-          } while (next.getDay() === 0 || next.getDay() === 6);
-          return next;
-        }
-        case "Weekends": {
-          const next = new Date(now2);
-          do {
-            next.setDate(next.getDate() + 1);
-          } while (next.getDay() !== 0 && next.getDay() !== 6);
-          return next;
-        }
-        default:
-          return new Date(now2.getTime() + 24 * 60 * 60 * 1e3);
-      }
-    },
-    /**
-     * Format schedule for display.
-     */
-    formatSchedule(recur) {
-      switch ((recur ?? "").toLowerCase()) {
-        case "daily":
-          return "Every day";
-        case "weekly":
-          return "Every week";
-        case "monthly":
-          return "Every month";
-        case "weekdays":
-          return "Weekdays only";
-        case "weekends":
-          return "Weekends only";
-        default:
-          return recur;
-      }
-    }
-  };
-}
-
-// packages/core/src/subtasks.ts
-function makeSubtasks(ctx) {
-  return {
-    /**
-     * Add a subtask to a task (appends to Task.subtasks array).
-     */
-    async add(taskId, title) {
-      const task = await ctx.db.tasks.get(taskId);
-      if (!task) throw new Error(`task ${taskId} not found`);
-      const subtask = { id: newId("sub"), title, done: false };
-      const subtasks = [...task.subtasks ?? [], subtask];
-      await ctx.db.tasks.update(taskId, { subtasks });
-      return subtask;
-    },
-    /**
-     * Complete a subtask.
-     */
-    async complete(taskId, subtaskId) {
-      const task = await ctx.db.tasks.get(taskId);
-      if (!task) throw new Error(`task ${taskId} not found`);
-      const subtasks = (task.subtasks ?? []).map(
-        (s) => s.id === subtaskId ? { ...s, done: true } : s
-      );
-      await ctx.db.tasks.update(taskId, { subtasks });
-      const allDone = subtasks.every((s) => s.done);
-      if (allDone && subtasks.length > 0) {
-        await record(ctx, {
-          orgId: task.orgId,
-          type: "task.completed",
-          entityId: taskId,
-          actorId: "system"
-        });
-      }
-    },
-    /**
-     * Remove a subtask.
-     */
-    async remove(taskId, subtaskId) {
-      const task = await ctx.db.tasks.get(taskId);
-      if (!task) throw new Error(`task ${taskId} not found`);
-      const subtasks = (task.subtasks ?? []).filter((s) => s.id !== subtaskId);
-      await ctx.db.tasks.update(taskId, { subtasks });
-    },
-    /**
-     * Toggle a subtask done state.
-     */
-    async toggle(taskId, subtaskId) {
-      const task = await ctx.db.tasks.get(taskId);
-      if (!task) throw new Error(`task ${taskId} not found`);
-      const subtasks = (task.subtasks ?? []).map(
-        (s) => s.id === subtaskId ? { ...s, done: !s.done } : s
-      );
-      await ctx.db.tasks.update(taskId, { subtasks });
-    },
-    /**
-     * List subtasks for a task.
-     */
-    async list(taskId) {
-      const task = await ctx.db.tasks.get(taskId);
-      return task?.subtasks ?? [];
-    },
-    /**
-     * Get progress percentage.
-     */
-    getProgress(subtasks) {
-      if (subtasks.length === 0) return 0;
-      const done = subtasks.filter((s) => s.done).length;
-      return Math.round(done / subtasks.length * 100);
-    }
-  };
-}
-
-// packages/core/src/ai.ts
-function makeAi(ctx) {
-  const suggestions = /* @__PURE__ */ new Map();
-  async function getSuggestions(entityType, entityId) {
-    const results = [];
-    if (entityType === "task") {
-      const task = await ctx.db.tasks.get(entityId);
-      if (task) {
-        if (task.dueAt && task.dueAt < Date.now()) {
-          results.push({
-            id: `sug_${Date.now()}_overdue`,
-            type: "priority",
-            entityType,
-            entityId,
-            reason: "Task is overdue \u2014 consider bumping priority",
-            confidence: 0.9,
-            createdAt: Date.now()
-          });
-        }
-        const subtasks = task.subtasks ?? [];
-        if (subtasks.length > 0 && subtasks.every((s) => s.done)) {
-          results.push({
-            id: `sug_${Date.now()}_done`,
-            type: "close",
-            entityType,
-            entityId,
-            reason: "All subtasks complete \u2014 ready to close",
-            confidence: 0.95,
-            createdAt: Date.now()
-          });
-        }
-      }
-    }
-    if (entityType === "loop") {
-      const loop = await ctx.db.loops.get(entityId);
-      if (loop) {
-        const age = Date.now() - loop.createdAt;
-        const threeDays = 3 * 24 * 60 * 60 * 1e3;
-        if (loop.status === "open" && age > threeDays) {
-          results.push({
-            id: `sug_${Date.now()}_stale`,
-            type: "follow_up",
-            entityType,
-            entityId,
-            reason: "Loop open for 3+ days \u2014 consider following up",
-            confidence: 0.7,
-            createdAt: Date.now()
-          });
-        }
-      }
-    }
-    for (const s of results) {
-      suggestions.set(s.id, s);
-    }
-    return results;
-  }
-  async function autoAssign(taskId) {
-    const task = await ctx.db.tasks.get(taskId);
-    if (!task || task.assignees?.length) return null;
-    const allTasks = await ctx.db.tasks.list(task.orgId);
-    const recentTasks = allTasks.filter((t) => t.assignees?.length && t.subtasks?.some((s) => s.done)).slice(-20);
-    const counts = /* @__PURE__ */ new Map();
-    for (const t of recentTasks) {
-      for (const a of t.assignees ?? []) {
-        counts.set(a, (counts.get(a) ?? 0) + 1);
-      }
-    }
-    let best = null;
-    let bestCount = 0;
-    for (const [assignee, count] of counts) {
-      if (count > bestCount) {
-        best = assignee;
-        bestCount = count;
-      }
-    }
-    if (best) {
-      await ctx.db.tasks.update(taskId, { assignees: [best] });
-    }
-    return best;
-  }
-  async function getPatterns(orgId) {
-    const tasks = await ctx.db.tasks.list(orgId);
-    const loops = await ctx.db.loops.list(orgId);
-    const assigneeCounts = /* @__PURE__ */ new Map();
-    for (const t of tasks) {
-      for (const a of t.assignees ?? []) {
-        assigneeCounts.set(a, (assigneeCounts.get(a) ?? 0) + 1);
-      }
-    }
-    const channelCounts = /* @__PURE__ */ new Map();
-    for (const l of loops) {
-      channelCounts.set(l.channel, (channelCounts.get(l.channel) ?? 0) + 1);
-    }
+// packages/mcp/src/tools.ts
+async function identity(core, ctx) {
+  if (ctx.orgId && ctx.actorId) return { orgId: ctx.orgId, actorId: ctx.actorId };
+  try {
+    const principal = await core.ctx.auth.current();
     return {
-      topAssignees: [...assigneeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
-      topChannels: [...channelCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
-      taskCompletionRate: tasks.length > 0 ? tasks.filter((t) => t.subtasks?.some((s) => s.done)).length / tasks.length : 0,
-      totalLoops: loops.length,
-      totalTasks: tasks.length
+      orgId: ctx.orgId ?? principal.orgId ?? DEFAULT_ORG_ID,
+      actorId: ctx.actorId ?? principal.userId ?? DEFAULT_ACTOR_ID
     };
+  } catch {
+    return { orgId: ctx.orgId ?? DEFAULT_ORG_ID, actorId: ctx.actorId ?? DEFAULT_ACTOR_ID };
   }
-  async function dismiss(suggestionId) {
-    suggestions.delete(suggestionId);
-  }
-  return { getSuggestions, autoAssign, getPatterns, dismiss };
 }
+async function gateWrite(core, action, orgId, title) {
+  const level2 = await core.autonomy.gate(action, { orgId, title });
+  return { proceed: level2 === "auto", level: level2 };
+}
+function gateMessage(level2, action) {
+  if (level2 === "off") return `Blocked: autonomy.${action} is 'off'. Ask an admin to set it to 'ask' or 'auto'.`;
+  return `Queued for human approval: autonomy.${action} is 'ask'. It will appear in the companybrain Auto tab; approving clears the queue (no auto-replay).`;
+}
+function findTool(name) {
+  return TOOLS.find((t) => t.name === name);
+}
+var DEFAULT_ORG_ID, DEFAULT_ACTOR_ID, str, TOOLS;
+var init_tools = __esm({
+  "packages/mcp/src/tools.ts"() {
+    "use strict";
+    DEFAULT_ORG_ID = "org_local";
+    DEFAULT_ACTOR_ID = "user_local";
+    str = (description) => ({ type: "string", description });
+    TOOLS = [
+      // ---------- READS (never gated) ----------
+      {
+        name: "list_tasks",
+        description: "List tasks for the org. Optionally filter by day (today|tomorrow|upcoming) and/or priority (low|med|high).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            day: { type: "string", enum: ["today", "tomorrow", "upcoming"], description: "Filter by board day." },
+            priority: { type: "string", enum: ["low", "med", "high"], description: "Filter by priority." }
+          }
+        },
+        async handler(args, core, ctx) {
+          const { orgId } = await identity(core, ctx);
+          let tasks = await core.tasks.list(orgId);
+          if (args?.day) tasks = tasks.filter((t) => t.day === args.day);
+          if (args?.priority) tasks = tasks.filter((t) => t.priority === args.priority);
+          return { count: tasks.length, tasks };
+        }
+      },
+      {
+        name: "list_loops",
+        description: 'List open loops (things waiting on a person \u2014 "their court" or "your court").',
+        inputSchema: {
+          type: "object",
+          properties: {
+            side: { type: "string", enum: ["yours", "theirs"], description: "Filter by whose court the ball is in." }
+          }
+        },
+        async handler(args, core, ctx) {
+          const { orgId } = await identity(core, ctx);
+          const loops = await core.loops.list(orgId, args?.side);
+          const open = loops.filter((l) => l.status !== "closed");
+          return { count: open.length, loops: open };
+        }
+      },
+      {
+        name: "search",
+        description: "Search across tasks, loops, and leads by case-insensitive title/name substring.",
+        inputSchema: {
+          type: "object",
+          properties: { query: str("Substring to search for.") },
+          required: ["query"]
+        },
+        async handler(args, core, ctx) {
+          const { orgId } = await identity(core, ctx);
+          const q = String(args.query ?? "").toLowerCase();
+          if (!q) return { tasks: [], loops: [], leads: [] };
+          const [tasks, loops, leads] = await Promise.all([
+            core.tasks.list(orgId),
+            core.loops.list(orgId),
+            core.leads.list(orgId)
+          ]);
+          return {
+            tasks: tasks.filter((t) => t.title.toLowerCase().includes(q)),
+            loops: loops.filter((l) => l.title.toLowerCase().includes(q)),
+            leads: leads.filter((l) => l.name.toLowerCase().includes(q) || l.company.toLowerCase().includes(q))
+          };
+        }
+      },
+      {
+        name: "get_dashboard",
+        description: "Return a KPI summary: open loops, tasks by day, leads by stage.",
+        inputSchema: { type: "object", properties: {} },
+        async handler(_args, core, ctx) {
+          const { orgId } = await identity(core, ctx);
+          const [loops, tasks, leads] = await Promise.all([
+            core.loops.list(orgId),
+            core.tasks.list(orgId),
+            core.leads.list(orgId)
+          ]);
+          const openLoops = loops.filter((l) => l.status !== "closed").length;
+          const tasksByDay = {
+            today: tasks.filter((t) => t.day === "today").length,
+            tomorrow: tasks.filter((t) => t.day === "tomorrow").length,
+            upcoming: tasks.filter((t) => t.day === "upcoming").length
+          };
+          const leadsByStage = leads.reduce((acc, l) => {
+            acc[l.stage] = (acc[l.stage] ?? 0) + 1;
+            return acc;
+          }, {});
+          return { openLoops, totalTasks: tasks.length, tasksByDay, totalLeads: leads.length, leadsByStage };
+        }
+      },
+      // ---------- WRITES (gated) ----------
+      {
+        name: "create_task",
+        description: "Create a new task. Gated by autonomy.createTasks (off|ask|auto).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            title: str("Task title."),
+            day: { type: "string", enum: ["today", "tomorrow", "upcoming"], description: "Board day. Default today." },
+            priority: { type: "string", enum: ["low", "med", "high"], description: "Priority. Default none." },
+            list: str('List/board column name. Default "Inbox".')
+          },
+          required: ["title"]
+        },
+        async handler(args, core, ctx) {
+          const { orgId, actorId } = await identity(core, ctx);
+          const { proceed, level: level2 } = await gateWrite(core, "createTasks", orgId, `Create task: ${args.title}`);
+          if (!proceed) return { gated: level2, message: gateMessage(level2, "createTasks") };
+          const task = await core.tasks.create({
+            orgId,
+            actorId,
+            title: args.title,
+            day: args.day,
+            priority: args.priority ?? null,
+            list: args.list
+          });
+          return { gated: "auto", task };
+        }
+      },
+      {
+        name: "create_loop",
+        description: "Capture a new open loop (something waiting on a person). Gated by autonomy.createTasks.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            title: str("Short summary of the loop."),
+            why: str("Why it matters / what is needed."),
+            side: { type: "string", enum: ["yours", "theirs"], description: "Whose court the ball is in." }
+          },
+          required: ["title", "why", "side"]
+        },
+        async handler(args, core, ctx) {
+          const { orgId, actorId } = await identity(core, ctx);
+          const { proceed, level: level2 } = await gateWrite(core, "createTasks", orgId, `Create loop: ${args.title}`);
+          if (!proceed) return { gated: level2, message: gateMessage(level2, "createTasks") };
+          const loop = await core.loops.capture({
+            orgId,
+            actorId,
+            title: args.title,
+            why: args.why,
+            side: args.side,
+            channel: "manual"
+          });
+          return { gated: "auto", loop };
+        }
+      },
+      {
+        name: "complete_task",
+        description: "Mark a task complete by id. Gated by autonomy.manageRecords.",
+        inputSchema: {
+          type: "object",
+          properties: { id: str("Task id (e.g. task_abcd1234).") },
+          required: ["id"]
+        },
+        async handler(args, core, ctx) {
+          const { orgId, actorId } = await identity(core, ctx);
+          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Complete task ${args.id}`);
+          if (!proceed) return { gated: level2, message: gateMessage(level2, "manageRecords") };
+          const task = await core.tasks.complete(args.id, actorId);
+          return { gated: "auto", task };
+        }
+      },
+      {
+        name: "assign_task",
+        description: "Assign a task to one or more users. Gated by autonomy.manageRecords.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: str("Task id."),
+            userIds: { type: "array", items: { type: "string" }, description: "User ids to assign." }
+          },
+          required: ["id", "userIds"]
+        },
+        async handler(args, core, ctx) {
+          const { orgId } = await identity(core, ctx);
+          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Assign task ${args.id}`);
+          if (!proceed) return { gated: level2, message: gateMessage(level2, "manageRecords") };
+          const task = await core.ctx.db.tasks.update(args.id, { assignees: args.userIds });
+          return { gated: "auto", task };
+        }
+      },
+      {
+        name: "close_loop",
+        description: "Close a loop by id. Gated by autonomy.manageRecords.",
+        inputSchema: {
+          type: "object",
+          properties: { id: str("Loop id.") },
+          required: ["id"]
+        },
+        async handler(args, core, ctx) {
+          const { orgId, actorId } = await identity(core, ctx);
+          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Close loop ${args.id}`);
+          if (!proceed) return { gated: level2, message: gateMessage(level2, "manageRecords") };
+          const loop = await core.loops.close(args.id, actorId);
+          return { gated: "auto", loop };
+        }
+      },
+      {
+        name: "create_lead",
+        description: 'Create a new lead (enters the pipeline at "new"). Gated by autonomy.manageRecords.',
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: str("Contact name."),
+            company: str("Company name."),
+            email: str("Contact email."),
+            phone: str("Contact phone.")
+          },
+          required: ["name"]
+        },
+        async handler(args, core, ctx) {
+          const { orgId, actorId } = await identity(core, ctx);
+          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Create lead: ${args.name}`);
+          if (!proceed) return { gated: level2, message: gateMessage(level2, "manageRecords") };
+          const lead = await core.leads.create({
+            orgId,
+            actorId,
+            name: args.name,
+            company: args.company,
+            email: args.email,
+            phone: args.phone
+          });
+          return { gated: "auto", lead };
+        }
+      },
+      {
+        name: "advance_lead",
+        description: "Advance a lead to the next pipeline stage. Gated by autonomy.manageRecords.",
+        inputSchema: {
+          type: "object",
+          properties: { id: str("Lead id.") },
+          required: ["id"]
+        },
+        async handler(args, core, ctx) {
+          const { orgId, actorId } = await identity(core, ctx);
+          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Advance lead ${args.id}`);
+          if (!proceed) return { gated: level2, message: gateMessage(level2, "manageRecords") };
+          const lead = await core.leads.advance(args.id, actorId);
+          return { gated: "auto", lead };
+        }
+      }
+    ];
+  }
+});
 
-// packages/core/src/undo.ts
-async function undoEvent(ctx, eventId) {
-  const ev = await ctx.db.events.get(eventId);
-  if (!ev) throw notReversible(`event ${eventId} not found`);
-  if (!ev.reversible || !ev.undo) throw notReversible(`event ${eventId} is not reversible`);
-  const u = ev.undo;
-  if (u.delete) {
-    const id = u.delete;
-    if (id.startsWith("loop_")) await ctx.db.loops.remove(id);
-    else if (id.startsWith("task_")) await ctx.db.tasks.remove(id);
-    else if (id.startsWith("lead_")) await ctx.db.leads.remove(id);
-    else throw notReversible(`don't know how to delete ${id}`);
-  } else if (u.restoreStatus) {
-    await ctx.db.loops.update(ev.entityId, { status: u.restoreStatus });
-  } else if (u.restoreDay) {
-    await ctx.db.tasks.update(ev.entityId, { day: u.restoreDay });
-  } else if (u.restoreStage) {
-    await ctx.db.leads.update(ev.entityId, { stage: u.restoreStage });
-  } else {
-    throw notReversible(`event ${eventId} has no known undo action`);
-  }
-  await record(ctx, { orgId: ev.orgId, type: "event.undone", entityId: eventId, actorId: "user_local", reversible: false });
-  return { undone: eventId, type: ev.type };
-}
-function notReversible(message) {
-  const err = new Error(message);
-  err.statusCode = 400;
-  return err;
-}
-
-// packages/core/src/workers.ts
-function registerWorkers(ctx) {
-  ctx.queue.on("replyLoop", async ({ loopId, orgId }) => {
-    const loop = await ctx.db.loops.get(loopId);
-    if (!loop || loop.status === "closed") return;
-    if (!loop.replyTo) {
-      console.warn(`[worker] replyLoop ${loopId}: no replyTo address \u2014 skipping send`);
+// packages/mcp/src/server.ts
+import { createInterface } from "node:readline";
+function startMcpServer(opts) {
+  const { core, context } = opts;
+  const serverName = opts.name ?? "companybrain";
+  const serverVersion = opts.version ?? "0.1.0";
+  const write = (res) => {
+    process.stdout.write(JSON.stringify(res) + "\n");
+  };
+  const handle = async (req) => {
+    const id = req.id ?? null;
+    switch (req.method) {
+      case "initialize":
+        return {
+          jsonrpc: "2.0",
+          id,
+          result: {
+            protocolVersion: PROTOCOL_VERSION,
+            capabilities: { tools: {} },
+            serverInfo: { name: serverName, version: serverVersion }
+          }
+        };
+      case "notifications/initialized":
+        return null;
+      case "tools/list":
+        return {
+          jsonrpc: "2.0",
+          id,
+          result: {
+            tools: TOOLS.map((t) => ({
+              name: t.name,
+              description: t.description,
+              inputSchema: t.inputSchema
+            }))
+          }
+        };
+      case "tools/call": {
+        const params = req.params ?? {};
+        const name = params.name;
+        const args = params.arguments ?? {};
+        const tool = findTool(name);
+        if (!tool) {
+          return {
+            jsonrpc: "2.0",
+            id,
+            error: { code: ERROR_CODES.METHOD_NOT_FOUND, message: `Unknown tool: ${name}` }
+          };
+        }
+        try {
+          const output = await tool.handler(args, core, context ?? {});
+          const text = typeof output === "string" ? output : JSON.stringify(output, null, 2);
+          return {
+            jsonrpc: "2.0",
+            id,
+            result: { content: [{ type: "text", text }], isError: false }
+          };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return {
+            jsonrpc: "2.0",
+            id,
+            result: {
+              content: [{ type: "text", text: `Tool "${name}" failed: ${message}` }],
+              isError: true
+            }
+          };
+        }
+      }
+      default:
+        return {
+          jsonrpc: "2.0",
+          id,
+          error: { code: ERROR_CODES.METHOD_NOT_FOUND, message: `Method not found: ${req.method}` }
+        };
+    }
+  };
+  const rl = createInterface({ input: process.stdin, terminal: false });
+  rl.on("line", (line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    let req;
+    try {
+      req = JSON.parse(trimmed);
+    } catch {
+      write({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: ERROR_CODES.PARSE_ERROR, message: "Parse error" }
+      });
       return;
     }
-    const text = await ctx.drafter.draftReply({ title: loop.title, why: loop.why, channel: loop.channel });
-    await ctx.messenger.send({ channel: loop.channel, to: loop.replyTo, text });
-    await record(ctx, { orgId, type: "reply.sent", entityId: loopId, actorId: "agent_scout", channel: loop.channel });
-    console.log(`[worker] replied to ${loop.replyTo} for loop ${loopId}`);
-  });
-  ctx.queue.on("chaseLoop", async ({ loopId, orgId }) => {
-    const loop = await ctx.db.loops.get(loopId);
-    if (!loop || loop.status === "closed") return;
-    if (loop.replyTo) {
-      await ctx.messenger.send({ channel: loop.channel, to: loop.replyTo, text: `Just following up on: ${loop.title} \u{1F642}` });
+    if (Array.isArray(req)) {
+      void Promise.all(req.map((r) => handle(r))).then((responses) => {
+        const filtered = responses.filter((r) => r !== null);
+        if (filtered.length) write({ jsonrpc: "2.0", id: null, result: filtered });
+      });
+      return;
     }
-    await record(ctx, { orgId, type: "reminder.sent", entityId: loopId, actorId: "agent_scout", channel: loop.channel });
-    console.log(`[worker] chased loop ${loopId}: "${loop.title}"`);
+    void handle(req).then((response) => {
+      if (response) write(response);
+    });
   });
-  ctx.queue.on("sendReminder", async ({ loopId, orgId }) => {
-    const loop = await ctx.db.loops.get(loopId);
-    if (!loop || loop.status === "closed") return;
-    await record(ctx, { orgId, type: "reminder.sent", entityId: loopId, actorId: "agent_scout" });
-    console.log(`[worker] reminder fired for loop ${loopId}`);
-  });
-  ctx.queue.on("sendBriefing", async ({ orgId }) => {
-    const open = await ctx.db.loops.list(orgId);
-    const yours = open.filter((l) => l.side === "yours" && l.status !== "closed").length;
-    console.log(`[worker] briefing for ${orgId}: ${yours} loop(s) in your court`);
-    await record(ctx, { orgId, type: "briefing.delivered", entityId: orgId, actorId: "agent_scout" });
-  });
-  ctx.queue.on("autoSweep", async ({ orgId }) => {
-    const open = await ctx.db.loops.list(orgId);
-    console.log(`[worker] nightly sweep for ${orgId}: ${open.length} loop(s) reviewed`);
+  process.stdout.on("error", () => {
   });
 }
-
-// packages/core/src/seed.ts
-init_src();
-async function seedIfEmpty(core) {
-  const existing = await core.loops.list(LOCAL_ORG_ID);
-  if (existing.length > 0) return;
-  const org = LOCAL_ORG_ID;
-  const me = LOCAL_USER_ID;
-  await core.loops.capture({ orgId: org, actorId: me, title: "Reply to Priya re: contract", why: "She asked 2 days ago", side: "yours", channel: "email" });
-  await core.loops.capture({ orgId: org, actorId: me, title: "Waiting on design files from Sam", why: "Promised Monday", side: "theirs", channel: "slack" });
-  await core.loops.capture({ orgId: org, actorId: me, title: "Confirm Thursday demo time", why: "WhatsApp from lead", side: "yours", channel: "whatsapp" });
-  await core.tasks.create({ orgId: org, actorId: me, emoji: "\u{1F4DD}", title: "Draft Q3 plan", day: "today", priority: "high" });
-  await core.tasks.create({ orgId: org, actorId: me, emoji: "\u{1F4DE}", title: "Call supplier", day: "tomorrow", priority: "med" });
-  await core.leads.create({ orgId: org, actorId: me, name: "Aisha Khan", company: "Northwind", title: "Head of Ops", phone: "+971500000000", what: "Interested in team plan" });
-}
-
-// packages/core/src/methods.ts
-var methods_exports = {};
-__export(methods_exports, {
-  METHODS: () => METHODS,
-  METHOD_LIST: () => METHOD_LIST,
-  abcde: () => abcde,
-  eatThatFrog: () => eatThatFrog,
-  eisenhower: () => eisenhower,
-  gtd: () => gtd,
-  moscow: () => moscow,
-  pareto: () => pareto,
-  pomodoro: () => pomodoro,
-  threeThree: () => threeThree,
-  timeBlocking: () => timeBlocking,
-  twoMinute: () => twoMinute
+var PROTOCOL_VERSION, ERROR_CODES;
+var init_server = __esm({
+  "packages/mcp/src/server.ts"() {
+    "use strict";
+    init_tools();
+    PROTOCOL_VERSION = "2024-11-05";
+    ERROR_CODES = {
+      PARSE_ERROR: -32700,
+      INVALID_REQUEST: -32600,
+      METHOD_NOT_FOUND: -32601,
+      INVALID_PARAMS: -32602,
+      INTERNAL_ERROR: -32603
+    };
+  }
 });
-var MS_PER_DAY = 864e5;
-function isUrgent(t, now2 = Date.now()) {
-  if (t.day === "today") return true;
-  if (t.dueAt && t.dueAt - now2 <= MS_PER_DAY) return true;
-  return false;
-}
-function isImportant(t) {
-  return t.priority === "high";
-}
-function isOverdue(t, now2 = Date.now()) {
-  if (!t.dueAt) return false;
-  return t.dueAt < now2;
-}
-function isComplete(t) {
-  if (!t.subtasks || t.subtasks.length === 0) return false;
-  return t.subtasks.every((s) => s.done);
-}
-function eisenhower(tasks, now2 = Date.now()) {
-  const open = tasks.filter((t) => !isComplete(t));
-  const result = { q1: [], q2: [], q3: [], q4: [] };
-  for (const t of open) {
-    const u = isUrgent(t, now2);
-    const i = isImportant(t);
-    if (u && i) result.q1.push(t);
-    else if (!u && i) result.q2.push(t);
-    else if (u && !i) result.q3.push(t);
-    else result.q4.push(t);
-  }
-  return result;
-}
-function moscow(tasks, now2 = Date.now()) {
-  const open = tasks.filter((t) => !isComplete(t));
-  const result = { must: [], should: [], could: [], wont: [] };
-  for (const t of open) {
-    if (t.priority === "high") result.must.push(t);
-    else if (t.priority === "med") result.should.push(t);
-    else if (t.priority === "low") result.could.push(t);
-    else if (isOverdue(t, now2)) result.wont.push(t);
-    else result.could.push(t);
-  }
-  return result;
-}
-var RANK_WEIGHT = { A: 0, B: 1, C: 2, D: 3, E: 4 };
-function abcde(tasks, now2 = Date.now()) {
-  const open = tasks.filter((t) => !isComplete(t));
-  const ranked = open.map((task) => {
-    let rank;
-    if (task.priority === "high" && isOverdue(task, now2)) rank = "A";
-    else if (task.priority === "high") rank = "B";
-    else if (task.priority === "med" && task.day === "today") rank = "C";
-    else if (task.priority === "med") rank = "D";
-    else rank = "E";
-    return { task, rank };
-  });
-  ranked.sort((a, b) => (RANK_WEIGHT[a.rank] ?? 9) - (RANK_WEIGHT[b.rank] ?? 9));
-  return { ranked };
-}
-var GTD_CONTEXTS = ["@email", "@call", "@computer", "@errands", "@home", "@anywhere"];
-var EMOJI_TO_CONTEXT = {
-  "\u{1F4DE}": "@call",
-  "\u260E\uFE0F": "@call",
-  "\u{1F4BB}": "@computer",
-  "\u{1F5A5}\uFE0F": "@computer",
-  "\u2709\uFE0F": "@email",
-  "\u{1F4E7}": "@email",
-  "\u{1F697}": "@errands",
-  "\u{1F6D2}": "@errands",
-  "\u{1F3E0}": "@home",
-  "\u{1F3E1}": "@home"
-};
-function inferContext(task) {
-  const lower = task.title.toLowerCase();
-  for (const ctx of GTD_CONTEXTS) {
-    if (lower.includes(ctx)) return ctx;
-  }
-  if (task.emoji && EMOJI_TO_CONTEXT[task.emoji]) return EMOJI_TO_CONTEXT[task.emoji];
-  return null;
-}
-function gtd(tasks) {
-  const open = tasks.filter((t) => !isComplete(t));
-  const contexts = {
-    "@email": [],
-    "@call": [],
-    "@computer": [],
-    "@errands": [],
-    "@home": [],
-    "@anywhere": []
-  };
-  const inbox = [];
-  for (const t of open) {
-    const ctx = inferContext(t);
-    if (ctx) contexts[ctx].push(t);
-    else inbox.push(t);
-  }
-  return { contexts, inbox };
-}
-var QUICK_VERBS = ["call", "email", "reply", "send", "pay", "file", "book", "text", "sign", "approve", "confirm"];
-function twoMinute(tasks) {
-  const open = tasks.filter((t) => !isComplete(t));
-  const twoMinute2 = [];
-  const longer = [];
-  for (const t of open) {
-    const lower = t.title.toLowerCase();
-    const isQuick = QUICK_VERBS.some((v) => lower.includes(v));
-    if (isQuick) twoMinute2.push(t);
-    else longer.push(t);
-  }
-  return { twoMinute: twoMinute2, longer };
-}
-function frogScore(t, now2) {
-  const pWeight = t.priority === "high" ? 3 : t.priority === "med" ? 2 : t.priority === "low" ? 1 : 0;
-  let uWeight = 0;
-  if (isOverdue(t, now2)) uWeight = 3;
-  else if (t.day === "today") uWeight = 2;
-  else if (t.day === "tomorrow") uWeight = 1;
-  return pWeight * 3 + uWeight;
-}
-function eatThatFrog(tasks, now2 = Date.now()) {
-  const open = tasks.filter((t) => !isComplete(t));
-  if (open.length === 0) return { frog: null, why: "No open tasks \u2014 nothing to eat." };
-  let best = open[0];
-  let bestScore = frogScore(best, now2);
-  for (const t of open) {
-    const s = frogScore(t, now2);
-    if (s > bestScore) {
-      best = t;
-      bestScore = s;
-    }
-  }
-  const reasons = [];
-  if (best.priority === "high") reasons.push("highest priority");
-  if (isOverdue(best, now2)) reasons.push("overdue");
-  else if (best.day === "today") reasons.push("due today");
-  const why = reasons.length > 0 ? `Your frog: the task that is ${reasons.join(" and ")}. Do it first.` : "Your frog: the highest-impact task right now. Do it first.";
-  return { frog: best, why };
-}
-function threeThree(tasks) {
-  const open = tasks.filter((t) => !isComplete(t));
-  const deep = open.filter((t) => t.priority === "high").slice(0, 3);
-  const deepIds = new Set(deep.map((t) => t.id));
-  const remaining = open.filter((t) => !deepIds.has(t.id));
-  const medium = remaining.filter((t) => t.priority === "med").slice(0, 3);
-  const mediumIds = new Set(medium.map((t) => t.id));
-  const small = remaining.filter((t) => !mediumIds.has(t.id) && (t.priority === "low" || t.priority === null)).slice(0, 3);
-  return { deep, medium, small };
-}
-function paretoScore(t) {
-  const p = t.priority === "high" ? 3 : t.priority === "med" ? 2 : t.priority === "low" ? 1 : 0;
-  const subtasks = t.subtasks?.length ?? 0;
-  const recurring = t.recurring ? 2 : 0;
-  return p * 2 + subtasks + recurring;
-}
-function pareto(tasks) {
-  const open = tasks.filter((t) => !isComplete(t));
-  if (open.length === 0) return { vital: [], useful: [] };
-  const sorted = [...open].sort((a, b) => paretoScore(b) - paretoScore(a));
-  const vitalCount = Math.max(1, Math.ceil(open.length * 0.2));
-  return { vital: sorted.slice(0, vitalCount), useful: sorted.slice(vitalCount) };
-}
-var toClock = (minutes) => {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-};
-function timeBlocking(tasks) {
-  const open = tasks.filter((t) => !isComplete(t));
-  const meeting = open.filter((t) => {
-    const lower = t.title.toLowerCase();
-    return lower.includes("call") || lower.includes("meet") || lower.includes("sync") || lower.includes("standup");
-  });
-  const meetingIds = new Set(meeting.map((t) => t.id));
-  const deep = open.filter((t) => !meetingIds.has(t.id) && t.priority === "high");
-  const deepIds = new Set(deep.map((t) => t.id));
-  const admin = open.filter((t) => !meetingIds.has(t.id) && !deepIds.has(t.id));
-  const blocks = [];
-  let clock = 9 * 60;
-  const place = (list, blockType) => {
-    for (const task of list) {
-      const dur = 30;
-      blocks.push({ start: toClock(clock), end: toClock(clock + dur), task, blockType });
-      clock += dur;
-    }
-  };
-  place(deep, "deep");
-  place(admin.slice(0, 4), "admin");
-  place(meeting, "meeting");
-  place(admin.slice(4), "admin");
-  return blocks.slice(0, 18);
-}
-function pomodoro(tasks) {
-  const open = tasks.filter((t) => !isComplete(t));
-  return open.map((task) => {
-    const words = task.title.trim().split(/\s+/).filter(Boolean).length;
-    let sessions = 1;
-    if (words > 15) sessions = 4;
-    else if (words > 10) sessions = 3;
-    else if (words > 5) sessions = 2;
-    const subtaskCount = task.subtasks?.length ?? 0;
-    sessions += subtaskCount;
-    return { task, sessions, minutes: sessions * 25 };
-  });
-}
-var METHODS = {
-  eisenhower: {
-    meta: { id: "eisenhower", name: "Eisenhower Matrix", icon: "\u{1F532}", description: "Sort by urgent vs important into 4 quadrants." },
-    run: (tasks) => eisenhower(tasks)
-  },
-  moscow: {
-    meta: { id: "moscow", name: "MoSCoW", icon: "\u{1F3AF}", description: "Must / Should / Could / Won\u2019t \u2014 prioritize by commitment." },
-    run: (tasks) => moscow(tasks)
-  },
-  abcde: {
-    meta: { id: "abcde", name: "ABCDE Method", icon: "\u{1F524}", description: "Rank A (critical) through E (eliminate)." },
-    run: (tasks) => abcde(tasks)
-  },
-  gtd: {
-    meta: { id: "gtd", name: "Getting Things Done", icon: "\u{1F5C2}\uFE0F", description: "Group tasks by context (@call, @computer, @email\u2026)." },
-    run: (tasks) => gtd(tasks)
-  },
-  twominute: {
-    meta: { id: "twominute", name: "2-Minute Rule", icon: "\u26A1", description: "Flag quick tasks you can knock out right now." },
-    run: (tasks) => twoMinute(tasks)
-  },
-  frog: {
-    meta: { id: "frog", name: "Eat That Frog", icon: "\u{1F438}", description: "The one highest-impact task to do first today." },
-    run: (tasks) => eatThatFrog(tasks)
-  },
-  threethree: {
-    meta: { id: "threethree", name: "3-3-3 Method", icon: "3\uFE0F\u20E3", description: "3 deep + 3 medium + 3 small tasks for a focused day." },
-    run: (tasks) => threeThree(tasks)
-  },
-  pareto: {
-    meta: { id: "pareto", name: "80/20 Rule", icon: "\u{1F4CA}", description: "The vital 20% of tasks driving 80% of value." },
-    run: (tasks) => pareto(tasks)
-  },
-  timeblock: {
-    meta: { id: "timeblock", name: "Time Blocking", icon: "\u{1F5D3}\uFE0F", description: "Lay tasks out across a 9am\u20136pm workday." },
-    run: (tasks) => timeBlocking(tasks)
-  },
-  pomodoro: {
-    meta: { id: "pomodoro", name: "Pomodoro Estimate", icon: "\u{1F345}", description: "Estimate focus sessions (25 min) per task." },
-    run: (tasks) => pomodoro(tasks)
-  }
-};
-var METHOD_LIST = Object.values(METHODS).map((m) => m.meta);
 
-// packages/core/src/analytics.ts
-var analytics_exports = {};
-__export(analytics_exports, {
-  computeReport: () => computeReport
+// packages/mcp/src/index.ts
+var init_src5 = __esm({
+  "packages/mcp/src/index.ts"() {
+    "use strict";
+    init_server();
+    init_tools();
+  }
 });
-var MS_PER_HOUR = 36e5;
-var MS_PER_DAY2 = 864e5;
-var SECONDS_PER_HOUR = 3600;
-var ON_TIME_HOURS = 72;
-var WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-function isTaskComplete(task) {
-  return !!task.subtasks && task.subtasks.length > 0 && task.subtasks.every((s) => s.done);
-}
-function round(n) {
-  return Math.round(n);
-}
-function computeLoops(loops, windowStart) {
-  let open = 0;
-  let closed = 0;
-  let snoozed = 0;
-  let overdue = 0;
-  let closedInWindow = 0;
-  let onTime = 0;
-  let totalCloseMs = 0;
-  for (const l of loops) {
-    const status = l.status;
-    if (status === "open") open++;
-    else if (status === "snoozed") snoozed++;
-    else if (status === "overdue") overdue++;
-    if (status === "closed") {
-      closed++;
-      if (l.updatedAt >= windowStart) closedInWindow++;
-      const closeMs = l.updatedAt - l.createdAt;
-      totalCloseMs += closeMs;
-      if (closeMs <= ON_TIME_HOURS * MS_PER_HOUR) onTime++;
-    }
-  }
-  const avgCloseHours = closed > 0 ? totalCloseMs / closed / MS_PER_HOUR : 0;
-  const onTimeRate = closed > 0 ? round(onTime / closed * 100) : 0;
-  return {
-    total: loops.length,
-    open,
-    closed,
-    closedInWindow,
-    onTimeRate,
-    snoozed,
-    overdue,
-    avgCloseHours: round(avgCloseHours * 10) / 10
-    // one decimal place
-  };
-}
-function computeTasks(tasks, windowStart, now2) {
-  let completedInWindow = 0;
-  let createdInWindow = 0;
-  let overdue = 0;
-  const byPriority = { high: 0, med: 0, low: 0, none: 0 };
-  for (const t of tasks) {
-    const p = t.priority ?? null;
-    if (p === "high") byPriority.high++;
-    else if (p === "med") byPriority.med++;
-    else if (p === "low") byPriority.low++;
-    else byPriority.none++;
-    if (t.createdAt >= windowStart) createdInWindow++;
-    if (isTaskComplete(t)) {
-      if (t.createdAt >= windowStart) completedInWindow++;
-    } else if (t.dueAt != null && t.dueAt < now2) {
-      overdue++;
-    }
-  }
-  const completionRate = createdInWindow > 0 ? round(completedInWindow / createdInWindow * 100) : 0;
-  return { total: tasks.length, completedInWindow, createdInWindow, completionRate, overdue, byPriority };
-}
-function computeLeads(leads, windowStart) {
-  let won = 0;
-  let lost = 0;
-  let pipeline = 0;
-  let wonInWindow = 0;
-  for (const lead of leads) {
-    const stage = lead.stage;
-    if (stage === "won") {
-      won++;
-      if (lead.createdAt >= windowStart) wonInWindow++;
-    } else if (stage === "lost") {
-      lost++;
-    } else {
-      pipeline++;
-    }
-  }
-  const conversionRate = won + lost > 0 ? round(won / (won + lost) * 100) : 0;
-  return {
-    total: leads.length,
-    won,
-    lost,
-    pipeline,
-    wonInWindow,
-    conversionRate,
-    // Pipeline value: sum of lead.value for open (non-won/lost) leads that have a value set.
-    pipelineValue: leads.filter((l) => l.stage !== "won" && l.stage !== "lost" && typeof l.value === "number").reduce((sum, l) => sum + l.value, 0)
-  };
-}
-function computeProductivity(tasks, timeEntries, windowStart, now2, windowDays) {
-  const focusSeconds = (timeEntries ?? []).reduce((sum, e) => sum + (e.duration ?? 0), 0);
-  const focusHours = round(focusSeconds / SECONDS_PER_HOUR * 10) / 10;
-  const trend = [0, 0, 0, 0, 0, 0, 0];
-  const dayBuckets = new Array(7).fill(0);
-  const completedByCreatedAt = tasks.filter(isTaskComplete);
-  for (const t of completedByCreatedAt) {
-    const dow = new Date(t.createdAt).getDay();
-    if (dayBuckets[dow] === void 0) dayBuckets[dow] = 0;
-    dayBuckets[dow]++;
-    const ageDays = Math.floor((now2 - t.createdAt) / MS_PER_DAY2);
-    if (ageDays >= 0 && ageDays <= 6) {
-      const idx = 6 - ageDays;
-      const slot = trend[idx];
-      if (slot !== void 0) trend[idx] = slot + 1;
-    }
-  }
-  const tasksPerDay = windowDays > 0 ? round(completedByCreatedAt.length / windowDays * 10) / 10 : 0;
-  let bestDay = "\u2014";
-  let bestCount = -1;
-  for (let i = 0; i < 7; i++) {
-    const count = dayBuckets[i] ?? 0;
-    if (count > bestCount) {
-      bestCount = count;
-      bestDay = WEEKDAYS[i] ?? "\u2014";
-    }
-  }
-  if (bestCount <= 0) bestDay = "\u2014";
-  return { focusHours, tasksPerDay, velocityTrend: trend, bestDay };
-}
-function computeLeaderboard(users, loops, tasks, timeEntries) {
-  if (!users || users.length === 0) return [];
-  const focusMinutes = /* @__PURE__ */ new Map();
-  for (const e of timeEntries ?? []) {
-    const minutes = Math.floor((e.duration ?? 0) / 60);
-    focusMinutes.set(e.userId, (focusMinutes.get(e.userId) ?? 0) + minutes);
-  }
-  const tasksDone = /* @__PURE__ */ new Map();
-  for (const t of tasks) {
-    if (!isTaskComplete(t)) continue;
-    for (const uid of t.assignees) tasksDone.set(uid, (tasksDone.get(uid) ?? 0) + 1);
-  }
-  const loopsClosed = /* @__PURE__ */ new Map();
-  for (const l of loops) {
-    if (l.status !== "closed") continue;
-    for (const uid of l.assignedTo) loopsClosed.set(uid, (loopsClosed.get(uid) ?? 0) + 1);
-  }
-  const rows = users.map((u) => {
-    const done = tasksDone.get(u.userId) ?? 0;
-    const closed = loopsClosed.get(u.userId) ?? 0;
-    const minutes = focusMinutes.get(u.userId) ?? 0;
-    const points = done * 3 + closed * 2 + Math.floor(minutes / 25);
-    return { userId: u.userId, name: u.name, points, tasksDone: done, loopsClosed: closed, focusMinutes: minutes };
-  });
-  rows.sort((a, b) => b.points - a.points || b.tasksDone - a.tasksDone);
-  return rows;
-}
-function buildSummary(loops, tasks, leads, windowDays) {
-  const period = windowDays >= 30 ? "this period" : `over the last ${windowDays} days`;
-  const headline = `${loops.onTimeRate}% of loops closed on time ${period}.`;
-  const sub = `${tasks.completedInWindow} tasks completed, ${leads.wonInWindow} leads won.`;
-  return { headline, sub };
-}
-function computeReport(input) {
-  const { loops = [], tasks = [], leads = [], timeEntries, users, windowDays = 30 } = input ?? {};
-  const now2 = Date.now();
-  const windowStart = now2 - windowDays * MS_PER_DAY2;
-  const loopsReport = computeLoops(loops, windowStart);
-  const tasksReport = computeTasks(tasks, windowStart, now2);
-  const leadsReport = computeLeads(leads, windowStart);
-  const productivity = computeProductivity(tasks, timeEntries, windowStart, now2, windowDays);
-  const leaderboard = computeLeaderboard(users, loops, tasks, timeEntries);
-  const summary = buildSummary(loopsReport, tasksReport, leadsReport, windowDays);
-  return {
-    windowDays,
-    generatedAt: now2,
-    loops: loopsReport,
-    tasks: tasksReport,
-    leads: leadsReport,
-    productivity,
-    leaderboard,
-    summary
-  };
-}
 
-// packages/core/src/index.ts
-function createCoreFromPorts(ports) {
-  const ctx = {
-    db: ports.db,
-    queue: ports.queue,
-    auth: ports.auth,
-    messenger: ports.messenger ?? consoleMessenger,
-    drafter: ports.drafter ?? templateDrafter
-  };
-  return {
-    ctx,
-    loops: makeLoops(ctx),
-    tasks: makeTasks(ctx),
-    leads: makeLeads(ctx),
-    agents: makeAgents(),
-    autonomy: makeAutonomy(ctx),
-    approvals: makeApprovals(ctx),
-    timeTracking: makeTimeTracking(ctx),
-    bulk: makeBulkOps(ctx),
-    recurring: makeRecurring(ctx),
-    subtasks: makeSubtasks(ctx),
-    ai: makeAi(ctx),
-    events: {
-      list: (orgId, limit) => ctx.db.events.list(orgId, limit),
-      undo: (eventId) => undoEvent(ctx, eventId)
-    }
-  };
-}
-async function bootstrap(opts = {}) {
-  const db = createDatabase(opts.db);
+// cli/bin/mcp.ts
+var mcp_exports = {};
+async function main() {
+  const rawKey = process.env.COMPANYBRAIN_MCP_KEY ?? "";
+  if (!rawKey) {
+    warn("No COMPANYBRAIN_MCP_KEY set. Create an agent account + API key in the web app (Settings \u2192 User Management), then set COMPANYBRAIN_MCP_KEY.");
+    process.exit(2);
+  }
+  const db = createDatabase();
   const queue = createQueue();
   const auth = createAuth();
   await db.init();
   await queue.init();
   await auth.init();
-  const core = createCoreFromPorts({ db, queue, auth, messenger: opts.messenger, drafter: opts.drafter });
-  registerWorkers(core.ctx);
-  return {
+  const core = createCoreFromPorts({ db, queue, auth });
+  const identity2 = await core.apiKeys.verify(rawKey);
+  if (!identity2) {
+    warn("COMPANYBRAIN_MCP_KEY did not verify. Revoke and re-create the key from the web app.");
+    await db.close();
+    await queue.close();
+    process.exit(3);
+  }
+  startMcpServer({
     core,
-    db,
-    queue,
-    auth,
-    async startWorkers() {
-      await queue.start();
-    },
-    async shutdown() {
-      await queue.close();
-      await db.close();
-    }
-  };
+    name: "companybrain",
+    version: "0.1.0",
+    context: { orgId: identity2.orgId, actorId: identity2.actorId ?? "user_agent" }
+  });
 }
+var warn;
+var init_mcp = __esm({
+  "cli/bin/mcp.ts"() {
+    "use strict";
+    init_src4();
+    init_src();
+    init_src2();
+    init_src3();
+    init_src5();
+    warn = (msg) => process.stderr.write(`[companybrain mcp] ${msg}
+`);
+    main().catch((err) => {
+      warn(`fatal: ${err instanceof Error ? err.message : String(err)}`);
+      process.exit(1);
+    });
+  }
+});
+
+// cli/bin/companybrain.ts
+init_src4();
+import { spawn } from "node:child_process";
+import { platform } from "node:os";
 
 // packages/server/src/server.ts
 import Fastify from "fastify";
@@ -4214,7 +4943,8 @@ function sanitizeFilename(name) {
 }
 
 // packages/server/src/server.ts
-init_src();
+init_src4();
+init_src3();
 
 // packages/server/src/web-ui.ts
 function renderUi() {
@@ -5564,17 +6294,18 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   function loadTasks(){
     api('/api/tasks').then(function(tasks){
       tasks=tasks||[];
-      var today=todayStr();
-      var tmr=new Date(); tmr.setDate(tmr.getDate()+1); var tmrStr=tmr.toISOString().slice(0,10);
-      function isOverdue(t){return t.day&&t.day<today&&!t.completed;}
-      var overdueAll=tasks.filter(isOverdue);
-      var todayTasks=tasks.filter(function(t){return t.day===today||(!t.day&&!isOverdue(t));});
-      var tmrTasks=tasks.filter(function(t){return t.day===tmrStr;});
-      var upcomingTasks=tasks.filter(function(t){return t.day&&t.day>tmrStr;});
+      // Tasks store day as enum: 'today' | 'tomorrow' | 'upcoming'. Bucket by enum, not by calendar date.
+      var overdueAll=tasks.filter(function(t){return t.day!=='today'&&t.day!=='tomorrow'&&t.day!=='upcoming'&&!t.completed;});
+      var todayTasks=tasks.filter(function(t){return t.day==='today'&&!t.completed;});
+      var tmrTasks=tasks.filter(function(t){return t.day==='tomorrow'&&!t.completed;});
+      var upcomingTasks=tasks.filter(function(t){return t.day==='upcoming'&&!t.completed;});
+      var completedTasks=tasks.filter(function(t){return t.completed;});
       view.innerHTML='<div class="sec-head"><div><div class="sec-title">Tasks</div><div class="sec-sub">Your board \u2014 what needs doing and when.</div></div><div class="head-actions"><button class="btn-primary" id="new-task-btn">+ New task</button></div></div>'
         +'<div class="kanban-wrap">'
-        +(overdueAll.length?'<div class="overdue-strip"><span class="overdue-strip-count">'+overdueAll.length+'</span><span class="overdue-strip-label">overdue \u2014 move them or complete them</span></div>':'')
-        +'<div class="kanban-board">'+kanbanCol('TODAY','#ef4444',todayTasks,'today')+kanbanCol('TOMORROW','#f59e0b',tmrTasks,'tomorrow')+kanbanCol('UPCOMING','#3e7bfa',upcomingTasks,'upcoming')+'</div></div>';
+        +(overdueAll.length?'<div class="overdue-strip"><span class="overdue-strip-count">'+overdueAll.length+'</span><span class="overdue-strip-label">in an unknown day \u2014 move them or complete them</span></div>':'')
+        +'<div class="kanban-board">'+kanbanCol('TODAY','#ef4444',todayTasks,'today')+kanbanCol('TOMORROW','#f59e0b',tmrTasks,'tomorrow')+kanbanCol('UPCOMING','#3e7bfa',upcomingTasks,'upcoming')+'</div>'
+        +(completedTasks.length?'<div style="margin-top:20px;"><div style="font-size:11px;font-weight:700;color:var(--green);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;margin-bottom:8px;">\u2705 COMPLETED ('+completedTasks.length+')</div>'+completedTasks.slice(0,10).map(function(t){return '<div class="item-card gc" style="opacity:.6;padding:10px 14px;margin-bottom:6px;"><span style="text-decoration:line-through;color:var(--muted);">'+esc(t.title)+'</span></div>';}).join('')+'</div>':'')
+        +'</div>';
       var nt=document.getElementById('new-task-btn'); if(nt) nt.onclick=function(){openNewTaskModal();};
       ['today','tomorrow','upcoming'].forEach(function(d){var btn=document.getElementById('kadd-'+d);if(btn)btn.onclick=function(){openNewTaskModal(d);};});
       view.querySelectorAll('[data-done]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.done+'/complete').then(function(){toast('Task completed');loadTasks();});};});
@@ -5584,10 +6315,8 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   }
   function kanbanCol(label,dotColor,items,colDay){
     var cards=items.length?items.map(function(t){
-      var od=t.day&&t.day<todayStr();
-      var ds=!od&&isDueSoon(t);
       var pr=t.priority==='high'?'<span class="priority-pill priority-high">HIGH</span>':t.priority==='med'?'<span class="priority-pill priority-med">MED</span>':t.priority==='low'?'<span class="priority-pill priority-low">LOW</span>':'';
-      return '<div class="kanban-task-card gc'+(od?' overdue':ds?' due-soon':'')+'" draggable="true" data-task-id="'+t.id+'"><div class="kanban-task-row"><button class="kanban-check" data-done="'+t.id+'"></button><span class="kanban-task-emoji">'+esc(t.emoji||'\u{1F4DD}')+'</span><div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title)+'</div><div class="kanban-task-sub">'+esc(t.list||'Inbox')+'</div></div></div><div class="kanban-task-foot">'+pr+(colDay!=='today'?'<button class="btn-ghost" data-move="'+t.id+'" data-day="today" style="font-size:10px;padding:3px 8px;min-height:24px;">\u2192 Today</button>':'')+'</div></div>';
+      return '<div class="kanban-task-card gc" draggable="true" data-task-id="'+t.id+'"><div class="kanban-task-row"><button class="kanban-check" data-done="'+t.id+'"></button><span class="kanban-task-emoji">'+esc(t.emoji||'\u{1F4DD}')+'</span><div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title)+'</div><div class="kanban-task-sub">'+esc(t.list||'Inbox')+'</div></div></div><div class="kanban-task-foot">'+pr+(colDay!=='today'?'<button class="btn-ghost" data-move="'+t.id+'" data-day="today" style="font-size:10px;padding:3px 8px;min-height:24px;">\u2192 Today</button>':'')+'</div></div>';
     }).join(''):'<div class="empty-dashed" style="font-size:11px;padding:16px 12px;">No tasks for '+label.toLowerCase()+'.</div>';
     return '<div class="kanban-col"><div class="kanban-col-head"><span class="kanban-col-dot" style="background:'+dotColor+'"></span><span class="kanban-col-label">'+label+'</span><span class="kanban-col-count">'+items.length+'</span></div><div class="kanban-col-body" data-col-day="'+colDay+'">'+cards+'<button class="kanban-add-btn" id="kadd-'+colDay+'">+ Add</button></div></div>';
   }
@@ -6617,7 +7346,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--accent);">'+(loops.closedInWindow||0)+'</div><div class="kpi-lbl">loops closed</div></div>'
         +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--green);">'+(tasks.completedInWindow||0)+'</div><div class="kpi-lbl">tasks done</div></div>'
         +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--teal);">'+(leads.won||0)+'</div><div class="kpi-lbl">leads won</div></div>'
-        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--amber);">'+(prod.focusHours||0)+'h</div><div class="kpi-lbl">focus hours</div></div>'
+        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--green);">$'+(leads.pipelineValue>=1000?Math.round(leads.pipelineValue/1000)+'k':(leads.pipelineValue||0))+'</div><div class="kpi-lbl">in pipeline</div></div>'
         +'</div>'
         // velocity sparkline + rates
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">'
@@ -7326,6 +8055,7 @@ function buildServer(deps) {
     return entry;
   });
   app2.get("/api/tasks/:id/time", async (req) => {
+    await ownedTask(req);
     const taskId = params(req).id;
     const entries = await core.timeTracking.listByTask(taskId);
     const total = await core.timeTracking.getTotalTime(taskId);
@@ -7386,6 +8116,7 @@ function buildServer(deps) {
   app2.post("/api/leads/extract-card", {
     preHandler: validateBody(validation_exports.ExtractCardSchema)
   }, async (req) => {
+    await principalOf(req);
     const b = req.validatedBody;
     if (llm && b.text) {
       const extracted = await llm.extractLead(b.text);
@@ -8157,12 +8888,12 @@ function clearSessionCookie(name, secure) {
 }
 function escapeCsvField(val) {
   if (val === null || val === void 0) return "";
-  let str = String(val);
-  if (/^[=+\-@\t\r]/.test(str)) str = "'" + str;
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-    return `"${str.replace(/"/g, '""')}"`;
+  let str2 = String(val);
+  if (/^[=+\-@\t\r]/.test(str2)) str2 = "'" + str2;
+  if (str2.includes(",") || str2.includes('"') || str2.includes("\n")) {
+    return `"${str2.replace(/"/g, '""')}"`;
   }
-  return str;
+  return str2;
 }
 function arrayToCsv(headers, rows) {
   const lines = [headers.join(",")];
@@ -8217,6 +8948,10 @@ function leadsToCsv(leads) {
 
 // cli/bin/companybrain.ts
 init_middleware();
+var mcpArgs = process.argv.slice(2);
+if (mcpArgs[0] === "mcp" || process.argv.includes("mcp")) {
+  await Promise.resolve().then(() => (init_mcp(), mcp_exports));
+}
 process.on("unhandledRejection", (reason) => {
   console.error("[companybrain] unhandledRejection:", reason);
   captureException2(reason instanceof Error ? reason : new Error(String(reason)));

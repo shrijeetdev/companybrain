@@ -1349,17 +1349,18 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   function loadTasks(){
     api('/api/tasks').then(function(tasks){
       tasks=tasks||[];
-      var today=todayStr();
-      var tmr=new Date(); tmr.setDate(tmr.getDate()+1); var tmrStr=tmr.toISOString().slice(0,10);
-      function isOverdue(t){return t.day&&t.day<today&&!t.completed;}
-      var overdueAll=tasks.filter(isOverdue);
-      var todayTasks=tasks.filter(function(t){return t.day===today||(!t.day&&!isOverdue(t));});
-      var tmrTasks=tasks.filter(function(t){return t.day===tmrStr;});
-      var upcomingTasks=tasks.filter(function(t){return t.day&&t.day>tmrStr;});
+      // Tasks store day as enum: 'today' | 'tomorrow' | 'upcoming'. Bucket by enum, not by calendar date.
+      var overdueAll=tasks.filter(function(t){return t.day!=='today'&&t.day!=='tomorrow'&&t.day!=='upcoming'&&!t.completed;});
+      var todayTasks=tasks.filter(function(t){return t.day==='today'&&!t.completed;});
+      var tmrTasks=tasks.filter(function(t){return t.day==='tomorrow'&&!t.completed;});
+      var upcomingTasks=tasks.filter(function(t){return t.day==='upcoming'&&!t.completed;});
+      var completedTasks=tasks.filter(function(t){return t.completed;});
       view.innerHTML='<div class="sec-head"><div><div class="sec-title">Tasks</div><div class="sec-sub">Your board — what needs doing and when.</div></div><div class="head-actions"><button class="btn-primary" id="new-task-btn">+ New task</button></div></div>'
         +'<div class="kanban-wrap">'
-        +(overdueAll.length?'<div class="overdue-strip"><span class="overdue-strip-count">'+overdueAll.length+'</span><span class="overdue-strip-label">overdue — move them or complete them</span></div>':'')
-        +'<div class="kanban-board">'+kanbanCol('TODAY','#ef4444',todayTasks,'today')+kanbanCol('TOMORROW','#f59e0b',tmrTasks,'tomorrow')+kanbanCol('UPCOMING','#3e7bfa',upcomingTasks,'upcoming')+'</div></div>';
+        +(overdueAll.length?'<div class="overdue-strip"><span class="overdue-strip-count">'+overdueAll.length+'</span><span class="overdue-strip-label">in an unknown day — move them or complete them</span></div>':'')
+        +'<div class="kanban-board">'+kanbanCol('TODAY','#ef4444',todayTasks,'today')+kanbanCol('TOMORROW','#f59e0b',tmrTasks,'tomorrow')+kanbanCol('UPCOMING','#3e7bfa',upcomingTasks,'upcoming')+'</div>'
+        +(completedTasks.length?'<div style="margin-top:20px;"><div style="font-size:11px;font-weight:700;color:var(--green);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;margin-bottom:8px;">✅ COMPLETED ('+completedTasks.length+')</div>'+completedTasks.slice(0,10).map(function(t){return '<div class="item-card gc" style="opacity:.6;padding:10px 14px;margin-bottom:6px;"><span style="text-decoration:line-through;color:var(--muted);">'+esc(t.title)+'</span></div>';}).join('')+'</div>':'')
+        +'</div>';
       var nt=document.getElementById('new-task-btn'); if(nt) nt.onclick=function(){openNewTaskModal();};
       ['today','tomorrow','upcoming'].forEach(function(d){var btn=document.getElementById('kadd-'+d);if(btn)btn.onclick=function(){openNewTaskModal(d);};});
       view.querySelectorAll('[data-done]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.done+'/complete').then(function(){toast('Task completed');loadTasks();});};});
@@ -1369,10 +1370,8 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   }
   function kanbanCol(label,dotColor,items,colDay){
     var cards=items.length?items.map(function(t){
-      var od=t.day&&t.day<todayStr();
-      var ds=!od&&isDueSoon(t);
       var pr=t.priority==='high'?'<span class="priority-pill priority-high">HIGH</span>':t.priority==='med'?'<span class="priority-pill priority-med">MED</span>':t.priority==='low'?'<span class="priority-pill priority-low">LOW</span>':'';
-      return '<div class="kanban-task-card gc'+(od?' overdue':ds?' due-soon':'')+'" draggable="true" data-task-id="'+t.id+'"><div class="kanban-task-row"><button class="kanban-check" data-done="'+t.id+'"></button><span class="kanban-task-emoji">'+esc(t.emoji||'📝')+'</span><div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title)+'</div><div class="kanban-task-sub">'+esc(t.list||'Inbox')+'</div></div></div><div class="kanban-task-foot">'+pr+(colDay!=='today'?'<button class="btn-ghost" data-move="'+t.id+'" data-day="today" style="font-size:10px;padding:3px 8px;min-height:24px;">→ Today</button>':'')+'</div></div>';
+      return '<div class="kanban-task-card gc" draggable="true" data-task-id="'+t.id+'"><div class="kanban-task-row"><button class="kanban-check" data-done="'+t.id+'"></button><span class="kanban-task-emoji">'+esc(t.emoji||'📝')+'</span><div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title)+'</div><div class="kanban-task-sub">'+esc(t.list||'Inbox')+'</div></div></div><div class="kanban-task-foot">'+pr+(colDay!=='today'?'<button class="btn-ghost" data-move="'+t.id+'" data-day="today" style="font-size:10px;padding:3px 8px;min-height:24px;">→ Today</button>':'')+'</div></div>';
     }).join(''):'<div class="empty-dashed" style="font-size:11px;padding:16px 12px;">No tasks for '+label.toLowerCase()+'.</div>';
     return '<div class="kanban-col"><div class="kanban-col-head"><span class="kanban-col-dot" style="background:'+dotColor+'"></span><span class="kanban-col-label">'+label+'</span><span class="kanban-col-count">'+items.length+'</span></div><div class="kanban-col-body" data-col-day="'+colDay+'">'+cards+'<button class="kanban-add-btn" id="kadd-'+colDay+'">+ Add</button></div></div>';
   }
@@ -2402,7 +2401,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--accent);">'+(loops.closedInWindow||0)+'</div><div class="kpi-lbl">loops closed</div></div>'
         +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--green);">'+(tasks.completedInWindow||0)+'</div><div class="kpi-lbl">tasks done</div></div>'
         +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--teal);">'+(leads.won||0)+'</div><div class="kpi-lbl">leads won</div></div>'
-        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--amber);">'+(prod.focusHours||0)+'h</div><div class="kpi-lbl">focus hours</div></div>'
+        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--green);">$'+(leads.pipelineValue>=1000?Math.round(leads.pipelineValue/1000)+'k':(leads.pipelineValue||0))+'</div><div class="kpi-lbl">in pipeline</div></div>'
         +'</div>'
         // velocity sparkline + rates
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">'
