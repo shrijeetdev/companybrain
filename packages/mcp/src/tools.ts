@@ -1,12 +1,13 @@
 // MCP tool registry — declarative descriptions + handlers that wrap core domain ops.
-// Each tool is a JSON Schema for the args plus a handler that runs against a Core
-// instance. The MCP server (server.ts) lists these for `tools/list` and dispatches
-// `tools/call` to the matching handler. Handlers never throw — they return a plain
-// object so the server can serialize it straight onto the wire.
+// Reads run directly. Writes route through core.autonomy.gate first; the gate returns
+// the resolved level and the handler only mutates on 'auto'. 'ask' queues an approval
+// for human review (the mutation is NOT auto-replayed — approving only clears the
+// queue item; an admin who wants the action done re-runs it or sets the level to auto).
+// 'off' refuses. Every result carries `gated` so the host can narrate the outcome.
 
 import type { Core } from '@companybrain/core';
+import type { AutonomyAction } from '@companybrain/types';
 
-/** Identity used when a tool mutates state. Defaults to the local single-user org. */
 export interface ToolContext {
   orgId?: string;
   actorId?: string;
@@ -22,7 +23,6 @@ export interface Tool {
   handler: (args: any, core: Core, ctx: ToolContext) => Promise<any>;
 }
 
-/** Resolve the acting org + user, preferring injected context, then core auth, then local defaults. */
 async function identity(core: Core, ctx: ToolContext): Promise<{ orgId: string; actorId: string }> {
   if (ctx.orgId && ctx.actorId) return { orgId: ctx.orgId, actorId: ctx.actorId };
   try {
@@ -38,7 +38,24 @@ async function identity(core: Core, ctx: ToolContext): Promise<{ orgId: string; 
 
 const str = (description: string) => ({ type: 'string', description });
 
+/**
+ * Gate a write through autonomy. Returns { proceed: boolean, level }.
+ * - auto: proceed === true (mutate).
+ * - ask:   an approval is queued; proceed === false (do not mutate).
+ * - off:   nothing queued; proceed === false.
+ */
+async function gateWrite(
+  core: Core,
+  action: AutonomyAction,
+  orgId: string,
+  title: string,
+): Promise<{ proceed: boolean; level: 'auto' | 'ask' | 'off' }> {
+  const level = await core.autonomy.gate(action, { orgId, title });
+  return { proceed: level === 'auto', level };
+}
+
 export const TOOLS: Tool[] = [
+  // ---------- READS (never gated) ----------
   {
     name: 'list_tasks',
     description:
@@ -60,69 +77,6 @@ export const TOOLS: Tool[] = [
   },
 
   {
-    name: 'create_task',
-    description: 'Create a new task. Defaults to today / Inbox / unassigned-to-actor.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        title: str('Task title.'),
-        day: { type: 'string', enum: ['today', 'tomorrow', 'upcoming'], description: 'Board day. Default today.' },
-        priority: { type: 'string', enum: ['low', 'med', 'high'], description: 'Priority. Default none.' },
-        list: str('List/board column name. Default "Inbox".'),
-      },
-      required: ['title'],
-    },
-    async handler(args, core, ctx) {
-      const { orgId, actorId } = await identity(core, ctx);
-      const task = await core.tasks.create({
-        orgId,
-        actorId,
-        title: args.title,
-        day: args.day,
-        priority: args.priority ?? null,
-        list: args.list,
-      });
-      return { task };
-    },
-  },
-
-  {
-    name: 'complete_task',
-    description: 'Mark a task complete by id.',
-    inputSchema: {
-      type: 'object',
-      properties: { id: str('Task id (e.g. task_abcd1234).') },
-      required: ['id'],
-    },
-    async handler(args, core, ctx) {
-      const { actorId } = await identity(core, ctx);
-      const task = await core.tasks.complete(args.id, actorId);
-      return { task };
-    },
-  },
-
-  {
-    name: 'assign_task',
-    description: 'Assign a task to one or more users (replaces its current assignees).',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: str('Task id.'),
-        userIds: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'User ids to assign.',
-        },
-      },
-      required: ['id', 'userIds'],
-    },
-    async handler(args, core) {
-      const task = await core.ctx.db.tasks.update(args.id, { assignees: args.userIds });
-      return { task };
-    },
-  },
-
-  {
     name: 'list_loops',
     description: 'List open loops (things waiting on a person — "their court" or "your court").',
     inputSchema: {
@@ -136,21 +90,6 @@ export const TOOLS: Tool[] = [
       const loops = await core.loops.list(orgId, args?.side);
       const open = loops.filter((l) => l.status !== 'closed');
       return { count: open.length, loops: open };
-    },
-  },
-
-  {
-    name: 'close_loop',
-    description: 'Close a loop by id.',
-    inputSchema: {
-      type: 'object',
-      properties: { id: str('Loop id.') },
-      required: ['id'],
-    },
-    async handler(args, core, ctx) {
-      const { actorId } = await identity(core, ctx);
-      const loop = await core.loops.close(args.id, actorId);
-      return { loop };
     },
   },
 
@@ -204,9 +143,113 @@ export const TOOLS: Tool[] = [
     },
   },
 
+  // ---------- WRITES (gated) ----------
+  {
+    name: 'create_task',
+    description: 'Create a new task. Gated by autonomy.createTasks (off|ask|auto).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: str('Task title.'),
+        day: { type: 'string', enum: ['today', 'tomorrow', 'upcoming'], description: 'Board day. Default today.' },
+        priority: { type: 'string', enum: ['low', 'med', 'high'], description: 'Priority. Default none.' },
+        list: str('List/board column name. Default "Inbox".'),
+      },
+      required: ['title'],
+    },
+    async handler(args, core, ctx) {
+      const { orgId, actorId } = await identity(core, ctx);
+      const { proceed, level } = await gateWrite(core, 'createTasks', orgId, `Create task: ${args.title}`);
+      if (!proceed) return { gated: level, message: gateMessage(level, 'createTasks') };
+      const task = await core.tasks.create({
+        orgId, actorId,
+        title: args.title, day: args.day, priority: args.priority ?? null, list: args.list,
+      });
+      return { gated: 'auto', task };
+    },
+  },
+
+  {
+    name: 'create_loop',
+    description: 'Capture a new open loop (something waiting on a person). Gated by autonomy.createTasks.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: str('Short summary of the loop.'),
+        why: str('Why it matters / what is needed.'),
+        side: { type: 'string', enum: ['yours', 'theirs'], description: 'Whose court the ball is in.' },
+      },
+      required: ['title', 'why', 'side'],
+    },
+    async handler(args, core, ctx) {
+      const { orgId, actorId } = await identity(core, ctx);
+      const { proceed, level } = await gateWrite(core, 'createTasks', orgId, `Create loop: ${args.title}`);
+      if (!proceed) return { gated: level, message: gateMessage(level, 'createTasks') };
+      const loop = await core.loops.capture({
+        orgId, actorId,
+        title: args.title, why: args.why, side: args.side, channel: 'manual',
+      });
+      return { gated: 'auto', loop };
+    },
+  },
+
+  {
+    name: 'complete_task',
+    description: 'Mark a task complete by id. Gated by autonomy.manageRecords.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: str('Task id (e.g. task_abcd1234).') },
+      required: ['id'],
+    },
+    async handler(args, core, ctx) {
+      const { orgId, actorId } = await identity(core, ctx);
+      const { proceed, level } = await gateWrite(core, 'manageRecords', orgId, `Complete task ${args.id}`);
+      if (!proceed) return { gated: level, message: gateMessage(level, 'manageRecords') };
+      const task = await core.tasks.complete(args.id, actorId);
+      return { gated: 'auto', task };
+    },
+  },
+
+  {
+    name: 'assign_task',
+    description: 'Assign a task to one or more users. Gated by autonomy.manageRecords.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: str('Task id.'),
+        userIds: { type: 'array', items: { type: 'string' }, description: 'User ids to assign.' },
+      },
+      required: ['id', 'userIds'],
+    },
+    async handler(args, core, ctx) {
+      const { orgId } = await identity(core, ctx);
+      const { proceed, level } = await gateWrite(core, 'manageRecords', orgId, `Assign task ${args.id}`);
+      if (!proceed) return { gated: level, message: gateMessage(level, 'manageRecords') };
+      const task = await core.ctx.db.tasks.update(args.id, { assignees: args.userIds });
+      return { gated: 'auto', task };
+    },
+  },
+
+  {
+    name: 'close_loop',
+    description: 'Close a loop by id. Gated by autonomy.manageRecords.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: str('Loop id.') },
+      required: ['id'],
+    },
+    async handler(args, core, ctx) {
+      const { orgId, actorId } = await identity(core, ctx);
+      const { proceed, level } = await gateWrite(core, 'manageRecords', orgId, `Close loop ${args.id}`);
+      if (!proceed) return { gated: level, message: gateMessage(level, 'manageRecords') };
+      const loop = await core.loops.close(args.id, actorId);
+      return { gated: 'auto', loop };
+    },
+  },
+
   {
     name: 'create_lead',
-    description: 'Create a new lead (enters the pipeline at "new").',
+    description: 'Create a new lead (enters the pipeline at "new"). Gated by autonomy.manageRecords.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -219,35 +262,38 @@ export const TOOLS: Tool[] = [
     },
     async handler(args, core, ctx) {
       const { orgId, actorId } = await identity(core, ctx);
+      const { proceed, level } = await gateWrite(core, 'manageRecords', orgId, `Create lead: ${args.name}`);
+      if (!proceed) return { gated: level, message: gateMessage(level, 'manageRecords') };
       const lead = await core.leads.create({
-        orgId,
-        actorId,
-        name: args.name,
-        company: args.company,
-        email: args.email,
-        phone: args.phone,
+        orgId, actorId, name: args.name, company: args.company, email: args.email, phone: args.phone,
       });
-      return { lead };
+      return { gated: 'auto', lead };
     },
   },
 
   {
     name: 'advance_lead',
-    description: 'Advance a lead to the next pipeline stage (new → contacted → meeting → proposal → won).',
+    description: 'Advance a lead to the next pipeline stage. Gated by autonomy.manageRecords.',
     inputSchema: {
       type: 'object',
       properties: { id: str('Lead id.') },
       required: ['id'],
     },
     async handler(args, core, ctx) {
-      const { actorId } = await identity(core, ctx);
+      const { orgId, actorId } = await identity(core, ctx);
+      const { proceed, level } = await gateWrite(core, 'manageRecords', orgId, `Advance lead ${args.id}`);
+      if (!proceed) return { gated: level, message: gateMessage(level, 'manageRecords') };
       const lead = await core.leads.advance(args.id, actorId);
-      return { lead };
+      return { gated: 'auto', lead };
     },
   },
 ];
 
-/** Find a tool by name (used by the server dispatcher). */
+function gateMessage(level: 'ask' | 'off', action: string): string {
+  if (level === 'off') return `Blocked: autonomy.${action} is 'off'. Ask an admin to set it to 'ask' or 'auto'.`;
+  return `Queued for human approval: autonomy.${action} is 'ask'. It will appear in the companybrain Auto tab; approving clears the queue (no auto-replay).`;
+}
+
 export function findTool(name: string): Tool | undefined {
   return TOOLS.find((t) => t.name === name);
 }

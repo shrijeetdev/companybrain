@@ -3,4 +3,4 @@
 // and any MCP-compatible host.
 
 export { startMcpServer, type McpServerOptions } from './server.js';
-export { TOOLS, findTool, type Tool, type ToolContext } from './tools.js';
+export { TOOLS, findTool, DEFAULT_ORG_ID, type Tool, type ToolContext } from './tools.js';
