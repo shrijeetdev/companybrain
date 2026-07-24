@@ -16,6 +16,7 @@ import { makeBulkOps } from './bulk';
 import { makeRecurring } from './recurring';
 import { makeSubtasks } from './subtasks';
 import { makeAi } from './ai';
+import { makeApiKeys } from './api-keys';
 import { undoEvent, type UndoResult } from './undo';
 import { registerWorkers } from './workers';
 
@@ -44,6 +45,7 @@ export interface Core {
   recurring: ReturnType<typeof makeRecurring>;
   subtasks: ReturnType<typeof makeSubtasks>;
   ai: ReturnType<typeof makeAi>;
+  apiKeys: ReturnType<typeof makeApiKeys>;
   events: { list: Context['db']['events']['list']; undo: (eventId: string) => Promise<UndoResult> };
   /** Optional server-side LLM injection point (wired in M5); when undefined, leads fall back to heuristics. */
   llm?: { extractLead?: (note: string) => Promise<Partial<import('@companybrain/types').Lead>> };
@@ -71,6 +73,7 @@ export function createCoreFromPorts(ports: { db: Database; queue: Queue; auth: A
     recurring: makeRecurring(ctx),
     subtasks: makeSubtasks(ctx),
     ai: makeAi(ctx),
+    apiKeys: makeApiKeys(ctx),
     events: {
       list: (orgId: string, limit?: number) => ctx.db.events.list(orgId, limit),
       undo: (eventId: string) => undoEvent(ctx, eventId),

@@ -1,63 +1,75 @@
-// API Keys service — generate, list, revoke API keys for external integrations.
+// API Keys service — persisted, hashed, identity-bearing. Raw key is returned ONCE on
+// create and never stored; only the sha256 hash is persisted. verify() resolves the
+// { orgId, actorId, scopes } identity a caller (e.g. the MCP server) needs.
 
-import { newId } from './context';
-import type { Context } from './context';
+import { createHash } from 'node:crypto';
+import type { ApiKeyRow } from '@companybrain/db';
+import { type Context, newId } from './context';
 
-export interface ApiKey {
-  id: string;
+function hash(raw: string): string {
+  return createHash('sha256').update(raw).digest('hex');
+}
+
+/** The shape returned to callers — never includes the hash. */
+export type SafeApiKey = Omit<ApiKeyRow, 'keyHash'>;
+
+/** Identity resolved from a verified key — what the MCP server injects as ToolContext. */
+export interface ApiKeyIdentity {
   orgId: string;
-  name: string;
-  key: string;
-  prefix: string;
+  actorId?: string;
   scopes: string[];
-  createdAt: number;
-  lastUsedAt?: number;
-  expiresAt?: number;
 }
 
 export function makeApiKeys(ctx: Context) {
-  const keys = new Map<string, ApiKey>();
+  const db = ctx.db;
 
-  async function create(orgId: string, name: string, scopes: string[] = ['read']): Promise<ApiKey> {
+  async function create(
+    orgId: string,
+    name: string,
+    scopes: string[] = ['read'],
+    actorId?: string,
+  ): Promise<{ raw: string; row: SafeApiKey }> {
     const raw = `cb_${newId('key')}`;
-    const apiKey: ApiKey = {
+    const row: ApiKeyRow = {
       id: newId('apikey'),
       orgId,
       name,
-      key: raw,
       prefix: raw.slice(0, 8),
+      keyHash: hash(raw),
       scopes,
+      actorId,
       createdAt: Date.now(),
     };
-    keys.set(apiKey.id, apiKey);
-    return apiKey;
+    await db.apiKeys.insert(row);
+    const { keyHash: _omit, ...safe } = row;
+    return { raw, row: safe };
   }
 
-  async function list(orgId: string): Promise<Omit<ApiKey, 'key'>[]> {
-    return [...keys.values()]
-      .filter(k => k.orgId === orgId)
-      .map(({ key, ...rest }) => ({ ...rest, key: `${rest.prefix}...` }));
+  async function verify(rawKey: string): Promise<ApiKeyIdentity | null> {
+    const row = await db.apiKeys.findByHash(hash(rawKey));
+    if (!row) return null;
+    await db.apiKeys.touch(row.id, Date.now());
+    return { orgId: row.orgId, actorId: row.actorId, scopes: row.scopes };
   }
 
-  async function verify(rawKey: string): Promise<ApiKey | null> {
-    for (const k of keys.values()) {
-      if (k.key === rawKey) {
-        k.lastUsedAt = Date.now();
-        return k;
-      }
-    }
-    return null;
+  async function list(orgId: string): Promise<SafeApiKey[]> {
+    const rows = await db.apiKeys.listByOrg(orgId);
+    return rows.map(({ keyHash: _omit, ...safe }) => safe);
   }
 
   async function revoke(id: string): Promise<void> {
-    keys.delete(id);
+    await db.apiKeys.delete(id);
   }
 
-  async function getByPrefix(orgId: string, prefix: string): Promise<ApiKey | undefined> {
-    return [...keys.values()].find(k => k.orgId === orgId && k.prefix === prefix);
+  async function getByPrefix(orgId: string, prefix: string): Promise<SafeApiKey | undefined> {
+    const rows = await db.apiKeys.listByOrg(orgId);
+    const found = rows.find((k) => k.orgId === orgId && k.prefix === prefix);
+    if (!found) return undefined;
+    const { keyHash: _omit, ...safe } = found;
+    return safe;
   }
 
-  return { create, list, verify, revoke, getByPrefix };
+  return { create, verify, revoke, list, getByPrefix };
 }
 
 export type ApiKeysService = ReturnType<typeof makeApiKeys>;
