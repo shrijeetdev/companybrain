@@ -5,7 +5,7 @@ export type Role = 'ceo' | 'manager' | 'employee' | 'client' | 'agent';
 
 /** off = never act · ask = queue for human approval · auto = act then log */
 export type Autonomy = 'off' | 'ask' | 'auto';
-export type AutonomyAction = 'createTasks' | 'sendReminders' | 'draftReplies' | 'chase' | 'joinMeetings';
+export type AutonomyAction = 'createTasks' | 'sendReminders' | 'draftReplies' | 'chase' | 'joinMeetings' | 'manageRecords';
 
 /** Per-org autonomy config: how the AI may act for each kind of action. */
 export type AutonomySettings = Record<AutonomyAction, Autonomy>;

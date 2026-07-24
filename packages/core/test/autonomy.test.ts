@@ -65,6 +65,11 @@ test('autonomy: capturing a "theirs" loop under ask queues a chase approval', as
   assert.ok(pending.some((a) => a.action === 'chase' && a.loopId === loop.id), 'capture queued a chase approval');
 });
 
+test('autonomy: manageRecords defaults to off', async () => {
+  const settings = await core.autonomy.get(org);
+  assert.equal(settings.manageRecords, 'off', 'manageRecords must default to off');
+});
+
 test.after(async () => {
   await boot.shutdown();
   try { rmSync(dbPath, { force: true }); } catch { /* best effort */ }

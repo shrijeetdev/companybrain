@@ -13,6 +13,7 @@ export const DEFAULT_AUTONOMY: AutonomySettings = {
   sendReminders: 'auto',
   createTasks: 'off',
   joinMeetings: 'off',
+  manageRecords: 'off',
 };
 
 /** Which queue job an action dispatches (actions without a job are no-ops for now). */
