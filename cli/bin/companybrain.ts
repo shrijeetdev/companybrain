@@ -11,6 +11,17 @@ import { buildServer } from '@companybrain/server';
 import { whatsapp, createMessenger, createBaileysChannel, createLlm } from '@companybrain/integrations';
 import { captureException, flushSentry } from '@companybrain/server/middleware';
 
+// --- Subcommand dispatch: `companybrain mcp` runs the standalone MCP server. ---
+const subcommand = process.argv[2];
+if (subcommand === 'mcp') {
+  // Hand off to the MCP entrypoint. Dynamic import keeps MCP-only deps out of the
+  // web-app boot path; the web app never loads @companybrain/mcp.
+  await import('./mcp.js');
+  // mcp.ts blocks on its readline loop; control does not return here.
+  // (Guard: if it ever does return, exit cleanly without starting the web app.)
+  process.exit(0);
+}
+
 // --- Process error handlers: catch what would otherwise be silent crashes (H6) ---
 process.on('unhandledRejection', (reason) => {
   // A swallowed promise is a bug, not a reason to die. Log + report, keep running.

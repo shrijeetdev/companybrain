@@ -5,7 +5,7 @@ import type { Database } from './port';
 import { SqliteDatabase } from './sqlite';
 import { SupabaseDatabase, type SupabaseDbOptions } from './supabase';
 
-export type { Database, LoopRepo, TaskRepo, LeadRepo, EventRepo } from './port';
+export type { Database, LoopRepo, TaskRepo, LeadRepo, EventRepo, ApiKeyRow, ApiKeyRepo } from './port';
 export { SqliteDatabase } from './sqlite';
 export { SupabaseDatabase } from './supabase';
 

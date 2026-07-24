@@ -289,8 +289,9 @@ export const TOOLS: Tool[] = [
   },
 ];
 
-function gateMessage(level: 'ask' | 'off', action: string): string {
+function gateMessage(level: 'auto' | 'ask' | 'off', action: string): string {
   if (level === 'off') return `Blocked: autonomy.${action} is 'off'. Ask an admin to set it to 'ask' or 'auto'.`;
+  // 'auto' never reaches here (the handler mutates on auto); treat ask (and any future level) as queued.
   return `Queued for human approval: autonomy.${action} is 'ask'. It will appear in the companybrain Auto tab; approving clears the queue (no auto-replay).`;
 }
 

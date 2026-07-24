@@ -10,6 +10,10 @@
   "dependencies": {
     "@companybrain/types": "file:../packages/types",
     "@companybrain/core": "file:../packages/core",
+    "@companybrain/db": "file:../packages/db",
+    "@companybrain/queue": "file:../packages/queue",
+    "@companybrain/auth": "file:../packages/auth",
+    "@companybrain/mcp": "file:../packages/mcp",
     "@companybrain/server": "file:../packages/server",
     "@companybrain/integrations": "file:../packages/integrations",
     "tsx": "^4.19.2"

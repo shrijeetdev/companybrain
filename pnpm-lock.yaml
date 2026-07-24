@@ -66,12 +66,24 @@ importers:
 
   cli:
     dependencies:
+      '@companybrain/auth':
+        specifier: file:../packages/auth
+        version: link:../packages/auth
       '@companybrain/core':
         specifier: file:../packages/core
         version: link:../packages/core
+      '@companybrain/db':
+        specifier: file:../packages/db
+        version: link:../packages/db
       '@companybrain/integrations':
         specifier: file:../packages/integrations
         version: link:../packages/integrations
+      '@companybrain/mcp':
+        specifier: file:../packages/mcp
+        version: link:../packages/mcp
+      '@companybrain/queue':
+        specifier: file:../packages/queue
+        version: link:../packages/queue
       '@companybrain/server':
         specifier: file:../packages/server
         version: link:../packages/server
