@@ -72,6 +72,34 @@ packages/  core · db · queue · auth · integrations · server · ui · types
 cli/       the one entrypoint — `pnpm start` boots everything
 ```
 
+## Use companybrain from Claude Desktop / Cursor / VS Code (MCP)
+
+companybrain speaks the Model Context Protocol over stdio, so any MCP host can read and (gated) write your tasks, loops, and leads.
+
+**One-time setup (in the running web app):**
+
+1. **Settings → User Management →** create a user with role **agent** (e.g. name "MCP Agent").
+2. Create an API key for that agent and copy it (shown once).
+3. In **Settings → Auto**, decide what the agent may do. By default a connected host is **read-only** — set `createTasks` and/or `manageRecords` to `ask` (propose, you approve) or `auto` (act, then log) to allow writes.
+
+**Connect a host (Claude Desktop `claude_desktop_config.json`):**
+
+```json
+{
+  "mcpServers": {
+    "companybrain": {
+      "command": "npx",
+      "args": ["tsx", "/absolute/path/to/companybrain/cli/bin/companybrain.ts", "mcp"],
+      "env": { "COMPANYBRAIN_MCP_KEY": "cb_..." }
+    }
+  }
+}
+```
+
+(Cursor / VS Code / Cline: same command + args + env in their MCP settings.)
+
+The MCP process opens the same `~/.companybrain/companybrain.sqlite` file as the web app (WAL), so they coexist. Every write is attributed to the "MCP Agent" account in the audit trail and runs through the same autonomy + approval + undo path as everything else.
+
 ## Status
 
 **Milestone 1 — bootable foundation** (in progress): single-app skeleton, shared types, the three ports with embedded adapters (SQLite + in-process queue + single-user auth), `core` domain logic, a Fastify server that serves both the API and the web UI, and the one-command bootstrapper. See [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md).

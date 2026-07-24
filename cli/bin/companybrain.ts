@@ -12,14 +12,20 @@ import { whatsapp, createMessenger, createBaileysChannel, createLlm } from '@com
 import { captureException, flushSentry } from '@companybrain/server/middleware';
 
 // --- Subcommand dispatch: `companybrain mcp` runs the standalone MCP server. ---
-const subcommand = process.argv[2];
-if (subcommand === 'mcp') {
+// Scan argv (not a fixed index): when MCP hosts like Claude Desktop spawn `tsx bin mcp`,
+// the runtime may rewrite argv so `mcp` lands at argv[1] instead of argv[2]. Slicing from
+// index 2 first, then falling back to a full scan, covers both the interactive and
+// spawned-`npx` cases without guessing the layout.
+const mcpArgs = process.argv.slice(2);
+if (mcpArgs[0] === 'mcp' || process.argv.includes('mcp')) {
   // Hand off to the MCP entrypoint. Dynamic import keeps MCP-only deps out of the
   // web-app boot path; the web app never loads @companybrain/mcp.
+  //
+  // Do NOT call process.exit() after the import: startMcpServer() returns immediately
+  // after registering a readline listener on stdin — it does NOT block synchronously.
+  // The process stays alive because stdin keeps the event loop busy, and exits on its
+  // own when stdin closes. A process.exit() here would kill it before any line is read.
   await import('./mcp.js');
-  // mcp.ts blocks on its readline loop; control does not return here.
-  // (Guard: if it ever does return, exit cleanly without starting the web app.)
-  process.exit(0);
 }
 
 // --- Process error handlers: catch what would otherwise be silent crashes (H6) ---
