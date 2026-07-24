@@ -236,6 +236,8 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const url = req.raw.url ?? '';
     if (!url.startsWith('/api/')) return;
     if (url.startsWith('/api/auth/')) return;
+    // SSE stream authenticates inside its own handler via cookie — EventSource can't send headers.
+    if (url.startsWith('/api/stream')) return;
 
     if (!authRequiresSession) {
       (req as FastifyRequest & { principal?: Principal }).principal = await auth.current();
@@ -378,6 +380,12 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
 
   // --- SSE stream ---
   app.get('/api/stream', async (req, reply) => {
+    // Authenticate via cookie — EventSource sends cookies automatically.
+    const token = readAuthToken(req);
+    const principal = authRequiresSession ? await auth.authenticate(token) : await auth.current();
+    if (!principal) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

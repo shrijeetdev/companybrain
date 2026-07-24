@@ -7815,6 +7815,7 @@ function buildServer(deps) {
     const url = req.raw.url ?? "";
     if (!url.startsWith("/api/")) return;
     if (url.startsWith("/api/auth/")) return;
+    if (url.startsWith("/api/stream")) return;
     if (!authRequiresSession) {
       req.principal = await auth.current();
       return;
@@ -7933,6 +7934,11 @@ function buildServer(deps) {
     }
   });
   app2.get("/api/stream", async (req, reply) => {
+    const token = readAuthToken(req);
+    const principal = authRequiresSession ? await auth.authenticate(token) : await auth.current();
+    if (!principal) {
+      return reply.code(401).send({ error: "unauthorized" });
+    }
     reply.raw.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
