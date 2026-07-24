@@ -16,6 +16,7 @@ import type {
   CustomFieldRepo,
   CustomField,
   ConnectionRepo,
+  ApiKeyRepo,
 } from './port';
 
 export interface SupabaseDbOptions {
@@ -40,6 +41,14 @@ export class SupabaseDatabase implements DbPort {
     async get() { return null; },
     async upsert() { throw new Error('Connections not supported in Supabase mode yet'); },
     async delete() {},
+  };
+
+  apiKeys: ApiKeyRepo = {
+    async insert() { throw new Error('apiKeys not implemented for Supabase'); },
+    async findByHash() { throw new Error('apiKeys not implemented for Supabase'); },
+    async touch() { throw new Error('apiKeys not implemented for Supabase'); },
+    async listByOrg() { throw new Error('apiKeys not implemented for Supabase'); },
+    async delete() { throw new Error('apiKeys not implemented for Supabase'); },
   };
 
   constructor(opts: SupabaseDbOptions) {

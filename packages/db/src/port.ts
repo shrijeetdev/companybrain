@@ -107,6 +107,29 @@ export interface ConnectionRepo {
   delete(orgId: string, channel: string): Promise<void>;
 }
 
+export interface ApiKeyRow {
+  id: string;
+  orgId: string;
+  name: string;
+  prefix: string;
+  /** sha256 hex of the raw key. The raw key is never stored. */
+  keyHash: string;
+  scopes: string[];
+  /** owner user id (the agent account). Optional for backwards-compat keys. */
+  actorId?: string;
+  createdAt: number;
+  lastUsedAt?: number;
+  expiresAt?: number;
+}
+
+export interface ApiKeyRepo {
+  insert(row: ApiKeyRow): Promise<void>;
+  findByHash(keyHash: string): Promise<ApiKeyRow | null>;
+  touch(id: string, at: number): Promise<void>;
+  listByOrg(orgId: string): Promise<ApiKeyRow[]>;
+  delete(id: string): Promise<void>;
+}
+
 export interface Database {
   /** create tables if missing */
   init(): Promise<void>;
@@ -119,5 +142,6 @@ export interface Database {
   timeEntries: TimeEntryRepo;
   customFields: CustomFieldRepo;
   connections: ConnectionRepo;
+  apiKeys: ApiKeyRepo;
   close(): Promise<void>;
 }

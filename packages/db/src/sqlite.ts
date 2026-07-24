@@ -17,6 +17,8 @@ import type {
   CustomField,
   ConnectionRepo,
   ConnectionRecord,
+  ApiKeyRow,
+  ApiKeyRepo,
 } from './port';
 import { encryptJSON, decryptJSON } from './crypto';
 
@@ -30,6 +32,7 @@ CREATE TABLE IF NOT EXISTS approvals (id TEXT PRIMARY KEY, org_id TEXT NOT NULL,
 CREATE TABLE IF NOT EXISTS time_entries (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, task_id TEXT NOT NULL, user_id TEXT NOT NULL, started_at INTEGER, ended_at INTEGER, duration INTEGER, note TEXT, doc TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS custom_fields (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, field_name TEXT NOT NULL, field_type TEXT NOT NULL DEFAULT 'text', field_value TEXT NOT NULL, created_at INTEGER);
 CREATE TABLE IF NOT EXISTS connections (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'disconnected', credentials TEXT NOT NULL DEFAULT '{}', created_at INTEGER, updated_at INTEGER);
+CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, name TEXT, prefix TEXT, key_hash TEXT NOT NULL UNIQUE, scopes TEXT NOT NULL, actor_id TEXT, created_at INTEGER, last_used_at INTEGER, expires_at INTEGER);
 CREATE INDEX IF NOT EXISTS idx_loops_org  ON loops(org_id, side);
 CREATE INDEX IF NOT EXISTS idx_tasks_org  ON tasks(org_id);
 CREATE INDEX IF NOT EXISTS idx_leads_org  ON leads(org_id);
@@ -40,6 +43,8 @@ CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id, org_id
 CREATE INDEX IF NOT EXISTS idx_custom_fields_entity ON custom_fields(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_custom_fields_org ON custom_fields(org_id);
 CREATE INDEX IF NOT EXISTS idx_connections_org_channel ON connections(org_id, channel);
+CREATE INDEX IF NOT EXISTS idx_api_keys_org ON api_keys(org_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
 `;
 
 export class SqliteDatabase implements DbPort {
@@ -53,6 +58,7 @@ export class SqliteDatabase implements DbPort {
   timeEntries: TimeEntryRepo;
   customFields: CustomFieldRepo;
   connections: ConnectionRepo;
+  apiKeys: ApiKeyRepo;
 
   constructor(filePath: string) {
     this.db = new Database(filePath);
@@ -296,6 +302,39 @@ export class SqliteDatabase implements DbPort {
       },
     };
     this.connections = connectionRepo;
+
+    this.apiKeys = {
+      async insert(row: ApiKeyRow) {
+        db.prepare(
+          'INSERT INTO api_keys (id, org_id, name, prefix, key_hash, scopes, actor_id, created_at, last_used_at, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
+        ).run(row.id, row.orgId, row.name, row.prefix, row.keyHash, JSON.stringify(row.scopes), row.actorId ?? null, row.createdAt, row.lastUsedAt ?? null, row.expiresAt ?? null);
+      },
+      async findByHash(keyHash) {
+        const row = db.prepare('SELECT * FROM api_keys WHERE key_hash=?').get(keyHash) as any;
+        if (!row) return null;
+        return {
+          id: row.id, orgId: row.org_id, name: row.name, prefix: row.prefix,
+          keyHash: row.key_hash, scopes: JSON.parse(row.scopes),
+          actorId: row.actor_id ?? undefined, createdAt: row.created_at,
+          lastUsedAt: row.last_used_at ?? undefined, expiresAt: row.expires_at ?? undefined,
+        } as ApiKeyRow;
+      },
+      async touch(id, at) {
+        db.prepare('UPDATE api_keys SET last_used_at=? WHERE id=?').run(at, id);
+      },
+      async listByOrg(orgId) {
+        const rows = db.prepare('SELECT * FROM api_keys WHERE org_id=? ORDER BY created_at DESC').all(orgId) as any[];
+        return rows.map((row) => ({
+          id: row.id, orgId: row.org_id, name: row.name, prefix: row.prefix,
+          keyHash: row.key_hash, scopes: JSON.parse(row.scopes),
+          actorId: row.actor_id ?? undefined, createdAt: row.created_at,
+          lastUsedAt: row.last_used_at ?? undefined, expiresAt: row.expires_at ?? undefined,
+        })) as ApiKeyRow[];
+      },
+      async delete(id) {
+        db.prepare('DELETE FROM api_keys WHERE id=?').run(id);
+      },
+    };
   }
 
   async init() {
