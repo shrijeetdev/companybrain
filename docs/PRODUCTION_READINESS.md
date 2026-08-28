@@ -68,15 +68,20 @@ Environment variables:
 - `NODE_ENV=production`
 - `COMPANYBRAIN_NO_OPEN=true`
 - `COMPANYBRAIN_AUTH_MODE=password`
-- `COMPANYBRAIN_ADMIN_EMAIL=info@vexocore.in`
-- `COMPANYBRAIN_ADMIN_PASSWORD=1234@1234work`
-- `COMPANYBRAIN_ADMIN_NAME=Vexocore Admin`
+- `COMPANYBRAIN_ADMIN_EMAIL=<your admin email>`
+- `COMPANYBRAIN_ADMIN_PASSWORD=<generated, set in the host's env settings only — never in this repo>`
+- `COMPANYBRAIN_ADMIN_NAME=<your admin name>`
 - `COMPANYBRAIN_SECURE_COOKIE=true`
 
 Notes:
 
 - Password mode seeds the admin only when no users exist yet. If users already exist, change/reset passwords from Settings → User Management.
 - Replace the bootstrap password after first login for a public production deployment.
+- **Never commit the bootstrap password.** Earlier revisions of this file and of `README.md`
+  carried a real one (`info@vexocore.in`); it has been redacted here, but it remains in git
+  history, so **that password must be treated as compromised and rotated**. Set the value only
+  in the host's environment-variable settings. The server refuses to seed an admin with a
+  weak or short password (see `COMPANYBRAIN_ADMIN_PASSWORD` handling in `packages/auth/src/password.ts`).
 
 ## ⚠️ Recommended before public launch (non-blocking but important)
 

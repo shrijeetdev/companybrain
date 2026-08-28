@@ -22,10 +22,17 @@ For production, use password mode so the login page asks only for **email/userna
 
 ```bash
 COMPANYBRAIN_AUTH_MODE=password
-COMPANYBRAIN_ADMIN_EMAIL=info@vexocore.in
-COMPANYBRAIN_ADMIN_PASSWORD=1234@1234work
-COMPANYBRAIN_ADMIN_NAME="Vexocore Admin"
+COMPANYBRAIN_ADMIN_EMAIL=you@example.com
+COMPANYBRAIN_ADMIN_PASSWORD=            # generate one, never commit it
+COMPANYBRAIN_ADMIN_NAME="Your Admin"
 COMPANYBRAIN_SECURE_COOKIE=true
+```
+
+Generate the bootstrap password rather than inventing one, and set it only in your host's
+environment-variable settings — never in a file you commit:
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(24).toString('base64url'))"
 ```
 
 On first boot, if the `users` table is empty, companybrain seeds that admin as role `ceo` with full permissions. After login, CEO/admin users can open **Settings → User Management** to create users, change roles (`client`, `employee`, `manager`, `ceo`, `agent`), disable/delete users, and reset passwords. If users already exist, the bootstrap env vars do not overwrite passwords; reset them from the admin UI.

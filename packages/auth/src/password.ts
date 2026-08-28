@@ -53,6 +53,26 @@ function rowToUser(row: UserRow): AuthUser {
   };
 }
 
+/**
+ * Reject bootstrap passwords a stranger could guess. Returns a reason string when the
+ * password is unacceptable, or null when it passes. Deliberately simple: length plus a
+ * short list of the passwords that actually show up in leaked deployments.
+ */
+const COMMON_PASSWORDS = new Set([
+  'password', 'password1', 'passw0rd', 'admin', 'admin123', 'administrator', 'letmein',
+  'welcome', 'changeme', 'secret', 'qwerty', 'iloveyou', 'monkey', 'dragon', 'test',
+  '12345678', '123456789', '1234567890', '1234@1234', '1234@1234work', 'companybrain',
+]);
+
+export function describeWeakPassword(password: string): string | null {
+  const pw = password.trim();
+  if (pw.length < 12) return 'is shorter than 12 characters';
+  if (COMMON_PASSWORDS.has(pw.toLowerCase())) return 'is a commonly used password';
+  if (/^(.)\1+$/.test(pw)) return 'is a single repeated character';
+  if (new Set(pw).size < 5) return 'uses fewer than 5 distinct characters';
+  return null;
+}
+
 export class PasswordAuth implements Auth {
   mode = 'password' as const;
 
@@ -114,6 +134,19 @@ export class PasswordAuth implements Auth {
     // Only seed if this specific admin email doesn't already exist
     const existing = this.db.prepare('SELECT id FROM users WHERE lower(email)=?').get(email) as { id: string } | undefined;
     if (existing) return;
+
+    // A bootstrap admin is the most valuable account in the system and its password often
+    // ends up pasted into a host's env settings (or, worse, a committed file). Refuse to
+    // create it with a guessable one rather than seeding a weak admin and hoping someone
+    // rotates it later. This blocks seeding only — existing installs are untouched.
+    const weak = describeWeakPassword(password);
+    if (weak) {
+      console.error(
+        `[companybrain] PasswordAuth: refusing to seed the initial admin — COMPANYBRAIN_ADMIN_PASSWORD ${weak}. ` +
+        'Generate one with `node -e "console.log(require(\'node:crypto\').randomBytes(24).toString(\'base64url\'))"` and restart.',
+      );
+      return;
+    }
 
     const name = (process.env.COMPANYBRAIN_ADMIN_NAME ?? 'Admin').trim() || 'Admin';
     this.insertUser({ email, name, role: 'ceo', password, username: undefined }, null);
