@@ -11,6 +11,10 @@ allowBuilds:
   better-sqlite3: true
   esbuild: false
   protobufjs: true
+  # baileys' only install script is engine-requirements.js, a Node-major-version check.
+  # package.json already requires node >=20, so skipping it costs nothing and keeps one
+  # fewer install script running.
+  "@whiskeysockets/baileys": false
 
 # Allow git-based transitive deps (e.g. @whiskeysockets/baileys pulls one in).
 blockExoticSubdeps: false

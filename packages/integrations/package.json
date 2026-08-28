@@ -12,7 +12,7 @@
     "@anthropic-ai/sdk": "^0.70.0",
     "@companybrain/core": "file:../core",
     "@companybrain/types": "file:../types",
-    "@whiskeysockets/baileys": "^6.7.9",
+    "@whiskeysockets/baileys": "~6.7.24",
     "googleapis": "^173.0.0",
     "qrcode-terminal": "^0.12.0"
   },

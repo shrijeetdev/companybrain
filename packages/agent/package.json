@@ -13,6 +13,6 @@
     "@companybrain/types": "file:../types"
   },
   "peerDependencies": {
-    "@companybrain/core": "file:../core"
+    "@companybrain/core": "workspace:*"
   }
 }

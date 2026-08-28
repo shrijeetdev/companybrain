@@ -4374,7 +4374,7 @@ var init_middleware = __esm({
   }
 });
 
-// node_modules/.pnpm/@companybrain+mcp@file+packages+mcp_@companybrain+core@file+packages+core_@opentelemetr_e9938af9b32489c9339460b4c140d4ad/node_modules/@companybrain/mcp/src/tools.ts
+// packages/mcp/src/tools.ts
 async function identity(core, ctx) {
   if (ctx.orgId && ctx.actorId) return { orgId: ctx.orgId, actorId: ctx.actorId };
   try {
@@ -4400,7 +4400,8 @@ function findTool(name) {
 }
 var DEFAULT_ORG_ID, DEFAULT_ACTOR_ID, str, TOOLS;
 var init_tools = __esm({
-  "node_modules/.pnpm/@companybrain+mcp@file+packages+mcp_@companybrain+core@file+packages+core_@opentelemetr_e9938af9b32489c9339460b4c140d4ad/node_modules/@companybrain/mcp/src/tools.ts"() {
+  "packages/mcp/src/tools.ts"() {
+    "use strict";
     DEFAULT_ORG_ID = "org_local";
     DEFAULT_ACTOR_ID = "user_local";
     str = (description) => ({ type: "string", description });
@@ -4643,7 +4644,7 @@ var init_tools = __esm({
   }
 });
 
-// node_modules/.pnpm/@companybrain+mcp@file+packages+mcp_@companybrain+core@file+packages+core_@opentelemetr_e9938af9b32489c9339460b4c140d4ad/node_modules/@companybrain/mcp/src/server.ts
+// packages/mcp/src/server.ts
 import { createInterface } from "node:readline";
 function startMcpServer(opts) {
   const { core, context } = opts;
@@ -4750,7 +4751,8 @@ function startMcpServer(opts) {
 }
 var PROTOCOL_VERSION, ERROR_CODES;
 var init_server = __esm({
-  "node_modules/.pnpm/@companybrain+mcp@file+packages+mcp_@companybrain+core@file+packages+core_@opentelemetr_e9938af9b32489c9339460b4c140d4ad/node_modules/@companybrain/mcp/src/server.ts"() {
+  "packages/mcp/src/server.ts"() {
+    "use strict";
     init_tools();
     PROTOCOL_VERSION = "2024-11-05";
     ERROR_CODES = {
@@ -4763,9 +4765,10 @@ var init_server = __esm({
   }
 });
 
-// node_modules/.pnpm/@companybrain+mcp@file+packages+mcp_@companybrain+core@file+packages+core_@opentelemetr_e9938af9b32489c9339460b4c140d4ad/node_modules/@companybrain/mcp/src/index.ts
+// packages/mcp/src/index.ts
 var init_src5 = __esm({
-  "node_modules/.pnpm/@companybrain+mcp@file+packages+mcp_@companybrain+core@file+packages+core_@opentelemetr_e9938af9b32489c9339460b4c140d4ad/node_modules/@companybrain/mcp/src/index.ts"() {
+  "packages/mcp/src/index.ts"() {
+    "use strict";
     init_server();
     init_tools();
   }
