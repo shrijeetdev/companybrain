@@ -70,6 +70,11 @@ test('autonomy: manageRecords defaults to off', async () => {
   assert.equal(settings.manageRecords, 'off', 'manageRecords must default to off');
 });
 
+test('autonomy: executeAi defaults to ask', async () => {
+  const settings = await core.autonomy.get(org);
+  assert.equal(settings.executeAi, 'ask', 'executeAi must default to ask (opt-in)');
+});
+
 test.after(async () => {
   await boot.shutdown();
   try { rmSync(dbPath, { force: true }); } catch { /* best effort */ }
