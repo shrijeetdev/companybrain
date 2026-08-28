@@ -22,7 +22,9 @@
     "desktop:dev": "pnpm build && npm --prefix desktop start",
     "desktop:dist": "npm --prefix desktop run dist",
     "desktop:dist:mac": "npm --prefix desktop run dist:mac",
-    "desktop:dist:win": "npm --prefix desktop run dist:win"
+    "desktop:dist:win": "npm --prefix desktop run dist:win",
+    "smoke": "node scripts/smoke.mjs",
+    "backup": "node dist/server.js backup"
   },
   "dependencies": {
     "fastify": "^5.0.0",

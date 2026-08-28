@@ -1,50 +1,39 @@
 #!/bin/bash
-# Company Brain automated backup script
-# Run daily via cron: 0 2 * * * /path/to/backup.sh
-# Or use Docker volume mounting for persistent backups
+# Company Brain backup — cron wrapper around the built-in backup command.
+#
+#   0 2 * * * /path/to/companybrain/scripts/backup.sh >> /var/log/companybrain-backup.log 2>&1
+#
+# The app also takes a nightly backup on its own while it is running; this script exists so
+# backups keep happening when it is not, and so cron can alert on failure (it exits non-zero).
+#
+# Uses SQLite's online backup API via `companybrain backup`, which is safe against a live
+# database — unlike `cp`, which can capture a torn file when WAL is on. No `sqlite3` CLI
+# needed; the app's own better-sqlite3 does the work.
+#
+# Environment:
+#   COMPANYBRAIN_DB_PATH         database to copy   (default ~/.companybrain/companybrain.sqlite)
+#   COMPANYBRAIN_BACKUP_DIR      where copies land  (default ~/.companybrain/backups)
+#   COMPANYBRAIN_BACKUP_RETENTION how many to keep  (default 14)
+#   COMPANYBRAIN_BACKUP_GZIP=1   also gzip each new backup
 
-set -e
+set -euo pipefail
 
-# Configuration
-BACKUP_DIR="${BACKUP_DIR:-/backups/companybrain}"
-DB_PATH="${COMPANYBRAIN_DB_PATH:-$HOME/.companybrain/companybrain.sqlite}"
-RETENTION_DAYS="${RETENTION_DAYS:-30}"
-DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILE="$BACKUP_DIR/companybrain_$DATE.sqlite"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
 
-# Create backup directory if it doesn't exist
-mkdir -p "$BACKUP_DIR"
-
-# Check if database exists
-if [ ! -f "$DB_PATH" ]; then
-    echo "Error: Database not found at $DB_PATH"
-    exit 1
-fi
-
-# Create backup using SQLite's backup API (safe for live databases)
-echo "Creating backup: $BACKUP_FILE"
-sqlite3 "$DB_PATH" ".backup '$BACKUP_FILE'"
-
-# Verify backup
-if [ -f "$BACKUP_FILE" ]; then
-    BACKUP_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
-    echo "Backup created successfully: $BACKUP_SIZE"
+if [ -f "dist/server.js" ]; then
+  node dist/server.js backup "$@"
+elif command -v npx >/dev/null 2>&1; then
+  npx tsx cli/bin/companybrain.ts backup "$@"
 else
-    echo "Error: Backup failed"
-    exit 1
+  echo "[backup] neither dist/server.js nor npx is available in $ROOT" >&2
+  exit 1
 fi
 
-# Compress backup
-echo "Compressing backup..."
-gzip "$BACKUP_FILE"
-echo "Compressed: ${BACKUP_FILE}.gz"
-
-# Clean up old backups
-echo "Cleaning up backups older than $RETENTION_DAYS days..."
-find "$BACKUP_DIR" -name "companybrain_*.sqlite.gz" -mtime +$RETENTION_DAYS -delete
-
-# List remaining backups
-echo "Remaining backups:"
-ls -lh "$BACKUP_DIR"/companybrain_*.sqlite.gz 2>/dev/null || echo "No backups found"
-
-echo "Backup completed at $(date)"
+# Optional compression. Off by default: an uncompressed backup can be opened directly with
+# `sqlite3` or copied straight back into place during an incident.
+if [ "${COMPANYBRAIN_BACKUP_GZIP:-0}" = "1" ]; then
+  BACKUP_DIR="${COMPANYBRAIN_BACKUP_DIR:-$HOME/.companybrain/backups}"
+  find "$BACKUP_DIR" -name 'companybrain-*.sqlite' -exec gzip -f {} \;
+  echo "[backup] compressed backups in $BACKUP_DIR"
+fi

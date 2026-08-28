@@ -124,7 +124,13 @@ CREATE INDEX IF NOT EXISTS idx_ai_runs_org ON ai_runs(org_id, at);
       connections;
       apiKeys;
       aiRuns;
+      path;
+      /** Where this database lives on disk — what the backup job copies. */
+      filePath() {
+        return this.path;
+      }
       constructor(filePath) {
+        this.path = filePath;
         this.db = new Database(filePath);
         this.db.pragma("journal_mode = WAL");
         const db = this.db;
@@ -672,6 +678,10 @@ var init_supabase = __esm({
           throw new Error("apiKeys not implemented for Supabase");
         }
       };
+      /** Not file-backed — Postgres is backed up by the provider, not by this process. */
+      filePath() {
+        return null;
+      }
       // AI run history is SQLite-only for now — the executor runs against the local DB.
       aiRuns = {
         async insert() {
@@ -921,10 +931,93 @@ var init_supabase = __esm({
   }
 });
 
-// packages/db/src/index.ts
+// packages/db/src/backup.ts
+import Database2 from "better-sqlite3";
+import { mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { mkdirSync } from "node:fs";
+function defaultBackupDir() {
+  return process.env.COMPANYBRAIN_BACKUP_DIR ?? join(homedir(), ".companybrain", "backups");
+}
+function defaultRetention() {
+  const raw = Number(process.env.COMPANYBRAIN_BACKUP_RETENTION ?? "");
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 14;
+}
+function stamp(at = /* @__PURE__ */ new Date()) {
+  return at.toISOString().replace(/\.\d+Z$/, "").replace(/:/g, "-");
+}
+async function backupDatabase(opts) {
+  const dir2 = opts.dir ?? defaultBackupDir();
+  const keep2 = opts.keep ?? defaultRetention();
+  const started = Date.now();
+  mkdirSync(dir2, { recursive: true });
+  const target = join(dir2, `${PREFIX}${stamp(opts.now)}${SUFFIX}`);
+  const db = new Database2(opts.sourcePath, { readonly: true, fileMustExist: true });
+  try {
+    await db.backup(target);
+  } finally {
+    db.close();
+  }
+  const bytes = statSync(target).size;
+  return { path: target, bytes, durationMs: Date.now() - started, pruned: pruneBackups(dir2, keep2) };
+}
+function pruneBackups(dir2, keep2) {
+  if (keep2 <= 0) return [];
+  let entries;
+  try {
+    entries = readdirSync(dir2);
+  } catch {
+    return [];
+  }
+  const mine = entries.filter((f) => f.startsWith(PREFIX) && f.endsWith(SUFFIX)).sort().map((f) => join(dir2, f));
+  const doomed = mine.slice(0, Math.max(0, mine.length - keep2));
+  const pruned = [];
+  for (const f of doomed) {
+    try {
+      unlinkSync(f);
+      pruned.push(f);
+    } catch {
+    }
+  }
+  return pruned;
+}
+function listBackups(dir2 = defaultBackupDir()) {
+  let entries;
+  try {
+    entries = readdirSync(dir2);
+  } catch {
+    return [];
+  }
+  return entries.filter((f) => f.startsWith(PREFIX) && f.endsWith(SUFFIX)).map((f) => {
+    const path = join(dir2, f);
+    const st = statSync(path);
+    return { path, bytes: st.size, at: st.mtimeMs };
+  }).sort((a, b) => b.at - a.at);
+}
+var PREFIX, SUFFIX;
+var init_backup = __esm({
+  "packages/db/src/backup.ts"() {
+    "use strict";
+    PREFIX = "companybrain-";
+    SUFFIX = ".sqlite";
+  }
+});
+
+// packages/db/src/index.ts
+var src_exports = {};
+__export(src_exports, {
+  SqliteDatabase: () => SqliteDatabase,
+  SupabaseDatabase: () => SupabaseDatabase,
+  backupDatabase: () => backupDatabase,
+  createDatabase: () => createDatabase,
+  defaultBackupDir: () => defaultBackupDir,
+  defaultRetention: () => defaultRetention,
+  listBackups: () => listBackups,
+  pruneBackups: () => pruneBackups
+});
+import { homedir as homedir2 } from "node:os";
+import { join as join2 } from "node:path";
+import { mkdirSync as mkdirSync2 } from "node:fs";
 function createDatabase(opts = {}) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
@@ -936,9 +1029,9 @@ function createDatabase(opts = {}) {
     });
   }
   const fromEnv = process.env.COMPANYBRAIN_DB_PATH;
-  const dir = join(homedir(), ".companybrain");
-  mkdirSync(dir, { recursive: true });
-  return new SqliteDatabase(opts.sqlitePath ?? fromEnv ?? join(dir, "companybrain.sqlite"));
+  const dir2 = join2(homedir2(), ".companybrain");
+  mkdirSync2(dir2, { recursive: true });
+  return new SqliteDatabase(opts.sqlitePath ?? fromEnv ?? join2(dir2, "companybrain.sqlite"));
 }
 var init_src = __esm({
   "packages/db/src/index.ts"() {
@@ -947,6 +1040,7 @@ var init_src = __esm({
     init_supabase();
     init_sqlite();
     init_supabase();
+    init_backup();
   }
 });
 
@@ -1291,10 +1385,10 @@ var init_hash = __esm({
 
 // packages/auth/src/password.ts
 import { randomBytes as randomBytes4, randomUUID } from "node:crypto";
-import { homedir as homedir2 } from "node:os";
-import { join as join2 } from "node:path";
-import { mkdirSync as mkdirSync2 } from "node:fs";
-import Database2 from "better-sqlite3";
+import { homedir as homedir3 } from "node:os";
+import { join as join3 } from "node:path";
+import { mkdirSync as mkdirSync3 } from "node:fs";
+import Database3 from "better-sqlite3";
 function rowToUser(row) {
   return {
     userId: row.id,
@@ -1308,13 +1402,44 @@ function rowToUser(row) {
     createdAt: row.created_at
   };
 }
-var PasswordAuth;
+function describeWeakPassword(password) {
+  const pw = password.trim();
+  if (pw.length < 12) return "is shorter than 12 characters";
+  if (COMMON_PASSWORDS.has(pw.toLowerCase())) return "is a commonly used password";
+  if (/^(.)\1+$/.test(pw)) return "is a single repeated character";
+  if (new Set(pw).size < 5) return "uses fewer than 5 distinct characters";
+  return null;
+}
+var COMMON_PASSWORDS, PasswordAuth;
 var init_password = __esm({
   "packages/auth/src/password.ts"() {
     "use strict";
     init_local();
     init_capabilities();
     init_hash();
+    COMMON_PASSWORDS = /* @__PURE__ */ new Set([
+      "password",
+      "password1",
+      "passw0rd",
+      "admin",
+      "admin123",
+      "administrator",
+      "letmein",
+      "welcome",
+      "changeme",
+      "secret",
+      "qwerty",
+      "iloveyou",
+      "monkey",
+      "dragon",
+      "test",
+      "12345678",
+      "123456789",
+      "1234567890",
+      "1234@1234",
+      "1234@1234work",
+      "companybrain"
+    ]);
     PasswordAuth = class {
       mode = "password";
       db;
@@ -1326,10 +1451,10 @@ var init_password = __esm({
         const ttlHours = Number(process.env.COMPANYBRAIN_SESSION_TTL_HOURS ?? 168);
         this.sessionTtlMs = (Number.isFinite(ttlHours) && ttlHours > 0 ? ttlHours : 168) * 60 * 60 * 1e3;
         const fromEnv = process.env.COMPANYBRAIN_DB_PATH;
-        const dir = join2(homedir2(), ".companybrain");
-        mkdirSync2(dir, { recursive: true });
-        const filePath = fromEnv ?? join2(dir, "companybrain.sqlite");
-        this.db = new Database2(filePath);
+        const dir2 = join3(homedir3(), ".companybrain");
+        mkdirSync3(dir2, { recursive: true });
+        const filePath = fromEnv ?? join3(dir2, "companybrain.sqlite");
+        this.db = new Database3(filePath);
         this.db.pragma("journal_mode = WAL");
         this.db.exec(`
       CREATE TABLE IF NOT EXISTS users (
@@ -1366,6 +1491,13 @@ var init_password = __esm({
         }
         const existing = this.db.prepare("SELECT id FROM users WHERE lower(email)=?").get(email);
         if (existing) return;
+        const weak = describeWeakPassword(password);
+        if (weak) {
+          console.error(
+            `[companybrain] PasswordAuth: refusing to seed the initial admin \u2014 COMPANYBRAIN_ADMIN_PASSWORD ${weak}. Generate one with \`node -e "console.log(require('node:crypto').randomBytes(24).toString('base64url'))"\` and restart.`
+          );
+          return;
+        }
         const name = (process.env.COMPANYBRAIN_ADMIN_NAME ?? "Admin").trim() || "Admin";
         this.insertUser({ email, name, role: "ceo", password, username: void 0 }, null);
         console.log(`[companybrain] Seeded initial admin user: ${email} (role: ceo)`);
@@ -1698,8 +1830,8 @@ var init_supabase2 = __esm({
 });
 
 // packages/auth/src/index.ts
-var src_exports = {};
-__export(src_exports, {
+var src_exports2 = {};
+__export(src_exports2, {
   CAPS_BY_ROLE: () => CAPS_BY_ROLE,
   KeyAuth: () => KeyAuth,
   LOCAL_ORG_ID: () => LOCAL_ORG_ID,
@@ -2842,6 +2974,17 @@ function registerWorkers(ctx) {
     const open = await ctx.db.loops.list(orgId);
     console.log(`[worker] nightly sweep for ${orgId}: ${open.length} loop(s) reviewed`);
   });
+  ctx.queue.on("backupDatabase", async () => {
+    const sourcePath2 = ctx.db.filePath?.();
+    if (!sourcePath2) return;
+    try {
+      const { backupDatabase: backupDatabase2 } = await Promise.resolve().then(() => (init_src(), src_exports));
+      const r = await backupDatabase2({ sourcePath: sourcePath2 });
+      console.log(`[worker] backup \u2192 ${r.path} (${Math.round(r.bytes / 1024)}KB in ${r.durationMs}ms${r.pruned.length ? `, pruned ${r.pruned.length}` : ""})`);
+    } catch (err) {
+      console.error("[worker] backup failed:", err instanceof Error ? err.message : err);
+    }
+  });
   ctx.queue.on("runAiTask", async ({ taskId, approveRunId }) => {
     const executor = ctx.executor;
     if (!executor) {
@@ -3983,7 +4126,7 @@ function requireCapability(...capabilities) {
     if (!principal) {
       return reply.code(401).send({ error: "Authentication required" });
     }
-    const { createAuth: createAuth2 } = await Promise.resolve().then(() => (init_src3(), src_exports));
+    const { createAuth: createAuth2 } = await Promise.resolve().then(() => (init_src3(), src_exports2));
     const auth = createAuth2();
     const missing = capabilities.filter((cap) => !auth.can(principal, cap));
     if (missing.length > 0) {
@@ -4236,11 +4379,11 @@ var init_tools = __esm({
             priority: { type: "string", enum: ["low", "med", "high"], description: "Filter by priority." }
           }
         },
-        async handler(args, core, ctx) {
+        async handler(args2, core, ctx) {
           const { orgId } = await identity(core, ctx);
           let tasks = await core.tasks.list(orgId);
-          if (args?.day) tasks = tasks.filter((t) => t.day === args.day);
-          if (args?.priority) tasks = tasks.filter((t) => t.priority === args.priority);
+          if (args2?.day) tasks = tasks.filter((t) => t.day === args2.day);
+          if (args2?.priority) tasks = tasks.filter((t) => t.priority === args2.priority);
           return { count: tasks.length, tasks };
         }
       },
@@ -4253,9 +4396,9 @@ var init_tools = __esm({
             side: { type: "string", enum: ["yours", "theirs"], description: "Filter by whose court the ball is in." }
           }
         },
-        async handler(args, core, ctx) {
+        async handler(args2, core, ctx) {
           const { orgId } = await identity(core, ctx);
-          const loops = await core.loops.list(orgId, args?.side);
+          const loops = await core.loops.list(orgId, args2?.side);
           const open = loops.filter((l) => l.status !== "closed");
           return { count: open.length, loops: open };
         }
@@ -4268,9 +4411,9 @@ var init_tools = __esm({
           properties: { query: str("Substring to search for.") },
           required: ["query"]
         },
-        async handler(args, core, ctx) {
+        async handler(args2, core, ctx) {
           const { orgId } = await identity(core, ctx);
-          const q = String(args.query ?? "").toLowerCase();
+          const q = String(args2.query ?? "").toLowerCase();
           if (!q) return { tasks: [], loops: [], leads: [] };
           const [tasks, loops, leads] = await Promise.all([
             core.tasks.list(orgId),
@@ -4322,17 +4465,17 @@ var init_tools = __esm({
           },
           required: ["title"]
         },
-        async handler(args, core, ctx) {
+        async handler(args2, core, ctx) {
           const { orgId, actorId } = await identity(core, ctx);
-          const { proceed, level: level2 } = await gateWrite(core, "createTasks", orgId, `Create task: ${args.title}`);
+          const { proceed, level: level2 } = await gateWrite(core, "createTasks", orgId, `Create task: ${args2.title}`);
           if (!proceed) return { gated: level2, message: gateMessage(level2, "createTasks") };
           const task = await core.tasks.create({
             orgId,
             actorId,
-            title: args.title,
-            day: args.day,
-            priority: args.priority ?? null,
-            list: args.list
+            title: args2.title,
+            day: args2.day,
+            priority: args2.priority ?? null,
+            list: args2.list
           });
           return { gated: "auto", task };
         }
@@ -4349,16 +4492,16 @@ var init_tools = __esm({
           },
           required: ["title", "why", "side"]
         },
-        async handler(args, core, ctx) {
+        async handler(args2, core, ctx) {
           const { orgId, actorId } = await identity(core, ctx);
-          const { proceed, level: level2 } = await gateWrite(core, "createTasks", orgId, `Create loop: ${args.title}`);
+          const { proceed, level: level2 } = await gateWrite(core, "createTasks", orgId, `Create loop: ${args2.title}`);
           if (!proceed) return { gated: level2, message: gateMessage(level2, "createTasks") };
           const loop = await core.loops.capture({
             orgId,
             actorId,
-            title: args.title,
-            why: args.why,
-            side: args.side,
+            title: args2.title,
+            why: args2.why,
+            side: args2.side,
             channel: "manual"
           });
           return { gated: "auto", loop };
@@ -4372,11 +4515,11 @@ var init_tools = __esm({
           properties: { id: str("Task id (e.g. task_abcd1234).") },
           required: ["id"]
         },
-        async handler(args, core, ctx) {
+        async handler(args2, core, ctx) {
           const { orgId, actorId } = await identity(core, ctx);
-          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Complete task ${args.id}`);
+          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Complete task ${args2.id}`);
           if (!proceed) return { gated: level2, message: gateMessage(level2, "manageRecords") };
-          const task = await core.tasks.complete(args.id, actorId);
+          const task = await core.tasks.complete(args2.id, actorId);
           return { gated: "auto", task };
         }
       },
@@ -4391,11 +4534,11 @@ var init_tools = __esm({
           },
           required: ["id", "userIds"]
         },
-        async handler(args, core, ctx) {
+        async handler(args2, core, ctx) {
           const { orgId } = await identity(core, ctx);
-          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Assign task ${args.id}`);
+          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Assign task ${args2.id}`);
           if (!proceed) return { gated: level2, message: gateMessage(level2, "manageRecords") };
-          const task = await core.ctx.db.tasks.update(args.id, { assignees: args.userIds });
+          const task = await core.ctx.db.tasks.update(args2.id, { assignees: args2.userIds });
           return { gated: "auto", task };
         }
       },
@@ -4407,11 +4550,11 @@ var init_tools = __esm({
           properties: { id: str("Loop id.") },
           required: ["id"]
         },
-        async handler(args, core, ctx) {
+        async handler(args2, core, ctx) {
           const { orgId, actorId } = await identity(core, ctx);
-          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Close loop ${args.id}`);
+          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Close loop ${args2.id}`);
           if (!proceed) return { gated: level2, message: gateMessage(level2, "manageRecords") };
-          const loop = await core.loops.close(args.id, actorId);
+          const loop = await core.loops.close(args2.id, actorId);
           return { gated: "auto", loop };
         }
       },
@@ -4428,17 +4571,17 @@ var init_tools = __esm({
           },
           required: ["name"]
         },
-        async handler(args, core, ctx) {
+        async handler(args2, core, ctx) {
           const { orgId, actorId } = await identity(core, ctx);
-          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Create lead: ${args.name}`);
+          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Create lead: ${args2.name}`);
           if (!proceed) return { gated: level2, message: gateMessage(level2, "manageRecords") };
           const lead = await core.leads.create({
             orgId,
             actorId,
-            name: args.name,
-            company: args.company,
-            email: args.email,
-            phone: args.phone
+            name: args2.name,
+            company: args2.company,
+            email: args2.email,
+            phone: args2.phone
           });
           return { gated: "auto", lead };
         }
@@ -4451,11 +4594,11 @@ var init_tools = __esm({
           properties: { id: str("Lead id.") },
           required: ["id"]
         },
-        async handler(args, core, ctx) {
+        async handler(args2, core, ctx) {
           const { orgId, actorId } = await identity(core, ctx);
-          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Advance lead ${args.id}`);
+          const { proceed, level: level2 } = await gateWrite(core, "manageRecords", orgId, `Advance lead ${args2.id}`);
           if (!proceed) return { gated: level2, message: gateMessage(level2, "manageRecords") };
-          const lead = await core.leads.advance(args.id, actorId);
+          const lead = await core.leads.advance(args2.id, actorId);
           return { gated: "auto", lead };
         }
       }
@@ -4502,7 +4645,7 @@ function startMcpServer(opts) {
       case "tools/call": {
         const params = req.params ?? {};
         const name = params.name;
-        const args = params.arguments ?? {};
+        const args2 = params.arguments ?? {};
         const tool = findTool(name);
         if (!tool) {
           return {
@@ -4512,7 +4655,7 @@ function startMcpServer(opts) {
           };
         }
         try {
-          const output = await tool.handler(args, core, context ?? {});
+          const output = await tool.handler(args2, core, context ?? {});
           const text = typeof output === "string" ? output : JSON.stringify(output, null, 2);
           return {
             jsonrpc: "2.0",
@@ -4638,6 +4781,81 @@ var init_mcp = __esm({
   }
 });
 
+// cli/bin/backup.ts
+var backup_exports = {};
+import { homedir as homedir6 } from "node:os";
+import { join as join7 } from "node:path";
+import { existsSync as existsSync3 } from "node:fs";
+function flag(name) {
+  const i = args.indexOf(`--${name}`);
+  return i >= 0 ? args[i + 1] : void 0;
+}
+function resolveDbPath() {
+  const fromEnv = process.env.COMPANYBRAIN_DB_PATH;
+  return fromEnv ?? join7(homedir6(), ".companybrain", "companybrain.sqlite");
+}
+var args, mb, sourcePath, dir, keepRaw, keep;
+var init_backup2 = __esm({
+  async "cli/bin/backup.ts"() {
+    "use strict";
+    init_src();
+    args = process.argv.slice(process.argv.indexOf(process.argv.includes("backup") ? "backup" : "restore") + 1);
+    mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+    if (process.argv.includes("restore")) {
+      const file = args.find((a) => !a.startsWith("--"));
+      const dbPath = resolveDbPath();
+      console.log(`
+Restore is manual on purpose \u2014 it overwrites live data.
+
+  1. Stop companybrain.
+  2. Move the current database aside (do not delete it):
+       mv ${dbPath} ${dbPath}.before-restore
+       rm -f ${dbPath}-wal ${dbPath}-shm
+  3. Copy the backup into place:
+       cp ${file ?? "<backup file>"} ${dbPath}
+  4. Start companybrain and check that recent data is present.
+
+Available backups:`);
+      const list = listBackups();
+      if (!list.length) console.log("  (none)");
+      for (const b of list) console.log(`  ${b.path}  ${mb(b.bytes)}  ${new Date(b.at).toISOString()}`);
+      process.exit(0);
+    }
+    if (args.includes("--list")) {
+      const dir2 = flag("dir") ?? defaultBackupDir();
+      const list = listBackups(dir2);
+      if (!list.length) {
+        console.log(`No backups in ${dir2}.`);
+      } else {
+        console.log(`${list.length} backup(s) in ${dir2}, newest first:`);
+        for (const b of list) console.log(`  ${b.path}  ${mb(b.bytes)}  ${new Date(b.at).toISOString()}`);
+      }
+      process.exit(0);
+    }
+    sourcePath = flag("db") ?? resolveDbPath();
+    if (!existsSync3(sourcePath)) {
+      console.error(`[backup] no database at ${sourcePath}. Set COMPANYBRAIN_DB_PATH or pass --db <path>.`);
+      process.exit(1);
+    }
+    dir = flag("dir") ?? defaultBackupDir();
+    keepRaw = flag("keep");
+    keep = keepRaw ? Number(keepRaw) : defaultRetention();
+    if (!Number.isFinite(keep) || keep < 1) {
+      console.error(`[backup] --keep must be a positive number, got "${keepRaw}".`);
+      process.exit(1);
+    }
+    try {
+      const r = await backupDatabase({ sourcePath, dir, keep });
+      console.log(`[backup] ${sourcePath} \u2192 ${r.path} (${mb(r.bytes)} in ${r.durationMs}ms)`);
+      if (r.pruned.length) console.log(`[backup] pruned ${r.pruned.length} old backup(s), keeping ${keep}`);
+      process.exit(0);
+    } catch (err) {
+      console.error("[backup] FAILED:", err instanceof Error ? err.message : err);
+      process.exit(1);
+    }
+  }
+});
+
 // cli/bin/companybrain.ts
 init_src4();
 import { spawn } from "node:child_process";
@@ -4648,7 +4866,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
-import { join as join5 } from "node:path";
+import { join as join6 } from "node:path";
 import { existsSync as existsSync2 } from "node:fs";
 
 // packages/integrations/src/pipeline.ts
@@ -4820,8 +5038,8 @@ Note: ${note}`
 }
 
 // packages/integrations/src/whatsapp/baileys.ts
-import { homedir as homedir3 } from "node:os";
-import { join as join3 } from "node:path";
+import { homedir as homedir4 } from "node:os";
+import { join as join4 } from "node:path";
 import qrcode from "qrcode-terminal";
 import baileysPkg, {
   useMultiFileAuthState,
@@ -4849,7 +5067,7 @@ var toJid = (to) => to.includes("@") ? to : `${to.replace(/[^0-9]/g, "")}@s.what
 var numberFromJid = (jid) => jid.split("@")[0] ?? jid;
 function createBaileysChannel(opts) {
   let sock = null;
-  const authDir = opts.authDir ?? join3(homedir3(), ".companybrain", "wa");
+  const authDir = opts.authDir ?? join4(homedir4(), ".companybrain", "wa");
   const messenger = {
     async send(msg) {
       if (msg.channel !== "whatsapp") {
@@ -5135,19 +5353,19 @@ async function downloadIcsFromUrl(url) {
 }
 
 // packages/integrations/src/input/attachments.ts
-import { mkdirSync as mkdirSync3, writeFileSync, readFileSync, readdirSync, unlinkSync, existsSync } from "node:fs";
-import { homedir as homedir4 } from "node:os";
-import { join as join4 } from "node:path";
+import { mkdirSync as mkdirSync4, writeFileSync, readFileSync, readdirSync as readdirSync2, unlinkSync as unlinkSync2, existsSync } from "node:fs";
+import { homedir as homedir5 } from "node:os";
+import { join as join5 } from "node:path";
 import { randomUUID as randomUUID3 } from "node:crypto";
 function attachmentsRoot() {
-  const base = process.env.COMPANYBRAIN_HOME ?? join4(homedir4(), ".companybrain");
-  return join4(base, "attachments");
+  const base = process.env.COMPANYBRAIN_HOME ?? join5(homedir5(), ".companybrain");
+  return join5(base, "attachments");
 }
 function taskDir(orgId, taskId) {
-  return join4(attachmentsRoot(), orgId, taskId);
+  return join5(attachmentsRoot(), orgId, taskId);
 }
 function indexPath(orgId, taskId) {
-  return join4(taskDir(orgId, taskId), "index.json");
+  return join5(taskDir(orgId, taskId), "index.json");
 }
 function readIndex(orgId, taskId) {
   const path = indexPath(orgId, taskId);
@@ -5161,17 +5379,17 @@ function readIndex(orgId, taskId) {
   }
 }
 function writeIndex(orgId, taskId, records) {
-  const dir = taskDir(orgId, taskId);
-  mkdirSync3(dir, { recursive: true });
+  const dir2 = taskDir(orgId, taskId);
+  mkdirSync4(dir2, { recursive: true });
   writeFileSync(indexPath(orgId, taskId), JSON.stringify(records, null, 2), "utf8");
 }
 async function saveAttachment(opts) {
   const { taskId, filename, mimeType, data, orgId } = opts;
   const id = randomUUID3();
-  const dir = taskDir(orgId, taskId);
-  mkdirSync3(dir, { recursive: true });
+  const dir2 = taskDir(orgId, taskId);
+  mkdirSync4(dir2, { recursive: true });
   const storedFilename = `${id}-${sanitizeFilename(filename)}`;
-  const storedPath = join4(dir, storedFilename);
+  const storedPath = join5(dir2, storedFilename);
   writeFileSync(storedPath, data);
   const record2 = {
     id,
@@ -5189,7 +5407,7 @@ async function saveAttachment(opts) {
   return record2;
 }
 function getAttachmentPath(orgId, attachmentId) {
-  const orgRoot = join4(attachmentsRoot(), orgId);
+  const orgRoot = join5(attachmentsRoot(), orgId);
   if (!existsSync(orgRoot)) return "";
   for (const taskId of safeReaddir(orgRoot)) {
     const records = readIndex(orgId, taskId);
@@ -5202,31 +5420,31 @@ async function listAttachments(taskId) {
   const root = attachmentsRoot();
   if (!existsSync(root)) return [];
   for (const orgId of safeReaddir(root)) {
-    const dir = taskDir(orgId, taskId);
-    if (existsSync(dir)) {
+    const dir2 = taskDir(orgId, taskId);
+    if (existsSync(dir2)) {
       return readIndex(orgId, taskId);
     }
   }
   return [];
 }
 async function deleteAttachment(orgId, attachmentId) {
-  const orgRoot = join4(attachmentsRoot(), orgId);
+  const orgRoot = join5(attachmentsRoot(), orgId);
   if (!existsSync(orgRoot)) return;
   for (const taskId of safeReaddir(orgRoot)) {
     const records = readIndex(orgId, taskId);
     const hit = records.find((r) => r.id === attachmentId);
     if (!hit) continue;
     try {
-      if (existsSync(hit.storedPath)) unlinkSync(hit.storedPath);
+      if (existsSync(hit.storedPath)) unlinkSync2(hit.storedPath);
     } catch {
     }
     writeIndex(orgId, taskId, records.filter((r) => r.id !== attachmentId));
     return;
   }
 }
-function safeReaddir(dir) {
+function safeReaddir(dir2) {
   try {
-    return readdirSync(dir);
+    return readdirSync2(dir2);
   } catch {
     return [];
   }
@@ -8275,7 +8493,7 @@ function buildServer(deps) {
     }
   });
   app.register(rateLimit, rateLimitConfig);
-  const publicDir = join5(import.meta.dirname ?? process.cwd(), "public");
+  const publicDir = join6(import.meta.dirname ?? process.cwd(), "public");
   if (existsSync2(publicDir)) {
     app.register(fastifyStatic, {
       root: publicDir,
@@ -9572,10 +9790,14 @@ function leadsToCsv(leads) {
 
 // cli/bin/companybrain.ts
 init_middleware();
-var mcpArgs = process.argv.slice(2);
-var isMcpInvocation = mcpArgs[0] === "mcp" || process.argv.includes("mcp");
+var cliArgs = process.argv.slice(2);
+var isMcpInvocation = cliArgs[0] === "mcp" || process.argv.includes("mcp");
+var isBackupInvocation = !isMcpInvocation && (cliArgs[0] === "backup" || cliArgs[0] === "restore");
 if (isMcpInvocation) {
   await Promise.resolve().then(() => (init_mcp(), mcp_exports));
+}
+if (isBackupInvocation) {
+  await init_backup2().then(() => backup_exports);
 }
 process.on("unhandledRejection", (reason) => {
   console.error("[companybrain] unhandledRejection:", reason);
@@ -9586,7 +9808,7 @@ process.on("uncaughtException", (err) => {
   captureException2(err);
   flushSentry().finally(() => process.exit(1));
 });
-if (!isMcpInvocation) {
+if (!isMcpInvocation && !isBackupInvocation) {
   let openBrowser = function(target) {
     const cmd = platform() === "darwin" ? "open" : platform() === "win32" ? "start" : "xdg-open";
     try {
@@ -9606,6 +9828,9 @@ if (!isMcpInvocation) {
   await seedIfEmpty(boot.core);
   await boot.startWorkers();
   await boot.queue.schedule("sendBriefing", { orgId: "org_local" }, 6 * 60 * 60 * 1e3);
+  if ((process.env.COMPANYBRAIN_BACKUP ?? "").trim().toLowerCase() !== "off") {
+    await boot.queue.schedule("backupDatabase", {}, 24 * 60 * 60 * 1e3);
+  }
   if (baileys) await baileys.start(boot.core);
   const app = buildServer({ core: boot.core, auth: boot.auth });
   await app.listen({ port, host });
@@ -9616,7 +9841,7 @@ if (!isMcpInvocation) {
 
   \u25B8 ${shown}
   \u25B8 data:  ~/.companybrain/companybrain.sqlite
-  \u25B8 auth: ${authMode}${authMode === "KEY" ? " (session login enabled)" : " (single-user local mode)"}
+  \u25B8 auth: ${authMode}${authMode === "LOCAL" ? " (single-user local mode \u2014 no login)" : " (session login required)"}
   \u25B8 single app: SQLite + in-process worker + API + web, no external services
 
   Ctrl-C to stop.

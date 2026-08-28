@@ -33,3 +33,21 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      # The committed bundle is what production runs, so build it here and fail if the
+      # checked-in dist/server.js is stale relative to source.
+      - name: Build
+        run: pnpm build
+
+      - name: Check the committed bundle is up to date
+        run: |
+          if ! git diff --quiet -- dist/server.js; then
+            echo "::error::dist/server.js is stale — run 'pnpm build' and commit the result."
+            git diff --stat -- dist/server.js
+            exit 1
+          fi
+
+      # Boots the real app and checks auth, the security headers, and that every tab
+      # renders — the class of breakage unit tests cannot see.
+      - name: Smoke end-to-end
+        run: node scripts/smoke.mjs

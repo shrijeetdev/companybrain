@@ -98,7 +98,7 @@ console.log(`
 
   ▸ ${shown}
   ▸ data:  ~/.companybrain/companybrain.sqlite
-  ▸ auth: ${authMode}${authMode === 'KEY' ? ' (session login enabled)' : ' (single-user local mode)'}
+  ▸ auth: ${authMode}${authMode === 'LOCAL' ? ' (single-user local mode — no login)' : ' (session login required)'}
   ▸ single app: SQLite + in-process worker + API + web, no external services
 
   Ctrl-C to stop.
