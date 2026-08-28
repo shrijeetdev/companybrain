@@ -134,6 +134,41 @@ A task can be executed by AI instead of a human. Mark a task with an action type
 
 Every run is logged (model, prompts, output, duration, error) in `ai_runs` for auditability.
 
+## Backups
+
+The whole company is one SQLite file, so a backup is one consistent copy of it. The running
+app takes one nightly; run one yourself any time:
+
+```bash
+pnpm backup                  # or: node dist/server.js backup
+node dist/server.js backup --list
+node dist/server.js restore <file>    # prints the manual restore steps
+```
+
+Copies land in `~/.companybrain/backups` (`COMPANYBRAIN_BACKUP_DIR`), keeping the newest 14
+(`COMPANYBRAIN_BACKUP_RETENTION`). `COMPANYBRAIN_BACKUP=off` disables the nightly job when
+your host already snapshots the volume. For cron, `scripts/backup.sh` wraps the same command
+and exits non-zero on failure so cron can alert:
+
+```
+0 2 * * * /path/to/companybrain/scripts/backup.sh >> /var/log/companybrain-backup.log 2>&1
+```
+
+Backups use SQLite's online backup API, so they are safe to take while the app is writing —
+unlike `cp`, which can capture a torn file when WAL is on.
+
+## Checks
+
+```bash
+pnpm typecheck   # types
+pnpm test        # unit + integration
+pnpm build       # produces the dist/server.js that production runs
+pnpm smoke       # boots the built app and checks auth, headers, and every tab
+```
+
+CI runs all four on every push and pull request, and fails if the committed
+`dist/server.js` is stale.
+
 ## Status
 
 **Milestone 1 — bootable foundation** (in progress): single-app skeleton, shared types, the three ports with embedded adapters (SQLite + in-process queue + single-user auth), `core` domain logic, a Fastify server that serves both the API and the web UI, and the one-command bootstrapper. See [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md).

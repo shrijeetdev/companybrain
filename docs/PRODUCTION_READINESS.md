@@ -83,14 +83,48 @@ Notes:
   in the host's environment-variable settings. The server refuses to seed an admin with a
   weak or short password (see `COMPANYBRAIN_ADMIN_PASSWORD` handling in `packages/auth/src/password.ts`).
 
-## ⚠️ Recommended before public launch (non-blocking but important)
+## ✅ Pre-launch hardening (was "recommended before public launch")
 
 - [x] Enforce HTTPS-only cookies in production via `COMPANYBRAIN_SECURE_COOKIE=true`
-- [ ] Add structured request logging and error telemetry (Sentry/Logtail/etc.)
-- [ ] Configure automated SQLite backups for `~/.companybrain/companybrain.sqlite`
-- [ ] Add HTTPS reverse-proxy hardening headers (HSTS/CSP fine-tune)
-- [ ] Add smoke e2e script for auth + tab render checks in CI
-- [ ] Review/upgrade `@whiskeysockets/baileys` before enabling Baileys mode in production (upstream package currently emits a security advisory warning during install)
+- [x] Structured request logging and error telemetry — pino JSON logs (`COMPANYBRAIN_LOG_LEVEL`)
+      plus Sentry when `SENTRY_DSN` is set; 5xx are captured with method/URL, 4xx logged as
+      warnings. Both pino instances redact cookies, `authorization`, webhook signatures,
+      `set-cookie` and credential-shaped fields, so a request error can no longer write a
+      session token or API key into the log (`packages/server/test/log-redaction.test.ts`).
+- [x] Automated SQLite backups — a nightly `backupDatabase` job in the running app plus
+      `companybrain backup` for cron (`scripts/backup.sh`). Uses SQLite's online backup API,
+      which is safe against a live WAL database; retention defaults to 14 copies.
+      `companybrain backup --list` shows them; `companybrain restore <file>` prints the
+      (deliberately manual) restore steps. `COMPANYBRAIN_BACKUP=off` disables the nightly job
+      when the host already snapshots the volume.
+- [x] HTTPS hardening headers — HSTS (2 years, `includeSubDomains; preload`) when
+      `COMPANYBRAIN_SECURE_COOKIE=true` or `NODE_ENV=production`, plus CSP with
+      `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+      `Referrer-Policy` and `Permissions-Policy`. Asserted by the smoke run.
+- [x] Smoke e2e in CI — `pnpm smoke` (`scripts/smoke.mjs`) boots the built bundle in password
+      mode against a throwaway database and asserts 26 checks: the UI serves, its generated
+      inline script parses, every tab has a render branch, the security headers are present,
+      `/api/*` is 401 without a session, the roster stays private, the bootstrap admin can log
+      in and read, and a non-admin is refused by both admin surfaces. CI also runs `pnpm build`
+      and fails when the committed `dist/server.js` is stale.
+- [x] `@whiskeysockets/baileys` — the declared `^6.7.9` resolved to `6.17.16`, which npm marks
+      deprecated for **GHSA-qvv5-jq5g-4cgg** (message spoofing). Because the fixed line
+      (`6.7.22+`) sorts below `6.17.16`, a caret range keeps selecting the vulnerable build.
+      Now pinned to `~6.7.24` and relocked. That version also drops the git-tarball
+      `@whiskeysockets/eslint-config` from the runtime graph.
+
+## 🔐 Operational notes
+
+- **Rate limits:** 100/min globally, 10/min on `/api/auth/login`, 30/min on webhooks, and
+  20/min on the AI execution endpoints (those spend money per call and can push to an
+  external site, so the global limit is a DoS guard, not a spend guard).
+- **Backups:** verify one restores before you need it — `companybrain backup`, then follow
+  `companybrain restore <file>` on a copy and confirm recent data is present.
+- **Secrets:** `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY` and the WordPress application
+  password are server-side only. The WordPress credential is encrypted at rest in the
+  `connections` table and the API returns only the site and username, never the password.
+- **`pnpm install` requires GitHub access** for one git-hosted transitive dependency
+  (`libsignal`, pulled in by baileys). An environment that blocks `github.com` cannot install.
 
 ## Design-system alignment status
 
