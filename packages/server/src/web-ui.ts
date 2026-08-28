@@ -875,6 +875,16 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       +'<span style="font-family:&quot;JetBrains Mono&quot;,monospace;font-size:11px;font-weight:600;color:var(--accent);width:32px;text-align:right;">'+pct+'%</span>'
       +'</div>';
   }
+  // Undo is only offered when the server handed back an event id AND this role may reverse
+  // it (the undo endpoint is manager+). A button that 403s is worse than no button.
+  function canUndo(r){
+    return !!(r&&r.undoEventId)&&!!me&&(me.role==='manager'||me.role==='ceo');
+  }
+  function undoEvent(eventId,after){
+    post('/api/events/'+encodeURIComponent(eventId)+'/undo')
+      .then(function(){toast('Undone');if(after)after();})
+      .catch(function(e){toast(e&&e.message?e.message:'Could not undo');});
+  }
   function toast(msg,onUndo){
     var t=document.getElementById('toast');
     var inner=t.querySelector('.toast-inner');
@@ -1298,7 +1308,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       view.innerHTML=html;
 
       view.querySelectorAll('[data-bm]').forEach(function(b){b.onclick=function(){briefMode=b.dataset.bm;loadLoops();};});
-      view.querySelectorAll('[data-close]').forEach(function(b){b.onclick=function(){post('/api/loops/'+b.dataset.close+'/close').then(function(){toast('Loop closed',function(){/* undo placeholder */});loadLoops();});};});
+      view.querySelectorAll('[data-close]').forEach(function(b){b.onclick=function(){post('/api/loops/'+b.dataset.close+'/close').then(function(r){toast('Loop closed',canUndo(r)?function(){undoEvent(r.undoEventId,loadLoops);}:null);loadLoops();});};});
       view.querySelectorAll('[data-snooze]').forEach(function(b){b.onclick=function(){post('/api/loops/'+b.dataset.snooze+'/snooze',{hours:24}).then(function(){toast('Snoozed 24h');loadLoops();});};});
       view.querySelectorAll('[data-assign-loop]').forEach(function(b){b.onclick=function(){openAssignPicker(b.dataset.assignLoop);};});
       var sw=document.getElementById('sweep-btn');

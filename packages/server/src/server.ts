@@ -475,9 +475,14 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   app.post('/api/loops/:id/close', async (req) => {
     const p = await principalOf(req);
     await ownedLoop(req); // B1: org-scoped
-    const result = await core.loops.close(params(req).id, p.userId);
+    const id = params(req).id;
+    const result = await core.loops.close(id, p.userId);
     broadcast({ type: 'loop.closed' });
-    return result;
+    // The id of the event this close recorded, so the client can offer a working Undo
+    // instead of a button that does nothing. "Reversible" is only real if it is reachable.
+    const recent = await core.ctx.db.events.list(p.orgId, 20);
+    const undoEventId = recent.find((e) => e.type === 'loop.closed' && e.entityId === id)?.id;
+    return { ...result, undoEventId };
   });
 
   app.post('/api/loops/:id/snooze', {
