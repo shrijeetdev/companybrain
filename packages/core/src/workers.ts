@@ -63,6 +63,21 @@ export function registerWorkers(ctx: Context): void {
     console.log(`[worker] nightly sweep for ${orgId}: ${open.length} loop(s) reviewed`);
   });
 
+  // Nightly SQLite backup. The one database is one file, so "back up the company" is one
+  // consistent copy of it; retention prunes the rest. A failure here is logged, never fatal —
+  // a missed backup must not take the app down.
+  ctx.queue.on<Record<string, never>>('backupDatabase', async () => {
+    const sourcePath = ctx.db.filePath?.();
+    if (!sourcePath) return; // not a file-backed database (e.g. Supabase) — nothing to copy
+    try {
+      const { backupDatabase } = await import('@companybrain/db');
+      const r = await backupDatabase({ sourcePath });
+      console.log(`[worker] backup → ${r.path} (${Math.round(r.bytes / 1024)}KB in ${r.durationMs}ms${r.pruned.length ? `, pruned ${r.pruned.length}` : ''})`);
+    } catch (err) {
+      console.error('[worker] backup failed:', err instanceof Error ? err.message : err);
+    }
+  });
+
   // AI task executor — runs an AI-doable task through the LLM + the action adapter.
   // The ExecutorDeps are assembled here: the clients come from ctx.aiClients (injected by
   // the app, like Messenger/Drafter), the API key from env, the WordPress credentials from

@@ -65,7 +65,15 @@ export class SqliteDatabase implements DbPort {
   apiKeys: ApiKeyRepo;
   aiRuns: AiRunRepo;
 
+  private readonly path: string;
+
+  /** Where this database lives on disk — what the backup job copies. */
+  filePath(): string {
+    return this.path;
+  }
+
   constructor(filePath: string) {
+    this.path = filePath;
     this.db = new Database(filePath);
     this.db.pragma('journal_mode = WAL');
     const db = this.db;

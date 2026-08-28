@@ -152,5 +152,7 @@ export interface Database {
   connections: ConnectionRepo;
   apiKeys: ApiKeyRepo;
   aiRuns: AiRunRepo;
+  /** Path of the file backing this database, when it is file-backed (SQLite). */
+  filePath?(): string | null;
   close(): Promise<void>;
 }

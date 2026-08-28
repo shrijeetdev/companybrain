@@ -173,7 +173,7 @@ export interface DomainEvent {
 }
 
 /** A unit of deferred work the queue runs (chase a loop, send a briefing…). */
-export type JobName = 'chaseLoop' | 'replyLoop' | 'sendBriefing' | 'autoSweep' | 'sendReminder' | 'runAiTask';
+export type JobName = 'chaseLoop' | 'replyLoop' | 'sendBriefing' | 'autoSweep' | 'sendReminder' | 'runAiTask' | 'backupDatabase';
 
 export interface Job<T = Record<string, unknown>> {
   name: JobName;

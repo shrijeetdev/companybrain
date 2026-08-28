@@ -52,6 +52,11 @@ export class SupabaseDatabase implements DbPort {
     async delete() { throw new Error('apiKeys not implemented for Supabase'); },
   };
 
+  /** Not file-backed — Postgres is backed up by the provider, not by this process. */
+  filePath(): null {
+    return null;
+  }
+
   // AI run history is SQLite-only for now — the executor runs against the local DB.
   aiRuns: AiRunRepo = {
     async insert() { throw new Error('aiRuns not implemented for Supabase'); },

@@ -16,8 +16,9 @@ import { captureException, flushSentry } from '@companybrain/server/middleware';
 // the runtime may rewrite argv so `mcp` lands at argv[1] instead of argv[2]. Slicing from
 // index 2 first, then falling back to a full scan, covers both the interactive and
 // spawned-`npx` cases without guessing the layout.
-const mcpArgs = process.argv.slice(2);
-const isMcpInvocation = mcpArgs[0] === 'mcp' || process.argv.includes('mcp');
+const cliArgs = process.argv.slice(2);
+const isMcpInvocation = cliArgs[0] === 'mcp' || process.argv.includes('mcp');
+const isBackupInvocation = !isMcpInvocation && (cliArgs[0] === 'backup' || cliArgs[0] === 'restore');
 if (isMcpInvocation) {
   // Hand off to the MCP entrypoint. Dynamic import keeps MCP-only deps out of the
   // web-app boot path; the web app never loads @companybrain/mcp.
@@ -27,6 +28,13 @@ if (isMcpInvocation) {
   // The process stays alive because stdin keeps the event loop busy, and exits on its
   // own when stdin closes. A process.exit() here would kill it before any line is read.
   await import('./mcp.js');
+}
+
+// `companybrain backup` — take one now and exit; `companybrain backup --list` shows what
+// exists. Meant for cron and for a pre-deploy snapshot; the running app also takes a
+// nightly one on its own.
+if (isBackupInvocation) {
+  await import('./backup.js');
 }
 
 // --- Process error handlers: catch what would otherwise be silent crashes (H6) ---
@@ -43,10 +51,10 @@ process.on('uncaughtException', (err) => {
   flushSentry().finally(() => process.exit(1));
 });
 
-// The web app boots only when this is NOT an `mcp` invocation. Without this guard the
-// mcp subcommand starts the MCP server and then falls straight through to here, booting a
-// second copy of the whole app (and trying to open a browser) inside the MCP host.
-if (!isMcpInvocation) {
+// The web app boots only when this is NOT a subcommand invocation. Without this guard a
+// subcommand runs and then falls straight through to here, booting a second copy of the
+// whole app (and trying to open a browser) inside the MCP host or the cron job.
+if (!isMcpInvocation && !isBackupInvocation) {
 
 const port = Number(process.env.COMPANYBRAIN_PORT ?? process.env.PORT ?? 4317);
 const host = process.env.COMPANYBRAIN_HOST ?? '0.0.0.0';
@@ -71,6 +79,11 @@ await seedIfEmpty(boot.core);
 // In-process worker: timers fire chases/briefings inside this same process.
 await boot.startWorkers();
 await boot.queue.schedule('sendBriefing', { orgId: 'org_local' }, 6 * 60 * 60 * 1000);
+// Nightly SQLite backup with retention. COMPANYBRAIN_BACKUP=off disables it (e.g. when the
+// host already snapshots the volume); COMPANYBRAIN_BACKUP_DIR / _RETENTION tune it.
+if ((process.env.COMPANYBRAIN_BACKUP ?? '').trim().toLowerCase() !== 'off') {
+  await boot.queue.schedule('backupDatabase', {}, 24 * 60 * 60 * 1000);
+}
 
 // Open the WhatsApp socket (prints a QR to scan on first run) if enabled.
 if (baileys) await baileys.start(boot.core);
