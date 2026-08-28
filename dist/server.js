@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS time_entries (id TEXT PRIMARY KEY, org_id TEXT NOT NU
 CREATE TABLE IF NOT EXISTS custom_fields (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, field_name TEXT NOT NULL, field_type TEXT NOT NULL DEFAULT 'text', field_value TEXT NOT NULL, created_at INTEGER);
 CREATE TABLE IF NOT EXISTS connections (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'disconnected', credentials TEXT NOT NULL DEFAULT '{}', created_at INTEGER, updated_at INTEGER);
 CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, name TEXT, prefix TEXT, key_hash TEXT NOT NULL UNIQUE, scopes TEXT NOT NULL, actor_id TEXT, created_at INTEGER, last_used_at INTEGER, expires_at INTEGER);
+CREATE TABLE IF NOT EXISTS ai_runs (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, task_id TEXT NOT NULL, action TEXT, model TEXT, status TEXT, cost_usd REAL, duration_ms INTEGER, result_ref TEXT, error TEXT, at INTEGER, doc TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_loops_org  ON loops(org_id, side);
 CREATE INDEX IF NOT EXISTS idx_tasks_org  ON tasks(org_id);
 CREATE INDEX IF NOT EXISTS idx_leads_org  ON leads(org_id);
@@ -107,6 +108,8 @@ CREATE INDEX IF NOT EXISTS idx_custom_fields_org ON custom_fields(org_id);
 CREATE INDEX IF NOT EXISTS idx_connections_org_channel ON connections(org_id, channel);
 CREATE INDEX IF NOT EXISTS idx_api_keys_org ON api_keys(org_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
+CREATE INDEX IF NOT EXISTS idx_ai_runs_task ON ai_runs(task_id);
+CREATE INDEX IF NOT EXISTS idx_ai_runs_org ON ai_runs(org_id, at);
 `;
     SqliteDatabase = class {
       db;
@@ -120,6 +123,7 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
       customFields;
       connections;
       apiKeys;
+      aiRuns;
       constructor(filePath) {
         this.db = new Database(filePath);
         this.db.pragma("journal_mode = WAL");
@@ -375,6 +379,33 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
           },
           async delete(id) {
             db.prepare("DELETE FROM api_keys WHERE id=?").run(id);
+          }
+        };
+        this.aiRuns = {
+          async insert(run) {
+            db.prepare(
+              "INSERT INTO ai_runs (id, org_id, task_id, action, model, status, cost_usd, duration_ms, result_ref, error, at, doc) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+            ).run(run.id, run.orgId, run.taskId, run.action, run.model, run.status, run.costUsd ?? null, run.durationMs ?? null, run.resultRef ?? null, run.error ?? null, run.at, JSON.stringify(run));
+            return run;
+          },
+          async get(id) {
+            const row = db.prepare("SELECT doc FROM ai_runs WHERE id=?").get(id);
+            return row ? JSON.parse(row.doc) : null;
+          },
+          async listByTask(taskId) {
+            const rows = db.prepare("SELECT doc FROM ai_runs WHERE task_id=? ORDER BY at DESC").all(taskId);
+            return rows.map((r) => JSON.parse(r.doc));
+          },
+          async listByOrg(orgId, limit = 100) {
+            const rows = db.prepare("SELECT doc FROM ai_runs WHERE org_id=? ORDER BY at DESC LIMIT ?").all(orgId, limit);
+            return rows.map((r) => JSON.parse(r.doc));
+          },
+          async update(id, patch) {
+            const cur = await this.get(id);
+            if (!cur) throw new Error(`ai_run ${id} not found`);
+            const next = { ...cur, ...patch };
+            db.prepare("UPDATE ai_runs SET doc=?, status=?, cost_usd=?, duration_ms=?, result_ref=?, error=? WHERE id=?").run(JSON.stringify(next), next.status, next.costUsd ?? null, next.durationMs ?? null, next.resultRef ?? null, next.error ?? null, id);
+            return next;
           }
         };
       }
@@ -639,6 +670,24 @@ var init_supabase = __esm({
         },
         async delete() {
           throw new Error("apiKeys not implemented for Supabase");
+        }
+      };
+      // AI run history is SQLite-only for now — the executor runs against the local DB.
+      aiRuns = {
+        async insert() {
+          throw new Error("aiRuns not implemented for Supabase");
+        },
+        async get() {
+          throw new Error("aiRuns not implemented for Supabase");
+        },
+        async listByTask() {
+          throw new Error("aiRuns not implemented for Supabase");
+        },
+        async listByOrg() {
+          throw new Error("aiRuns not implemented for Supabase");
+        },
+        async update() {
+          throw new Error("aiRuns not implemented for Supabase");
         }
       };
       constructor(opts) {
@@ -1806,7 +1855,8 @@ var init_autonomy = __esm({
       sendReminders: "auto",
       createTasks: "off",
       joinMeetings: "off",
-      manageRecords: "off"
+      manageRecords: "off",
+      executeAi: "ask"
     };
     ACTION_JOB = {
       draftReplies: "replyLoop",
@@ -1930,6 +1980,32 @@ function makeTasks(ctx) {
       const task = await ctx.db.tasks.update(id, { completed: true, completedAt: now() });
       await record(ctx, { orgId: task.orgId, type: "task.completed", entityId: id, actorId, undo: { restoreCompleted: prev.completed ?? false, restoreCompletedAt: prev.completedAt ?? null } });
       return task;
+    },
+    /**
+     * Mark a task AI-executable (or clear it). Setting an action queues the task and
+     * enqueues the runAiTask job; the worker holds the API key and credentials, so the
+     * actual execution happens there, not here.
+     */
+    async setAiAction(id, action, config) {
+      const prev = await ctx.db.tasks.get(id);
+      if (!prev) throw new Error(`task ${id} not found`);
+      const patch = action ? { aiAction: action, aiStatus: "queued", aiConfig: config, aiRunId: void 0 } : { aiAction: null, aiStatus: void 0, aiRunId: void 0 };
+      const task = await ctx.db.tasks.update(id, patch);
+      if (action) {
+        await ctx.queue.enqueue("runAiTask", { taskId: id });
+        await record(ctx, { orgId: task.orgId, type: "ai.task.queued", entityId: id, actorId: prev.createdBy });
+      }
+      return task;
+    },
+    /**
+     * Approve the draft an `ask`-gated run produced, letting its action finally run.
+     * Re-enqueued rather than called directly because the OpenRouter key and the
+     * WordPress credentials live in the worker, which is the composition root.
+     */
+    async approveAiRun(runId) {
+      const run = await ctx.db.aiRuns.get(runId);
+      if (!run) throw new Error(`run ${runId} not found`);
+      await ctx.queue.enqueue("runAiTask", { taskId: run.taskId, approveRunId: runId });
     }
   };
 }
@@ -2766,11 +2842,206 @@ function registerWorkers(ctx) {
     const open = await ctx.db.loops.list(orgId);
     console.log(`[worker] nightly sweep for ${orgId}: ${open.length} loop(s) reviewed`);
   });
+  ctx.queue.on("runAiTask", async ({ taskId, approveRunId }) => {
+    const executor = ctx.executor;
+    if (!executor) {
+      console.warn(`[worker] runAiTask ${taskId}: executor not wired`);
+      return;
+    }
+    const clients = ctx.aiClients;
+    if (!clients) {
+      console.warn(`[worker] runAiTask ${taskId}: AI clients not injected \u2014 skipping`);
+      return;
+    }
+    const apiKey = process.env.OPENROUTER_API_KEY ?? "";
+    if (!apiKey) {
+      console.warn(`[worker] runAiTask ${taskId}: OPENROUTER_API_KEY not set \u2014 skipping`);
+      return;
+    }
+    const task = await ctx.db.tasks.get(taskId);
+    let wordpressCreds;
+    try {
+      const conn = await ctx.db.connections.get(task?.orgId ?? "", "wordpress");
+      const creds = conn?.credentials;
+      if (creds?.apiUrl && creds.username && creds.appPassword) {
+        wordpressCreds = { apiUrl: creds.apiUrl, username: creds.username, appPassword: creds.appPassword };
+      }
+    } catch {
+    }
+    const deps = { complete: clients.complete, actionDeps: { wordpressCreds, publishBlog: clients.publishBlog }, openRouterApiKey: apiKey };
+    if (approveRunId) await executor.approve(approveRunId, deps);
+    else await executor.run(taskId, deps);
+  });
 }
 var init_workers = __esm({
   "packages/core/src/workers.ts"() {
     "use strict";
     init_context();
+  }
+});
+
+// packages/core/src/ai-router.ts
+function resolveModel(action, override, env = process.env) {
+  if (override && override.trim()) return override.trim();
+  const envVal = env[ENV_KEY[action]];
+  if (envVal && envVal.trim()) return envVal.trim();
+  return DEFAULTS[action];
+}
+var DEFAULTS, ENV_KEY;
+var init_ai_router = __esm({
+  "packages/core/src/ai-router.ts"() {
+    "use strict";
+    DEFAULTS = {
+      generate: "anthropic/claude-3.5-sonnet",
+      publish_blog: "anthropic/claude-3.5-sonnet"
+    };
+    ENV_KEY = {
+      generate: "COMPANYBRAIN_AI_MODEL_GENERATE",
+      publish_blog: "COMPANYBRAIN_AI_MODEL_PUBLISH_BLOG"
+    };
+  }
+});
+
+// packages/core/src/ai-actions.ts
+var userPrompt, generate, publish_blog, ACTIONS;
+var init_ai_actions = __esm({
+  "packages/core/src/ai-actions.ts"() {
+    "use strict";
+    init_context();
+    userPrompt = (task, fallback) => task.aiConfig?.promptOverride?.trim() || fallback;
+    generate = {
+      type: "generate",
+      defaultAutonomy: "auto",
+      prompt(task) {
+        return {
+          system: 'You produce the deliverable described by the task title. Plain text unless the task asks for markup. No preamble, no "here is", just the content.',
+          user: userPrompt(task, `Task: ${task.title}`)
+        };
+      },
+      async run({ task, output, ctx }) {
+        const comment = { id: newId("cmt"), text: output, by: "agent_executor", at: now() };
+        const comments = [...task.comments ?? [], comment];
+        await ctx.db.tasks.update(task.id, { comments });
+        return { ok: true, resultRef: comment.id };
+      }
+    };
+    publish_blog = {
+      type: "publish_blog",
+      defaultAutonomy: "ask",
+      prompt(task) {
+        return {
+          system: "You write a complete, ready-to-publish blog post as HTML (article element with headings and paragraphs). No markdown fences, no commentary outside the HTML. Match the topic of the task title.",
+          user: userPrompt(task, `Write a blog post about: ${task.title}`)
+        };
+      },
+      async run({ task, output, deps }) {
+        if (!deps.wordpressCreds) {
+          return { ok: false, error: "WordPress is not configured. Add credentials in Settings \u2192 AI." };
+        }
+        if (!deps.publishBlog) {
+          return { ok: false, error: "publishBlog client not injected (misconfiguration)." };
+        }
+        const result = await deps.publishBlog({ creds: deps.wordpressCreds, title: task.title, content: output });
+        if (!result.ok) return { ok: false, error: result.error };
+        return { ok: true, resultRef: result.postUrl };
+      }
+    };
+    ACTIONS = {
+      generate,
+      publish_blog
+    };
+  }
+});
+
+// packages/core/src/executor.ts
+function stricter(a, b) {
+  return RANK[a] <= RANK[b] ? a : b;
+}
+function makeExecutor(ctx) {
+  async function run(taskId, deps) {
+    const task = await ctx.db.tasks.get(taskId);
+    if (!task || !task.aiAction) return;
+    if (task.aiStatus && task.aiStatus !== "queued") return;
+    const action = ACTIONS[task.aiAction];
+    if (!action) return;
+    const globalLevel = (await resolveAutonomy(ctx.db, task.orgId)).executeAi;
+    const level2 = stricter(globalLevel, action.defaultAutonomy);
+    if (level2 === "off") return;
+    const model = resolveModel(task.aiAction, task.aiConfig?.modelOverride);
+    const { system, user } = action.prompt(task);
+    const aiRun = {
+      id: newId("airun"),
+      orgId: task.orgId,
+      taskId: task.id,
+      action: task.aiAction,
+      model,
+      status: "running",
+      systemPrompt: system,
+      userPrompt: user,
+      at: now()
+    };
+    await ctx.db.aiRuns.insert(aiRun);
+    await ctx.db.tasks.update(task.id, { aiStatus: "running", aiRunId: aiRun.id });
+    const result = await deps.complete({
+      model,
+      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      apiKey: deps.openRouterApiKey
+    });
+    if (!result?.ok) {
+      await ctx.db.aiRuns.update(aiRun.id, { status: "failed", error: result?.error ?? "unknown LLM failure", durationMs: result?.durationMs });
+      await ctx.db.tasks.update(task.id, { aiStatus: "failed" });
+      await record(ctx, { orgId: task.orgId, type: "ai.task.failed", entityId: task.id, actorId: "agent_executor" });
+      return;
+    }
+    await ctx.db.aiRuns.update(aiRun.id, {
+      status: level2 === "auto" ? "running" : "awaiting_review",
+      output: result.text,
+      durationMs: result.durationMs
+    });
+    if (level2 === "auto") {
+      const fresh = await ctx.db.tasks.get(task.id) ?? task;
+      await runAction(fresh, result.text, aiRun.id, deps);
+    } else {
+      await ctx.db.tasks.update(task.id, { aiStatus: "awaiting_review" });
+    }
+  }
+  async function runAction(task, output, runId, deps) {
+    const action = ACTIONS[task.aiAction];
+    const res = await action.run({ task, output, ctx, deps: deps.actionDeps });
+    if (!res.ok) {
+      await ctx.db.aiRuns.update(runId, { status: "failed", error: res.error });
+      await ctx.db.tasks.update(task.id, { aiStatus: "failed" });
+      await record(ctx, { orgId: task.orgId, type: "ai.task.failed", entityId: task.id, actorId: "agent_executor" });
+      return;
+    }
+    await ctx.db.aiRuns.update(runId, { status: "done", resultRef: res.resultRef });
+    await ctx.db.tasks.update(task.id, { aiStatus: "done", completed: true, completedAt: now() });
+    await record(ctx, {
+      orgId: task.orgId,
+      type: "ai.task.executed",
+      entityId: task.id,
+      actorId: "agent_executor",
+      undo: { restoreCompleted: task.completed ?? false, restoreCompletedAt: task.completedAt ?? null }
+    });
+  }
+  async function approve(runId, deps) {
+    const aiRun = await ctx.db.aiRuns.get(runId);
+    if (!aiRun || aiRun.status !== "awaiting_review") return;
+    const task = await ctx.db.tasks.get(aiRun.taskId);
+    if (!task || !task.aiAction) return;
+    await runAction(task, aiRun.output ?? "", aiRun.id, deps);
+  }
+  return { run, approve };
+}
+var RANK;
+var init_executor = __esm({
+  "packages/core/src/executor.ts"() {
+    "use strict";
+    init_autonomy();
+    init_ai_router();
+    init_ai_actions();
+    init_context();
+    RANK = { off: 0, ask: 1, auto: 2 };
   }
 });
 
@@ -3260,8 +3531,10 @@ function createCoreFromPorts(ports) {
     queue: ports.queue,
     auth: ports.auth,
     messenger: ports.messenger ?? consoleMessenger,
-    drafter: ports.drafter ?? templateDrafter
+    drafter: ports.drafter ?? templateDrafter,
+    aiClients: ports.aiClients
   };
+  ctx.executor = makeExecutor(ctx);
   return {
     ctx,
     loops: makeLoops(ctx),
@@ -3289,7 +3562,7 @@ async function bootstrap(opts = {}) {
   await db.init();
   await queue.init();
   await auth.init();
-  const core = createCoreFromPorts({ db, queue, auth, messenger: opts.messenger, drafter: opts.drafter });
+  const core = createCoreFromPorts({ db, queue, auth, messenger: opts.messenger, drafter: opts.drafter, aiClients: opts.aiClients });
   registerWorkers(core.ctx);
   return {
     core,
@@ -3325,10 +3598,14 @@ var init_src4 = __esm({
     init_api_keys();
     init_undo();
     init_workers();
+    init_executor();
     init_context();
     init_agents();
     init_autonomy();
     init_undo();
+    init_executor();
+    init_ai_actions();
+    init_ai_router();
     init_workers();
     init_seed();
     init_methods();
@@ -3349,12 +3626,14 @@ __export(validation_exports, {
   LoginSchema: () => LoginSchema,
   MoveTaskSchema: () => MoveTaskSchema,
   QuickAddLeadSchema: () => QuickAddLeadSchema,
+  SetAiActionSchema: () => SetAiActionSchema,
   SetLeadStageSchema: () => SetLeadStageSchema,
   SetPasswordSchema: () => SetPasswordSchema,
   SnoozeLoopSchema: () => SnoozeLoopSchema,
   UpdateUserSchema: () => UpdateUserSchema,
   ValidationError: () => ValidationError,
   WebhookFanInSchema: () => WebhookFanInSchema,
+  WordpressCredsSchema: () => WordpressCredsSchema,
   validateBody: () => validateBody,
   validateQuery: () => validateQuery
 });
@@ -3387,7 +3666,7 @@ function validateQuery(schema) {
     req.validatedQuery = result.data;
   };
 }
-var ValidationError, CreateLoopSchema, SnoozeLoopSchema, AssignSchema, CreateTaskSchema, MoveTaskSchema, CreateLeadSchema, SetLeadStageSchema, QuickAddLeadSchema, ExtractCardSchema, AutonomySchema, LoginSchema, CreateUserSchema, UpdateUserSchema, SetPasswordSchema, WebhookFanInSchema;
+var ValidationError, CreateLoopSchema, SnoozeLoopSchema, AssignSchema, CreateTaskSchema, MoveTaskSchema, CreateLeadSchema, SetLeadStageSchema, QuickAddLeadSchema, ExtractCardSchema, SetAiActionSchema, WordpressCredsSchema, AutonomySchema, LoginSchema, CreateUserSchema, UpdateUserSchema, SetPasswordSchema, WebhookFanInSchema;
 var init_validation = __esm({
   "packages/server/src/middleware/validation.ts"() {
     "use strict";
@@ -3444,8 +3723,20 @@ var init_validation = __esm({
       imageBase64: z.string().max(1e7).optional(),
       text: z.string().trim().max(5e3).optional()
     }).refine((d) => d.imageBase64 || d.text, { message: "imageBase64 or text is required" });
+    SetAiActionSchema = z.object({
+      action: z.enum(["generate", "publish_blog"]).nullable(),
+      config: z.object({
+        promptOverride: z.string().trim().max(4e3).optional(),
+        modelOverride: z.string().trim().max(200).optional()
+      }).optional()
+    });
+    WordpressCredsSchema = z.object({
+      apiUrl: z.string().trim().url("apiUrl must be a URL").max(500),
+      username: z.string().trim().min(1, "username is required").max(200),
+      appPassword: z.string().min(1, "appPassword is required").max(500)
+    });
     AutonomySchema = z.object({
-      action: z.enum(["createTasks", "sendReminders", "draftReplies", "chase", "joinMeetings"]),
+      action: z.enum(["createTasks", "sendReminders", "draftReplies", "chase", "joinMeetings", "manageRecords", "executeAi"]),
       level: z.enum(["off", "ask", "auto"])
     });
     LoginSchema = z.object({
@@ -3897,7 +4188,7 @@ var init_middleware = __esm({
   }
 });
 
-// packages/mcp/src/tools.ts
+// node_modules/.pnpm/@companybrain+mcp@file+packages+mcp_@companybrain+core@file+packages+core_@opentelemetr_e9938af9b32489c9339460b4c140d4ad/node_modules/@companybrain/mcp/src/tools.ts
 async function identity(core, ctx) {
   if (ctx.orgId && ctx.actorId) return { orgId: ctx.orgId, actorId: ctx.actorId };
   try {
@@ -3923,8 +4214,7 @@ function findTool(name) {
 }
 var DEFAULT_ORG_ID, DEFAULT_ACTOR_ID, str, TOOLS;
 var init_tools = __esm({
-  "packages/mcp/src/tools.ts"() {
-    "use strict";
+  "node_modules/.pnpm/@companybrain+mcp@file+packages+mcp_@companybrain+core@file+packages+core_@opentelemetr_e9938af9b32489c9339460b4c140d4ad/node_modules/@companybrain/mcp/src/tools.ts"() {
     DEFAULT_ORG_ID = "org_local";
     DEFAULT_ACTOR_ID = "user_local";
     str = (description) => ({ type: "string", description });
@@ -4167,7 +4457,7 @@ var init_tools = __esm({
   }
 });
 
-// packages/mcp/src/server.ts
+// node_modules/.pnpm/@companybrain+mcp@file+packages+mcp_@companybrain+core@file+packages+core_@opentelemetr_e9938af9b32489c9339460b4c140d4ad/node_modules/@companybrain/mcp/src/server.ts
 import { createInterface } from "node:readline";
 function startMcpServer(opts) {
   const { core, context } = opts;
@@ -4274,8 +4564,7 @@ function startMcpServer(opts) {
 }
 var PROTOCOL_VERSION, ERROR_CODES;
 var init_server = __esm({
-  "packages/mcp/src/server.ts"() {
-    "use strict";
+  "node_modules/.pnpm/@companybrain+mcp@file+packages+mcp_@companybrain+core@file+packages+core_@opentelemetr_e9938af9b32489c9339460b4c140d4ad/node_modules/@companybrain/mcp/src/server.ts"() {
     init_tools();
     PROTOCOL_VERSION = "2024-11-05";
     ERROR_CODES = {
@@ -4288,10 +4577,9 @@ var init_server = __esm({
   }
 });
 
-// packages/mcp/src/index.ts
+// node_modules/.pnpm/@companybrain+mcp@file+packages+mcp_@companybrain+core@file+packages+core_@opentelemetr_e9938af9b32489c9339460b4c140d4ad/node_modules/@companybrain/mcp/src/index.ts
 var init_src5 = __esm({
-  "packages/mcp/src/index.ts"() {
-    "use strict";
+  "node_modules/.pnpm/@companybrain+mcp@file+packages+mcp_@companybrain+core@file+packages+core_@opentelemetr_e9938af9b32489c9339460b4c140d4ad/node_modules/@companybrain/mcp/src/index.ts"() {
     init_server();
     init_tools();
   }
@@ -4942,6 +5230,99 @@ function sanitizeFilename(name) {
   return leaf.slice(0, 180) || "attachment";
 }
 
+// packages/integrations/src/openrouter.ts
+var ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
+var DEFAULT_TIMEOUT_MS = 12e4;
+async function complete(opts) {
+  const start = Date.now();
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const fetchImpl = opts.fetchImpl ?? fetch;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetchImpl(ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${opts.apiKey}`,
+        "Content-Type": "application/json",
+        // OpenRouter requests these for ranking; harmless if the host ignores them.
+        "HTTP-Referer": "https://companybrain.app",
+        "X-Title": "companybrain"
+      },
+      body: JSON.stringify({ model: opts.model, messages: opts.messages }),
+      signal: controller.signal
+    });
+    const raw = await res.text();
+    if (!res.ok) {
+      let detail = "";
+      try {
+        detail = JSON.parse(raw)?.error?.message ?? "";
+      } catch {
+      }
+      return { ok: false, error: `OpenRouter ${res.status}: ${detail || raw.slice(0, 200)}`, durationMs: Date.now() - start };
+    }
+    const json = JSON.parse(raw);
+    const text = json.choices?.[0]?.message?.content ?? "";
+    if (!text) return { ok: false, error: "OpenRouter returned empty content", durationMs: Date.now() - start };
+    return {
+      ok: true,
+      text,
+      model: json.model,
+      usage: json.usage,
+      costUsd: null,
+      // OpenRouter does not return $; approximated elsewhere if at all.
+      durationMs: Date.now() - start
+    };
+  } catch (err) {
+    const aborted = err?.name === "AbortError";
+    return {
+      ok: false,
+      error: aborted ? `OpenRouter timed out after ${timeoutMs}ms` : err?.message ?? String(err),
+      durationMs: Date.now() - start
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// packages/integrations/src/wordpress.ts
+function basicAuth(username, password) {
+  return "Basic " + Buffer.from(`${username}:${password}`).toString("base64");
+}
+async function publishPost(opts) {
+  const fetchImpl = opts.fetchImpl ?? fetch;
+  const base = opts.creds.apiUrl.replace(/\/+$/, "");
+  const url = `${base}/wp-json/wp/v2/posts`;
+  try {
+    const res = await fetchImpl(url, {
+      method: "POST",
+      headers: {
+        "Authorization": basicAuth(opts.creds.username, opts.creds.appPassword),
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title: opts.title,
+        content: opts.content,
+        status: "draft"
+        // enforced floor — ignores opts.status
+      })
+    });
+    const raw = await res.text();
+    if (!res.ok) {
+      let detail = "";
+      try {
+        detail = JSON.parse(raw)?.message ?? "";
+      } catch {
+      }
+      return { ok: false, error: `WordPress ${res.status}: ${detail || raw.slice(0, 200)}` };
+    }
+    const json = JSON.parse(raw);
+    return { ok: true, postId: json.id, postUrl: json.link };
+  } catch (err) {
+    return { ok: false, error: err?.message ?? String(err) };
+  }
+}
+
 // packages/server/src/server.ts
 init_src4();
 init_src3();
@@ -5541,6 +5922,20 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     </div>
   </div>
 
+  <div class="modal-backdrop" id="ai-modal">
+    <div class="modal-box">
+      <div class="modal-head"><span style="font-size:22px;">\u{1F916}</span><span class="modal-title">Assign to AI</span><button class="modal-close" id="ai-modal-close">\xD7</button></div>
+      <div class="modal-body">
+        <div class="modal-field"><label class="modal-label">Task</label><div id="ai-modal-task" style="font-size:13px;font-weight:600;color:var(--text);"></div></div>
+        <div class="modal-field"><label class="modal-label">Action</label><select class="modal-select" id="ai-modal-action"><option value="">Not an AI task</option><option value="generate">Generate \u2014 write the deliverable onto the task</option><option value="publish_blog">Publish blog \u2014 draft a post to WordPress (needs approval)</option></select></div>
+        <div class="modal-field"><label class="modal-label">Prompt override (optional)</label><textarea class="modal-input" id="ai-modal-prompt" rows="2" placeholder="Leave blank to use the task title" style="resize:vertical;"></textarea></div>
+        <div class="modal-field"><label class="modal-label">Model override (optional)</label><input class="modal-input" id="ai-modal-model" placeholder="e.g. openai/gpt-4o-mini" autocomplete="off"/></div>
+        <div class="modal-field"><label class="modal-label">Runs</label><div id="ai-modal-runs" style="font-size:12px;color:var(--muted);">No runs yet.</div></div>
+      </div>
+      <div class="modal-foot"><button class="btn-ghost" id="ai-modal-cancel">Close</button><button class="btn-primary" id="ai-modal-save">Save</button></div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="lead-modal">
     <div class="modal-box">
       <div class="modal-head"><span style="font-size:20px;">\u{1F91D}</span><span class="modal-title">New lead</span><button class="modal-close" id="lead-modal-close">\xD7</button></div>
@@ -5670,11 +6065,13 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     {k:'sendReminders',label:'Send reminders',desc:'Remind on snoozed loops before they slip'},
     {k:'createTasks',  label:'Create tasks',  desc:'Turn asks in messages into tasks'},
     {k:'joinMeetings', label:'Join meetings', desc:'Attend and take notes autonomously'},
+    {k:'executeAi',    label:'Execute AI tasks', desc:'Run AI-assigned tasks (publishing always needs approval)'},
   ];
 
   var EVENT_ICONS={
     'loop.created':'\u{1F504}','loop.closed':'\u2705','loop.snoozed':'\u{1F634}','loop.captured':'\u{1F504}','loop.reopened':'\u21A9\uFE0F',
     'task.created':'\u{1F4DD}','task.completed':'\u2714\uFE0F','task.moved':'\u27A1\uFE0F',
+    'ai.task.queued':'\u{1F916}','ai.task.executed':'\u{1F916}','ai.task.failed':'\u26A0\uFE0F',
     'lead.created':'\u{1F91D}','lead.advanced':'\u{1F4C8}',
     'briefing.delivered':'\u{1F9E0}','agent.action':'\u{1F916}',
     'approval.approved':'\u2705','approval.dismissed':'\u{1F6AB}','event.undone':'\u21A9\uFE0F'
@@ -5745,7 +6142,9 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       });
     });
   }
-  function post(path,body,method){return api(path,{method:method||'POST',headers:{'content-type':'application/json'},body:body?JSON.stringify(body):undefined});}
+  // Only send a JSON content-type when there IS a body: declaring one on an empty POST
+  // makes Fastify's body parser fail with 'Unexpected end of JSON input' (400).
+  function post(path,body,method){return api(path,{method:method||'POST',headers:body?{'content-type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});}
   function ago(ts){
     var d=(Date.now()-ts)/1e3;
     if(d<60) return 'just now';
@@ -6310,13 +6709,14 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       ['today','tomorrow','upcoming'].forEach(function(d){var btn=document.getElementById('kadd-'+d);if(btn)btn.onclick=function(){openNewTaskModal(d);};});
       view.querySelectorAll('[data-done]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.done+'/complete').then(function(){toast('Task completed');loadTasks();});};});
       view.querySelectorAll('[data-move]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.move+'/move',{day:b.dataset.day}).then(function(){toast('Task moved');loadTasks();});};});
+      view.querySelectorAll('[data-ai]').forEach(function(b){b.onclick=function(e){e.stopPropagation();openAiModal(b.dataset.ai);};});
       wireTaskDragAndDrop();
     }).catch(function(e){view.innerHTML='<div class="empty">Failed to load tasks: '+(e&&e.message||e)+'</div>';});
   }
   function kanbanCol(label,dotColor,items,colDay){
     var cards=items.length?items.map(function(t){
       var pr=t.priority==='high'?'<span class="priority-pill priority-high">HIGH</span>':t.priority==='med'?'<span class="priority-pill priority-med">MED</span>':t.priority==='low'?'<span class="priority-pill priority-low">LOW</span>':'';
-      return '<div class="kanban-task-card gc" draggable="true" data-task-id="'+t.id+'"><div class="kanban-task-row"><button class="kanban-check" data-done="'+t.id+'"></button><span class="kanban-task-emoji">'+esc(t.emoji||'\u{1F4DD}')+'</span><div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title)+'</div><div class="kanban-task-sub">'+esc(t.list||'Inbox')+'</div></div></div><div class="kanban-task-foot">'+pr+(colDay!=='today'?'<button class="btn-ghost" data-move="'+t.id+'" data-day="today" style="font-size:10px;padding:3px 8px;min-height:24px;">\u2192 Today</button>':'')+'</div></div>';
+      return '<div class="kanban-task-card gc" draggable="true" data-task-id="'+t.id+'"><div class="kanban-task-row"><button class="kanban-check" data-done="'+t.id+'"></button><span class="kanban-task-emoji">'+esc(t.emoji||'\u{1F4DD}')+'</span><div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title)+'</div><div class="kanban-task-sub">'+esc(t.list||'Inbox')+'</div></div></div><div class="kanban-task-foot">'+pr+'<button class="btn-ghost" data-ai="'+t.id+'" title="Assign to AI" style="font-size:10px;padding:3px 8px;min-height:24px;">'+aiPill(t)+'</button>'+(colDay!=='today'?'<button class="btn-ghost" data-move="'+t.id+'" data-day="today" style="font-size:10px;padding:3px 8px;min-height:24px;">\u2192 Today</button>':'')+'</div></div>';
     }).join(''):'<div class="empty-dashed" style="font-size:11px;padding:16px 12px;">No tasks for '+label.toLowerCase()+'.</div>';
     return '<div class="kanban-col"><div class="kanban-col-head"><span class="kanban-col-dot" style="background:'+dotColor+'"></span><span class="kanban-col-label">'+label+'</span><span class="kanban-col-count">'+items.length+'</span></div><div class="kanban-col-body" data-col-day="'+colDay+'">'+cards+'<button class="kanban-add-btn" id="kadd-'+colDay+'">+ Add</button></div></div>';
   }
@@ -6861,6 +7261,83 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     var list=getProjects().filter(function(p){return p.id!==id;});
     saveProjects(list);
   }
+  // --- AI tasks: assign an action, watch the run, approve an awaiting_review draft. ---
+  var AI_LABEL={queued:'Queued',running:'Running',awaiting_review:'Review',done:'Done',failed:'Failed',cancelled:'Off'};
+  function aiPill(t){
+    if(!t.aiAction) return 'AI';
+    return 'AI: '+(AI_LABEL[t.aiStatus||'queued']||t.aiStatus);
+  }
+  var aiModalTaskId=null;
+  function openAiModal(taskId){
+    var m=document.getElementById('ai-modal');
+    if(!m)return;
+    aiModalTaskId=taskId;
+    api('/api/tasks').then(function(tasks){
+      var t=(tasks||[]).filter(function(x){return x.id===taskId;})[0]||{};
+      document.getElementById('ai-modal-task').textContent=t.title||taskId;
+      document.getElementById('ai-modal-action').value=t.aiAction||'';
+      document.getElementById('ai-modal-prompt').value=(t.aiConfig&&t.aiConfig.promptOverride)||'';
+      document.getElementById('ai-modal-model').value=(t.aiConfig&&t.aiConfig.modelOverride)||'';
+      loadAiRuns(taskId);
+      m.classList.add('open');
+    }).catch(function(e){toast('Could not open: '+(e&&e.message||e));});
+  }
+  function closeAiModal(){
+    var m=document.getElementById('ai-modal');
+    if(m)m.classList.remove('open');
+    aiModalTaskId=null;
+  }
+  function loadAiRuns(taskId){
+    var box=document.getElementById('ai-modal-runs');
+    if(!box)return;
+    api('/api/tasks/'+taskId+'/ai-runs').then(function(r){
+      var runs=(r&&r.runs)||[];
+      if(!runs.length){box.textContent='No runs yet.';return;}
+      box.innerHTML=runs.map(function(run){
+        var head='<div style="font-size:11px;color:var(--muted);">'+esc(run.model)+' - '+esc(run.status)+' - '+ago(run.at)+'</div>';
+        var body=run.error
+          ? '<div style="font-size:12px;color:var(--red);margin-top:4px;">'+esc(run.error)+'</div>'
+          : '<div style="font-size:12px;margin-top:4px;white-space:pre-wrap;max-height:140px;overflow:auto;">'+esc((run.output||'').slice(0,1200))+'</div>';
+        var link=(run.resultRef&&(run.resultRef.indexOf('https://')===0||run.resultRef.indexOf('http://')===0))
+          ? '<div style="margin-top:4px;"><a href="'+esc(run.resultRef)+'" target="_blank" rel="noopener noreferrer" style="font-size:11px;">Open result</a></div>'
+          : '';
+        var approve=run.status==='awaiting_review'
+          ? '<button class="btn-primary" data-approve="'+esc(run.id)+'" style="font-size:11px;padding:4px 10px;min-height:26px;margin-top:6px;">Approve and run</button>'
+          : '';
+        return '<div class="gc" style="padding:10px 12px;margin-bottom:8px;border-radius:12px;">'+head+body+link+approve+'</div>';
+      }).join('');
+      box.querySelectorAll('[data-approve]').forEach(function(b){
+        b.onclick=function(){
+          post('/api/ai-runs/'+b.dataset.approve+'/approve').then(function(){
+            toast('Approved - running the action');
+            setTimeout(function(){pollAiRuns(taskId,4);loadTasks();},800);
+          }).catch(function(e){toast('Approve failed: '+(e&&e.message||e));});
+        };
+      });
+    }).catch(function(){box.textContent='Could not load runs.';});
+  }
+  // The run happens in the background worker, so re-poll briefly until it settles.
+  function pollAiRuns(taskId,tries){
+    loadAiRuns(taskId);
+    if(tries>0) setTimeout(function(){
+      if(aiModalTaskId===taskId) pollAiRuns(taskId,tries-1);
+    },1200);
+  }
+  function saveAiAction(){
+    if(!aiModalTaskId)return;
+    var taskId=aiModalTaskId;
+    var action=document.getElementById('ai-modal-action').value||null;
+    var promptOverride=document.getElementById('ai-modal-prompt').value.trim();
+    var modelOverride=document.getElementById('ai-modal-model').value.trim();
+    var config={};
+    if(promptOverride)config.promptOverride=promptOverride;
+    if(modelOverride)config.modelOverride=modelOverride;
+    post('/api/tasks/'+taskId+'/ai',{action:action,config:Object.keys(config).length?config:undefined}).then(function(){
+      toast(action?'Queued for AI':'AI action cleared');
+      loadTasks();
+      if(action){setTimeout(function(){pollAiRuns(taskId,4);loadTasks();},1200);}else{closeAiModal();}
+    }).catch(function(e){toast('Failed: '+(e&&e.message||e));});
+  }
   function openNewTaskModal(day){
     var m=document.getElementById('task-modal');
     if(!m)return;
@@ -6932,6 +7409,13 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         var list=document.getElementById('task-modal-list').value.trim();
         post('/api/tasks',{title:title,day:day,priority:priority||undefined,list:list||undefined}).then(function(){closeNewTaskModal();toast('Task added');loadTasks();});
       };
+    }
+    var mai=document.getElementById('ai-modal');
+    if(mai){
+      document.getElementById('ai-modal-close').onclick=closeAiModal;
+      document.getElementById('ai-modal-cancel').onclick=closeAiModal;
+      mai.onclick=function(e){if(e.target===mai)closeAiModal();};
+      document.getElementById('ai-modal-save').onclick=saveAiAction;
     }
     var ml=document.getElementById('lead-modal');
     if(ml){
@@ -8046,6 +8530,27 @@ function buildServer(deps) {
     const b = req.validatedBody;
     return core.ctx.db.tasks.update(params(req).id, { assignees: b.userIds ?? [p.userId] });
   });
+  app2.post("/api/tasks/:id/ai", {
+    preHandler: validateBody(validation_exports.SetAiActionSchema)
+  }, async (req) => {
+    await ownedTask(req);
+    const b = req.validatedBody;
+    const task = await core.tasks.setAiAction(params(req).id, b.action, b.config);
+    broadcast({ type: "task.ai.changed" });
+    return task;
+  });
+  app2.get("/api/tasks/:id/ai-runs", async (req) => {
+    await ownedTask(req);
+    return { runs: await core.ctx.db.aiRuns.listByTask(params(req).id) };
+  });
+  app2.post("/api/ai-runs/:id/approve", async (req) => {
+    const p = await principalOf(req);
+    const run = await core.ctx.db.aiRuns.get(params(req).id);
+    if (!run || run.orgId !== p.orgId) throw notFound("run not found");
+    await core.tasks.approveAiRun(run.id);
+    broadcast({ type: "task.ai.changed" });
+    return { ok: true };
+  });
   app2.post("/api/tasks/:id/time/start", async (req) => {
     const p = await principalOf(req);
     await ownedTask(req);
@@ -8288,7 +8793,32 @@ function buildServer(deps) {
       },
       calendar: {
         status: byChannel.get("calendar")?.status ?? "disconnected"
+      },
+      wordpress: {
+        status: byChannel.get("wordpress")?.status ?? "disconnected",
+        site: byChannel.get("wordpress")?.credentials?.apiUrl ?? ""
       }
+    };
+  });
+  app2.put("/api/connections/wordpress", {
+    preHandler: [requireMinRole("ceo"), validateBody(validation_exports.WordpressCredsSchema)]
+  }, async (req) => {
+    const p = await principalOf(req);
+    const b = req.validatedBody;
+    await core.ctx.db.connections.upsert(p.orgId, "wordpress", {
+      status: "connected",
+      credentials: { apiUrl: b.apiUrl.replace(/\/+$/, ""), username: b.username, appPassword: b.appPassword }
+    });
+    broadcast({ type: "connections.changed" });
+    return { ok: true };
+  });
+  app2.get("/api/connections/wordpress", async (req) => {
+    const p = await principalOf(req);
+    const conn = await core.ctx.db.connections.get(p.orgId, "wordpress");
+    return {
+      configured: conn?.status === "connected",
+      apiUrl: conn?.credentials?.apiUrl ?? "",
+      username: conn?.credentials?.username ?? ""
     };
   });
   app2.post("/api/connections/whatsapp_cloud", {
@@ -8973,7 +9503,8 @@ var baileys = process.env.WHATSAPP_BAILEYS === "on" ? createBaileysChannel({ org
 var wa = cloud_api_exports.whatsappConfigFromEnv();
 var messenger = baileys ? baileys.messenger : createMessenger({ whatsapp: wa ?? void 0 });
 var drafter = createLlm() ?? void 0;
-var boot = await bootstrap({ messenger, drafter });
+var aiClients = { complete, publishBlog: publishPost };
+var boot = await bootstrap({ messenger, drafter, aiClients });
 await seedIfEmpty(boot.core);
 await boot.startWorkers();
 await boot.queue.schedule("sendBriefing", { orgId: "org_local" }, 6 * 60 * 60 * 1e3);

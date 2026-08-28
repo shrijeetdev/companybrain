@@ -59,7 +59,7 @@
 **Interfaces:**
 - Produces: `AiActionType`, `AiStatus`, `AiTaskConfig`, `AiRun`, `AiRunStatus`; adds `aiAction?`/`aiStatus?`/`aiRunId?`/`aiConfig?` to `Task`; adds `'runAiTask'` to `JobName`; adds `'executeAi'` to `AutonomyAction`; adds `'wordpress'` to `ConnectionRecord['channel']`.
 
-- [ ] **Step 1: Add the AI types**
+- [x] **Step 1: Add the AI types**
 
 In `packages/types/src/index.ts`, after the `Priority`/`TaskDay` types (near the top), add:
 
@@ -98,7 +98,7 @@ export interface AiRun {
 }
 ```
 
-- [ ] **Step 2: Add AI fields to the Task interface**
+- [x] **Step 2: Add AI fields to the Task interface**
 
 In the same file, find `export interface Task { ... }` and add these four optional fields (before the closing brace, after `dueAt`):
 
@@ -113,7 +113,7 @@ In the same file, find `export interface Task { ... }` and add these four option
   aiConfig?: AiTaskConfig;
 ```
 
-- [ ] **Step 3: Extend JobName and AutonomyAction**
+- [x] **Step 3: Extend JobName and AutonomyAction**
 
 In the same file:
 
@@ -135,7 +135,7 @@ to:
 export type AutonomyAction = 'createTasks' | 'sendReminders' | 'draftReplies' | 'chase' | 'joinMeetings' | 'manageRecords' | 'executeAi';
 ```
 
-- [ ] **Step 4: Add the wordpress connection channel**
+- [x] **Step 4: Add the wordpress connection channel**
 
 Find `export interface ConnectionRecord { ... }` and change the `channel` field's union to include `'wordpress'`:
 
@@ -143,12 +143,12 @@ Find `export interface ConnectionRecord { ... }` and change the `channel` field'
   channel: 'whatsapp_cloud' | 'whatsapp_baileys' | 'gmail' | 'slack' | 'telegram' | 'github' | 'calendar' | 'wordpress';
 ```
 
-- [ ] **Step 5: Typecheck**
+- [x] **Step 5: Typecheck**
 
 Run: `pnpm typecheck`
 Expected: PASS (these are additive type changes; existing code still type-checks because every new field on Task is optional, and the new JobName/AutonomyAction members are only consumed by code we add later).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -168,7 +168,7 @@ git commit -m "feat(types): add AI executor types (action, status, run, gate, wo
 **Interfaces:**
 - Produces: `DEFAULT_AUTONOMY.executeAi === 'ask'`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `packages/core/test/autonomy.test.ts` (before the final `test.after` block):
 
@@ -179,12 +179,12 @@ test('autonomy: executeAi defaults to ask', async () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --import tsx --test packages/core/test/autonomy.test.ts`
 Expected: FAIL — `settings.executeAi` is `undefined`.
 
-- [ ] **Step 3: Add the default**
+- [x] **Step 3: Add the default**
 
 In `packages/core/src/autonomy.ts`, add `executeAi: 'ask'` to `DEFAULT_AUTONOMY`:
 
@@ -200,12 +200,12 @@ export const DEFAULT_AUTONOMY: AutonomySettings = {
 };
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --import tsx --test packages/core/test/autonomy.test.ts`
 Expected: PASS (all tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -237,7 +237,7 @@ git commit -m "feat(autonomy): add executeAi action defaulting to ask"
   ```
   And `Database` gains `aiRuns: AiRunRepo;`. (`AiRun` is imported from `@companybrain/types`.)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/db/test/ai-runs.test.ts`:
 
@@ -303,12 +303,12 @@ test('aiRuns: keys survive reopen of the file', async () => {
 process.on('exit', () => { try { rmSync(dbPath); } catch {} });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --import tsx --test packages/db/test/ai-runs.test.ts`
 Expected: FAIL — `db.aiRuns` is `undefined`.
 
-- [ ] **Step 3: Add the repo interface to the port**
+- [x] **Step 3: Add the repo interface to the port**
 
 In `packages/db/src/port.ts`, add `AiRun` to the type import at the top:
 
@@ -334,7 +334,7 @@ And add to `export interface Database` (after `apiKeys: ApiKeyRepo;`):
   aiRuns: AiRunRepo;
 ```
 
-- [ ] **Step 4: Add table + impl to the SQLite adapter**
+- [x] **Step 4: Add table + impl to the SQLite adapter**
 
 In `packages/db/src/sqlite.ts`:
 
@@ -387,7 +387,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_runs_org ON ai_runs(org_id, at);
     };
 ```
 
-- [ ] **Step 5: Add the Supabase stub**
+- [x] **Step 5: Add the Supabase stub**
 
 In `packages/db/src/supabase.ts`, add `AiRunRepo` to the import from `./port`, then add a stub field after the `apiKeys` field:
 
@@ -401,17 +401,17 @@ In `packages/db/src/supabase.ts`, add `AiRunRepo` to the import from `./port`, t
   };
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `node --import tsx --test packages/db/test/ai-runs.test.ts`
 Expected: PASS (all four tests).
 
-- [ ] **Step 7: Typecheck**
+- [x] **Step 7: Typecheck**
 
 Run: `pnpm typecheck`
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -442,7 +442,7 @@ git commit -m "feat(db): persist ai_runs history (table + repo)"
   ```
   (The `fetchImpl` injection is what lets tests mock network without monkey-patching global `fetch`.)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/integrations/test/openrouter.test.ts`:
 
@@ -501,12 +501,12 @@ test('openrouter: sends bearer auth + model + openrouter headers', async () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --import tsx --test packages/integrations/test/openrouter.test.ts`
 Expected: FAIL — `complete` is not exported.
 
-- [ ] **Step 3: Implement the client**
+- [x] **Step 3: Implement the client**
 
 Create `packages/integrations/src/openrouter.ts`:
 
@@ -596,7 +596,7 @@ export async function complete(opts: {
 }
 ```
 
-- [ ] **Step 4: Export from the integrations index**
+- [x] **Step 4: Export from the integrations index**
 
 In `packages/integrations/src/index.ts`, add:
 
@@ -604,12 +604,12 @@ In `packages/integrations/src/index.ts`, add:
 export { complete, type ChatMsg, type CompletionResult } from './openrouter.js';
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `node --import tsx --test packages/integrations/test/openrouter.test.ts`
 Expected: PASS (all four tests).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -636,7 +636,7 @@ git commit -m "feat(integrations): add OpenRouter chat-completions client"
   ```
   Always defaults `status: 'draft'` even if a caller passes `'publish'` from the `auto` path — the client itself is the floor (defense in depth, per spec §6).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/integrations/test/wordpress.test.ts`:
 
@@ -689,12 +689,12 @@ test('wordpress: never throws on network error', async () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --import tsx --test packages/integrations/test/wordpress.test.ts`
 Expected: FAIL — `publishPost` not exported.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `packages/integrations/src/wordpress.ts`:
 
@@ -761,7 +761,7 @@ export async function publishPost(opts: {
 }
 ```
 
-- [ ] **Step 4: Export from integrations index**
+- [x] **Step 4: Export from integrations index**
 
 In `packages/integrations/src/index.ts`, add:
 
@@ -769,12 +769,12 @@ In `packages/integrations/src/index.ts`, add:
 export { publishPost, type WordpressCreds, type PublishResult } from './wordpress.js';
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `node --import tsx --test packages/integrations/test/wordpress.test.ts`
 Expected: PASS (all three tests).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -798,7 +798,7 @@ git commit -m "feat(integrations): add WordPress REST publish (always-draft floo
   ```
   Default table maps each action to an OpenRouter slug; env overrides (`COMPANYBRAIN_AI_MODEL_GENERATE`, `COMPANYBRAIN_AI_MODEL_PUBLISH_BLOG`) win over defaults; per-task `override` wins over env.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/core/test/ai-router.test.ts`:
 
@@ -827,12 +827,12 @@ test('router: per-task override wins over env', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --import tsx --test packages/core/test/ai-router.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `packages/core/src/ai-router.ts`:
 
@@ -862,12 +862,12 @@ export function resolveModel(action: AiActionType, override?: string | null, env
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --import tsx --test packages/core/test/ai-router.test.ts`
 Expected: PASS (all three tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -904,7 +904,7 @@ git commit -m "feat(core): add AI model routing table (resolveModel)"
   `generate.run` appends a comment to the task with the output and returns `{ok:true, resultRef: commentId}`.
   `publish_blog.run` calls `deps.publishBlog` (injected) and returns `{ok, resultRef: postUrl}`. If `publishBlog` is not injected, it fails closed with an error.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/core/test/ai-actions.test.ts`:
 
@@ -983,12 +983,12 @@ test('actions: defaultAutonomy — generate auto, publish_blog ask', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --import tsx --test packages/core/test/ai-actions.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `packages/core/src/ai-actions.ts`:
 
@@ -1091,17 +1091,17 @@ export const ACTIONS: Record<AiActionType, Action> = {
 
 **No dependency change to `packages/core/package.json`** — core stays free of the integrations dependency.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --import tsx --test packages/core/test/ai-actions.test.ts`
 Expected: PASS (all five tests).
 
-- [ ] **Step 5: Typecheck**
+- [x] **Step 5: Typecheck**
 
 Run: `pnpm typecheck`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -1138,7 +1138,7 @@ git commit -m "feat(core): add AI action adapters (generate, publish_blog)"
 
 **Effective gate logic:** `level = stricter(resolveAutonomy(org).executeAi, action.defaultAutonomy)` where `stricter` ranks `off < ask < auto` and returns the lower (safer) one.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/core/test/executor.test.ts`:
 
@@ -1235,12 +1235,12 @@ test('executor: LLM failure → run failed, task failed (not completed)', async 
 process.on('exit', () => { try { rmSync(dbPath); } catch {} });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --import tsx --test packages/core/test/executor.test.ts`
 Expected: FAIL — `core.ctx.executor` is undefined (not wired yet).
 
-- [ ] **Step 3: Add `executor` to Context**
+- [x] **Step 3: Add `executor` to Context**
 
 In `packages/core/src/context.ts`, add to the `Context` interface (after `drafter`):
 
@@ -1259,7 +1259,7 @@ export interface Executor {
 
 (The `any` here is deliberate to avoid a context↔executor import cycle; the concrete `executor.ts` has the precise types.)
 
-- [ ] **Step 4: Implement the executor**
+- [x] **Step 4: Implement the executor**
 
 Create `packages/core/src/executor.ts`:
 
@@ -1357,7 +1357,7 @@ export function makeExecutor(ctx: Context) {
 export type ExecutorService = ReturnType<typeof makeExecutor>;
 ```
 
-- [ ] **Step 5: Wire executor into Core**
+- [x] **Step 5: Wire executor into Core**
 
 In `packages/core/src/index.ts`:
 
@@ -1374,17 +1374,17 @@ Then in the returned object add `ctx: { ...ctx, executor }` — i.e. replace the
 
 (The `Core.ctx` already exposes the Context; we extend it with the executor so worker handlers can call `ctx.executor.run(...)`.)
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `node --import tsx --test packages/core/test/executor.test.ts`
 Expected: PASS (all five tests).
 
-- [ ] **Step 7: Run full test suite**
+- [x] **Step 7: Run full test suite**
 
 Run: `pnpm test`
 Expected: PASS — no regressions.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -1409,7 +1409,7 @@ git commit -m "feat(core): add AI executor (gate/model/llm/action/record)"
   - `tasks.approveAiRun(runId)` — delegates to `ctx.executor.approve`.
   - `runAiTask` worker handler that resolves ExecutorDeps (OpenRouter key from env, WP creds from connections) and calls `ctx.executor.run(taskId, deps)`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `packages/core/test/executor.test.ts` (before the `process.on('exit')` cleanup):
 
@@ -1434,12 +1434,12 @@ test('tasks.setAiAction enqueues + marks queued; approveAiRun delegates', async 
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --import tsx --test packages/core/test/executor.test.ts`
 Expected: FAIL — `core.tasks.setAiAction` is not a function.
 
-- [ ] **Step 3: Add the task methods**
+- [x] **Step 3: Add the task methods**
 
 In `packages/core/src/tasks.ts`, inside the object returned by `makeTasks(ctx)`, add (after `complete`):
 
@@ -1469,7 +1469,7 @@ In `packages/core/src/tasks.ts`, inside the object returned by `makeTasks(ctx)`,
 
 Note: `approveAiRun` re-enqueues rather than calling `executor.approve` directly because the worker is where the OpenRouter key + WP creds live. The worker handler (next step) checks for `approveRunId` and calls `approve` instead of `run`.
 
-- [ ] **Step 4: Add the runAiTask worker**
+- [x] **Step 4: Add the runAiTask worker**
 
 In `packages/core/src/workers.ts`, append a new handler inside `registerWorkers(ctx)` (after the existing `autoSweep` handler, before the closing brace):
 
@@ -1515,17 +1515,17 @@ export interface AiTaskJob extends Record<string, unknown> {
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `node --import tsx --test packages/core/test/executor.test.ts`
 Expected: PASS (all six tests).
 
-- [ ] **Step 6: Run full test suite + typecheck**
+- [x] **Step 6: Run full test suite + typecheck**
 
 Run: `pnpm test && pnpm typecheck`
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -1549,12 +1549,12 @@ git commit -m "feat(core): add runAiTask worker + setAiAction/approveAiRun"
   - `PUT /api/connections/wordpress` body `{ apiUrl, username, appPassword }` → `core.ctx.db.connections.upsert(orgId, 'wordpress', { credentials, status:'connected' })`.
   - `GET /api/connections/wordpress` → returns `{ configured: boolean }` (never the secret).
 
-- [ ] **Step 1: Locate the task routes**
+- [x] **Step 1: Locate the task routes**
 
 Run: `grep -n "tasks/:id\|/api/tasks" packages/server/src/server.ts | head`
 Identify where task routes are registered and follow that exact pattern (Fastify route + `core` access) for the new routes.
 
-- [ ] **Step 2: Add the routes**
+- [x] **Step 2: Add the routes**
 
 In the same file, alongside the existing task routes, add:
 
@@ -1596,14 +1596,14 @@ In the same file, alongside the existing task routes, add:
   });
 ```
 
-- [ ] **Step 3: Typecheck + manual smoke**
+- [x] **Step 3: Typecheck + manual smoke**
 
 Run: `pnpm typecheck`
 Expected: PASS.
 
 Manual (optional): boot the app, `curl -X PUT localhost:4317/api/connections/wordpress -d '{"apiUrl":"...","username":"...","appPassword":"..."}' -H 'content-type: application/json'`, then `GET` confirms `{configured:true}` without leaking the password.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -1620,7 +1620,7 @@ git commit -m "feat(server): add AI task + run + WordPress creds routes"
 - Modify: `.env.example`
 - Modify: `README.md`
 
-- [ ] **Step 1: Add env vars to .env.example**
+- [x] **Step 1: Add env vars to .env.example**
 
 Append to `.env.example`:
 
@@ -1637,7 +1637,7 @@ OPENROUTER_API_KEY=
 # Stored encrypted in the connections table; the app password is never logged.
 ```
 
-- [ ] **Step 2: Add a README section**
+- [x] **Step 2: Add a README section**
 
 Insert before `## Status` in `README.md`:
 
@@ -1658,7 +1658,7 @@ A task can be executed by AI instead of a human. Mark a task with an action type
 Every run is logged (model, prompt, output, cost) in `ai_runs` for auditability.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -1671,29 +1671,37 @@ git commit -m "docs: AI executor + OpenRouter + WordPress setup"
 
 ## Task 12: Final verification
 
-- [ ] **Step 1: Full test suite**
+- [x] **Step 1: Full test suite**
 
 Run: `pnpm test`
 Expected: all tests PASS (existing + the new ai-router, ai-actions, executor, openrouter, wordpress, ai-runs db tests — wire the new ones into the `test` aggregate as you add them, matching how Task 4 of sub-project A added `gate.test.ts`).
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 Run: `pnpm typecheck`
 Expected: PASS.
 
-- [ ] **Step 3: Boot the app unchanged**
+- [x] **Step 3: Boot the app unchanged**
 
 Run: `pnpm dev` (set `COMPANYBRAIN_NO_OPEN=1`)
 Expected: boots as before — confirms the additive invariant.
 
-- [ ] **Step 4: Manual end-to-end (generate)**
+> **How the manual steps below were verified.** No live OpenRouter key was available in the
+> build environment (and openrouter.ai is unreachable from it), so steps 4–5 were run against
+> the real app booted with `fetch` intercepted so that `openrouter.ai` and the WordPress REST
+> endpoint returned canned responses. Everything above the client — worker, gate, executor,
+> action adapters, run history, API and UI — was exercised for real, in the browser as well as
+> over HTTP. Re-run steps 4–5 with a live key and a live WordPress site to confirm the two
+> clients against the real services.
+
+- [x] **Step 4: Manual end-to-end (generate)**
 
 1. Boot with a real `OPENROUTER_API_KEY`.
 2. Create a task "Write a one-paragraph summary of photosynthesis".
 3. `POST /api/tasks/:id/ai` body `{"action":"generate"}`.
 4. Within ~30s the task should complete and carry a comment with the summary. `GET /api/tasks/:id/ai-runs` shows the run.
 
-- [ ] **Step 5: Manual end-to-end (publish_blog, ask path)**
+- [x] **Step 5: Manual end-to-end (publish_blog, ask path)**
 
 1. Configure WordPress creds via `PUT /api/connections/wordpress`.
 2. Set `executeAi` to `ask`.
