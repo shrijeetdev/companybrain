@@ -8,6 +8,7 @@ import { SupabaseDatabase, type SupabaseDbOptions } from './supabase';
 export type { Database, LoopRepo, TaskRepo, LeadRepo, EventRepo, ApiKeyRow, ApiKeyRepo } from './port';
 export { SqliteDatabase } from './sqlite';
 export { SupabaseDatabase } from './supabase';
+export { assertEncryptionKey, usingFallbackEncryptionKey } from './crypto';
 export { backupDatabase, pruneBackups, listBackups, defaultBackupDir, defaultRetention, type BackupResult } from './backup';
 
 export interface DbOptions {

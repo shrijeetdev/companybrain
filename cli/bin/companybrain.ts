@@ -7,6 +7,7 @@
 import { spawn } from 'node:child_process';
 import { platform } from 'node:os';
 import { bootstrap, seedIfEmpty } from '@companybrain/core';
+import { assertEncryptionKey } from '@companybrain/db';
 import { buildServer } from '@companybrain/server';
 import { whatsapp, createMessenger, createBaileysChannel, createLlm, complete, publishPost } from '@companybrain/integrations';
 import { captureException, flushSentry } from '@companybrain/server/middleware';
@@ -55,6 +56,15 @@ process.on('uncaughtException', (err) => {
 // subcommand runs and then falls straight through to here, booting a second copy of the
 // whole app (and trying to open a browser) inside the MCP host or the cron job.
 if (!isMcpInvocation && !isBackupInvocation) {
+
+// Fail closed before anything reads or writes a credential: a production deployment must not
+// protect stored tokens with a key derived from a constant in this repository.
+try {
+  assertEncryptionKey();
+} catch (err) {
+  console.error(`\n[companybrain] ${err instanceof Error ? err.message : String(err)}\n`);
+  process.exit(1);
+}
 
 const port = Number(process.env.COMPANYBRAIN_PORT ?? process.env.PORT ?? 4317);
 const host = process.env.COMPANYBRAIN_HOST ?? '0.0.0.0';

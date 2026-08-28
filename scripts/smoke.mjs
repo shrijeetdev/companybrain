@@ -10,6 +10,7 @@
 //   5. the bootstrap admin can log in, and an authenticated request then succeeds
 //   6. a non-admin cannot reach the admin endpoints
 //   7. security headers are set, /health answers, and /metrics is not public
+//   8. production refuses to boot on the in-repo fallback encryption key
 //
 // Run: node scripts/smoke.mjs        (exits non-zero on the first failure)
 
@@ -56,6 +57,7 @@ const child = spawn(cmd, args, {
     COMPANYBRAIN_ADMIN_PASSWORD: ADMIN_PASSWORD,
     COMPANYBRAIN_ADMIN_NAME: 'Smoke Admin',
     COMPANYBRAIN_BACKUP: 'off',
+    COMPANYBRAIN_ENC_KEY: 'smoke-test-encryption-key-not-a-real-one',
     COMPANYBRAIN_LOG_LEVEL: 'warn',
   },
   stdio: ['ignore', 'pipe', 'pipe'],
@@ -160,6 +162,22 @@ try {
   check('a non-admin cannot reach /api/admin/users', memberAdmin.status === 403, `status ${memberAdmin.status}`);
   const memberKeys = await fetch(BASE + '/api/admin/keys', { headers: { cookie: memberCookie } });
   check('a non-admin cannot reach /api/admin/keys', memberKeys.status === 403, `status ${memberKeys.status}`);
+  // 8. Production must refuse to run on the in-repo fallback encryption key.
+  const guarded = await new Promise((resolve) => {
+    const p = spawn(cmd, args, {
+      cwd: new URL('..', import.meta.url).pathname,
+      env: { ...process.env, NODE_ENV: 'production', COMPANYBRAIN_ENC_KEY: '', COMPANYBRAIN_PORT: String(PORT + 1), COMPANYBRAIN_HOST: '127.0.0.1', COMPANYBRAIN_NO_OPEN: '1', COMPANYBRAIN_DB_PATH: join(workDir, 'guard.sqlite') },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let out = '';
+    p.stdout.on('data', (d) => { out += d; });
+    p.stderr.on('data', (d) => { out += d; });
+    p.on('exit', (code) => resolve({ code, out }));
+    setTimeout(() => { try { p.kill('SIGKILL'); } catch { /* gone */ } resolve({ code: null, out }); }, 30_000);
+  });
+  check('production refuses to boot without COMPANYBRAIN_ENC_KEY',
+    guarded.code === 1 && guarded.out.includes('COMPANYBRAIN_ENC_KEY'),
+    `exit ${guarded.code}`);
 } catch (err) {
   failures++;
   console.log(`  FAIL harness — ${err.message}`);

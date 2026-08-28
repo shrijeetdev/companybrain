@@ -66,6 +66,11 @@ This checklist is based on a full repo sweep of:
 Environment variables:
 
 - `NODE_ENV=production`
+- `COMPANYBRAIN_ENC_KEY=<generated>` — **required**; the app refuses to start in production
+  without it. Generate with
+  `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"`.
+  Without it, credentials at rest would be encrypted with a key derived from a constant in
+  this repository. Keep it safe — losing it means re-entering every stored credential.
 - `COMPANYBRAIN_NO_OPEN=true`
 - `COMPANYBRAIN_AUTH_MODE=password`
 - `COMPANYBRAIN_ADMIN_EMAIL=<your admin email>`
@@ -124,6 +129,9 @@ Notes:
   external site, so the global limit is a DoS guard, not a spend guard).
 - **Backups:** verify one restores before you need it — `companybrain backup`, then follow
   `companybrain restore <file>` on a copy and confirm recent data is present.
+- **Encryption key:** `COMPANYBRAIN_ENC_KEY` protects everything in `connections.credentials`.
+  Setting it on an install that has been running without one is non-breaking — existing rows
+  are read with the old fallback key and re-encrypted under the real key on their next save.
 - **Secrets:** `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY` and the WordPress application
   password are server-side only. The WordPress credential is encrypted at rest in the
   `connections` table and the API returns only the site and username, never the password.

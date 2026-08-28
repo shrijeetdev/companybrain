@@ -11,12 +11,26 @@ var __export = (target, all) => {
 
 // packages/db/src/crypto.ts
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
+function configuredSecret() {
+  return (process.env.COMPANYBRAIN_ENC_KEY ?? "").trim();
+}
 function getKey() {
-  const secret = process.env.COMPANYBRAIN_ENC_KEY;
-  if (!secret) {
-    return scryptSync("companybrain-dev-key", "salt", KEY_LEN);
-  }
-  return scryptSync(secret, "companybrain-salt", KEY_LEN);
+  const secret = configuredSecret();
+  return secret ? scryptSync(secret, "companybrain-salt", KEY_LEN) : LEGACY_DEV_KEY;
+}
+function usingFallbackEncryptionKey() {
+  return configuredSecret().length === 0;
+}
+function assertEncryptionKey(env = process.env) {
+  if (env.NODE_ENV !== "production") return;
+  if (!usingFallbackEncryptionKey()) return;
+  throw new Error(
+    `COMPANYBRAIN_ENC_KEY is not set. Stored credentials (channel tokens, the WordPress application password) would be encrypted with a key derived from a constant in this repository, which anyone who can read the source can reproduce. Generate one and set it in the environment:
+
+  node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
+
+Keep it safe: losing it means re-entering every stored credential.`
+  );
 }
 function encryptJSON(data) {
   const iv = randomBytes(IV_LEN);
@@ -25,6 +39,16 @@ function encryptJSON(data) {
   const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return `enc:v1:${iv.toString("hex")}:${tag.toString("hex")}:${encrypted.toString("hex")}`;
+}
+function tryDecrypt(key, iv, tag, data) {
+  try {
+    const decipher = createDecipheriv(ALGO, key, iv);
+    decipher.setAuthTag(tag);
+    const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
+    return JSON.parse(decrypted.toString("utf8"));
+  } catch {
+    return void 0;
+  }
 }
 function decryptJSON(encrypted) {
   if (!encrypted.startsWith("enc:v1:")) {
@@ -38,18 +62,22 @@ function decryptJSON(encrypted) {
   const iv = Buffer.from(parts[2], "hex");
   const tag = Buffer.from(parts[3], "hex");
   const data = Buffer.from(parts[4], "hex");
-  const decipher = createDecipheriv(ALGO, getKey(), iv);
-  decipher.setAuthTag(tag);
-  const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
-  return JSON.parse(decrypted.toString("utf8"));
+  const withConfigured = tryDecrypt(getKey(), iv, tag, data);
+  if (withConfigured !== void 0) return withConfigured;
+  if (!usingFallbackEncryptionKey()) {
+    const withLegacy = tryDecrypt(LEGACY_DEV_KEY, iv, tag, data);
+    if (withLegacy !== void 0) return withLegacy;
+  }
+  return {};
 }
-var ALGO, KEY_LEN, IV_LEN;
+var ALGO, KEY_LEN, IV_LEN, LEGACY_DEV_KEY;
 var init_crypto = __esm({
   "packages/db/src/crypto.ts"() {
     "use strict";
     ALGO = "aes-256-gcm";
     KEY_LEN = 32;
     IV_LEN = 16;
+    LEGACY_DEV_KEY = scryptSync("companybrain-dev-key", "salt", KEY_LEN);
   }
 });
 
@@ -1008,12 +1036,14 @@ var src_exports = {};
 __export(src_exports, {
   SqliteDatabase: () => SqliteDatabase,
   SupabaseDatabase: () => SupabaseDatabase,
+  assertEncryptionKey: () => assertEncryptionKey,
   backupDatabase: () => backupDatabase,
   createDatabase: () => createDatabase,
   defaultBackupDir: () => defaultBackupDir,
   defaultRetention: () => defaultRetention,
   listBackups: () => listBackups,
-  pruneBackups: () => pruneBackups
+  pruneBackups: () => pruneBackups,
+  usingFallbackEncryptionKey: () => usingFallbackEncryptionKey
 });
 import { homedir as homedir2 } from "node:os";
 import { join as join2 } from "node:path";
@@ -1040,6 +1070,7 @@ var init_src = __esm({
     init_supabase();
     init_sqlite();
     init_supabase();
+    init_crypto();
     init_backup();
   }
 });
@@ -4898,6 +4929,7 @@ Available backups:`);
 
 // cli/bin/companybrain.ts
 init_src4();
+init_src();
 import { spawn } from "node:child_process";
 import { platform } from "node:os";
 
@@ -9884,6 +9916,14 @@ if (!isMcpInvocation && !isBackupInvocation) {
     }
   };
   openBrowser2 = openBrowser;
+  try {
+    assertEncryptionKey();
+  } catch (err) {
+    console.error(`
+[companybrain] ${err instanceof Error ? err.message : String(err)}
+`);
+    process.exit(1);
+  }
   const port = Number(process.env.COMPANYBRAIN_PORT ?? process.env.PORT ?? 4317);
   const host = process.env.COMPANYBRAIN_HOST ?? "0.0.0.0";
   const baileys = process.env.WHATSAPP_BAILEYS === "on" ? createBaileysChannel({ orgId: "org_local" }) : null;
