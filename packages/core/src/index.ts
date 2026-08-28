@@ -5,7 +5,7 @@ import { createDatabase, type Database, type DbOptions } from '@companybrain/db'
 import { createQueue, type Queue } from '@companybrain/queue';
 import { createAuth, type Auth } from '@companybrain/auth';
 
-import { type Context, type Messenger, type Drafter, consoleMessenger, templateDrafter } from './context';
+import { type Context, type Messenger, type Drafter, type AiClients, consoleMessenger, templateDrafter } from './context';
 import { makeLoops } from './loops';
 import { makeTasks } from './tasks';
 import { makeLeads } from './leads';
@@ -56,13 +56,14 @@ export interface Core {
 }
 
 /** Build core from already-constructed ports (used when you want to inject test doubles). */
-export function createCoreFromPorts(ports: { db: Database; queue: Queue; auth: Auth; messenger?: Messenger; drafter?: Drafter }): Core {
+export function createCoreFromPorts(ports: { db: Database; queue: Queue; auth: Auth; messenger?: Messenger; drafter?: Drafter; aiClients?: AiClients }): Core {
   const ctx: Context = {
     db: ports.db,
     queue: ports.queue,
     auth: ports.auth,
     messenger: ports.messenger ?? consoleMessenger,
     drafter: ports.drafter ?? templateDrafter,
+    aiClients: ports.aiClients,
   };
   // The executor closes over ctx and is attached to it, so workers reached through
   // ctx (and Core.ctx) see the same single context object.
@@ -94,6 +95,8 @@ export interface BootstrapOptions {
   messenger?: Messenger;
   /** reply drafter injected by the app (LLM-backed). Defaults to a fixed template. */
   drafter?: Drafter;
+  /** OpenRouter + WordPress clients for the AI executor. Without them AI tasks never run. */
+  aiClients?: AiClients;
 }
 
 export interface Bootstrap {
@@ -120,7 +123,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<Bootstrap>
   await queue.init();
   await auth.init();
 
-  const core = createCoreFromPorts({ db, queue, auth, messenger: opts.messenger, drafter: opts.drafter });
+  const core = createCoreFromPorts({ db, queue, auth, messenger: opts.messenger, drafter: opts.drafter, aiClients: opts.aiClients });
   registerWorkers(core.ctx);
 
   return {

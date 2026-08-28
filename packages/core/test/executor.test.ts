@@ -146,6 +146,51 @@ test('executor: a completed AI task records an audit event', async () => {
   assert.ok(events.some((e) => e.type === 'ai.task.executed' && e.entityId === task.id), 'ai.task.executed recorded');
 });
 
+test('tasks.setAiAction enqueues + marks queued; clearing it removes the action', async () => {
+  await core.autonomy.set(org, 'executeAi', 'auto');
+  const t = await core.tasks.create({ orgId: org, actorId: 'user_local', title: 'Draft X' });
+  let enqueued: any = null;
+  const origEnqueue = core.ctx.queue.enqueue.bind(core.ctx.queue);
+  core.ctx.queue.enqueue = (async (name: any, data: any) => { enqueued = { name, data }; }) as any;
+  try {
+    await core.tasks.setAiAction(t.id, 'generate');
+  } finally {
+    core.ctx.queue.enqueue = origEnqueue;
+  }
+  const after = await core.ctx.db.tasks.get(t.id);
+  assert.equal(after!.aiAction, 'generate');
+  assert.equal(after!.aiStatus, 'queued');
+  assert.equal(enqueued?.name, 'runAiTask');
+  assert.equal(enqueued?.data?.taskId, t.id);
+
+  const cleared = await core.tasks.setAiAction(t.id, null);
+  assert.equal(cleared.aiAction, null);
+  assert.equal(cleared.aiStatus, undefined, 'clearing drops the AI status too');
+});
+
+test('tasks.approveAiRun enqueues the approve continuation', async () => {
+  await core.autonomy.set(org, 'executeAi', 'ask');
+  const task = await makeAiTask({ aiAction: 'publish_blog' });
+  await core.ctx.executor!.run(task.id, { complete: stubComplete('<p>d</p>'), actionDeps: {}, openRouterApiKey: 'k' });
+  const [run] = await core.ctx.db.aiRuns.listByTask(task.id);
+
+  let enqueued: any = null;
+  const origEnqueue = core.ctx.queue.enqueue.bind(core.ctx.queue);
+  core.ctx.queue.enqueue = (async (name: any, data: any) => { enqueued = { name, data }; }) as any;
+  try {
+    await core.tasks.approveAiRun(run.id);
+  } finally {
+    core.ctx.queue.enqueue = origEnqueue;
+  }
+  assert.equal(enqueued?.name, 'runAiTask');
+  assert.equal(enqueued?.data?.approveRunId, run.id);
+  assert.equal(enqueued?.data?.taskId, task.id);
+});
+
+test('tasks.approveAiRun rejects an unknown run', async () => {
+  await assert.rejects(() => core.tasks.approveAiRun('airun_nope'), /not found/);
+});
+
 test.after(async () => {
   await boot.shutdown();
   try { rmSync(dbPath, { force: true }); } catch { /* best effort */ }

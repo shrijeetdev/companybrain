@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process';
 import { platform } from 'node:os';
 import { bootstrap, seedIfEmpty } from '@companybrain/core';
 import { buildServer } from '@companybrain/server';
-import { whatsapp, createMessenger, createBaileysChannel, createLlm } from '@companybrain/integrations';
+import { whatsapp, createMessenger, createBaileysChannel, createLlm, complete, publishPost } from '@companybrain/integrations';
 import { captureException, flushSentry } from '@companybrain/server/middleware';
 
 // --- Subcommand dispatch: `companybrain mcp` runs the standalone MCP server. ---
@@ -54,7 +54,12 @@ const messenger = baileys ? baileys.messenger : createMessenger({ whatsapp: wa ?
 // If ANTHROPIC_API_KEY is set, replies are AI-written; otherwise a fixed template is used.
 const drafter = createLlm() ?? undefined;
 
-const boot = await bootstrap({ messenger, drafter });
+// AI executor clients. This is the composition root: core defines the ports, the concrete
+// OpenRouter + WordPress clients are handed in here. Without OPENROUTER_API_KEY the worker
+// still skips, so wiring them is harmless when the feature is unused.
+const aiClients = { complete, publishBlog: publishPost };
+
+const boot = await bootstrap({ messenger, drafter, aiClients });
 await seedIfEmpty(boot.core);
 
 // In-process worker: timers fire chases/briefings inside this same process.

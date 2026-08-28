@@ -51,6 +51,20 @@ export interface Executor {
   approve(runId: string, deps: { complete: (opts: any) => Promise<any>; actionDeps: any; openRouterApiKey: string }): Promise<void>;
 }
 
+/**
+ * AI client bundle for the executor. Structural (no import of `integrations` or even of
+ * `ai-actions`) so core stays adapter-free; the app injects the concrete OpenRouter +
+ * WordPress clients at bootstrap, exactly like Messenger and Drafter.
+ */
+export interface AiClients {
+  complete: (opts: { model: string; messages: { role: 'system' | 'user' | 'assistant'; content: string }[]; apiKey: string }) => Promise<any>;
+  publishBlog: (opts: {
+    creds: { apiUrl: string; username: string; appPassword: string };
+    title: string;
+    content: string;
+  }) => Promise<{ ok: boolean; postUrl?: string; error?: string }>;
+}
+
 export interface Context {
   db: Database;
   queue: Queue;
@@ -59,6 +73,8 @@ export interface Context {
   drafter: Drafter;
   /** Attached by createCoreFromPorts; undefined only in hand-built test contexts. */
   executor?: Executor;
+  /** Injected by the app; when absent the runAiTask worker has nothing to call and skips. */
+  aiClients?: AiClients;
 }
 
 export const newId = (prefix: string): string => `${prefix}_${randomUUID().slice(0, 8)}`;

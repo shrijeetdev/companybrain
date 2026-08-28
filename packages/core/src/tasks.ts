@@ -1,4 +1,4 @@
-import type { Task, TaskDay, Priority } from '@companybrain/types';
+import type { Task, TaskDay, Priority, AiActionType, AiTaskConfig } from '@companybrain/types';
 import { type Context, newId, now, record } from './context';
 
 export interface CreateTaskInput {
@@ -57,6 +57,36 @@ export function makeTasks(ctx: Context) {
       const task = await ctx.db.tasks.update(id, { completed: true, completedAt: now() });
       await record(ctx, { orgId: task.orgId, type: 'task.completed', entityId: id, actorId, undo: { restoreCompleted: prev.completed ?? false, restoreCompletedAt: prev.completedAt ?? null } });
       return task;
+    },
+
+    /**
+     * Mark a task AI-executable (or clear it). Setting an action queues the task and
+     * enqueues the runAiTask job; the worker holds the API key and credentials, so the
+     * actual execution happens there, not here.
+     */
+    async setAiAction(id: string, action: AiActionType | null, config?: AiTaskConfig): Promise<Task> {
+      const prev = await ctx.db.tasks.get(id);
+      if (!prev) throw new Error(`task ${id} not found`);
+      const patch: Partial<Task> = action
+        ? { aiAction: action, aiStatus: 'queued', aiConfig: config, aiRunId: undefined }
+        : { aiAction: null, aiStatus: undefined, aiRunId: undefined };
+      const task = await ctx.db.tasks.update(id, patch);
+      if (action) {
+        await ctx.queue.enqueue('runAiTask', { taskId: id });
+        await record(ctx, { orgId: task.orgId, type: 'ai.task.queued', entityId: id, actorId: prev.createdBy });
+      }
+      return task;
+    },
+
+    /**
+     * Approve the draft an `ask`-gated run produced, letting its action finally run.
+     * Re-enqueued rather than called directly because the OpenRouter key and the
+     * WordPress credentials live in the worker, which is the composition root.
+     */
+    async approveAiRun(runId: string): Promise<void> {
+      const run = await ctx.db.aiRuns.get(runId);
+      if (!run) throw new Error(`run ${runId} not found`);
+      await ctx.queue.enqueue('runAiTask', { taskId: run.taskId, approveRunId: runId });
     },
   };
 }
