@@ -2,7 +2,7 @@
 // Entities are stored as a JSON `doc` plus a few indexed columns for cheap filtering.
 
 import Database from 'better-sqlite3';
-import type { Loop, Task, Lead, DomainEvent, LoopSide, AutonomySettings, Approval, ApprovalStatus } from '@companybrain/types';
+import type { Loop, Task, Lead, DomainEvent, LoopSide, AutonomySettings, Approval, ApprovalStatus, AiRun } from '@companybrain/types';
 import type {
   Database as DbPort,
   LoopRepo,
@@ -19,6 +19,7 @@ import type {
   ConnectionRecord,
   ApiKeyRow,
   ApiKeyRepo,
+  AiRunRepo,
 } from './port';
 import { encryptJSON, decryptJSON } from './crypto';
 
@@ -33,6 +34,7 @@ CREATE TABLE IF NOT EXISTS time_entries (id TEXT PRIMARY KEY, org_id TEXT NOT NU
 CREATE TABLE IF NOT EXISTS custom_fields (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, field_name TEXT NOT NULL, field_type TEXT NOT NULL DEFAULT 'text', field_value TEXT NOT NULL, created_at INTEGER);
 CREATE TABLE IF NOT EXISTS connections (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'disconnected', credentials TEXT NOT NULL DEFAULT '{}', created_at INTEGER, updated_at INTEGER);
 CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, name TEXT, prefix TEXT, key_hash TEXT NOT NULL UNIQUE, scopes TEXT NOT NULL, actor_id TEXT, created_at INTEGER, last_used_at INTEGER, expires_at INTEGER);
+CREATE TABLE IF NOT EXISTS ai_runs (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, task_id TEXT NOT NULL, action TEXT, model TEXT, status TEXT, cost_usd REAL, duration_ms INTEGER, result_ref TEXT, error TEXT, at INTEGER, doc TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_loops_org  ON loops(org_id, side);
 CREATE INDEX IF NOT EXISTS idx_tasks_org  ON tasks(org_id);
 CREATE INDEX IF NOT EXISTS idx_leads_org  ON leads(org_id);
@@ -45,6 +47,8 @@ CREATE INDEX IF NOT EXISTS idx_custom_fields_org ON custom_fields(org_id);
 CREATE INDEX IF NOT EXISTS idx_connections_org_channel ON connections(org_id, channel);
 CREATE INDEX IF NOT EXISTS idx_api_keys_org ON api_keys(org_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
+CREATE INDEX IF NOT EXISTS idx_ai_runs_task ON ai_runs(task_id);
+CREATE INDEX IF NOT EXISTS idx_ai_runs_org ON ai_runs(org_id, at);
 `;
 
 export class SqliteDatabase implements DbPort {
@@ -59,6 +63,7 @@ export class SqliteDatabase implements DbPort {
   customFields: CustomFieldRepo;
   connections: ConnectionRepo;
   apiKeys: ApiKeyRepo;
+  aiRuns: AiRunRepo;
 
   constructor(filePath: string) {
     this.db = new Database(filePath);
@@ -333,6 +338,37 @@ export class SqliteDatabase implements DbPort {
       },
       async delete(id) {
         db.prepare('DELETE FROM api_keys WHERE id=?').run(id);
+      },
+    };
+
+    // Append-only history of AI task executions. Indexed columns for listing; the full
+    // row (prompts + output) lives in `doc` for debugging and later mining.
+    this.aiRuns = {
+      async insert(run: AiRun) {
+        db.prepare(
+          'INSERT INTO ai_runs (id, org_id, task_id, action, model, status, cost_usd, duration_ms, result_ref, error, at, doc) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+        ).run(run.id, run.orgId, run.taskId, run.action, run.model, run.status, run.costUsd ?? null, run.durationMs ?? null, run.resultRef ?? null, run.error ?? null, run.at, JSON.stringify(run));
+        return run;
+      },
+      async get(id) {
+        const row = db.prepare('SELECT doc FROM ai_runs WHERE id=?').get(id) as { doc: string } | undefined;
+        return row ? (JSON.parse(row.doc) as AiRun) : null;
+      },
+      async listByTask(taskId) {
+        const rows = db.prepare('SELECT doc FROM ai_runs WHERE task_id=? ORDER BY at DESC').all(taskId) as { doc: string }[];
+        return rows.map((r) => JSON.parse(r.doc) as AiRun);
+      },
+      async listByOrg(orgId, limit = 100) {
+        const rows = db.prepare('SELECT doc FROM ai_runs WHERE org_id=? ORDER BY at DESC LIMIT ?').all(orgId, limit) as { doc: string }[];
+        return rows.map((r) => JSON.parse(r.doc) as AiRun);
+      },
+      async update(id, patch) {
+        const cur = await this.get(id);
+        if (!cur) throw new Error(`ai_run ${id} not found`);
+        const next = { ...cur, ...patch };
+        db.prepare('UPDATE ai_runs SET doc=?, status=?, cost_usd=?, duration_ms=?, result_ref=?, error=? WHERE id=?')
+          .run(JSON.stringify(next), next.status, next.costUsd ?? null, next.durationMs ?? null, next.resultRef ?? null, next.error ?? null, id);
+        return next;
       },
     };
   }

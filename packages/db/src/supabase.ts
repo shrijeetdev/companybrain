@@ -17,6 +17,7 @@ import type {
   CustomField,
   ConnectionRepo,
   ApiKeyRepo,
+  AiRunRepo,
 } from './port';
 
 export interface SupabaseDbOptions {
@@ -49,6 +50,15 @@ export class SupabaseDatabase implements DbPort {
     async touch() { throw new Error('apiKeys not implemented for Supabase'); },
     async listByOrg() { throw new Error('apiKeys not implemented for Supabase'); },
     async delete() { throw new Error('apiKeys not implemented for Supabase'); },
+  };
+
+  // AI run history is SQLite-only for now — the executor runs against the local DB.
+  aiRuns: AiRunRepo = {
+    async insert() { throw new Error('aiRuns not implemented for Supabase'); },
+    async get() { throw new Error('aiRuns not implemented for Supabase'); },
+    async listByTask() { throw new Error('aiRuns not implemented for Supabase'); },
+    async listByOrg() { throw new Error('aiRuns not implemented for Supabase'); },
+    async update() { throw new Error('aiRuns not implemented for Supabase'); },
   };
 
   constructor(opts: SupabaseDbOptions) {

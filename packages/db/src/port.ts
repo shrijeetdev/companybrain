@@ -1,7 +1,7 @@
 // The DB port. `core` depends ONLY on these interfaces — never on a concrete database.
 // The app ships one embedded adapter: sqlite (a single file, no server to run).
 
-import type { Loop, Task, Lead, DomainEvent, LoopSide, AutonomySettings, Approval, ApprovalStatus } from '@companybrain/types';
+import type { Loop, Task, Lead, DomainEvent, LoopSide, AutonomySettings, Approval, ApprovalStatus, AiRun } from '@companybrain/types';
 
 export interface LoopRepo {
   list(orgId: string, side?: LoopSide): Promise<Loop[]>;
@@ -130,6 +130,14 @@ export interface ApiKeyRepo {
   delete(id: string): Promise<void>;
 }
 
+export interface AiRunRepo {
+  insert(run: AiRun): Promise<AiRun>;
+  get(id: string): Promise<AiRun | null>;
+  listByTask(taskId: string): Promise<AiRun[]>;
+  listByOrg(orgId: string, limit?: number): Promise<AiRun[]>;
+  update(id: string, patch: Partial<AiRun>): Promise<AiRun>;
+}
+
 export interface Database {
   /** create tables if missing */
   init(): Promise<void>;
@@ -143,5 +151,6 @@ export interface Database {
   customFields: CustomFieldRepo;
   connections: ConnectionRepo;
   apiKeys: ApiKeyRepo;
+  aiRuns: AiRunRepo;
   close(): Promise<void>;
 }
