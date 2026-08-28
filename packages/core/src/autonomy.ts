@@ -14,6 +14,7 @@ export const DEFAULT_AUTONOMY: AutonomySettings = {
   createTasks: 'off',
   joinMeetings: 'off',
   manageRecords: 'off',
+  executeAi: 'ask',
 };
 
 /** Which queue job an action dispatches (actions without a job are no-ops for now). */

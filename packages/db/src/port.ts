@@ -93,7 +93,7 @@ export interface CustomFieldRepo {
 export interface ConnectionRecord {
   id: string;
   orgId: string;
-  channel: 'whatsapp_cloud' | 'whatsapp_baileys' | 'gmail' | 'slack' | 'telegram' | 'github' | 'calendar';
+  channel: 'whatsapp_cloud' | 'whatsapp_baileys' | 'gmail' | 'slack' | 'telegram' | 'github' | 'calendar' | 'wordpress';
   status: 'disconnected' | 'connecting' | 'connected' | 'error';
   credentials: Record<string, any>;
   createdAt: number;

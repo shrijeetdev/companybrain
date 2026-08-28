@@ -5,7 +5,7 @@ export type Role = 'ceo' | 'manager' | 'employee' | 'client' | 'agent';
 
 /** off = never act · ask = queue for human approval · auto = act then log */
 export type Autonomy = 'off' | 'ask' | 'auto';
-export type AutonomyAction = 'createTasks' | 'sendReminders' | 'draftReplies' | 'chase' | 'joinMeetings' | 'manageRecords';
+export type AutonomyAction = 'createTasks' | 'sendReminders' | 'draftReplies' | 'chase' | 'joinMeetings' | 'manageRecords' | 'executeAi';
 
 /** Per-org autonomy config: how the AI may act for each kind of action. */
 export type AutonomySettings = Record<AutonomyAction, Autonomy>;
@@ -64,6 +64,39 @@ export interface Loop {
 export type TaskDay = 'today' | 'tomorrow' | 'upcoming';
 export type Priority = 'low' | 'med' | 'high' | null;
 
+/** The kind of work an AI task performs. Extensible — new actions are added to this union. */
+export type AiActionType = 'generate' | 'publish_blog';
+
+/** Lifecycle of an AI task's execution. */
+export type AiStatus = 'queued' | 'running' | 'awaiting_review' | 'done' | 'failed' | 'cancelled';
+
+/** Status of a single run record (a task can be retried → many runs). */
+export type AiRunStatus = 'running' | 'done' | 'failed' | 'awaiting_review';
+
+/** Per-task AI configuration overrides. */
+export interface AiTaskConfig {
+  promptOverride?: string;
+  modelOverride?: string;
+}
+
+/** One execution attempt of an AI task. Append-only history. */
+export interface AiRun {
+  id: string;
+  orgId: string;
+  taskId: string;
+  action: AiActionType;
+  model: string;
+  status: AiRunStatus;
+  systemPrompt: string;
+  userPrompt: string;
+  output?: string;
+  resultRef?: string;
+  costUsd?: number | null;
+  durationMs?: number;
+  error?: string;
+  at: number;
+}
+
 export interface Task {
   id: string;
   orgId: string;
@@ -86,6 +119,14 @@ export interface Task {
   comments?: { id: string; text: string; by: string; at: number }[];
   dueAt?: number | null;
   createdAt: number;
+  /** When set, this task is AI-executable via the given action. null/absent = normal human task. */
+  aiAction?: AiActionType | null;
+  /** Current execution state of the AI task. */
+  aiStatus?: AiStatus;
+  /** id of the latest ai_runs row. */
+  aiRunId?: string;
+  /** Per-task overrides (prompt, model). */
+  aiConfig?: AiTaskConfig;
 }
 
 export type LeadStage = 'new' | 'contacted' | 'meeting' | 'proposal' | 'won' | 'lost';
@@ -115,6 +156,7 @@ export type EventType =
   | 'lead.created' | 'lead.advanced'
   | 'agent.acted' | 'reminder.sent' | 'reply.sent' | 'briefing.delivered'
   | 'autonomy.changed' | 'approval.created' | 'approval.approved' | 'approval.dismissed'
+  | 'ai.task.queued' | 'ai.task.executed' | 'ai.task.failed'
   | 'event.undone';
 
 export interface DomainEvent {
@@ -131,7 +173,7 @@ export interface DomainEvent {
 }
 
 /** A unit of deferred work the queue runs (chase a loop, send a briefing…). */
-export type JobName = 'chaseLoop' | 'replyLoop' | 'sendBriefing' | 'autoSweep' | 'sendReminder';
+export type JobName = 'chaseLoop' | 'replyLoop' | 'sendBriefing' | 'autoSweep' | 'sendReminder' | 'runAiTask';
 
 export interface Job<T = Record<string, unknown>> {
   name: JobName;
