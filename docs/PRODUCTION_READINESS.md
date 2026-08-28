@@ -135,6 +135,10 @@ Notes:
 - **Secrets:** `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY` and the WordPress application
   password are server-side only. The WordPress credential is encrypted at rest in the
   `connections` table and the API returns only the site and username, never the password.
+- **Supabase mode is partial.** Setting `SUPABASE_URL` + `SUPABASE_ANON_KEY` switches the
+  database adapter, but that adapter does not implement `api_keys` or `ai_runs` — MCP hosts
+  cannot authenticate and AI task execution fails at runtime. The app warns about this at
+  boot. The default SQLite adapter supports every feature.
 - **`pnpm install` requires GitHub access** for one git-hosted transitive dependency
   (`libsignal`, pulled in by baileys). An environment that blocks `github.com` cannot install.
 

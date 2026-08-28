@@ -1052,6 +1052,9 @@ function createDatabase(opts = {}) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
   if (supabaseUrl && supabaseAnonKey) {
+    console.warn(
+      "[companybrain] Using the Supabase database adapter. Note: API keys (MCP access) and AI task execution are not implemented for Supabase and will fail at runtime \u2014 those features require the default SQLite adapter. Unset SUPABASE_URL to use SQLite."
+    );
     return new SupabaseDatabase({
       url: supabaseUrl,
       anonKey: supabaseAnonKey,
