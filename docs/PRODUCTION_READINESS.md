@@ -115,6 +115,10 @@ Notes:
 
 ## 🔐 Operational notes
 
+- **`/metrics`** (Prometheus) sits outside `/api/*`, so the session gate does not cover it.
+  In production it is served only to a caller presenting `COMPANYBRAIN_METRICS_TOKEN` as a
+  bearer token; with the variable unset the endpoint returns 404 rather than publishing your
+  volume counters to the internet. `/health` stays open — load balancers need it.
 - **Rate limits:** 100/min globally, 10/min on `/api/auth/login`, 30/min on webhooks, and
   20/min on the AI execution endpoints (those spend money per call and can push to an
   external site, so the global limit is a DoS guard, not a spend guard).

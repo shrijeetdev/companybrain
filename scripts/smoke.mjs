@@ -9,7 +9,7 @@
 //   4. /api/* is 401 without a session, and /api/auth/users does not leak the roster
 //   5. the bootstrap admin can log in, and an authenticated request then succeeds
 //   6. a non-admin cannot reach the admin endpoints
-//   7. security headers and the health endpoint are in place
+//   7. security headers are set, /health answers, and /metrics is not public
 //
 // Run: node scripts/smoke.mjs        (exits non-zero on the first failure)
 
@@ -95,6 +95,8 @@ try {
   check('X-Frame-Options is DENY', page.headers.get('x-frame-options') === 'DENY');
   check('Content-Security-Policy is set', (page.headers.get('content-security-policy') ?? '').includes("frame-ancestors 'none'"));
   check('HSTS is set in production', (page.headers.get('strict-transport-security') ?? '').includes('max-age='));
+  const health = await fetch(BASE + '/health');
+  check('/health answers for load balancers', health.status === 200 && (await health.json()).ok === true, `status ${health.status}`);
 
   // 2. The generated script must parse. This is the check that catches a blank screen.
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
@@ -110,6 +112,10 @@ try {
   for (const tab of ['home', 'loops', 'tasks', 'leads', 'projects', 'team', 'reports', 'settings', 'methods']) {
     check(`the ${tab} view renders`, html.includes(`tab==='${tab}'`), 'no render branch for this tab');
   }
+
+  // 3b. /metrics sits outside /api/*, so it needs its own gate in production.
+  const metrics = await fetch(BASE + '/metrics');
+  check('/metrics is not public in production', metrics.status === 404, `status ${metrics.status}`);
 
   // 4. Unauthenticated access is refused, and the roster stays private.
   const noSession = await fetch(BASE + '/api/loops');

@@ -4908,6 +4908,7 @@ import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import { join as join6 } from "node:path";
 import { existsSync as existsSync2 } from "node:fs";
+import { timingSafeEqual as timingSafeEqual4 } from "node:crypto";
 
 // packages/integrations/src/pipeline.ts
 function needsHuman(msg) {
@@ -8621,7 +8622,14 @@ function buildServer(deps) {
     timestamp: (/* @__PURE__ */ new Date()).toISOString(),
     uptime: process.uptime()
   }));
-  app.get("/metrics", async (_req, reply) => {
+  const metricsToken = (process.env.COMPANYBRAIN_METRICS_TOKEN ?? "").trim();
+  app.get("/metrics", async (req, reply) => {
+    if (isProd) {
+      if (!metricsToken) return reply.code(404).send({ error: "not found" });
+      const offered = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+      const ok = offered.length === metricsToken.length && timingSafeEqual4(Buffer.from(offered), Buffer.from(metricsToken));
+      if (!ok) return reply.code(401).send({ error: "unauthorized" });
+    }
     const { renderMetrics: renderMetrics2 } = await Promise.resolve().then(() => (init_middleware(), middleware_exports));
     return reply.type("text/plain").send(renderMetrics2());
   });

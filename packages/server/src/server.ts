@@ -8,6 +8,7 @@ import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
+import { timingSafeEqual } from 'node:crypto';
 import type { Core } from '@companybrain/core';
 import type { Auth, AuthUser, Principal, CreateUserInput, UpdateUserInput } from '@companybrain/auth';
 import { ingest, whatsapp, createLlm, input as inputApi } from '@companybrain/integrations';
@@ -231,7 +232,20 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   }));
 
   // --- Prometheus metrics endpoint ---
-  app.get('/metrics', async (_req, reply) => {
+  // Outside /api/*, so the session preHandler does not cover it. The counters carry no
+  // personal data but do reveal business volume, so in production they are served only to a
+  // caller holding COMPANYBRAIN_METRICS_TOKEN. Unset in production → the endpoint is off
+  // (a scraper that gets 404 is a better failure than a public dashboard of your numbers).
+  const metricsToken = (process.env.COMPANYBRAIN_METRICS_TOKEN ?? '').trim();
+  app.get('/metrics', async (req, reply) => {
+    if (isProd) {
+      if (!metricsToken) return reply.code(404).send({ error: 'not found' });
+      const offered = (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
+      // Length-independent comparison: never leak the token through timing.
+      const ok = offered.length === metricsToken.length &&
+        timingSafeEqual(Buffer.from(offered), Buffer.from(metricsToken));
+      if (!ok) return reply.code(401).send({ error: 'unauthorized' });
+    }
     const { renderMetrics } = await import('./middleware');
     return reply.type('text/plain').send(renderMetrics());
   });
