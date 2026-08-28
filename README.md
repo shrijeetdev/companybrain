@@ -53,12 +53,20 @@ It's one container. Build and run it:
 ```bash
 docker build -t companybrain .
 docker run -d -p 4317:4317 \
-  -v companybrain-data:/root/.companybrain \
+  -v companybrain-data:/data \
   --env-file .env \
   companybrain
 ```
 
-Then point your domain at the droplet on port 4317 (or put any reverse proxy in front). The mounted volume keeps your SQLite data across restarts and redeploys. No other services to provision.
+Then point your domain at the droplet on port 4317 (or put any reverse proxy in front). The
+volume mounted at `/data` holds the SQLite database and its backups, so both survive restarts
+and redeploys. No other services to provision.
+
+> Upgrading from an image built before the `/data` change? That image ran as a non-root user
+> whose home was `/home/companybrain`, so a volume mounted at `/root/.companybrain` was never
+> written to and the database lived inside the container. Copy it out before replacing the
+> container: `docker cp <container>:/home/companybrain/.companybrain/companybrain.sqlite ./`,
+> then mount the new volume and place the file at `/data/companybrain.sqlite`.
 
 You can also run it without Docker on the server: `git clone`, `pnpm install`, `pnpm start` (optionally under `pm2`/`systemd`).
 
