@@ -596,6 +596,20 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     </div>
   </div>
 
+  <div class="modal-backdrop" id="ai-modal">
+    <div class="modal-box">
+      <div class="modal-head"><span style="font-size:22px;">🤖</span><span class="modal-title">Assign to AI</span><button class="modal-close" id="ai-modal-close">×</button></div>
+      <div class="modal-body">
+        <div class="modal-field"><label class="modal-label">Task</label><div id="ai-modal-task" style="font-size:13px;font-weight:600;color:var(--text);"></div></div>
+        <div class="modal-field"><label class="modal-label">Action</label><select class="modal-select" id="ai-modal-action"><option value="">Not an AI task</option><option value="generate">Generate — write the deliverable onto the task</option><option value="publish_blog">Publish blog — draft a post to WordPress (needs approval)</option></select></div>
+        <div class="modal-field"><label class="modal-label">Prompt override (optional)</label><textarea class="modal-input" id="ai-modal-prompt" rows="2" placeholder="Leave blank to use the task title" style="resize:vertical;"></textarea></div>
+        <div class="modal-field"><label class="modal-label">Model override (optional)</label><input class="modal-input" id="ai-modal-model" placeholder="e.g. openai/gpt-4o-mini" autocomplete="off"/></div>
+        <div class="modal-field"><label class="modal-label">Runs</label><div id="ai-modal-runs" style="font-size:12px;color:var(--muted);">No runs yet.</div></div>
+      </div>
+      <div class="modal-foot"><button class="btn-ghost" id="ai-modal-cancel">Close</button><button class="btn-primary" id="ai-modal-save">Save</button></div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="lead-modal">
     <div class="modal-box">
       <div class="modal-head"><span style="font-size:20px;">🤝</span><span class="modal-title">New lead</span><button class="modal-close" id="lead-modal-close">×</button></div>
@@ -725,11 +739,13 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     {k:'sendReminders',label:'Send reminders',desc:'Remind on snoozed loops before they slip'},
     {k:'createTasks',  label:'Create tasks',  desc:'Turn asks in messages into tasks'},
     {k:'joinMeetings', label:'Join meetings', desc:'Attend and take notes autonomously'},
+    {k:'executeAi',    label:'Execute AI tasks', desc:'Run AI-assigned tasks (publishing always needs approval)'},
   ];
 
   var EVENT_ICONS={
     'loop.created':'🔄','loop.closed':'✅','loop.snoozed':'😴','loop.captured':'🔄','loop.reopened':'↩️',
     'task.created':'📝','task.completed':'✔️','task.moved':'➡️',
+    'ai.task.queued':'🤖','ai.task.executed':'🤖','ai.task.failed':'⚠️',
     'lead.created':'🤝','lead.advanced':'📈',
     'briefing.delivered':'🧠','agent.action':'🤖',
     'approval.approved':'✅','approval.dismissed':'🚫','event.undone':'↩️'
@@ -800,7 +816,9 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       });
     });
   }
-  function post(path,body,method){return api(path,{method:method||'POST',headers:{'content-type':'application/json'},body:body?JSON.stringify(body):undefined});}
+  // Only send a JSON content-type when there IS a body: declaring one on an empty POST
+  // makes Fastify's body parser fail with 'Unexpected end of JSON input' (400).
+  function post(path,body,method){return api(path,{method:method||'POST',headers:body?{'content-type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});}
   function ago(ts){
     var d=(Date.now()-ts)/1e3;
     if(d<60) return 'just now';
@@ -1365,13 +1383,14 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       ['today','tomorrow','upcoming'].forEach(function(d){var btn=document.getElementById('kadd-'+d);if(btn)btn.onclick=function(){openNewTaskModal(d);};});
       view.querySelectorAll('[data-done]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.done+'/complete').then(function(){toast('Task completed');loadTasks();});};});
       view.querySelectorAll('[data-move]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.move+'/move',{day:b.dataset.day}).then(function(){toast('Task moved');loadTasks();});};});
+      view.querySelectorAll('[data-ai]').forEach(function(b){b.onclick=function(e){e.stopPropagation();openAiModal(b.dataset.ai);};});
       wireTaskDragAndDrop();
     }).catch(function(e){view.innerHTML='<div class="empty">Failed to load tasks: '+(e&&e.message||e)+'</div>';});
   }
   function kanbanCol(label,dotColor,items,colDay){
     var cards=items.length?items.map(function(t){
       var pr=t.priority==='high'?'<span class="priority-pill priority-high">HIGH</span>':t.priority==='med'?'<span class="priority-pill priority-med">MED</span>':t.priority==='low'?'<span class="priority-pill priority-low">LOW</span>':'';
-      return '<div class="kanban-task-card gc" draggable="true" data-task-id="'+t.id+'"><div class="kanban-task-row"><button class="kanban-check" data-done="'+t.id+'"></button><span class="kanban-task-emoji">'+esc(t.emoji||'📝')+'</span><div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title)+'</div><div class="kanban-task-sub">'+esc(t.list||'Inbox')+'</div></div></div><div class="kanban-task-foot">'+pr+(colDay!=='today'?'<button class="btn-ghost" data-move="'+t.id+'" data-day="today" style="font-size:10px;padding:3px 8px;min-height:24px;">→ Today</button>':'')+'</div></div>';
+      return '<div class="kanban-task-card gc" draggable="true" data-task-id="'+t.id+'"><div class="kanban-task-row"><button class="kanban-check" data-done="'+t.id+'"></button><span class="kanban-task-emoji">'+esc(t.emoji||'📝')+'</span><div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title)+'</div><div class="kanban-task-sub">'+esc(t.list||'Inbox')+'</div></div></div><div class="kanban-task-foot">'+pr+'<button class="btn-ghost" data-ai="'+t.id+'" title="Assign to AI" style="font-size:10px;padding:3px 8px;min-height:24px;">'+aiPill(t)+'</button>'+(colDay!=='today'?'<button class="btn-ghost" data-move="'+t.id+'" data-day="today" style="font-size:10px;padding:3px 8px;min-height:24px;">→ Today</button>':'')+'</div></div>';
     }).join(''):'<div class="empty-dashed" style="font-size:11px;padding:16px 12px;">No tasks for '+label.toLowerCase()+'.</div>';
     return '<div class="kanban-col"><div class="kanban-col-head"><span class="kanban-col-dot" style="background:'+dotColor+'"></span><span class="kanban-col-label">'+label+'</span><span class="kanban-col-count">'+items.length+'</span></div><div class="kanban-col-body" data-col-day="'+colDay+'">'+cards+'<button class="kanban-add-btn" id="kadd-'+colDay+'">+ Add</button></div></div>';
   }
@@ -1916,6 +1935,83 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     var list=getProjects().filter(function(p){return p.id!==id;});
     saveProjects(list);
   }
+  // --- AI tasks: assign an action, watch the run, approve an awaiting_review draft. ---
+  var AI_LABEL={queued:'Queued',running:'Running',awaiting_review:'Review',done:'Done',failed:'Failed',cancelled:'Off'};
+  function aiPill(t){
+    if(!t.aiAction) return 'AI';
+    return 'AI: '+(AI_LABEL[t.aiStatus||'queued']||t.aiStatus);
+  }
+  var aiModalTaskId=null;
+  function openAiModal(taskId){
+    var m=document.getElementById('ai-modal');
+    if(!m)return;
+    aiModalTaskId=taskId;
+    api('/api/tasks').then(function(tasks){
+      var t=(tasks||[]).filter(function(x){return x.id===taskId;})[0]||{};
+      document.getElementById('ai-modal-task').textContent=t.title||taskId;
+      document.getElementById('ai-modal-action').value=t.aiAction||'';
+      document.getElementById('ai-modal-prompt').value=(t.aiConfig&&t.aiConfig.promptOverride)||'';
+      document.getElementById('ai-modal-model').value=(t.aiConfig&&t.aiConfig.modelOverride)||'';
+      loadAiRuns(taskId);
+      m.classList.add('open');
+    }).catch(function(e){toast('Could not open: '+(e&&e.message||e));});
+  }
+  function closeAiModal(){
+    var m=document.getElementById('ai-modal');
+    if(m)m.classList.remove('open');
+    aiModalTaskId=null;
+  }
+  function loadAiRuns(taskId){
+    var box=document.getElementById('ai-modal-runs');
+    if(!box)return;
+    api('/api/tasks/'+taskId+'/ai-runs').then(function(r){
+      var runs=(r&&r.runs)||[];
+      if(!runs.length){box.textContent='No runs yet.';return;}
+      box.innerHTML=runs.map(function(run){
+        var head='<div style="font-size:11px;color:var(--muted);">'+esc(run.model)+' - '+esc(run.status)+' - '+ago(run.at)+'</div>';
+        var body=run.error
+          ? '<div style="font-size:12px;color:var(--red);margin-top:4px;">'+esc(run.error)+'</div>'
+          : '<div style="font-size:12px;margin-top:4px;white-space:pre-wrap;max-height:140px;overflow:auto;">'+esc((run.output||'').slice(0,1200))+'</div>';
+        var link=(run.resultRef&&(run.resultRef.indexOf('https://')===0||run.resultRef.indexOf('http://')===0))
+          ? '<div style="margin-top:4px;"><a href="'+esc(run.resultRef)+'" target="_blank" rel="noopener noreferrer" style="font-size:11px;">Open result</a></div>'
+          : '';
+        var approve=run.status==='awaiting_review'
+          ? '<button class="btn-primary" data-approve="'+esc(run.id)+'" style="font-size:11px;padding:4px 10px;min-height:26px;margin-top:6px;">Approve and run</button>'
+          : '';
+        return '<div class="gc" style="padding:10px 12px;margin-bottom:8px;border-radius:12px;">'+head+body+link+approve+'</div>';
+      }).join('');
+      box.querySelectorAll('[data-approve]').forEach(function(b){
+        b.onclick=function(){
+          post('/api/ai-runs/'+b.dataset.approve+'/approve').then(function(){
+            toast('Approved - running the action');
+            setTimeout(function(){pollAiRuns(taskId,4);loadTasks();},800);
+          }).catch(function(e){toast('Approve failed: '+(e&&e.message||e));});
+        };
+      });
+    }).catch(function(){box.textContent='Could not load runs.';});
+  }
+  // The run happens in the background worker, so re-poll briefly until it settles.
+  function pollAiRuns(taskId,tries){
+    loadAiRuns(taskId);
+    if(tries>0) setTimeout(function(){
+      if(aiModalTaskId===taskId) pollAiRuns(taskId,tries-1);
+    },1200);
+  }
+  function saveAiAction(){
+    if(!aiModalTaskId)return;
+    var taskId=aiModalTaskId;
+    var action=document.getElementById('ai-modal-action').value||null;
+    var promptOverride=document.getElementById('ai-modal-prompt').value.trim();
+    var modelOverride=document.getElementById('ai-modal-model').value.trim();
+    var config={};
+    if(promptOverride)config.promptOverride=promptOverride;
+    if(modelOverride)config.modelOverride=modelOverride;
+    post('/api/tasks/'+taskId+'/ai',{action:action,config:Object.keys(config).length?config:undefined}).then(function(){
+      toast(action?'Queued for AI':'AI action cleared');
+      loadTasks();
+      if(action){setTimeout(function(){pollAiRuns(taskId,4);loadTasks();},1200);}else{closeAiModal();}
+    }).catch(function(e){toast('Failed: '+(e&&e.message||e));});
+  }
   function openNewTaskModal(day){
     var m=document.getElementById('task-modal');
     if(!m)return;
@@ -1987,6 +2083,13 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         var list=document.getElementById('task-modal-list').value.trim();
         post('/api/tasks',{title:title,day:day,priority:priority||undefined,list:list||undefined}).then(function(){closeNewTaskModal();toast('Task added');loadTasks();});
       };
+    }
+    var mai=document.getElementById('ai-modal');
+    if(mai){
+      document.getElementById('ai-modal-close').onclick=closeAiModal;
+      document.getElementById('ai-modal-cancel').onclick=closeAiModal;
+      mai.onclick=function(e){if(e.target===mai)closeAiModal();};
+      document.getElementById('ai-modal-save').onclick=saveAiAction;
     }
     var ml=document.getElementById('lead-modal');
     if(ml){

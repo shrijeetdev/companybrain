@@ -111,7 +111,7 @@ export const WordpressCredsSchema = z.object({
 });
 
 export const AutonomySchema = z.object({
-  action: z.enum(['createTasks', 'sendReminders', 'draftReplies', 'chase', 'joinMeetings']),
+  action: z.enum(['createTasks', 'sendReminders', 'draftReplies', 'chase', 'joinMeetings', 'manageRecords', 'executeAi']),
   level: z.enum(['off', 'ask', 'auto']),
 });
 
