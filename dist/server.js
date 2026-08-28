@@ -3918,7 +3918,7 @@ var init_validation = __esm({
 });
 
 // packages/server/src/middleware/rate-limit.ts
-var rateLimitConfig, webhookRateLimitConfig, authRateLimitConfig;
+var rateLimitConfig, webhookRateLimitConfig, authRateLimitConfig, aiRateLimitConfig;
 var init_rate_limit = __esm({
   "packages/server/src/middleware/rate-limit.ts"() {
     "use strict";
@@ -3956,6 +3956,18 @@ var init_rate_limit = __esm({
         message: "Rate limit exceeded for authentication. Try again later."
       })
     };
+    aiRateLimitConfig = {
+      max: 20,
+      timeWindow: "1 minute",
+      keyGenerator: (req) => {
+        return req.ip ?? req.headers["x-forwarded-for"] ?? "unknown";
+      },
+      errorResponseBuilder: (_req, context) => ({
+        error: "Too many AI requests",
+        message: `AI execution is rate limited. Try again in ${Math.ceil(context.ttl / 1e3)}s.`,
+        retryAfter: Math.ceil(context.ttl / 1e3)
+      })
+    };
   }
 });
 
@@ -3964,13 +3976,36 @@ import pino from "pino";
 function createChildLogger(name) {
   return logger.child({ module: name });
 }
-var level, logger;
+var level, REDACTED_PATHS, logger;
 var init_logger = __esm({
   "packages/server/src/middleware/logger.ts"() {
     "use strict";
     level = process.env.COMPANYBRAIN_LOG_LEVEL ?? "info";
+    REDACTED_PATHS = [
+      "req.headers.cookie",
+      "req.headers.authorization",
+      'req.headers["x-csrf-token"]',
+      'req.headers["x-api-key"]',
+      'req.headers["x-hub-signature"]',
+      'req.headers["x-hub-signature-256"]',
+      'res.headers["set-cookie"]',
+      "headers.cookie",
+      "headers.authorization",
+      "password",
+      "appPassword",
+      "apiKey",
+      "accessToken",
+      "key",
+      "*.password",
+      "*.appPassword",
+      "*.apiKey",
+      "*.accessToken",
+      "credentials",
+      "*.credentials"
+    ];
     logger = pino({
       level,
+      redact: { paths: REDACTED_PATHS, censor: "[redacted]" },
       transport: process.env.NODE_ENV !== "production" ? { target: "pino-pretty", options: { colorize: true, translateTime: "SYS:HH:MM:ss" } } : void 0,
       serializers: {
         err: pino.stdSerializers.err,
@@ -4294,7 +4329,9 @@ var init_metrics = __esm({
 // packages/server/src/middleware/index.ts
 var middleware_exports = {};
 __export(middleware_exports, {
+  REDACTED_PATHS: () => REDACTED_PATHS,
   ValidationError: () => ValidationError,
+  aiRateLimitConfig: () => aiRateLimitConfig,
   authRateLimitConfig: () => authRateLimitConfig,
   canModifyUser: () => canModifyUser,
   captureException: () => captureException2,
@@ -8436,6 +8473,9 @@ function buildServer(deps) {
   const app = Fastify({
     logger: {
       level: process.env.COMPANYBRAIN_LOG_LEVEL ?? "info",
+      // Same redaction as the shared logger: request logs must never carry session
+      // cookies, bearer tokens or webhook signatures.
+      redact: { paths: REDACTED_PATHS, censor: "[redacted]" },
       ...process.env.NODE_ENV !== "production" && {
         transport: { target: "pino-pretty", options: { colorize: true, translateTime: "SYS:HH:MM:ss" } }
       }
@@ -8837,6 +8877,7 @@ function buildServer(deps) {
     return core.ctx.db.tasks.update(params(req).id, { assignees: b.userIds ?? [p.userId] });
   });
   app.post("/api/tasks/:id/ai", {
+    config: { rateLimit: aiRateLimitConfig },
     preHandler: validateBody(validation_exports.SetAiActionSchema)
   }, async (req) => {
     await ownedTask(req);
@@ -8849,7 +8890,9 @@ function buildServer(deps) {
     await ownedTask(req);
     return { runs: await core.ctx.db.aiRuns.listByTask(params(req).id) };
   });
-  app.post("/api/ai-runs/:id/approve", async (req) => {
+  app.post("/api/ai-runs/:id/approve", {
+    config: { rateLimit: aiRateLimitConfig }
+  }, async (req) => {
     const p = await principalOf(req);
     const run = await core.ctx.db.aiRuns.get(params(req).id);
     if (!run || run.orgId !== p.orgId) throw notFound("run not found");

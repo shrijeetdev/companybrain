@@ -20,10 +20,12 @@ import {
   rateLimitConfig,
   webhookRateLimitConfig,
   authRateLimitConfig,
+  aiRateLimitConfig,
   whatsappSignatureVerify,
   genericWebhookVerify,
   requireMinRole,
   logger,
+  REDACTED_PATHS,
   schemas,
   initSentry,
   captureException,
@@ -42,6 +44,9 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   const app = Fastify({
     logger: {
       level: process.env.COMPANYBRAIN_LOG_LEVEL ?? 'info',
+      // Same redaction as the shared logger: request logs must never carry session
+      // cookies, bearer tokens or webhook signatures.
+      redact: { paths: REDACTED_PATHS, censor: '[redacted]' },
       ...(process.env.NODE_ENV !== 'production' && {
         transport: { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:HH:MM:ss' } },
       }),
@@ -526,6 +531,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   // --- AI tasks (executor) ---
   // Mark a task AI-executable (or clear it). The worker does the actual run.
   app.post('/api/tasks/:id/ai', {
+    config: { rateLimit: aiRateLimitConfig },
     preHandler: validateBody(schemas.SetAiActionSchema),
   }, async (req) => {
     await ownedTask(req); // B1: no setting AI actions on another org's task
@@ -542,7 +548,9 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   // The `ask` path: a human approves the generated draft, letting the action run.
-  app.post('/api/ai-runs/:id/approve', async (req) => {
+  app.post('/api/ai-runs/:id/approve', {
+    config: { rateLimit: aiRateLimitConfig },
+  }, async (req) => {
     const p = await principalOf(req);
     const run = await core.ctx.db.aiRuns.get(params(req).id);
     if (!run || run.orgId !== p.orgId) throw notFound('run not found'); // B1
