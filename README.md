@@ -142,6 +142,10 @@ A task can be executed by AI instead of a human. Mark a task with an action type
 
 Every run is logged (model, prompts, output, duration, error) in `ai_runs` for auditability.
 
+If a task is stuck (the process restarted mid-run, so it still reads `running`), re-assign the
+action — `POST /api/tasks/:id/ai` puts it back to `queued` and the worker picks it up again.
+A failed run leaves the task `failed` and never completes it; the same re-assign retries it.
+
 ## Backups
 
 The whole company is one SQLite file, so a backup is one consistent copy of it. The running
