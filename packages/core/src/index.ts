@@ -19,11 +19,15 @@ import { makeAi } from './ai';
 import { makeApiKeys } from './api-keys';
 import { undoEvent, type UndoResult } from './undo';
 import { registerWorkers } from './workers';
+import { makeExecutor } from './executor';
 
 export * from './context';
 export * from './agents';
 export * from './autonomy';
 export * from './undo';
+export { makeExecutor, type ExecutorDeps, type ExecutorService } from './executor';
+export { ACTIONS, type Action, type ActionDeps, type WordpressCreds } from './ai-actions';
+export { resolveModel } from './ai-router';
 export { registerWorkers } from './workers';
 export { seedIfEmpty } from './seed';
 export type { CaptureLoopInput } from './loops';
@@ -60,6 +64,9 @@ export function createCoreFromPorts(ports: { db: Database; queue: Queue; auth: A
     messenger: ports.messenger ?? consoleMessenger,
     drafter: ports.drafter ?? templateDrafter,
   };
+  // The executor closes over ctx and is attached to it, so workers reached through
+  // ctx (and Core.ctx) see the same single context object.
+  ctx.executor = makeExecutor(ctx);
   return {
     ctx,
     loops: makeLoops(ctx),

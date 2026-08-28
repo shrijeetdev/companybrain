@@ -41,12 +41,24 @@ export const templateDrafter: Drafter = {
   },
 };
 
+/**
+ * AI task runner port. The concrete implementation lives in `executor.ts` and is attached
+ * to the context at build time; typed structurally here so context.ts never imports it
+ * (executor.ts imports Context — the reverse import would be a cycle).
+ */
+export interface Executor {
+  run(taskId: string, deps: { complete: (opts: any) => Promise<any>; actionDeps: any; openRouterApiKey: string }): Promise<void>;
+  approve(runId: string, deps: { complete: (opts: any) => Promise<any>; actionDeps: any; openRouterApiKey: string }): Promise<void>;
+}
+
 export interface Context {
   db: Database;
   queue: Queue;
   auth: Auth;
   messenger: Messenger;
   drafter: Drafter;
+  /** Attached by createCoreFromPorts; undefined only in hand-built test contexts. */
+  executor?: Executor;
 }
 
 export const newId = (prefix: string): string => `${prefix}_${randomUUID().slice(0, 8)}`;
