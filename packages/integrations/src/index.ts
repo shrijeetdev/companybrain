@@ -5,3 +5,4 @@ export { createLlm, type Llm } from './llm';
 export { createBaileysChannel, type BaileysChannel } from './whatsapp/baileys';
 export * as whatsapp from './whatsapp/cloud-api';
 export * as input from './input';
+export { complete, type ChatMsg, type CompletionResult } from './openrouter';
