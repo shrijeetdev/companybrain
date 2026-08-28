@@ -53,7 +53,7 @@
 **Interfaces:**
 - Produces: `AutonomyAction` now includes `'manageRecords'`. `DEFAULT_AUTONOMY.manageRecords === 'off'`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `packages/core/test/autonomy.test.ts` (after the existing tests, before any closing braces):
 
@@ -64,12 +64,12 @@ test('autonomy: manageRecords defaults to off', async () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --import tsx --test packages/core/test/autonomy.test.ts`
 Expected: FAIL — `settings.manageRecords` is `undefined` (action not in the type / not defaulted).
 
-- [ ] **Step 3: Add the action to the type**
+- [x] **Step 3: Add the action to the type**
 
 In `packages/types/src/index.ts`, change:
 
@@ -83,7 +83,7 @@ to:
 export type AutonomyAction = 'createTasks' | 'sendReminders' | 'draftReplies' | 'chase' | 'joinMeetings' | 'manageRecords';
 ```
 
-- [ ] **Step 4: Add the default**
+- [x] **Step 4: Add the default**
 
 In `packages/core/src/autonomy.ts`, change `DEFAULT_AUTONOMY` to:
 
@@ -98,12 +98,12 @@ export const DEFAULT_AUTONOMY: AutonomySettings = {
 };
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `node --import tsx --test packages/core/test/autonomy.test.ts`
 Expected: PASS (all tests, including the new one).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -141,7 +141,7 @@ This task makes `api_keys` survive restarts so the MCP process (separate from th
   And `Database` gains `apiKeys: ApiKeyRepo;`.
 - Consumes: nothing (this is the foundation layer).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/db/test/api-keys.test.ts`:
 
@@ -213,12 +213,12 @@ test('apiKeys: keys persist across a new connection (simulating a separate MCP p
 process.on('exit', () => { try { rmSync(dbPath); } catch {} });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --import tsx --test packages/db/test/api-keys.test.ts`
 Expected: FAIL — `db.apiKeys` is `undefined` (repo not on the Database port yet).
 
-- [ ] **Step 3: Add the repo interface to the port**
+- [x] **Step 3: Add the repo interface to the port**
 
 In `packages/db/src/port.ts`, add after the `ConnectionRepo` interface and before `export interface Database`:
 
@@ -253,7 +253,7 @@ Then add to `export interface Database` (after `connections: ConnectionRepo;`):
   apiKeys: ApiKeyRepo;
 ```
 
-- [ ] **Step 4: Add the table + impl to the SQLite adapter**
+- [x] **Step 4: Add the table + impl to the SQLite adapter**
 
 In `packages/db/src/sqlite.ts`:
 
@@ -296,12 +296,12 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
     };
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `node --import tsx --test packages/db/test/api-keys.test.ts`
 Expected: PASS (all four tests).
 
-- [ ] **Step 6: Typecheck**
+- [x] **Step 6: Typecheck**
 
 Run: `pnpm typecheck`
 Expected: PASS — `SupabaseDatabase` in `packages/db/src/supabase.ts` must also satisfy the new `apiKeys` field. If typecheck fails there:
@@ -329,7 +329,7 @@ Then add the stub as a class field on `SupabaseDatabase`:
 
 (Supabase is not the ship target; the stub keeps the port honest. SQLite is the only adapter this sub-project uses.)
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -359,7 +359,7 @@ Rewire the in-memory `makeApiKeys` to read/write through `ctx.db.apiKeys`, add `
   ```
   Note: `create` now returns `{ raw, row }` — the raw key is returned ONCE to the caller (the web app), never stored. `verify` returns the identity needed for MCP, not the hash.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/core/test/api-keys.test.ts`:
 
@@ -410,12 +410,12 @@ test('api-keys: list hides the hash; revoke removes', async () => {
 process.on('exit', () => { try { rmSync(dbPath); } catch {} });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --import tsx --test packages/core/test/api-keys.test.ts`
 Expected: FAIL — `core.apiKeys` doesn't exist yet on Core (the service is defined but not wired into `bootstrap`), or `create` returns the old in-memory shape.
 
-- [ ] **Step 3: Rewrite `makeApiKeys`**
+- [x] **Step 3: Rewrite `makeApiKeys`**
 
 Replace the entire body of `packages/core/src/api-keys.ts` with:
 
@@ -497,7 +497,7 @@ export function makeApiKeys(ctx: Context) {
 export type ApiKeysService = ReturnType<typeof makeApiKeys>;
 ```
 
-- [ ] **Step 4: Wire `apiKeys` into Core**
+- [x] **Step 4: Wire `apiKeys` into Core**
 
 In `packages/core/src/index.ts`:
 
@@ -516,17 +516,17 @@ import { makeApiKeys } from './api-keys';
     apiKeys: makeApiKeys(ctx),
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `node --import tsx --test packages/core/test/api-keys.test.ts`
 Expected: PASS (all three tests).
 
-- [ ] **Step 6: Run the full core test suite to confirm no regression**
+- [x] **Step 6: Run the full core test suite to confirm no regression**
 
 Run: `pnpm test`
 Expected: PASS — no existing test breaks. (If an existing test referenced the old `core.apiKeys.create(org, name)` 3-arg shape, it still works since `actorId` is optional.)
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -551,7 +551,7 @@ git commit -m "feat(core): persist api keys with hash + actorId, resolve identit
 - `complete_task`, `assign_task`, `close_loop`, `create_lead`, `advance_lead` → `'manageRecords'`
 - Reads (`list_tasks`, `list_loops`, `search`, `get_dashboard`) → never gated.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/mcp/test/gate.test.ts`:
 
@@ -633,12 +633,12 @@ test('gate: reads are never blocked (createTasks still ask, but list works)', as
 process.on('exit', () => { try { rmSync(dbPath); } catch {} });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --import tsx --test packages/mcp/test/gate.test.ts`
 Expected: FAIL — `create_loop` tool doesn't exist; write handlers don't return `gated`; they mutate unconditionally.
 
-- [ ] **Step 3: Rewrite `packages/mcp/src/tools.ts`**
+- [x] **Step 3: Rewrite `packages/mcp/src/tools.ts`**
 
 Replace the entire file with the version below. Key changes: a `gateWrite()` helper, a `create_loop` tool, and every write handler gated.
 
@@ -944,12 +944,12 @@ export function findTool(name: string): Tool | undefined {
 }
 ```
 
-- [ ] **Step 4: Run the gate test to verify it passes**
+- [x] **Step 4: Run the gate test to verify it passes**
 
 Run: `node --import tsx --test packages/mcp/test/gate.test.ts`
 Expected: PASS (all five tests).
 
-- [ ] **Step 5: Wire the new test into the aggregate `test` script**
+- [x] **Step 5: Wire the new test into the aggregate `test` script**
 
 In the root `package.json`, append the new test files to the `test` script's `--test` list:
 
@@ -957,14 +957,14 @@ In the root `package.json`, append the new test files to the `test` script's `--
 "test": "node --import tsx --test packages/core/test/domain.test.ts packages/core/test/autonomy.test.ts packages/core/test/undo.test.ts packages/core/test/features.test.ts packages/core/test/methods.test.ts packages/core/test/analytics.test.ts packages/core/test/api-keys.test.ts packages/integrations/test/pipeline.test.ts packages/mcp/test/gate.test.ts"
 ```
 
-- [ ] **Step 6: Run the full test suite**
+- [x] **Step 6: Run the full test suite**
 
 Run: `pnpm test`
 Expected: PASS — all tests green.
 
 **Pre-existing caveat (do not fix here):** the aggregate `test` script runs every file in one Node process, and each test file sets `process.env.COMPANYBRAIN_DB_PATH` at its top level. Because `bootstrap()` reads that env at call-time, all files effectively share whichever DB path was set last. The existing suite already lives with this; every test file uses a unique temp path with `pid`+`Date.now()`, so within a single file the right DB is used. If the aggregate ever flakes on DB-path races, that's a separate cleanup (give each file an explicit `bootstrap({ db: { sqlitePath } })`), not part of this sub-project.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -987,7 +987,7 @@ git commit -m "feat(mcp): add create_loop, route writes through autonomy gate"
 
 **Why NOT `bootstrap()` (important):** `bootstrap()` calls `registerWorkers(core.ctx)`, and the in-process queue fires `enqueue`/`schedule` timers **regardless** of whether `start()` was called (the `started` flag is never checked in `packages/queue/src/in-process.ts`). So if MCP created a loop with `createTasks=auto`, `loops.capture` → `gateAction('chase')` → `dispatch` → `queue.enqueue('chaseLoop', ..., delayMs=60s)` would arm a real 60s timer in the MCP process. To keep the MCP process truly worker-free, it boots Core **directly from ports** (`createCoreFromPorts`) and never calls `registerWorkers`. The queue port still must be constructed (the Core signature requires it), but with no handlers registered, `enqueue` becomes a no-op `queueMicrotask` whose `run()` logs "no handler registered — dropping job" and does nothing. The messenger defaults to `consoleMessenger` (also unused — no worker exists to call it).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/mcp/test/smoke.test.ts`:
 
@@ -1018,12 +1018,12 @@ test('smoke: every tool has name, description, inputSchema, handler', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --import tsx --test packages/mcp/test/smoke.test.ts`
 Expected: PASS already (this is a guard test) — but run it to establish the baseline. If `TOOLS` has 10 entries this passes immediately; the value is that it fails loudly if a future edit drops a tool.
 
-- [ ] **Step 3: Create the MCP entrypoint**
+- [x] **Step 3: Create the MCP entrypoint**
 
 Create `cli/bin/mcp.ts`:
 
@@ -1084,7 +1084,7 @@ main().catch((err) => {
 });
 ```
 
-- [ ] **Step 4: Add subcommand dispatch to the main bin**
+- [x] **Step 4: Add subcommand dispatch to the main bin**
 
 In `cli/bin/companybrain.ts`, insert this block immediately after the imports and **before** the `process.on('unhandledRejection', ...)` handlers (so a bad key exits before any web-app wiring runs):
 
@@ -1101,27 +1101,27 @@ if (subcommand === 'mcp') {
 }
 ```
 
-- [ ] **Step 5: Run the smoke test**
+- [x] **Step 5: Run the smoke test**
 
 Run: `node --import tsx --test packages/mcp/test/smoke.test.ts`
 Expected: PASS.
 
-- [ ] **Step 6: Manual smoke — bad key exits cleanly**
+- [x] **Step 6: Manual smoke — bad key exits cleanly**
 
 Run: `COMPANYBRAIN_MCP_KEY=cb_bogus npx tsx cli/bin/companybrain.ts mcp < /dev/null`
 Expected: stderr prints `did not verify`, process exits with code `3`. Nothing printed to stdout.
 
-- [ ] **Step 7: Manual smoke — missing key exits cleanly**
+- [x] **Step 7: Manual smoke — missing key exits cleanly**
 
 Run: `npx tsx cli/bin/companybrain.ts mcp < /dev/null`
 Expected: stderr prints the setup message, process exits with code `2`. Nothing to stdout.
 
-- [ ] **Step 8: Typecheck**
+- [x] **Step 8: Typecheck**
 
 Run: `pnpm typecheck`
 Expected: PASS.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -1138,7 +1138,7 @@ git commit -m "feat(cli): add `companybrain mcp` standalone stdio server"
 - Modify: `.env.example`
 - Modify: `README.md`
 
-- [ ] **Step 1: Add the env var to `.env.example`**
+- [x] **Step 1: Add the env var to `.env.example`**
 
 Append to `.env.example`:
 
@@ -1149,7 +1149,7 @@ Append to `.env.example`:
 COMPANYBRAIN_MCP_KEY=
 ```
 
-- [ ] **Step 2: Add the MCP section to README.md**
+- [x] **Step 2: Add the MCP section to README.md**
 
 Insert before the `## Status` section in `README.md`:
 
@@ -1183,7 +1183,7 @@ companybrain speaks the Model Context Protocol over stdio, so any MCP host can r
 The MCP process opens the same `~/.companybrain/companybrain.sqlite` file as the web app (WAL), so they coexist. Every write is attributed to the "MCP Agent" account in the audit trail and runs through the same autonomy + approval + undo path as everything else.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git config user.name    # MUST be "shrijeet singh"
@@ -1196,22 +1196,29 @@ git commit -m "docs: MCP stdio server setup + Claude Desktop config"
 
 ## Task 7: Final verification
 
-- [ ] **Step 1: Full clean test run**
+- [x] **Step 1: Full clean test run**
 
 Run: `pnpm test`
 Expected: all tests PASS (core domain, autonomy, undo, features, methods, analytics, api-keys, integrations pipeline, mcp gate, mcp smoke).
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 Run: `pnpm typecheck`
 Expected: PASS.
 
-- [ ] **Step 3: Boot the web app unchanged**
+- [x] **Step 3: Boot the web app unchanged**
 
 Run: `pnpm start` (or `pnpm dev`)
 Expected: the app boots exactly as before, prints the banner, opens a browser. Confirms the additive invariant.
 
-- [ ] **Step 4: End-to-end MCP against a real key (manual)**
+> **Verified 2026-08-28.** Running this step surfaced two gaps that were then fixed (see the
+> `fix(mcp): make the documented MCP setup actually possible` commit): there was no route or UI
+> to mint an API key at all, and `companybrain mcp` booted the whole web app after starting the
+> MCP server. With those fixed the step passes — `tools/list` returns **11** tools (10 plus the
+> `create_loop` added by Task 4), `create_task` returns `"gated":"auto"`, and the task appears in
+> the web app attributed to the key's actor.
+
+- [x] **Step 4: End-to-end MCP against a real key (manual)**
 
 In the running web app:
 1. Create the agent user + API key (copy `cb_...`).
@@ -1226,6 +1233,6 @@ In the running web app:
 
 Expected: three JSON-RPC responses on stdout. The `tools/list` response lists 10 tools. The `create_task` response has `"gated":"auto"` and a `task` object. In the web app, a task "MCP end-to-end check" appears, attributed to the MCP Agent account.
 
-- [ ] **Step 5: Commit (if any fixups were needed)**
+- [x] **Step 5: Commit (if any fixups were needed)**
 
 If steps 1–4 needed no fixups, there is nothing to commit. If they did, commit the fixups under the appropriate task's message style.

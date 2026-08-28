@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-24
 **Sub-project:** A (of three: A MCP exposure · B AI executor + OpenRouter · C self-improving company brain)
-**Status:** Design — awaiting user review
+**Status:** Shipped — see `docs/superpowers/plans/2026-07-24-mcp-exposure.md`
 
 ## 1. Goal
 

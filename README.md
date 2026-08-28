@@ -78,8 +78,8 @@ companybrain speaks the Model Context Protocol over stdio, so any MCP host can r
 
 **One-time setup (in the running web app):**
 
-1. **Settings → User Management →** create a user with role **agent** (e.g. name "MCP Agent").
-2. Create an API key for that agent and copy it (shown once).
+1. **Settings → User Management →** create a user with role **agent** (e.g. name "MCP Agent"). (Password auth mode only — in single-user local mode skip this and leave the key's agent user as **None**.)
+2. **Settings → API keys →** name the key, pick its scopes and (optionally) the agent user it acts as, then **Create key** and copy it. It is shown once and never again.
 3. In **Settings → Auto**, decide what the agent may do. By default a connected host is **read-only** — set `createTasks` and/or `manageRecords` to `ask` (propose, you approve) or `auto` (act, then log) to allow writes.
 
 **Connect a host (Claude Desktop `claude_desktop_config.json`):**

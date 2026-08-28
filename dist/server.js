@@ -3618,6 +3618,7 @@ var validation_exports = {};
 __export(validation_exports, {
   AssignSchema: () => AssignSchema,
   AutonomySchema: () => AutonomySchema,
+  CreateApiKeySchema: () => CreateApiKeySchema,
   CreateLeadSchema: () => CreateLeadSchema,
   CreateLoopSchema: () => CreateLoopSchema,
   CreateTaskSchema: () => CreateTaskSchema,
@@ -3666,7 +3667,7 @@ function validateQuery(schema) {
     req.validatedQuery = result.data;
   };
 }
-var ValidationError, CreateLoopSchema, SnoozeLoopSchema, AssignSchema, CreateTaskSchema, MoveTaskSchema, CreateLeadSchema, SetLeadStageSchema, QuickAddLeadSchema, ExtractCardSchema, SetAiActionSchema, WordpressCredsSchema, AutonomySchema, LoginSchema, CreateUserSchema, UpdateUserSchema, SetPasswordSchema, WebhookFanInSchema;
+var ValidationError, CreateLoopSchema, SnoozeLoopSchema, AssignSchema, CreateTaskSchema, MoveTaskSchema, CreateLeadSchema, SetLeadStageSchema, QuickAddLeadSchema, ExtractCardSchema, CreateApiKeySchema, SetAiActionSchema, WordpressCredsSchema, AutonomySchema, LoginSchema, CreateUserSchema, UpdateUserSchema, SetPasswordSchema, WebhookFanInSchema;
 var init_validation = __esm({
   "packages/server/src/middleware/validation.ts"() {
     "use strict";
@@ -3723,6 +3724,11 @@ var init_validation = __esm({
       imageBase64: z.string().max(1e7).optional(),
       text: z.string().trim().max(5e3).optional()
     }).refine((d) => d.imageBase64 || d.text, { message: "imageBase64 or text is required" });
+    CreateApiKeySchema = z.object({
+      name: z.string().trim().min(1, "name is required").max(120),
+      scopes: z.array(z.enum(["read", "write"])).min(1).max(2).optional().default(["read"]),
+      actorId: z.string().trim().min(1).max(120).optional()
+    });
     SetAiActionSchema = z.object({
       action: z.enum(["generate", "publish_blog"]).nullable(),
       config: z.object({
@@ -4844,7 +4850,7 @@ var numberFromJid = (jid) => jid.split("@")[0] ?? jid;
 function createBaileysChannel(opts) {
   let sock = null;
   const authDir = opts.authDir ?? join3(homedir3(), ".companybrain", "wa");
-  const messenger2 = {
+  const messenger = {
     async send(msg) {
       if (msg.channel !== "whatsapp") {
         console.log(`[baileys] no sender wired for channel "${msg.channel}" \u2192 ${msg.to}`);
@@ -4892,7 +4898,7 @@ function createBaileysChannel(opts) {
     }
     sock = null;
   }
-  return { messenger: messenger2, start, stop };
+  return { messenger, start, stop };
 }
 
 // packages/integrations/src/input/index.ts
@@ -8049,7 +8055,15 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       +'<input class="modal-input" id="admin-new-password" type="password" placeholder="Temporary password" autocomplete="new-password"/>'
       +'<button class="btn-primary" id="admin-create-user">Create</button>'
       +'</div><div id="admin-user-msg" style="font-size:12px;color:var(--muted);margin-top:8px;"></div></div>'
-      +'<div class="gc" style="padding:14px 16px;border-radius:14px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;"><div style="font-size:13.5px;font-weight:700;">Users</div><button class="btn-ghost" id="admin-refresh-users">Refresh</button></div><div id="admin-users-list"><div class="spin"></div></div></div>';
+      +'<div class="gc" style="padding:14px 16px;border-radius:14px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;"><div style="font-size:13.5px;font-weight:700;">Users</div><button class="btn-ghost" id="admin-refresh-users">Refresh</button></div><div id="admin-users-list"><div class="spin"></div></div></div>'
+      +'<div class="gc" style="padding:14px 16px;border-radius:14px;margin-top:12px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;"><div><div style="font-size:13.5px;font-weight:700;">API keys</div><div style="font-size:11px;color:var(--muted);">For MCP hosts (Claude Desktop, Cursor). Shown once on create.</div></div><button class="btn-ghost" id="admin-refresh-keys">Refresh</button></div>'
+      +'<div style="display:grid;grid-template-columns:minmax(160px,1fr) 140px 160px auto;gap:8px;align-items:end;margin-bottom:10px;">'
+      +'<div class="modal-field" style="margin:0;"><label class="modal-label">Name</label><input class="modal-input" id="admin-key-name" placeholder="MCP Agent" autocomplete="off"/></div>'
+      +'<div class="modal-field" style="margin:0;"><label class="modal-label">Scopes</label><select class="modal-select" id="admin-key-scopes"><option value="read">Read only</option><option value="read,write">Read and write</option></select></div>'
+      +'<div class="modal-field" style="margin:0;"><label class="modal-label">Agent user</label><select class="modal-select" id="admin-key-actor"><option value="">None</option></select></div>'
+      +'<button class="btn-primary" id="admin-create-key">Create key</button></div>'
+      +'<div id="admin-key-reveal" style="display:none;font-size:12px;margin-bottom:10px;padding:10px 12px;border-radius:10px;background:var(--accentSoft);"></div>'
+      +'<div id="admin-keys-list"><div class="spin"></div></div></div>';
   }
 
   function adminMsg(msg,isErr){
@@ -8079,6 +8093,61 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       }).catch(function(e){adminMsg(e&&e.message?e.message:'Could not create user',true);});
     };
     loadAdminUsers();
+    var refreshKeys=document.getElementById('admin-refresh-keys');
+    if(refreshKeys) refreshKeys.onclick=loadApiKeys;
+    var createKey=document.getElementById('admin-create-key');
+    if(createKey) createKey.onclick=createApiKey;
+    loadApiKeys();
+  }
+  function loadApiKeys(){
+    var box=document.getElementById('admin-keys-list');
+    if(!box) return;
+    box.innerHTML='<div class="spin"></div>';
+    // Offer the org's agent accounts as the key's owner, so writes are attributed to one.
+    api('/api/admin/users').then(function(users){
+      var sel=document.getElementById('admin-key-actor');
+      if(sel){
+        var agents=(users||[]).filter(function(u){return u.role==='agent';});
+        sel.innerHTML='<option value="">None</option>'+agents.map(function(u){
+          return '<option value="'+esc(u.userId)+'">'+esc(u.name)+'</option>';
+        }).join('');
+      }
+    }).catch(function(){});
+    api('/api/admin/keys').then(function(r){
+      var keys=(r&&r.keys)||[];
+      if(!keys.length){box.innerHTML='<div style="font-size:12px;color:var(--muted);">No API keys yet.</div>';return;}
+      box.innerHTML=keys.map(function(k){
+        return '<div class="admin-key-row" data-key-id="'+esc(k.id)+'" style="border-top:1px solid var(--glassBorder);padding:10px 0;display:grid;grid-template-columns:minmax(160px,1fr) 120px 140px auto;gap:8px;align-items:center;">'
+          +'<div><div style="font-size:13px;font-weight:700;">'+esc(k.name)+'</div><div style="font-size:11px;color:var(--muted);">'+esc(k.prefix)+'... - created '+agoLabel(k.createdAt)+'</div></div>'
+          +'<div style="font-size:11px;color:var(--muted);">'+esc((k.scopes||[]).join(', '))+'</div>'
+          +'<div style="font-size:11px;color:var(--muted);">'+(k.lastUsedAt?('used '+agoLabel(k.lastUsedAt)):'never used')+'</div>'
+          +'<button class="btn-danger admin-revoke-key">Revoke</button></div>';
+      }).join('');
+      box.querySelectorAll('.admin-key-row').forEach(function(row){
+        row.querySelector('.admin-revoke-key').onclick=function(){
+          if(!confirm('Revoke this key? Any host using it stops working immediately.')) return;
+          post('/api/admin/keys/'+encodeURIComponent(row.dataset.keyId),null,'DELETE')
+            .then(function(){toast('Key revoked');loadApiKeys();})
+            .catch(function(e){toast(e&&e.message?e.message:'Could not revoke key');});
+        };
+      });
+    }).catch(function(e){box.innerHTML='<div style="font-size:12px;color:var(--red);">'+esc(e&&e.message?e.message:'Could not load keys')+'</div>';});
+  }
+  function agoLabel(ts){var a=ago(ts);return a==='just now'?a:a+' ago';}
+  function createApiKey(){
+    var name=(document.getElementById('admin-key-name').value||'').trim();
+    if(!name){toast('Name the key first');return;}
+    var scopes=document.getElementById('admin-key-scopes').value.split(',');
+    var actorId=document.getElementById('admin-key-actor').value||undefined;
+    post('/api/admin/keys',{name:name,scopes:scopes,actorId:actorId}).then(function(r){
+      var box=document.getElementById('admin-key-reveal');
+      if(box){
+        box.style.display='block';
+        box.innerHTML='<div style="font-weight:700;margin-bottom:4px;">Copy this key now - it is never shown again.</div><code style="word-break:break-all;">'+esc(r.key)+'</code>';
+      }
+      document.getElementById('admin-key-name').value='';
+      loadApiKeys();
+    }).catch(function(e){toast(e&&e.message?e.message:'Could not create key');});
   }
   function loadAdminUsers(){
     var box=document.getElementById('admin-users-list');
@@ -8146,7 +8215,7 @@ init_middleware();
 function buildServer(deps) {
   const { core, auth } = deps;
   const shouldSecureCookieForApp = ["1", "true", "yes"].includes((process.env.COMPANYBRAIN_SECURE_COOKIE ?? "").trim().toLowerCase()) || process.env.NODE_ENV === "production";
-  const app2 = Fastify({
+  const app = Fastify({
     logger: {
       level: process.env.COMPANYBRAIN_LOG_LEVEL ?? "info",
       ...process.env.NODE_ENV !== "production" && {
@@ -8158,10 +8227,10 @@ function buildServer(deps) {
     trustProxy: true
   });
   if (process.env.SENTRY_DSN) initSentry();
-  app2.addHook("onResponse", async (request, reply) => {
+  app.addHook("onResponse", async (request, reply) => {
     recordRequest(request.method, request.url, reply.statusCode);
   });
-  app2.addHook("onSend", async (_req, reply) => {
+  app.addHook("onSend", async (_req, reply) => {
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("X-Frame-Options", "DENY");
     reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -8186,7 +8255,7 @@ function buildServer(deps) {
   if (isProd && allowedOrigins.length === 0) {
     logger.warn("COMPANYBRAIN_CORS_ORIGINS unset in production \u2014 defaulting to same-origin only. Set it to your domain(s).");
   }
-  app2.register(cors, {
+  app.register(cors, {
     // In prod with no allowlist → empty (deny cross-origin credentialed requests).
     // In dev with no allowlist → true (reflect, convenient for localhost).
     origin: allowedOrigins.length > 0 ? allowedOrigins : isProd ? false : true,
@@ -8194,7 +8263,7 @@ function buildServer(deps) {
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"]
   });
-  app2.addContentTypeParser("application/json", { parseAs: "buffer" }, (req, body, done) => {
+  app.addContentTypeParser("application/json", { parseAs: "buffer" }, (req, body, done) => {
     try {
       const raw = body.toString("utf8");
       req.rawBody = raw;
@@ -8205,10 +8274,10 @@ function buildServer(deps) {
       done(e);
     }
   });
-  app2.register(rateLimit, rateLimitConfig);
+  app.register(rateLimit, rateLimitConfig);
   const publicDir = join5(import.meta.dirname ?? process.cwd(), "public");
   if (existsSync2(publicDir)) {
-    app2.register(fastifyStatic, {
+    app.register(fastifyStatic, {
       root: publicDir,
       prefix: "/",
       decorateReply: false
@@ -8286,16 +8355,16 @@ function buildServer(deps) {
     if (!entry || entry.orgId !== p.orgId) throw notFound("time entry not found");
     return entry;
   };
-  app2.get("/health", async () => ({
+  app.get("/health", async () => ({
     ok: true,
     timestamp: (/* @__PURE__ */ new Date()).toISOString(),
     uptime: process.uptime()
   }));
-  app2.get("/metrics", async (_req, reply) => {
+  app.get("/metrics", async (_req, reply) => {
     const { renderMetrics: renderMetrics2 } = await Promise.resolve().then(() => (init_middleware(), middleware_exports));
     return reply.type("text/plain").send(renderMetrics2());
   });
-  app2.addHook("preHandler", async (req, reply) => {
+  app.addHook("preHandler", async (req, reply) => {
     const url = req.raw.url ?? "";
     if (!url.startsWith("/api/")) return;
     if (url.startsWith("/api/auth/")) return;
@@ -8311,10 +8380,10 @@ function buildServer(deps) {
     }
     req.principal = principal;
   });
-  app2.get("/api/auth/users", async () => {
+  app.get("/api/auth/users", async () => {
     return { authMode: resolvedAuthMode, requiresAuth: authRequiresSession };
   });
-  app2.get("/api/auth/me", async (req) => {
+  app.get("/api/auth/me", async (req) => {
     if (!authRequiresSession) {
       const p = await auth.current();
       return { authMode: resolvedAuthMode, authenticated: true, user: presentUser(await userFromPrincipal(p)) };
@@ -8323,7 +8392,7 @@ function buildServer(deps) {
     if (!principal) return { authMode: resolvedAuthMode, authenticated: false };
     return { authMode: resolvedAuthMode, authenticated: true, user: presentUser(await userFromPrincipal(principal)) };
   });
-  app2.post("/api/auth/login", {
+  app.post("/api/auth/login", {
     config: { rateLimit: authRateLimitConfig },
     preHandler: validateBody(validation_exports.LoginSchema)
   }, async (req, reply) => {
@@ -8347,7 +8416,7 @@ function buildServer(deps) {
     reply.header("Set-Cookie", makeSessionCookie("cb_session", login.token, maxAge, shouldSecureCookie(req)));
     return { ok: true, authMode: resolvedAuthMode, authenticated: true, user: presentUser(login.user), expiresAt: login.expiresAt };
   });
-  app2.post("/api/auth/logout", async (req, reply) => {
+  app.post("/api/auth/logout", async (req, reply) => {
     if (authRequiresSession && typeof authWithSessions.logout === "function") {
       const token = readAuthToken(req);
       if (token) await authWithSessions.logout(token);
@@ -8362,14 +8431,14 @@ function buildServer(deps) {
       throw err;
     }
   };
-  app2.get("/api/admin/users", {
+  app.get("/api/admin/users", {
     preHandler: requireMinRole("ceo")
   }, async () => {
     requireUserManagement();
     const users = await listUsers();
     return users.map(presentUser);
   });
-  app2.post("/api/admin/users", {
+  app.post("/api/admin/users", {
     preHandler: [requireMinRole("ceo"), validateBody(validation_exports.CreateUserSchema)]
   }, async (req) => {
     requireUserManagement();
@@ -8382,7 +8451,26 @@ function buildServer(deps) {
       throw badRequest(error instanceof Error ? error.message : "Could not create user");
     }
   });
-  app2.patch("/api/admin/users/:id", {
+  app.get("/api/admin/keys", { preHandler: requireMinRole("ceo") }, async (req) => {
+    const p = await principalOf(req);
+    return { keys: await core.apiKeys.list(p.orgId) };
+  });
+  app.post("/api/admin/keys", {
+    preHandler: [requireMinRole("ceo"), validateBody(validation_exports.CreateApiKeySchema)]
+  }, async (req) => {
+    const p = await principalOf(req);
+    const b = req.validatedBody;
+    const created = await core.apiKeys.create(p.orgId, b.name, b.scopes, b.actorId);
+    return { ok: true, key: created.raw, row: created.row };
+  });
+  app.delete("/api/admin/keys/:id", { preHandler: requireMinRole("ceo") }, async (req) => {
+    const p = await principalOf(req);
+    const mine = await core.apiKeys.list(p.orgId);
+    if (!mine.some((k) => k.id === params(req).id)) throw notFound("key not found");
+    await core.apiKeys.revoke(params(req).id);
+    return { ok: true };
+  });
+  app.patch("/api/admin/users/:id", {
     preHandler: [requireMinRole("ceo"), validateBody(validation_exports.UpdateUserSchema)]
   }, async (req) => {
     requireUserManagement();
@@ -8394,7 +8482,7 @@ function buildServer(deps) {
       throw badRequest(error instanceof Error ? error.message : "Could not update user");
     }
   });
-  app2.post("/api/admin/users/:id/password", {
+  app.post("/api/admin/users/:id/password", {
     preHandler: [requireMinRole("ceo"), validateBody(validation_exports.SetPasswordSchema)]
   }, async (req) => {
     requireUserManagement();
@@ -8406,7 +8494,7 @@ function buildServer(deps) {
       throw badRequest(error instanceof Error ? error.message : "Could not set password");
     }
   });
-  app2.delete("/api/admin/users/:id", {
+  app.delete("/api/admin/users/:id", {
     preHandler: requireMinRole("ceo")
   }, async (req) => {
     requireUserManagement();
@@ -8417,7 +8505,7 @@ function buildServer(deps) {
       throw badRequest(error instanceof Error ? error.message : "Could not delete user");
     }
   });
-  app2.get("/api/stream", async (req, reply) => {
+  app.get("/api/stream", async (req, reply) => {
     const token = readAuthToken(req);
     const principal = authRequiresSession ? await auth.authenticate(token) : await auth.current();
     if (!principal) {
@@ -8444,16 +8532,16 @@ function buildServer(deps) {
     });
     await new Promise((resolve) => req.raw.once("close", resolve));
   });
-  app2.get("/api/me", async (req) => {
+  app.get("/api/me", async (req) => {
     const p = await principalOf(req);
     return presentUser(await userFromPrincipal(p));
   });
-  app2.get("/api/loops", async (req) => {
+  app.get("/api/loops", async (req) => {
     const p = await principalOf(req);
     const side = req.query.side;
     return core.loops.list(p.orgId, side);
   });
-  app2.post("/api/loops", {
+  app.post("/api/loops", {
     preHandler: validateBody(validation_exports.CreateLoopSchema)
   }, async (req) => {
     const p = await principalOf(req);
@@ -8469,14 +8557,14 @@ function buildServer(deps) {
     broadcast({ type: "loop.created", orgId: p.orgId });
     return result;
   });
-  app2.post("/api/loops/:id/close", async (req) => {
+  app.post("/api/loops/:id/close", async (req) => {
     const p = await principalOf(req);
     await ownedLoop(req);
     const result = await core.loops.close(params(req).id, p.userId);
     broadcast({ type: "loop.closed" });
     return result;
   });
-  app2.post("/api/loops/:id/snooze", {
+  app.post("/api/loops/:id/snooze", {
     preHandler: validateBody(validation_exports.SnoozeLoopSchema)
   }, async (req) => {
     const p = await principalOf(req);
@@ -8487,7 +8575,7 @@ function buildServer(deps) {
     broadcast({ type: "loop.snoozed" });
     return result;
   });
-  app2.post("/api/loops/:id/assign", {
+  app.post("/api/loops/:id/assign", {
     preHandler: validateBody(validation_exports.AssignSchema)
   }, async (req) => {
     const p = await principalOf(req);
@@ -8495,8 +8583,8 @@ function buildServer(deps) {
     const b = req.validatedBody;
     return core.ctx.db.loops.update(params(req).id, { assignedTo: b.userIds ?? [p.userId] });
   });
-  app2.get("/api/tasks", async (req) => core.tasks.list((await principalOf(req)).orgId));
-  app2.post("/api/tasks", {
+  app.get("/api/tasks", async (req) => core.tasks.list((await principalOf(req)).orgId));
+  app.post("/api/tasks", {
     preHandler: validateBody(validation_exports.CreateTaskSchema)
   }, async (req) => {
     const p = await principalOf(req);
@@ -8505,14 +8593,14 @@ function buildServer(deps) {
     broadcast({ type: "task.created" });
     return result;
   });
-  app2.post("/api/tasks/:id/complete", async (req) => {
+  app.post("/api/tasks/:id/complete", async (req) => {
     const p = await principalOf(req);
     await ownedTask(req);
     const result = await core.tasks.complete(params(req).id, p.userId);
     broadcast({ type: "task.completed" });
     return result;
   });
-  app2.post("/api/tasks/:id/move", {
+  app.post("/api/tasks/:id/move", {
     preHandler: validateBody(validation_exports.MoveTaskSchema)
   }, async (req) => {
     const p = await principalOf(req);
@@ -8522,7 +8610,7 @@ function buildServer(deps) {
     broadcast({ type: "task.moved" });
     return result;
   });
-  app2.post("/api/tasks/:id/assign", {
+  app.post("/api/tasks/:id/assign", {
     preHandler: validateBody(validation_exports.AssignSchema)
   }, async (req) => {
     const p = await principalOf(req);
@@ -8530,7 +8618,7 @@ function buildServer(deps) {
     const b = req.validatedBody;
     return core.ctx.db.tasks.update(params(req).id, { assignees: b.userIds ?? [p.userId] });
   });
-  app2.post("/api/tasks/:id/ai", {
+  app.post("/api/tasks/:id/ai", {
     preHandler: validateBody(validation_exports.SetAiActionSchema)
   }, async (req) => {
     await ownedTask(req);
@@ -8539,11 +8627,11 @@ function buildServer(deps) {
     broadcast({ type: "task.ai.changed" });
     return task;
   });
-  app2.get("/api/tasks/:id/ai-runs", async (req) => {
+  app.get("/api/tasks/:id/ai-runs", async (req) => {
     await ownedTask(req);
     return { runs: await core.ctx.db.aiRuns.listByTask(params(req).id) };
   });
-  app2.post("/api/ai-runs/:id/approve", async (req) => {
+  app.post("/api/ai-runs/:id/approve", async (req) => {
     const p = await principalOf(req);
     const run = await core.ctx.db.aiRuns.get(params(req).id);
     if (!run || run.orgId !== p.orgId) throw notFound("run not found");
@@ -8551,21 +8639,21 @@ function buildServer(deps) {
     broadcast({ type: "task.ai.changed" });
     return { ok: true };
   });
-  app2.post("/api/tasks/:id/time/start", async (req) => {
+  app.post("/api/tasks/:id/time/start", async (req) => {
     const p = await principalOf(req);
     await ownedTask(req);
     const entry = await core.timeTracking.start({ orgId: p.orgId, taskId: params(req).id, userId: p.userId });
     broadcast({ type: "time.started" });
     return entry;
   });
-  app2.post("/api/time/:entryId/stop", async (req) => {
+  app.post("/api/time/:entryId/stop", async (req) => {
     await ownedTimeEntry(req);
     const entryId = req.params.entryId;
     const entry = await core.timeTracking.stop(entryId);
     broadcast({ type: "time.stopped" });
     return entry;
   });
-  app2.get("/api/tasks/:id/time", async (req) => {
+  app.get("/api/tasks/:id/time", async (req) => {
     await ownedTask(req);
     const taskId = params(req).id;
     const entries = await core.timeTracking.listByTask(taskId);
@@ -8573,13 +8661,13 @@ function buildServer(deps) {
     const active = await core.timeTracking.getActive(taskId);
     return { entries, total, active };
   });
-  app2.get("/api/time/today", async (req) => {
+  app.get("/api/time/today", async (req) => {
     const p = await principalOf(req);
     const total = await core.timeTracking.getTodayTime(p.userId, p.orgId);
     return { total, formatted: core.timeTracking.formatDuration(total) };
   });
-  app2.get("/api/leads", async (req) => core.leads.list((await principalOf(req)).orgId));
-  app2.post("/api/leads", {
+  app.get("/api/leads", async (req) => core.leads.list((await principalOf(req)).orgId));
+  app.post("/api/leads", {
     preHandler: validateBody(validation_exports.CreateLeadSchema)
   }, async (req) => {
     const p = await principalOf(req);
@@ -8588,13 +8676,13 @@ function buildServer(deps) {
     broadcast({ type: "lead.created" });
     return result;
   });
-  app2.post("/api/leads/:id/advance", async (req) => {
+  app.post("/api/leads/:id/advance", async (req) => {
     await ownedLead(req);
     const result = await core.leads.advance(params(req).id, (await principalOf(req)).userId);
     broadcast({ type: "lead.advanced" });
     return result;
   });
-  app2.put("/api/leads/:id/stage", {
+  app.put("/api/leads/:id/stage", {
     preHandler: validateBody(validation_exports.SetLeadStageSchema)
   }, async (req) => {
     const p = await principalOf(req);
@@ -8604,7 +8692,7 @@ function buildServer(deps) {
     broadcast({ type: "lead.advanced" });
     return result;
   });
-  app2.post("/api/leads/:id/assign", {
+  app.post("/api/leads/:id/assign", {
     preHandler: validateBody(validation_exports.AssignSchema)
   }, async (req) => {
     const p = await principalOf(req);
@@ -8612,7 +8700,7 @@ function buildServer(deps) {
     const b = req.validatedBody;
     return core.ctx.db.leads.update(params(req).id, { assignedTo: b.userIds ?? [p.userId] });
   });
-  app2.post("/api/leads/quick-add", {
+  app.post("/api/leads/quick-add", {
     preHandler: validateBody(validation_exports.QuickAddLeadSchema)
   }, async (req) => {
     const p = await principalOf(req);
@@ -8624,7 +8712,7 @@ function buildServer(deps) {
     broadcast({ type: "lead.created" });
     return result;
   });
-  app2.post("/api/leads/extract-card", {
+  app.post("/api/leads/extract-card", {
     preHandler: validateBody(validation_exports.ExtractCardSchema)
   }, async (req) => {
     await principalOf(req);
@@ -8657,111 +8745,111 @@ function buildServer(deps) {
     }
     return { name: "", title: "", company: "", email: "", phone: "" };
   });
-  app2.post("/api/bulk/loops/close", { preHandler: requireMinRole("manager") }, async (req) => {
+  app.post("/api/bulk/loops/close", { preHandler: requireMinRole("manager") }, async (req) => {
     const p = await principalOf(req);
     const { ids } = req.body;
     if (!ids?.length) throw badRequest("ids required");
     return core.bulk.closeLoops(ids, p.userId);
   });
-  app2.post("/api/bulk/loops/snooze", { preHandler: requireMinRole("manager") }, async (req) => {
+  app.post("/api/bulk/loops/snooze", { preHandler: requireMinRole("manager") }, async (req) => {
     const p = await principalOf(req);
     const { ids, hours } = req.body;
     if (!ids?.length) throw badRequest("ids required");
     return core.bulk.snoozeLoops(ids, hours ?? 24, p.userId);
   });
-  app2.post("/api/bulk/tasks/move", { preHandler: requireMinRole("manager") }, async (req) => {
+  app.post("/api/bulk/tasks/move", { preHandler: requireMinRole("manager") }, async (req) => {
     const p = await principalOf(req);
     const { ids, day } = req.body;
     if (!ids?.length) throw badRequest("ids required");
     return core.bulk.moveTasks(ids, day, p.userId);
   });
-  app2.post("/api/bulk/tasks/complete", { preHandler: requireMinRole("manager") }, async (req) => {
+  app.post("/api/bulk/tasks/complete", { preHandler: requireMinRole("manager") }, async (req) => {
     const p = await principalOf(req);
     const { ids } = req.body;
     if (!ids?.length) throw badRequest("ids required");
     return core.bulk.completeTasks(ids, p.userId);
   });
-  app2.post("/api/bulk/tasks/delete", { preHandler: requireMinRole("manager") }, async (req) => {
+  app.post("/api/bulk/tasks/delete", { preHandler: requireMinRole("manager") }, async (req) => {
     const p = await principalOf(req);
     const { ids } = req.body;
     if (!ids?.length) throw badRequest("ids required");
     return core.bulk.deleteTasks(ids, p.userId);
   });
-  app2.post("/api/bulk/leads/advance", { preHandler: requireMinRole("manager") }, async (req) => {
+  app.post("/api/bulk/leads/advance", { preHandler: requireMinRole("manager") }, async (req) => {
     const p = await principalOf(req);
     const { ids } = req.body;
     if (!ids?.length) throw badRequest("ids required");
     return core.bulk.advanceLeads(ids, p.userId);
   });
-  app2.post("/api/bulk/assign", { preHandler: requireMinRole("manager") }, async (req) => {
+  app.post("/api/bulk/assign", { preHandler: requireMinRole("manager") }, async (req) => {
     const p = await principalOf(req);
     const { entityType, ids, userIds } = req.body;
     if (!ids?.length || !entityType) throw badRequest("ids and entityType required");
     return core.bulk.assignMany(entityType, ids, userIds ?? [p.userId], p.userId);
   });
-  app2.post("/api/bulk/delete", { preHandler: requireMinRole("manager") }, async (req) => {
+  app.post("/api/bulk/delete", { preHandler: requireMinRole("manager") }, async (req) => {
     const p = await principalOf(req);
     const { entityType, ids } = req.body;
     if (!ids?.length || !entityType) throw badRequest("ids and entityType required");
     return core.bulk.deleteMany(entityType, ids, p.userId);
   });
-  app2.post("/api/recurring/process", async (req) => {
+  app.post("/api/recurring/process", async (req) => {
     const p = await principalOf(req);
     const result = await core.recurring.processDaily(p.orgId);
     logger.info(result, "Recurring tasks processed");
     return result;
   });
-  app2.get("/api/recurring/next/:recur", async (req) => {
+  app.get("/api/recurring/next/:recur", async (req) => {
     const recur = req.params.recur;
     const next = core.recurring.getNextRun(recur);
     return { next: next.toISOString(), formatted: core.recurring.formatSchedule(recur) };
   });
-  app2.post("/api/tasks/:id/subtasks", async (req) => {
+  app.post("/api/tasks/:id/subtasks", async (req) => {
     await ownedTask(req);
     const taskId = params(req).id;
     const { title } = req.body;
     if (!title) throw badRequest("title required");
     return core.subtasks.add(taskId, title);
   });
-  app2.post("/api/tasks/:id/subtasks/:subId/complete", async (req) => {
+  app.post("/api/tasks/:id/subtasks/:subId/complete", async (req) => {
     await ownedTask(req);
     const taskId = params(req).id;
     const subId = req.params.subId;
     await core.subtasks.complete(taskId, subId);
     return { ok: true };
   });
-  app2.post("/api/tasks/:id/subtasks/:subId/toggle", async (req) => {
+  app.post("/api/tasks/:id/subtasks/:subId/toggle", async (req) => {
     await ownedTask(req);
     const taskId = params(req).id;
     const subId = req.params.subId;
     await core.subtasks.toggle(taskId, subId);
     return { ok: true };
   });
-  app2.delete("/api/tasks/:id/subtasks/:subId", async (req) => {
+  app.delete("/api/tasks/:id/subtasks/:subId", async (req) => {
     await ownedTask(req);
     const taskId = params(req).id;
     const subId = req.params.subId;
     await core.subtasks.remove(taskId, subId);
     return { ok: true };
   });
-  app2.get("/api/tasks/:id/subtasks", async (req) => {
+  app.get("/api/tasks/:id/subtasks", async (req) => {
     await ownedTask(req);
     const taskId = params(req).id;
     return core.subtasks.list(taskId);
   });
-  app2.get("/api/agents", async () => core.agents.roster());
-  app2.get("/api/events", async (req) => {
+  app.get("/api/agents", async () => core.agents.roster());
+  app.get("/api/events", async (req) => {
     const p = await principalOf(req);
     const q = query(req);
     const events = await core.events.list(p.orgId, 200);
     if (q.entityId) return events.filter((e) => e.entityId === q.entityId);
     return events.slice(0, 50);
   });
-  app2.post("/api/events/:id/undo", { preHandler: requireMinRole("manager") }, async (req) => {
+  app.post("/api/events/:id/undo", { preHandler: requireMinRole("manager") }, async (req) => {
     await principalOf(req);
     return core.events.undo(params(req).id);
   });
-  app2.get("/api/connections", async (req) => {
+  app.get("/api/connections", async (req) => {
     const p = await principalOf(req);
     const conns = await core.ctx.db.connections.list(p.orgId);
     const env = process.env;
@@ -8800,7 +8888,7 @@ function buildServer(deps) {
       }
     };
   });
-  app2.put("/api/connections/wordpress", {
+  app.put("/api/connections/wordpress", {
     preHandler: [requireMinRole("ceo"), validateBody(validation_exports.WordpressCredsSchema)]
   }, async (req) => {
     const p = await principalOf(req);
@@ -8812,7 +8900,7 @@ function buildServer(deps) {
     broadcast({ type: "connections.changed" });
     return { ok: true };
   });
-  app2.get("/api/connections/wordpress", async (req) => {
+  app.get("/api/connections/wordpress", async (req) => {
     const p = await principalOf(req);
     const conn = await core.ctx.db.connections.get(p.orgId, "wordpress");
     return {
@@ -8821,7 +8909,7 @@ function buildServer(deps) {
       username: conn?.credentials?.username ?? ""
     };
   });
-  app2.post("/api/connections/whatsapp_cloud", {
+  app.post("/api/connections/whatsapp_cloud", {
     preHandler: requireMinRole("ceo")
   }, async (req) => {
     const p = await principalOf(req);
@@ -8841,7 +8929,7 @@ function buildServer(deps) {
     broadcast({ type: "connections.changed" });
     return { ok: true, connection: conn };
   });
-  app2.post("/api/connections/whatsapp_baileys/start", {
+  app.post("/api/connections/whatsapp_baileys/start", {
     preHandler: requireMinRole("ceo")
   }, async (req) => {
     const p = await principalOf(req);
@@ -8852,7 +8940,7 @@ function buildServer(deps) {
     broadcast({ type: "connections.changed" });
     return { ok: true, message: "QR code will appear in server console. Scan with WhatsApp." };
   });
-  app2.get("/api/connections/gmail/auth-url", {
+  app.get("/api/connections/gmail/auth-url", {
     preHandler: requireMinRole("ceo")
   }, async (req, reply) => {
     const p = await principalOf(req);
@@ -8876,7 +8964,7 @@ function buildServer(deps) {
     });
     return { authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params2.toString()}` };
   });
-  app2.get("/api/connections/gmail/callback", async (req, reply) => {
+  app.get("/api/connections/gmail/callback", async (req, reply) => {
     const { code } = req.query;
     if (!code) {
       return reply.redirect("/?error=gmail_no_code");
@@ -8920,7 +9008,7 @@ function buildServer(deps) {
       return reply.redirect("/?error=gmail_callback_failed");
     }
   });
-  app2.post("/api/connections/:channel/disconnect", {
+  app.post("/api/connections/:channel/disconnect", {
     preHandler: requireMinRole("ceo")
   }, async (req) => {
     const p = await principalOf(req);
@@ -8944,19 +9032,19 @@ function buildServer(deps) {
     const cur = await core.autonomy.get(orgId) ?? {};
     await core.ctx.db.settings.setAutonomy(orgId, { ...cur, killSwitch: paused });
   };
-  app2.get("/api/autonomy", async (req) => {
+  app.get("/api/autonomy", async (req) => {
     const p = await principalOf(req);
     const settings = await core.autonomy.get(p.orgId);
     return { ...settings, killSwitch: await getKillSwitch(p.orgId) };
   });
-  app2.put("/api/autonomy", {
+  app.put("/api/autonomy", {
     preHandler: validateBody(validation_exports.AutonomySchema)
   }, async (req) => {
     const p = await principalOf(req);
     const b = req.validatedBody;
     return core.autonomy.set(p.orgId, b.action, b.level);
   });
-  app2.put("/api/autonomy/kill-switch", { preHandler: requireMinRole("manager") }, async (req) => {
+  app.put("/api/autonomy/kill-switch", { preHandler: requireMinRole("manager") }, async (req) => {
     const p = await principalOf(req);
     const { paused } = req.body;
     await setKillSwitch(p.orgId, paused !== false);
@@ -8964,27 +9052,27 @@ function buildServer(deps) {
     logger.warn({ orgId: p.orgId, paused }, "Kill switch toggled");
     return { paused: paused !== false };
   });
-  app2.get("/api/approvals", async (req) => core.approvals.list((await principalOf(req)).orgId, "pending"));
-  app2.post("/api/approvals/:id/approve", { preHandler: requireMinRole("manager") }, async (req) => {
+  app.get("/api/approvals", async (req) => core.approvals.list((await principalOf(req)).orgId, "pending"));
+  app.post("/api/approvals/:id/approve", { preHandler: requireMinRole("manager") }, async (req) => {
     await principalOf(req);
     const r = await core.approvals.approve(params(req).id);
     broadcast({ type: "agent.action" });
     return r;
   });
-  app2.post("/api/approvals/:id/dismiss", { preHandler: requireMinRole("manager") }, async (req) => {
+  app.post("/api/approvals/:id/dismiss", { preHandler: requireMinRole("manager") }, async (req) => {
     await principalOf(req);
     const r = await core.approvals.dismiss(params(req).id);
     broadcast({ type: "agent.action" });
     return r;
   });
-  const wa2 = cloud_api_exports.whatsappConfigFromEnv();
-  app2.get("/webhooks/whatsapp", async (req, reply) => {
-    if (!wa2) return reply.code(503).send("whatsapp not configured");
-    const challenge = cloud_api_exports.verifyWebhook(wa2, req.query);
+  const wa = cloud_api_exports.whatsappConfigFromEnv();
+  app.get("/webhooks/whatsapp", async (req, reply) => {
+    if (!wa) return reply.code(503).send("whatsapp not configured");
+    const challenge = cloud_api_exports.verifyWebhook(wa, req.query);
     if (challenge === null) return reply.code(403).send("forbidden");
     return reply.type("text/plain").send(challenge);
   });
-  app2.post("/webhooks/whatsapp", {
+  app.post("/webhooks/whatsapp", {
     config: { rateLimit: webhookRateLimitConfig },
     preHandler: whatsappSignatureVerify()
   }, async (req, reply) => {
@@ -8997,7 +9085,7 @@ function buildServer(deps) {
     return reply.code(200).send("ok");
   });
   const FANIN_CHANNELS = ["email", "slack", "telegram", "github", "calendar"];
-  app2.post("/webhooks/:channel", {
+  app.post("/webhooks/:channel", {
     config: { rateLimit: webhookRateLimitConfig },
     preHandler: [genericWebhookVerify(), validateBody(validation_exports.WebhookFanInSchema)]
   }, async (req, reply) => {
@@ -9018,22 +9106,22 @@ function buildServer(deps) {
     return reply.send({ captured: loopId });
   });
   const pushSubscriptions = /* @__PURE__ */ new Map();
-  app2.post("/api/notifications/subscribe", async (req) => {
+  app.post("/api/notifications/subscribe", async (req) => {
     const { subscription } = req.body;
     const p = await principalOf(req);
     pushSubscriptions.set(p.userId, subscription);
     return { ok: true };
   });
-  app2.post("/api/notifications/unsubscribe", async (req) => {
+  app.post("/api/notifications/unsubscribe", async (req) => {
     const p = await principalOf(req);
     pushSubscriptions.delete(p.userId);
     return { ok: true };
   });
-  app2.get("/api/notifications/status", async (req) => {
+  app.get("/api/notifications/status", async (req) => {
     const p = await principalOf(req);
     return { subscribed: pushSubscriptions.has(p.userId) };
   });
-  app2.get("/api/export/loops", async (req, reply) => {
+  app.get("/api/export/loops", async (req, reply) => {
     const p = await principalOf(req);
     const loops = await core.loops.list(p.orgId);
     const format = req.query?.format || "json";
@@ -9045,7 +9133,7 @@ function buildServer(deps) {
     }
     return loops;
   });
-  app2.get("/api/export/tasks", async (req, reply) => {
+  app.get("/api/export/tasks", async (req, reply) => {
     const p = await principalOf(req);
     const tasks = await core.tasks.list(p.orgId);
     const format = req.query?.format || "json";
@@ -9057,7 +9145,7 @@ function buildServer(deps) {
     }
     return tasks;
   });
-  app2.get("/api/export/leads", async (req, reply) => {
+  app.get("/api/export/leads", async (req, reply) => {
     const p = await principalOf(req);
     const leads = await core.leads.list(p.orgId);
     const format = req.query?.format || "json";
@@ -9069,11 +9157,11 @@ function buildServer(deps) {
     }
     return leads;
   });
-  app2.get("/api/ai/suggestions/:entityType/:entityId", async (req) => {
+  app.get("/api/ai/suggestions/:entityType/:entityId", async (req) => {
     const { entityType, entityId } = req.params;
     return core.ai.getSuggestions(entityType, entityId);
   });
-  app2.post("/api/ai/assign/:taskId", async (req) => {
+  app.post("/api/ai/assign/:taskId", async (req) => {
     const p = await principalOf(req);
     const taskId = req.params.taskId;
     const task = await core.ctx.db.tasks.get(taskId);
@@ -9081,16 +9169,16 @@ function buildServer(deps) {
     const assignee = await core.ai.autoAssign(taskId);
     return { assignee };
   });
-  app2.get("/api/ai/patterns", async (req) => {
+  app.get("/api/ai/patterns", async (req) => {
     const p = await principalOf(req);
     return core.ai.getPatterns(p.orgId);
   });
-  app2.post("/api/ai/suggestions/:id/dismiss", async (req) => {
+  app.post("/api/ai/suggestions/:id/dismiss", async (req) => {
     const id = req.params.id;
     await core.ai.dismiss(id);
     return { ok: true };
   });
-  app2.get("/api/today", async (req) => {
+  app.get("/api/today", async (req) => {
     const p = await principalOf(req);
     const now2 = Date.now();
     const STALE_MS = 3 * 24 * 60 * 60 * 1e3;
@@ -9151,7 +9239,7 @@ function buildServer(deps) {
       }
     };
   });
-  app2.get("/api/dashboard", async (req) => {
+  app.get("/api/dashboard", async (req) => {
     const p = await principalOf(req);
     const [loops, tasks, leads] = await Promise.all([
       core.loops.list(p.orgId),
@@ -9184,8 +9272,8 @@ function buildServer(deps) {
       today
     };
   });
-  app2.get("/api/methods", async () => ({ methods: methods_exports.METHOD_LIST }));
-  app2.get("/api/methods/:methodId", async (req) => {
+  app.get("/api/methods", async () => ({ methods: methods_exports.METHOD_LIST }));
+  app.get("/api/methods/:methodId", async (req) => {
     const p = await principalOf(req);
     const { methodId } = req.params;
     const entry = methods_exports.METHODS[methodId];
@@ -9194,7 +9282,7 @@ function buildServer(deps) {
     const result = entry.run(tasks);
     return { result, meta: entry.meta };
   });
-  app2.get("/api/reports", async (req) => {
+  app.get("/api/reports", async (req) => {
     const p = await principalOf(req);
     const days = Math.min(365, Math.max(1, Number(req.query?.days ?? 30)));
     const [loops, tasks, leads] = await Promise.all([
@@ -9209,7 +9297,7 @@ function buildServer(deps) {
     }
     return analytics_exports.computeReport({ loops, tasks, leads, timeEntries, windowDays: days });
   });
-  app2.get("/api/team/performance", { preHandler: requireMinRole("manager") }, async (req) => {
+  app.get("/api/team/performance", { preHandler: requireMinRole("manager") }, async (req) => {
     const p = await principalOf(req);
     const tasks = await core.tasks.list(p.orgId);
     const loops = await core.loops.list(p.orgId);
@@ -9250,7 +9338,7 @@ function buildServer(deps) {
     }
     return rows.sort((a, b) => b.points - a.points);
   });
-  app2.post("/api/input/voice", async (req) => {
+  app.post("/api/input/voice", async (req) => {
     const p = await principalOf(req);
     const body = req.body;
     if (!body.audio) return { error: "No audio provided" };
@@ -9263,7 +9351,7 @@ function buildServer(deps) {
     }
     return { text, taskTitles, created };
   });
-  app2.post("/api/input/calendar-import", async (req) => {
+  app.post("/api/input/calendar-import", async (req) => {
     const p = await principalOf(req);
     const body = req.body;
     const icsText = body.ics ?? (body.url ? await input_exports.downloadIcsFromUrl(body.url) : "");
@@ -9276,7 +9364,7 @@ function buildServer(deps) {
     }
     return { eventsFound: events.length, created };
   });
-  app2.post("/api/input/attachments", async (req) => {
+  app.post("/api/input/attachments", async (req) => {
     const p = await principalOf(req);
     const body = req.body;
     if (!body.taskId || !body.filename || !body.data) return { error: "taskId, filename, and data are required" };
@@ -9284,17 +9372,17 @@ function buildServer(deps) {
     const record2 = await input_exports.saveAttachment({ taskId: body.taskId, filename: body.filename, mimeType: body.mimeType ?? "application/octet-stream", data: buf, orgId: p.orgId });
     return { ok: true, attachment: record2 };
   });
-  app2.get("/api/input/attachments/:taskId", async (req) => {
+  app.get("/api/input/attachments/:taskId", async (req) => {
     const { taskId } = req.params;
     return { attachments: await input_exports.listAttachments(taskId) };
   });
-  app2.delete("/api/input/attachments/:orgId/:attachmentId", async (req) => {
+  app.delete("/api/input/attachments/:orgId/:attachmentId", async (req) => {
     const { orgId, attachmentId } = req.params;
     await input_exports.deleteAttachment(orgId, attachmentId);
     return { ok: true };
   });
-  app2.get("/", async (_req, reply) => reply.type("text/html").send(renderUi()));
-  app2.setErrorHandler(function(error, request, reply) {
+  app.get("/", async (_req, reply) => reply.type("text/html").send(renderUi()));
+  app.setErrorHandler(function(error, request, reply) {
     const statusCode = error.statusCode ?? 500;
     const message = statusCode === 500 ? "Internal server error" : error.message;
     if (statusCode >= 500) {
@@ -9308,7 +9396,7 @@ function buildServer(deps) {
       ...statusCode !== 500 && error.details && { details: error.details }
     });
   });
-  return app2;
+  return app;
 }
 function badRequest(message) {
   const err = new Error(message);
@@ -9485,7 +9573,8 @@ function leadsToCsv(leads) {
 // cli/bin/companybrain.ts
 init_middleware();
 var mcpArgs = process.argv.slice(2);
-if (mcpArgs[0] === "mcp" || process.argv.includes("mcp")) {
+var isMcpInvocation = mcpArgs[0] === "mcp" || process.argv.includes("mcp");
+if (isMcpInvocation) {
   await Promise.resolve().then(() => (init_mcp(), mcp_exports));
 }
 process.on("unhandledRejection", (reason) => {
@@ -9497,23 +9586,32 @@ process.on("uncaughtException", (err) => {
   captureException2(err);
   flushSentry().finally(() => process.exit(1));
 });
-var port = Number(process.env.COMPANYBRAIN_PORT ?? process.env.PORT ?? 4317);
-var host = process.env.COMPANYBRAIN_HOST ?? "0.0.0.0";
-var baileys = process.env.WHATSAPP_BAILEYS === "on" ? createBaileysChannel({ orgId: "org_local" }) : null;
-var wa = cloud_api_exports.whatsappConfigFromEnv();
-var messenger = baileys ? baileys.messenger : createMessenger({ whatsapp: wa ?? void 0 });
-var drafter = createLlm() ?? void 0;
-var aiClients = { complete, publishBlog: publishPost };
-var boot = await bootstrap({ messenger, drafter, aiClients });
-await seedIfEmpty(boot.core);
-await boot.startWorkers();
-await boot.queue.schedule("sendBriefing", { orgId: "org_local" }, 6 * 60 * 60 * 1e3);
-if (baileys) await baileys.start(boot.core);
-var app = buildServer({ core: boot.core, auth: boot.auth });
-await app.listen({ port, host });
-var shown = host === "0.0.0.0" ? `http://localhost:${port}` : `http://${host}:${port}`;
-var authMode = (boot.auth.mode ?? "local").toUpperCase();
-console.log(`
+if (!isMcpInvocation) {
+  let openBrowser = function(target) {
+    const cmd = platform() === "darwin" ? "open" : platform() === "win32" ? "start" : "xdg-open";
+    try {
+      spawn(cmd, [target], { stdio: "ignore", detached: true, shell: platform() === "win32" }).unref();
+    } catch {
+    }
+  };
+  openBrowser2 = openBrowser;
+  const port = Number(process.env.COMPANYBRAIN_PORT ?? process.env.PORT ?? 4317);
+  const host = process.env.COMPANYBRAIN_HOST ?? "0.0.0.0";
+  const baileys = process.env.WHATSAPP_BAILEYS === "on" ? createBaileysChannel({ orgId: "org_local" }) : null;
+  const wa = cloud_api_exports.whatsappConfigFromEnv();
+  const messenger = baileys ? baileys.messenger : createMessenger({ whatsapp: wa ?? void 0 });
+  const drafter = createLlm() ?? void 0;
+  const aiClients = { complete, publishBlog: publishPost };
+  const boot = await bootstrap({ messenger, drafter, aiClients });
+  await seedIfEmpty(boot.core);
+  await boot.startWorkers();
+  await boot.queue.schedule("sendBriefing", { orgId: "org_local" }, 6 * 60 * 60 * 1e3);
+  if (baileys) await baileys.start(boot.core);
+  const app = buildServer({ core: boot.core, auth: boot.auth });
+  await app.listen({ port, host });
+  const shown = host === "0.0.0.0" ? `http://localhost:${port}` : `http://${host}:${port}`;
+  const authMode = (boot.auth.mode ?? "local").toUpperCase();
+  console.log(`
   company\x1B[1mbrain\x1B[0m  \xB7  running
 
   \u25B8 ${shown}
@@ -9523,18 +9621,13 @@ console.log(`
 
   Ctrl-C to stop.
 `);
-if (!process.env.COMPANYBRAIN_NO_OPEN) openBrowser(`http://localhost:${port}`);
-function openBrowser(target) {
-  const cmd = platform() === "darwin" ? "open" : platform() === "win32" ? "start" : "xdg-open";
-  try {
-    spawn(cmd, [target], { stdio: "ignore", detached: true, shell: platform() === "win32" }).unref();
-  } catch {
+  if (!process.env.COMPANYBRAIN_NO_OPEN) openBrowser(`http://localhost:${port}`);
+  for (const sig of ["SIGINT", "SIGTERM"]) {
+    process.on(sig, async () => {
+      await app.close();
+      await boot.shutdown();
+      process.exit(0);
+    });
   }
 }
-for (const sig of ["SIGINT", "SIGTERM"]) {
-  process.on(sig, async () => {
-    await app.close();
-    await boot.shutdown();
-    process.exit(0);
-  });
-}
+var openBrowser2;
