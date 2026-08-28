@@ -100,6 +100,33 @@ companybrain speaks the Model Context Protocol over stdio, so any MCP host can r
 
 The MCP process opens the same `~/.companybrain/companybrain.sqlite` file as the web app (WAL), so they coexist. Every write is attributed to the "MCP Agent" account in the audit trail and runs through the same autonomy + approval + undo path as everything else.
 
+## AI tasks (executor + OpenRouter)
+
+A task can be executed by AI instead of a human. Mark a task with an action type and the in-process worker calls a model via [OpenRouter](https://openrouter.ai), runs the action, and completes the task.
+
+**Actions:**
+- `generate` — the AI produces the deliverable (stored as a task comment). Default autonomy: `auto`.
+- `publish_blog` — the AI writes a post and pushes a **draft** to WordPress (never a live post). Default autonomy: `ask` — you approve the draft before it publishes.
+
+**Setup:**
+1. Set `OPENROUTER_API_KEY` (get one at openrouter.ai). Without it the worker skips and tasks stay queued.
+2. In **Settings → Auto**, set `executeAi` to `ask` (default) or `auto`. The effective level is the stricter of this global gate and the action's floor — so `publish_blog` always needs approval even when the global is `auto`.
+3. For `publish_blog`, save WordPress credentials (site URL + application username/password):
+   `PUT /api/connections/wordpress` with `{ "apiUrl", "username", "appPassword" }`. They are encrypted at rest and never returned.
+
+**API:**
+
+| Route | Does |
+| --- | --- |
+| `POST /api/tasks/:id/ai` `{action, config?}` | mark the task AI-executable (or `{"action":null}` to clear) |
+| `GET /api/tasks/:id/ai-runs` | run history for the task |
+| `POST /api/ai-runs/:id/approve` | approve an `awaiting_review` draft so its action runs |
+| `PUT`/`GET /api/connections/wordpress` | save / check WordPress credentials |
+
+`config` accepts `promptOverride` (replaces the user message) and `modelOverride` (an OpenRouter slug for this task only).
+
+Every run is logged (model, prompts, output, duration, error) in `ai_runs` for auditability.
+
 ## Status
 
 **Milestone 1 — bootable foundation** (in progress): single-app skeleton, shared types, the three ports with embedded adapters (SQLite + in-process queue + single-user auth), `core` domain logic, a Fastify server that serves both the API and the web UI, and the one-command bootstrapper. See [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md).
