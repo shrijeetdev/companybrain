@@ -17,7 +17,8 @@ import { captureException, flushSentry } from '@companybrain/server/middleware';
 // index 2 first, then falling back to a full scan, covers both the interactive and
 // spawned-`npx` cases without guessing the layout.
 const mcpArgs = process.argv.slice(2);
-if (mcpArgs[0] === 'mcp' || process.argv.includes('mcp')) {
+const isMcpInvocation = mcpArgs[0] === 'mcp' || process.argv.includes('mcp');
+if (isMcpInvocation) {
   // Hand off to the MCP entrypoint. Dynamic import keeps MCP-only deps out of the
   // web-app boot path; the web app never loads @companybrain/mcp.
   //
@@ -41,6 +42,11 @@ process.on('uncaughtException', (err) => {
   captureException(err);
   flushSentry().finally(() => process.exit(1));
 });
+
+// The web app boots only when this is NOT an `mcp` invocation. Without this guard the
+// mcp subcommand starts the MCP server and then falls straight through to here, booting a
+// second copy of the whole app (and trying to open a browser) inside the MCP host.
+if (!isMcpInvocation) {
 
 const port = Number(process.env.COMPANYBRAIN_PORT ?? process.env.PORT ?? 4317);
 const host = process.env.COMPANYBRAIN_HOST ?? '0.0.0.0';
@@ -104,3 +110,5 @@ for (const sig of ['SIGINT', 'SIGTERM'] as const) {
     process.exit(0);
   });
 }
+
+} // end: web app boot (skipped for `companybrain mcp`)

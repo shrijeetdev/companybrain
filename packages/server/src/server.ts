@@ -340,6 +340,31 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     }
   });
 
+  // --- API keys: what an MCP host authenticates with. The raw key is shown ONCE on
+  // create and never stored (only its sha256 hash), so it can never be listed again.
+  app.get('/api/admin/keys', { preHandler: requireMinRole('ceo') }, async (req) => {
+    const p = await principalOf(req);
+    return { keys: await core.apiKeys.list(p.orgId) };
+  });
+
+  app.post('/api/admin/keys', {
+    preHandler: [requireMinRole('ceo'), validateBody(schemas.CreateApiKeySchema)],
+  }, async (req) => {
+    const p = await principalOf(req);
+    const b = (req as any).validatedBody;
+    const created = await core.apiKeys.create(p.orgId, b.name, b.scopes, b.actorId);
+    // `raw` is the only time this value exists outside the caller's hands.
+    return { ok: true, key: created.raw, row: created.row };
+  });
+
+  app.delete('/api/admin/keys/:id', { preHandler: requireMinRole('ceo') }, async (req) => {
+    const p = await principalOf(req);
+    const mine = await core.apiKeys.list(p.orgId); // B1: only revoke this org's keys
+    if (!mine.some((k) => k.id === params(req).id)) throw notFound('key not found');
+    await core.apiKeys.revoke(params(req).id);
+    return { ok: true };
+  });
+
   app.patch('/api/admin/users/:id', {
     preHandler: [requireMinRole('ceo'), validateBody(schemas.UpdateUserSchema)],
   }, async (req) => {

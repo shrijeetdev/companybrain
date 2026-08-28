@@ -96,6 +96,12 @@ export const ExtractCardSchema = z.object({
   text: z.string().trim().max(5000).optional(),
 }).refine((d) => d.imageBase64 || d.text, { message: 'imageBase64 or text is required' });
 
+export const CreateApiKeySchema = z.object({
+  name: z.string().trim().min(1, 'name is required').max(120),
+  scopes: z.array(z.enum(['read', 'write'])).min(1).max(2).optional().default(['read']),
+  actorId: z.string().trim().min(1).max(120).optional(),
+});
+
 export const SetAiActionSchema = z.object({
   action: z.enum(['generate', 'publish_blog']).nullable(),
   config: z.object({

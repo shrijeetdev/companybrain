@@ -2723,7 +2723,15 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       +'<input class="modal-input" id="admin-new-password" type="password" placeholder="Temporary password" autocomplete="new-password"/>'
       +'<button class="btn-primary" id="admin-create-user">Create</button>'
       +'</div><div id="admin-user-msg" style="font-size:12px;color:var(--muted);margin-top:8px;"></div></div>'
-      +'<div class="gc" style="padding:14px 16px;border-radius:14px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;"><div style="font-size:13.5px;font-weight:700;">Users</div><button class="btn-ghost" id="admin-refresh-users">Refresh</button></div><div id="admin-users-list"><div class="spin"></div></div></div>';
+      +'<div class="gc" style="padding:14px 16px;border-radius:14px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;"><div style="font-size:13.5px;font-weight:700;">Users</div><button class="btn-ghost" id="admin-refresh-users">Refresh</button></div><div id="admin-users-list"><div class="spin"></div></div></div>'
+      +'<div class="gc" style="padding:14px 16px;border-radius:14px;margin-top:12px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;"><div><div style="font-size:13.5px;font-weight:700;">API keys</div><div style="font-size:11px;color:var(--muted);">For MCP hosts (Claude Desktop, Cursor). Shown once on create.</div></div><button class="btn-ghost" id="admin-refresh-keys">Refresh</button></div>'
+      +'<div style="display:grid;grid-template-columns:minmax(160px,1fr) 140px 160px auto;gap:8px;align-items:end;margin-bottom:10px;">'
+      +'<div class="modal-field" style="margin:0;"><label class="modal-label">Name</label><input class="modal-input" id="admin-key-name" placeholder="MCP Agent" autocomplete="off"/></div>'
+      +'<div class="modal-field" style="margin:0;"><label class="modal-label">Scopes</label><select class="modal-select" id="admin-key-scopes"><option value="read">Read only</option><option value="read,write">Read and write</option></select></div>'
+      +'<div class="modal-field" style="margin:0;"><label class="modal-label">Agent user</label><select class="modal-select" id="admin-key-actor"><option value="">None</option></select></div>'
+      +'<button class="btn-primary" id="admin-create-key">Create key</button></div>'
+      +'<div id="admin-key-reveal" style="display:none;font-size:12px;margin-bottom:10px;padding:10px 12px;border-radius:10px;background:var(--accentSoft);"></div>'
+      +'<div id="admin-keys-list"><div class="spin"></div></div></div>';
   }
 
   function adminMsg(msg,isErr){
@@ -2753,6 +2761,61 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       }).catch(function(e){adminMsg(e&&e.message?e.message:'Could not create user',true);});
     };
     loadAdminUsers();
+    var refreshKeys=document.getElementById('admin-refresh-keys');
+    if(refreshKeys) refreshKeys.onclick=loadApiKeys;
+    var createKey=document.getElementById('admin-create-key');
+    if(createKey) createKey.onclick=createApiKey;
+    loadApiKeys();
+  }
+  function loadApiKeys(){
+    var box=document.getElementById('admin-keys-list');
+    if(!box) return;
+    box.innerHTML='<div class="spin"></div>';
+    // Offer the org's agent accounts as the key's owner, so writes are attributed to one.
+    api('/api/admin/users').then(function(users){
+      var sel=document.getElementById('admin-key-actor');
+      if(sel){
+        var agents=(users||[]).filter(function(u){return u.role==='agent';});
+        sel.innerHTML='<option value="">None</option>'+agents.map(function(u){
+          return '<option value="'+esc(u.userId)+'">'+esc(u.name)+'</option>';
+        }).join('');
+      }
+    }).catch(function(){});
+    api('/api/admin/keys').then(function(r){
+      var keys=(r&&r.keys)||[];
+      if(!keys.length){box.innerHTML='<div style="font-size:12px;color:var(--muted);">No API keys yet.</div>';return;}
+      box.innerHTML=keys.map(function(k){
+        return '<div class="admin-key-row" data-key-id="'+esc(k.id)+'" style="border-top:1px solid var(--glassBorder);padding:10px 0;display:grid;grid-template-columns:minmax(160px,1fr) 120px 140px auto;gap:8px;align-items:center;">'
+          +'<div><div style="font-size:13px;font-weight:700;">'+esc(k.name)+'</div><div style="font-size:11px;color:var(--muted);">'+esc(k.prefix)+'... - created '+agoLabel(k.createdAt)+'</div></div>'
+          +'<div style="font-size:11px;color:var(--muted);">'+esc((k.scopes||[]).join(', '))+'</div>'
+          +'<div style="font-size:11px;color:var(--muted);">'+(k.lastUsedAt?('used '+agoLabel(k.lastUsedAt)):'never used')+'</div>'
+          +'<button class="btn-danger admin-revoke-key">Revoke</button></div>';
+      }).join('');
+      box.querySelectorAll('.admin-key-row').forEach(function(row){
+        row.querySelector('.admin-revoke-key').onclick=function(){
+          if(!confirm('Revoke this key? Any host using it stops working immediately.')) return;
+          post('/api/admin/keys/'+encodeURIComponent(row.dataset.keyId),null,'DELETE')
+            .then(function(){toast('Key revoked');loadApiKeys();})
+            .catch(function(e){toast(e&&e.message?e.message:'Could not revoke key');});
+        };
+      });
+    }).catch(function(e){box.innerHTML='<div style="font-size:12px;color:var(--red);">'+esc(e&&e.message?e.message:'Could not load keys')+'</div>';});
+  }
+  function agoLabel(ts){var a=ago(ts);return a==='just now'?a:a+' ago';}
+  function createApiKey(){
+    var name=(document.getElementById('admin-key-name').value||'').trim();
+    if(!name){toast('Name the key first');return;}
+    var scopes=document.getElementById('admin-key-scopes').value.split(',');
+    var actorId=document.getElementById('admin-key-actor').value||undefined;
+    post('/api/admin/keys',{name:name,scopes:scopes,actorId:actorId}).then(function(r){
+      var box=document.getElementById('admin-key-reveal');
+      if(box){
+        box.style.display='block';
+        box.innerHTML='<div style="font-weight:700;margin-bottom:4px;">Copy this key now - it is never shown again.</div><code style="word-break:break-all;">'+esc(r.key)+'</code>';
+      }
+      document.getElementById('admin-key-name').value='';
+      loadApiKeys();
+    }).catch(function(e){toast(e&&e.message?e.message:'Could not create key');});
   }
   function loadAdminUsers(){
     var box=document.getElementById('admin-users-list');
