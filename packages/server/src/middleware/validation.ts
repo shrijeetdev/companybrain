@@ -96,6 +96,20 @@ export const ExtractCardSchema = z.object({
   text: z.string().trim().max(5000).optional(),
 }).refine((d) => d.imageBase64 || d.text, { message: 'imageBase64 or text is required' });
 
+export const SetAiActionSchema = z.object({
+  action: z.enum(['generate', 'publish_blog']).nullable(),
+  config: z.object({
+    promptOverride: z.string().trim().max(4000).optional(),
+    modelOverride: z.string().trim().max(200).optional(),
+  }).optional(),
+});
+
+export const WordpressCredsSchema = z.object({
+  apiUrl: z.string().trim().url('apiUrl must be a URL').max(500),
+  username: z.string().trim().min(1, 'username is required').max(200),
+  appPassword: z.string().min(1, 'appPassword is required').max(500),
+});
+
 export const AutonomySchema = z.object({
   action: z.enum(['createTasks', 'sendReminders', 'draftReplies', 'chase', 'joinMeetings']),
   level: z.enum(['off', 'ask', 'auto']),

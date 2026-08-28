@@ -498,6 +498,34 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     return core.ctx.db.tasks.update(params(req).id, { assignees: b.userIds ?? [p.userId] });
   });
 
+  // --- AI tasks (executor) ---
+  // Mark a task AI-executable (or clear it). The worker does the actual run.
+  app.post('/api/tasks/:id/ai', {
+    preHandler: validateBody(schemas.SetAiActionSchema),
+  }, async (req) => {
+    await ownedTask(req); // B1: no setting AI actions on another org's task
+    const b = (req as any).validatedBody;
+    const task = await core.tasks.setAiAction(params(req).id, b.action, b.config);
+    broadcast({ type: 'task.ai.changed' });
+    return task;
+  });
+
+  // Run history for a task: model, prompts, output, status, cost.
+  app.get('/api/tasks/:id/ai-runs', async (req) => {
+    await ownedTask(req);
+    return { runs: await core.ctx.db.aiRuns.listByTask(params(req).id) };
+  });
+
+  // The `ask` path: a human approves the generated draft, letting the action run.
+  app.post('/api/ai-runs/:id/approve', async (req) => {
+    const p = await principalOf(req);
+    const run = await core.ctx.db.aiRuns.get(params(req).id);
+    if (!run || run.orgId !== p.orgId) throw notFound('run not found'); // B1
+    await core.tasks.approveAiRun(run.id);
+    broadcast({ type: 'task.ai.changed' });
+    return { ok: true };
+  });
+
   // --- Time Tracking ---
   app.post('/api/tasks/:id/time/start', async (req) => {
     const p = await principalOf(req);
@@ -780,6 +808,36 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
       calendar: {
         status: byChannel.get('calendar')?.status ?? 'disconnected',
       },
+      wordpress: {
+        status: byChannel.get('wordpress')?.status ?? 'disconnected',
+        site: byChannel.get('wordpress')?.credentials?.apiUrl ?? '',
+      },
+    };
+  });
+
+  // WordPress — save credentials for the publish_blog action. Stored encrypted by the
+  // connections repo; the app password is never returned or logged.
+  app.put('/api/connections/wordpress', {
+    preHandler: [requireMinRole('ceo'), validateBody(schemas.WordpressCredsSchema)],
+  }, async (req) => {
+    const p = await principalOf(req);
+    const b = (req as any).validatedBody;
+    await core.ctx.db.connections.upsert(p.orgId, 'wordpress', {
+      status: 'connected',
+      credentials: { apiUrl: b.apiUrl.replace(/\/+$/, ''), username: b.username, appPassword: b.appPassword },
+    });
+    broadcast({ type: 'connections.changed' });
+    return { ok: true };
+  });
+
+  // Configured-or-not only. Never the secret.
+  app.get('/api/connections/wordpress', async (req) => {
+    const p = await principalOf(req);
+    const conn = await core.ctx.db.connections.get(p.orgId, 'wordpress');
+    return {
+      configured: conn?.status === 'connected',
+      apiUrl: (conn?.credentials?.apiUrl as string | undefined) ?? '',
+      username: (conn?.credentials?.username as string | undefined) ?? '',
     };
   });
 
