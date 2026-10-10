@@ -61,6 +61,10 @@ export interface ServerDeps {
     version: string;
     publicUrl: string | null;
     webDir: string | null;
+    /**
+     * Reverse-proxy trust. `true` is treated as ONE trusted hop (see `normalizeTrustProxy`);
+     * a number = hop count; a string = comma-separated trusted proxy IPs/CIDRs.
+     */
     trustProxy: boolean | number | string;
     secureCookies: 'auto' | boolean;
     corsOrigins: string[];

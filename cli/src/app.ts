@@ -190,9 +190,19 @@ export function loadSigningSecret(env: NodeJS.ProcessEnv, dataDir: string): stri
   return secret;
 }
 
-export function parseTrustProxy(v: string | undefined): boolean | number | string {
-  if (!v || v === 'false') return false;
-  if (v === 'true') return true;
-  const n = Number(v);
-  return Number.isInteger(n) ? n : v;
+/**
+ * COMPANYBRAIN_TRUST_PROXY: `true` = exactly ONE trusted reverse-proxy hop (never Fastify's
+ * trust-everything `true`, which lets clients spoof their IP via X-Forwarded-For); a number = that
+ * many hops; otherwise a comma-separated list of trusted proxy IPs/CIDRs (or proxy-addr presets
+ * like `loopback`).
+ */
+export function parseTrustProxy(v: string | undefined): false | number | string {
+  const s = (v ?? '').trim();
+  if (!s || s.toLowerCase() === 'false' || s === '0') return false;
+  if (s.toLowerCase() === 'true') return 1;
+  if (/^\d+$/.test(s)) return Math.min(Number(s), 10);
+  const parts = s.split(',').map((p) => p.trim()).filter(Boolean);
+  const ok = parts.every((p) => /^[0-9a-fA-F:.]+(\/\d{1,3})?$/.test(p) || ['loopback', 'linklocal', 'uniquelocal'].includes(p));
+  if (!ok || !parts.length) throw new Error(`COMPANYBRAIN_TRUST_PROXY must be true/false, a hop count, or a comma-separated list of proxy IPs/CIDRs (got "${s}")`);
+  return parts.join(',');
 }
