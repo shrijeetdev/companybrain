@@ -1,108 +1,70 @@
 # companybrain
 
-> **Never forget a task or a follow-up — across every channel, and your whole team.**
+> **Nothing slips.** One command center where every task — for every human *and* every AI agent —
+> is captured, owned, scheduled, reminded and finished. And it plays like a game.
 
-A team operating system that watches every channel (Email, Slack, WhatsApp, Telegram, Calendar, meetings), turns anything needing a human into a tracked **open loop**, and never lets it slip. AI agents do real work alongside people; every action is **scoped, logged, and reversible**.
+- **Capture in seconds** — type `Send Acme proposal tomorrow 5pm @priya #website !high` and the
+  date, person, project and priority are understood. Works the same from WhatsApp, email, Claude
+  and the API.
+- **Reminders that actually fire** — before the deadline, at it, when overdue, then escalation to
+  the creator or supervisor. Stored in the database, so a restart never loses one. Follow-ups
+  ("waiting on Raj") nudge the other person automatically.
+- **Humans and AI agents on one team** — assign missions to Claude, ChatGPT, Cursor or any MCP/REST
+  agent. Agents load their open work at the start of every session, leave progress and hand-off
+  notes, and get flagged when they go quiet — so the AI can't forget either.
+- **Your personal spoken briefing** — open the dashboard and hear today's missions, what's overdue,
+  your meetings, and (for managers) the whole squad and the AI operatives.
+- **Tactical Ops game layer** — missions, operations, squad; XP, ranks from Recruit to Legend,
+  streaks, loot crates, medals, daily challenges and leaderboards (humans and AI ranked
+  separately). Cheat-resistant, computed on the server. Prefer calm? Switch to *Classic*.
+- **Projects, team, inbox, calendar, reports, pipeline** — all shared, real-time, installable as an
+  app on desktop and phone, with push notifications.
 
-The clickable design spec lives in the prototype (`../Liquid Glass Design System (1)/Company Brain.dc.html`). This repo turns it into a real product.
-
-## One app, one command
+## Run it
 
 ```bash
 pnpm install
-pnpm start
+pnpm build        # → dist/server.js + dist/web
+pnpm start        # → http://localhost:4317 — the first visit runs the setup wizard
 ```
 
-That single process is the **whole product**: it runs SQLite migrations, an **in-process worker** (real timers — chases and briefings actually fire), the API, and the web UI — all on one port. No Docker, no Postgres, no Redis, no separate frontend. Data lives in one file at `~/.companybrain/companybrain.sqlite`.
+One process, one SQLite file (`~/.companybrain/companybrain.sqlite`). No Docker, Postgres or Redis
+required. Every setting is optional — see [`.env.example`](.env.example).
 
-## Production auth (real users + passwords)
+**Deploying** (Hostinger, Docker, VPS), backups and integrations: [docs/DEPLOY.md](docs/DEPLOY.md).
 
-By default, companybrain runs in **local** mode (single user, no login) for frictionless dev.
-For production, use password mode so the login page asks only for **email/username + password** and never exposes the user roster publicly.
+## Connect Claude (or any AI) in 30 seconds
+
+In the app: **Settings → Connect AI** → copy the URL → in Claude: **Settings → Connectors → Add
+custom connector** → paste → **Connect** → approve. ChatGPT, Claude Code, Cursor, VS Code, Gemini CLI
+and n8n are covered in [packages/mcp/CONNECT.md](packages/mcp/CONNECT.md). Other platforms can use the
+REST API (`/api/openapi.json`).
+
+## Develop
 
 ```bash
-COMPANYBRAIN_AUTH_MODE=password
-COMPANYBRAIN_ADMIN_EMAIL=you@yourcompany.com
-COMPANYBRAIN_ADMIN_PASSWORD=<choose-a-strong-password>
-COMPANYBRAIN_ADMIN_NAME="Vexocore Admin"
-COMPANYBRAIN_SECURE_COOKIE=true
+pnpm dev          # API + background worker from source (tsx)
+pnpm dev:web      # web app with hot reload
+pnpm typecheck
+pnpm test         # unit + API + full-stack integration tests
+pnpm test:e2e     # Playwright, against the production build
 ```
 
-On first boot, if the `users` table is empty, companybrain seeds that admin as role `ceo` with full permissions. After login, CEO/admin users can open **Settings → User Management** to create users, change roles (`client`, `employee`, `manager`, `ceo`, `agent`), disable/delete users, and reset passwords. If users already exist, the bootstrap env vars do not overwrite passwords; reset them from the admin UI.
+| Package | What it is |
+|---|---|
+| `packages/types` | The contract: domain types and service interfaces |
+| `packages/nlp` | Natural-language quick-add parser (Node + browser) |
+| `packages/db` | SQLite schema, migrations (incl. v1 import), org-scoped repositories |
+| `packages/core` | Services, persistent scheduler, reminders, notifications, briefing, intake |
+| `packages/game` | Tactical Ops engine — XP, ranks, crates, medals ([rules](packages/game/RULES.md)) |
+| `packages/integrations` | WhatsApp, email, Web Push, calendar feeds, LLM, text-to-speech |
+| `packages/mcp` | MCP server for AI agents (HTTP + stdio) |
+| `packages/server` | HTTP API, auth, OAuth, live updates, webhooks |
+| `packages/web` | The web app (React) |
+| `cli` | `companybrain` command: serve · mcp · migrate · backup |
 
-The older shared-key mode is still available for controlled/internal deployments:
-
-```bash
-COMPANYBRAIN_AUTH_MODE=key
-COMPANYBRAIN_ACCESS_KEY=replace-with-a-strong-secret
-```
-
-Optional key-mode rosters can still be provided via `COMPANYBRAIN_USERS`, but password mode is recommended for public production.
-
-## Deploy to a server (e.g. DigitalOcean)
-
-It's one container. Build and run it:
-
-```bash
-docker build -t companybrain .
-docker run -d -p 4317:4317 \
-  -v companybrain-data:/root/.companybrain \
-  --env-file .env \
-  companybrain
-```
-
-Then point your domain at the droplet on port 4317 (or put any reverse proxy in front). The mounted volume keeps your SQLite data across restarts and redeploys. No other services to provision.
-
-You can also run it without Docker on the server: `git clone`, `pnpm install`, `pnpm start` (optionally under `pm2`/`systemd`).
-
-## Architecture — one codebase, one runnable app
-
-`packages/core` (domain logic: loops, tasks, leads, agents, autonomy) depends only on three **ports** — `db`, `queue`, `auth` — each with a single embedded adapter:
-
-| Port | Implementation |
-| --- | --- |
-| **db** | SQLite (one file) |
-| **queue** | in-process (real timers) |
-| **auth** | local single-user, key-based sessions, or password-backed per-user accounts |
-
-The ports stay as interfaces, so a heavier backend could be added later without touching `core` or the routes — but nothing extra is required to run.
-
-```
-packages/  core · db · queue · auth · integrations · server · ui · types
-cli/       the one entrypoint — `pnpm start` boots everything
-```
-
-## Use companybrain from Claude Desktop / Cursor / VS Code (MCP)
-
-companybrain speaks the Model Context Protocol over stdio, so any MCP host can read and (gated) write your tasks, loops, and leads.
-
-**One-time setup (in the running web app):**
-
-1. **Settings → User Management →** create a user with role **agent** (e.g. name "MCP Agent").
-2. Create an API key for that agent and copy it (shown once).
-3. In **Settings → Auto**, decide what the agent may do. By default a connected host is **read-only** — set `createTasks` and/or `manageRecords` to `ask` (propose, you approve) or `auto` (act, then log) to allow writes.
-
-**Connect a host (Claude Desktop `claude_desktop_config.json`):**
-
-```json
-{
-  "mcpServers": {
-    "companybrain": {
-      "command": "npx",
-      "args": ["tsx", "/absolute/path/to/companybrain/cli/bin/companybrain.ts", "mcp"],
-      "env": { "COMPANYBRAIN_MCP_KEY": "cb_..." }
-    }
-  }
-}
-```
-
-(Cursor / VS Code / Cline: same command + args + env in their MCP settings.)
-
-The MCP process opens the same `~/.companybrain/companybrain.sqlite` file as the web app (WAL), so they coexist. Every write is attributed to the "MCP Agent" account in the audit trail and runs through the same autonomy + approval + undo path as everything else.
-
-## Status
-
-**Milestone 1 — bootable foundation** (in progress): single-app skeleton, shared types, the three ports with embedded adapters (SQLite + in-process queue + single-user auth), `core` domain logic, a Fastify server that serves both the API and the web UI, and the one-command bootstrapper. See [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md).
+Design docs: [docs/v2/PLAN.md](docs/v2/PLAN.md) · [API](docs/v2/API.md) · [wiring](docs/v2/WIRING.md).
+The previous version's code is kept for reference in `legacy/`.
 
 ## License
 

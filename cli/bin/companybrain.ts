@@ -4,11 +4,12 @@
 //   companybrain          start the app (default)
 //   companybrain mcp      MCP over stdio for desktop AI hosts (Claude Desktop, Cursor, …)
 //   companybrain migrate  run database migrations and exit
+//   companybrain backup [dir]  hot backup of the database + keys into dir (default ./backups)
 //
 // The `mcp` subcommand must never write anything but JSON-RPC to stdout, so it never starts
 // the web server, and all logging goes to stderr.
 
-import { existsSync, mkdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,6 +17,15 @@ import { openDatabase, resolveDbPath } from '@companybrain/db';
 import { createCalendarFetcher, createLlm, loadIntegrationsConfig } from '@companybrain/integrations';
 import { runMcpStdio } from '@companybrain/mcp';
 import { createApp, createAppServices, stderrLog as log, VERSION } from '../src/app';
+
+// Load ./.env when present (never overrides variables already set by the host).
+if (existsSync('.env')) {
+  try {
+    process.loadEnvFile('.env');
+  } catch (err) {
+    console.error('[companybrain] warn: could not read .env:', err instanceof Error ? err.message : err);
+  }
+}
 
 const command = process.argv.slice(2).find((a) => !a.startsWith('-')) ?? 'serve';
 const env = process.env;
@@ -28,11 +38,27 @@ if (command === 'mcp') {
 } else if (command === 'migrate') {
   openDatabase(dbPath).close();
   log.info(`migrations applied → ${dbPath}`);
+} else if (command === 'backup') {
+  await backup(process.argv.slice(3).find((a) => !a.startsWith('-')) ?? 'backups');
 } else if (command === 'serve' || command === 'start') {
   await serve();
 } else {
-  console.error(`Unknown command "${command}". Use: companybrain [serve|mcp|migrate]`);
+  console.error(`Unknown command "${command}". Use: companybrain [serve|mcp|migrate|backup]`);
   process.exit(64);
+}
+
+/** Online backup (safe while the app runs) of the SQLite file plus the key files next to it. */
+async function backup(target: string): Promise<void> {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const dir = resolve(target, `companybrain-${stamp}`);
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const db = openDatabase(dbPath);
+  await db.sqlite.backup(join(dir, 'companybrain.sqlite'));
+  db.close();
+  for (const f of ['secret.key', 'signing.key', 'vapid.json']) {
+    if (existsSync(join(dataDir, f))) copyFileSync(join(dataDir, f), join(dir, f));
+  }
+  log.info(`backup written → ${dir}`);
 }
 
 async function runMcp(): Promise<void> {
