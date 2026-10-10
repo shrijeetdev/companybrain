@@ -789,3 +789,15 @@ export interface CalendarFetcher {
 export interface Tts {
   synthesize(text: string, opts?: { voice?: string }): Promise<{ audio: Buffer; mime: string } | null>;
 }
+
+/** Called by channel adapters for each inbound message; returns an optional reply to send back. */
+export type OnInbound = (msg: InboundMessage) => Promise<{ reply: string | null }>;
+
+/** GET /api/integrations (server adds `mcpUrl`). */
+export interface IntegrationsStatus {
+  whatsapp: { mode: 'cloud' | 'qr' | null; connected: boolean; phone: string | null };
+  email: { inbound: boolean; outbound: boolean; address: string | null };
+  push: boolean;
+  llm: { provider: string | null };
+  tts: { provider: string | null };
+}
