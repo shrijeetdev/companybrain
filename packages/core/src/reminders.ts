@@ -7,7 +7,7 @@ import { atLocalHour, dueLabel, safeTz, spokenTime } from '@companybrain/db';
 import type { Ctx } from './context.js';
 import type { JobHandler } from './scheduler.js';
 import type { TaskInternals } from './services/tasks.js';
-import { isOpen } from './services/tasks.js';
+import { isOpen, nudgeIntervalMs } from './services/tasks.js';
 import { rank } from './perms.js';
 
 /** Overdue notice fires this long after the due time (the offset-0 reminder covers "due now"), then daily. */
@@ -91,7 +91,7 @@ export function createReminders(ctx: Ctx, tasks: TaskInternals) {
       }
       const w = t.waitingOn;
       if (w && w.nudgeEveryHours && w.contact && w.channel !== 'other') {
-        const runAt = Math.max((w.lastNudgedAt ?? w.since) + w.nudgeEveryHours * 3_600_000, t0);
+        const runAt = Math.max((w.lastNudgedAt ?? w.since) + nudgeIntervalMs(w), t0);
         want.set(K.nudge(t.id), { kind: 'task.nudge', runAt, payload: { taskId: t.id } });
       }
     }
@@ -227,6 +227,11 @@ export function createReminders(ctx: Ctx, tasks: TaskInternals) {
       const t = db.tasks.get(job.orgId, String(job.payload.taskId ?? ''));
       if (!t || !isOpen(t) || !t.waitingOn?.nudgeEveryHours) return;
       const res = await tasks.sendNudge(t, SYSTEM_MEMBER_ID);
+      if (!res.ok && res.retryAt !== undefined) {
+        // Cooldown / daily cap: not an error — try again when allowed.
+        db.jobs.schedule(t.orgId, 'task.nudge', K.nudge(t.id), res.retryAt, { taskId: t.id }, now());
+        return;
+      }
       if (!res.ok) throw new Error(res.error);
     },
 

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { InboundMessage } from '@companybrain/types';
-import { T0, bootstrap, makeEnv } from './helpers.ts';
+import { DAY, HOUR, T0, bootstrap, makeEnv } from './helpers.ts';
 import { UNVERIFIED_NOTE } from '../src/services/inbox.ts';
 
 let seq = 0;
@@ -114,6 +114,91 @@ test('M2: member.upserted is a public projection for everyone but the member', a
   assert.notEqual(pub.prefs.quietStart, 21, 'prefs not leaked');
   assert.equal(seen.priya!.length, 1);
   assert.equal(seen.priya![0]!.phone, '+14155550123', 'the member gets their own full record');
+});
+
+// ─── M3: nudge abuse ────────────────────────────────────────────────────────
+
+test('M3: nudges use a fixed template — title capped at 120 chars, links stripped', async () => {
+  const env = makeEnv();
+  const team = await bootstrap(env);
+  const { a: pA } = await team.add('Priya');
+  const title = 'URGENT: your account is locked, verify at https://evil.example/login or www.evil.example or evil.example/x now ' + 'x'.repeat(200);
+  const t = await env.s.tasks.create(pA, { title, waitingOn: { name: 'https://evil.example Victim', contact: '+15551234567', channel: 'whatsapp', nudgeEveryHours: null } });
+  await env.s.tasks.nudge(pA, t.id);
+  const msg = env.out.to('+15551234567')[0]!.text;
+  assert.match(msg, /^Hi there, a friendly follow-up from Acme about: "URGENT: your account is locked, verify at or or now x+…" — reply here if you have an update\.$/);
+  assert.ok(!/evil|https?:|www\./i.test(msg), msg);
+  const quoted = /about: "(.*)" — reply/.exec(msg)![1]!;
+  assert.ok(quoted.length <= 120, `title ${quoted.length} chars`);
+  await env.s.tasks.update(pA, t.id, { waitingOn: { name: 'Raj', contact: 'raj@client.io', channel: 'email', nudgeEveryHours: null } });
+  env.clock.advance(4 * HOUR);
+  await env.s.tasks.nudge(pA, t.id);
+  assert.ok(!/evil/.test(env.out.to('raj@client.io')[0]!.subject!), 'email subject sanitized too');
+});
+
+test('M3: per-task cooldown (manual 4 h; scheduled ≥ 4 h even if set lower)', async () => {
+  const env = makeEnv();
+  const team = await bootstrap(env);
+  const { a: pA } = await team.add('Priya');
+  const t = await env.s.tasks.create(pA, { title: 'Contract', waitingOn: { name: 'Raj', contact: '+15551234567', channel: 'whatsapp', nudgeEveryHours: 1 } });
+  assert.equal(t.waitingOn!.nudgeEveryHours, 4, 'interval floored at 4 h');
+  await env.s.tasks.nudge(pA, t.id);
+  for (const dt of [0, HOUR, 3 * HOUR + 59 * 60_000]) {
+    env.clock.set(T0 + dt);
+    await assert.rejects(env.s.tasks.nudge(pA, t.id), (e: any) => e.code === 'rate_limited');
+  }
+  // The scheduler doesn't fire before 4 h either.
+  env.clock.set(T0 + 3 * HOUR);
+  await env.tick();
+  assert.equal(env.out.to('+15551234567').length, 1);
+  env.clock.set(T0 + 4 * HOUR);
+  await env.tick();
+  assert.equal(env.out.to('+15551234567').length, 2, 'scheduled nudge after 4 h');
+});
+
+test('M3: daily caps — 20 nudges per member, 200 per org; scheduled nudges wait instead of failing', async () => {
+  const env = makeEnv();
+  const team = await bootstrap(env);
+  const { m: p, a: pA } = await team.add('Priya');
+  const { a: maxA } = await team.add('Max');
+  const mk = (a: typeof pA, i: number) => env.s.tasks.create(a, { title: `T${i}`, waitingOn: { name: 'Raj', contact: `+1555000${String(i).padStart(4, '0')}`, channel: 'whatsapp', nudgeEveryHours: null } });
+  for (let i = 0; i < 20; i++) await env.s.tasks.nudge(pA, (await mk(pA, i)).id);
+  const extra = await mk(pA, 20);
+  await assert.rejects(env.s.tasks.nudge(pA, extra.id), (e: any) => e.code === 'rate_limited' && /Daily nudge limit/.test(e.message));
+  // Max has his own quota.
+  await env.s.tasks.nudge(maxA, (await mk(maxA, 21)).id);
+  // Org-wide cap.
+  env.db.kv.set(p.orgId, 'nudge:quota:org', { day: Math.floor(env.clock.now / DAY), n: 200 }, env.clock.now);
+  await assert.rejects(env.s.tasks.nudge(maxA, (await mk(maxA, 22)).id), (e: any) => e.code === 'rate_limited' && /organization/.test(e.message));
+  // A scheduled nudge over the cap is re-planned for the next day, not failed.
+  const sched = await env.s.tasks.create(pA, { title: 'Sched', waitingOn: { name: 'Raj', contact: '+15559999999', channel: 'whatsapp', nudgeEveryHours: 4 } });
+  env.clock.advance(4 * HOUR);
+  await env.tick();
+  assert.equal(env.out.to('+15559999999').length, 0);
+  const job = env.db.jobs.list(p.orgId, { kind: 'task.nudge', status: 'pending' }).find((j) => j.payload.taskId === sched.id)!;
+  assert.equal(job.runAt, (Math.floor(env.clock.now / DAY) + 1) * DAY);
+  // Next day: quotas reset.
+  env.clock.set(job.runAt);
+  await env.tick();
+  assert.equal(env.out.to('+15559999999').length, 1);
+  await env.s.tasks.nudge(pA, extra.id);
+});
+
+test('M3: only members (not agents, guests or read-only keys) can set a waiting-on contact', async () => {
+  const env = makeEnv();
+  const team = await bootstrap(env);
+  const { a: pA } = await team.add('Priya');
+  const { a: botA } = await team.addAgent('Claude');
+  const { a: guestA } = await team.add('Gus', 'guest');
+  const w = { name: 'Raj', contact: '+15551234567', channel: 'whatsapp' as const, nudgeEveryHours: null };
+  await assert.rejects(env.s.tasks.create(botA, { title: 'x', waitingOn: w }), (e: any) => e.code === 'forbidden');
+  await assert.rejects(env.s.tasks.create(guestA, { title: 'x', waitingOn: w }), (e: any) => e.code === 'forbidden');
+  await assert.rejects(env.s.tasks.create({ ...pA, via: 'api_key', scopes: ['read'] }, { title: 'x', waitingOn: w }), (e: any) => e.code === 'forbidden');
+  // Agents can still record who a task waits on (no contact), and members can add the contact.
+  const t = await env.s.tasks.create(botA, { title: 'Waiting', waitingOn: { name: 'Raj', contact: null, channel: 'other', nudgeEveryHours: null } });
+  await assert.rejects(env.s.tasks.update(botA, t.id, { waitingOn: w }), (e: any) => e.code === 'forbidden');
+  const t2 = await env.s.tasks.create(pA, { title: 'ok', waitingOn: w });
+  assert.equal(t2.waitingOn!.contact, '+15551234567');
 });
 
 // ─── L1: read-only keys ─────────────────────────────────────────────────────
