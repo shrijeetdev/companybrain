@@ -26,6 +26,12 @@ test('every screen renders without errors', async ({ page }) => {
     expect(text, `${route} shows a broken value`).not.toMatch(/\bundefined\b|\bNaN\b|\[object Object\]/);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     expect(overflow, `${route} scrolls horizontally`).toBe(false);
+    // Progress bars must actually fill (a CSS regression once rendered every bar empty).
+    const emptyBars = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('.bar[aria-valuenow]')]
+        .filter((b) => Number(b.getAttribute('aria-valuenow')) >= 5 && b.offsetParent !== null)
+        .filter((b) => ((b.querySelector('i')?.getBoundingClientRect().width ?? 0) < 1)).length);
+    expect(emptyBars, `${route} has progress bars that render empty`).toBe(0);
   }
   expect(problems).toEqual([]);
 });

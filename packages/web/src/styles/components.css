@@ -306,7 +306,7 @@
 
 /* ─── Progress ────────────────────────────────────────────────────────── */
 .bar { position: relative; height: 6px; border-radius: 999px; background: var(--surface-sunken); overflow: hidden; }
-.bar > i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--accent-grad); transform-origin: left; }
+.bar > i { position: absolute; inset: 0; width: 100%; border-radius: inherit; background: var(--accent-grad); transform-origin: left; }
 [data-theme='tactical'] .bar { border-radius: 0; height: 6px; box-shadow: inset 0 0 0 1px var(--border); }
 
 /* ─── Menus / popovers ────────────────────────────────────────────────── */
