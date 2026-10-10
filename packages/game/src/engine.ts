@@ -286,7 +286,7 @@ export class Engine {
       const needSweep = !!completedTask && earners.includes(id);
       if (!needChallenges && !needSweep) continue;
       try {
-        const tasks = await this.services.tasks.list(sys, { assigneeId: id, includeDone: true, limit: 2000 });
+        const tasks = await this.services.tasks.list(sys, { assigneeId: id, includeDone: true, limit: 1000 });
         if (needChallenges) openStats.set(id, openStatsOf(tasks, id, at));
         if (needSweep) {
           const from = startOfDay(day, m.tz);
@@ -302,7 +302,7 @@ export class Engine {
     const pid = completedTask?.projectId;
     if (pid && !this.q('SELECT 1 FROM game_squad_bonus WHERE org_id = ? AND project_id = ?').get(orgId, pid)) {
       try {
-        const tasks = (await this.services.tasks.list(sys, { projectId: pid, includeDone: true, limit: 5000 }))
+        const tasks = (await this.services.tasks.list(sys, { projectId: pid, includeDone: true, limit: 1000 }))
           .filter((t) => t.projectId === pid && t.status !== 'cancelled');
         if (tasks.length >= SQUAD_BONUS_MIN_TASKS && tasks.every((t) => t.status === 'done')) {
           const p = await this.services.projects.get(sys, pid);

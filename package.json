@@ -19,7 +19,7 @@
     "start": "node server.js",
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p packages/web",
-    "test": "node --import tsx --test \"packages/*/test/**/*.test.ts\"",
+    "test": "node --import tsx --test \"packages/*/test/**/*.test.ts\" \"cli/test/**/*.test.ts\"",
     "test:e2e": "playwright test",
     "mcp": "tsx cli/bin/companybrain.ts mcp"
   },

@@ -726,7 +726,7 @@ async function completionRewards(ctx: CallContext, taskId: string): Promise<{ li
     const game = ctx.services.game;
     if (!game?.rewards) return null;
     const since = ctx.now - REWARD_WINDOW_MS;
-    const recent = (await game.rewards(ctx.actor, 5))
+    const recent = (await game.rewards(ctx.actor, 30))
       .filter((r) => r.at >= since && r.kind !== 'revoked' && (r.taskId === taskId || (r.taskId == null && SIDE_EFFECT_KINDS.has(r.kind))))
       .sort((a, b) => rewardOrder(a) - rewardOrder(b) || a.at - b.at);
     if (!recent.some((r) => r.taskId === taskId)) return null;
@@ -736,7 +736,7 @@ async function completionRewards(ctx: CallContext, taskId: string): Promise<{ li
     for (const r of recent) {
       if (r.kind === 'level_up') parts.push(`LEVEL UP → ${r.level ?? '?'}${r.rank ? ` (${r.rank.name})` : ''}`);
       else if (r.kind === 'crate_earned') parts.push(`${r.rarity ?? ''} crate earned`.trim());
-      else if (r.kind === 'achievement') parts.push(`achievement: ${r.label}`);
+      else if (r.kind === 'achievement') parts.push(`🏅 ${r.label.replace(/^[+-]?\d+ XP · /, '')}`);
       else if (KIND_LABEL[r.kind] && r.xp) parts.push(`${KIND_LABEL[r.kind]} +${r.xp}`);
     }
     if (coins) parts.push(`+${coins} coins`);

@@ -107,8 +107,8 @@ export class Service implements GameService {
     const m = await this.member(actor.orgId, actor.memberId);
     const now = this.engine.clock();
     const [mineRaw, squadRaw, projects] = await Promise.all([
-      this.services.tasks.list(actor, { assigneeId: m.id, includeDone: true, limit: 5000 }),
-      this.services.tasks.list(actor, { includeDone: true, limit: 5000 }).catch(() => [] as TaskView[]),
+      this.services.tasks.list(actor, { assigneeId: m.id, includeDone: true, limit: 1000 }),
+      this.services.tasks.list(actor, { includeDone: true, limit: 1000 }).catch(() => [] as TaskView[]),
       this.services.projects.list(actor).catch(() => []),
     ]);
     const mine = mineRaw.filter((t) => t.orgId === actor.orgId && t.assigneeIds.includes(m.id));
@@ -166,7 +166,7 @@ export class Service implements GameService {
     const day = dayKey(now, m.tz);
     const existing = this.engine.ensureChallenges(actor.orgId, m.id, day, null);
     if (existing.length) return existing.map((r) => this.toChallenge(r));
-    const tasks = await this.services.tasks.list(actor, { assigneeId: m.id, limit: 5000 }).catch(() => [] as TaskView[]);
+    const tasks = await this.services.tasks.list(actor, { assigneeId: m.id, limit: 1000 }).catch(() => [] as TaskView[]);
     return this.ensureToday(actor.orgId, m, now, tasks.filter((t) => t.orgId === actor.orgId));
   }
 
