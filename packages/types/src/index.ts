@@ -621,6 +621,32 @@ export const HTTP_STATUS: Record<ErrorCode, number> = {
   internal: 500,
 };
 
+// ─── Web Push endpoint allow-list (ADDITION, security audit M1) ──────────────
+// A push subscription's endpoint is a URL the SERVER later POSTs to, so it must be a real
+// push service — never an arbitrary (internal) host. Shared by core (validation on subscribe)
+// and integrations (re-checked before every send).
+
+/** Exact push-service hosts. */
+export const PUSH_SERVICE_HOSTS: readonly string[] = ['fcm.googleapis.com', 'android.googleapis.com', 'updates.push.services.mozilla.com', 'web.push.apple.com'];
+/** Push-service host suffixes (any subdomain). */
+export const PUSH_SERVICE_HOST_SUFFIXES: readonly string[] = ['.push.services.mozilla.com', '.notify.windows.com', '.push.apple.com'];
+
+/** https, a known push-service host (no IP literals), port 443 only, no credentials. */
+export function isAllowedPushEndpoint(endpoint: unknown): boolean {
+  if (typeof endpoint !== 'string' || endpoint.length > 2048) return false;
+  let u: URL;
+  try {
+    u = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== 'https:' || u.username || u.password) return false;
+  if (u.port !== '' && u.port !== '443') return false;
+  const host = u.hostname.toLowerCase();
+  if (PUSH_SERVICE_HOSTS.includes(host)) return true;
+  return PUSH_SERVICE_HOST_SUFFIXES.some((s) => host.endsWith(s) && host.length > s.length && /^[a-z0-9.-]+$/.test(host));
+}
+
 // ─── Service contract (implemented by @companybrain/core) ────────────────────
 // The server (REST), MCP and intake all go through these services — never the DB.
 // Every method enforces: org scoping (actor.orgId), role permissions, API-key scope

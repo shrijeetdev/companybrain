@@ -7,6 +7,7 @@ import { htmlToText, stripQuotedReply, bestBody } from '../src/email/text';
 import { authenticatedByHeader, parseAuthenticationResults } from '../src/email/auth';
 import { mailToInbound } from '../src/email/poller';
 import { resolveTzid } from '../src/calendar/tz';
+import { sendPush } from '../src/push';
 
 const LIMIT_MS = 50;
 
@@ -143,4 +144,19 @@ test('H3: webhooks — provider verdicts set `authenticated`', () => {
   assert.equal(parseInboundEmailWebhook({ from: 'ceo@acme.io', subject: 'S', text: 'T', authenticated: 'true' })!.authenticated, false);
   // Escape hatch
   assert.equal(parseInboundEmailWebhook(sg, { trustUnverifiedSenders: true })!.authenticated, true);
+});
+
+// ─── M1: push SSRF guard before sending ─────────────────────────────────────
+
+test('M1: sendPush never contacts a non-push-service endpoint', async () => {
+  const calls: string[] = [];
+  const send = async (s: { endpoint: string }) => void calls.push(s.endpoint);
+  const keys = { publicKey: 'p', privateKey: 'k' };
+  const sub = (endpoint: string) => ({ endpoint, keys: { p256dh: 'p', auth: 'a' } });
+  for (const e of ['https://127.0.0.1:8443/x', 'https://internal.corp/x', 'http://fcm.googleapis.com/x', 'https://fcm.googleapis.com:444/x']) {
+    assert.equal(await sendPush(keys, 'mailto:a@b.co', sub(e), { title: 't', body: 'b' }, { send }), 'gone', e);
+  }
+  assert.deepEqual(calls, []);
+  assert.equal(await sendPush(keys, 'mailto:a@b.co', sub('https://fcm.googleapis.com/fcm/send/x'), { title: 't', body: 'b' }, { send }), 'sent');
+  assert.deepEqual(calls, ['https://fcm.googleapis.com/fcm/send/x']);
 });

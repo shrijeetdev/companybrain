@@ -149,7 +149,7 @@ test('me, briefing, misc service routes', async () => {
   assert.deepEqual(json(await h.app.inject({ method: 'GET', url: '/api/notifications/count', headers })), { unread: 3 });
   assert.deepEqual(json(await h.app.inject({ method: 'GET', url: '/api/push/vapid', headers })), { publicKey: 'BPublicKey' });
   assert.deepEqual(json(await h.app.inject({ method: 'POST', url: '/api/notifications/read', headers, payload: { ids: 'all' } })), { ok: true });
-  const sub = await h.app.inject({ method: 'POST', url: '/api/push/subscribe', headers, payload: { endpoint: 'https://push.example.com/abc', keys: { p256dh: 'p', auth: 'a' } } });
+  const sub = await h.app.inject({ method: 'POST', url: '/api/push/subscribe', headers, payload: { endpoint: 'https://web.push.apple.com/abc', keys: { p256dh: 'p', auth: 'a' } } });
   assert.deepEqual(json(sub), { ok: true });
   const rep = await h.app.inject({ method: 'GET', url: '/api/reports', headers });
   assert.equal(json(rep).windowDays, 30);

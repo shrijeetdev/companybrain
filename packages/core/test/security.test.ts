@@ -63,3 +63,46 @@ test('H3: email commands (list, done N) are only honoured from authenticated sen
   const wa = await env.s.inbox.ingest(orgId, { channel: 'whatsapp', from: '919876543210', fromName: null, subject: null, text: 'done 1', externalId: 'wamid.sec1', receivedAt: T0 });
   assert.match(wa.reply!, /Done: "Secret board prep"/, 'WhatsApp senders are verified by WhatsApp');
 });
+
+// ─── M1: Web Push SSRF ──────────────────────────────────────────────────────
+
+test('M1: push subscriptions only accept known push-service endpoints', async () => {
+  const env = makeEnv();
+  const team = await bootstrap(env);
+  const { a: pA, m: p } = await team.add('Priya');
+  const keys = { p256dh: 'k', auth: 'a' };
+  for (const endpoint of [
+    'https://127.0.0.1:8443/admin/reset', 'https://10.0.0.5/x', 'https://[::1]/x', 'https://169.254.169.254/latest/meta-data',
+    'http://fcm.googleapis.com/fcm/send/x', 'https://fcm.googleapis.com:8443/fcm/send/x', 'https://evil.example/x',
+    'https://fcm.googleapis.com.evil.example/x', 'https://notify.windows.com/x', 'https://user:pw@fcm.googleapis.com/x',
+  ]) {
+    await assert.rejects(env.s.notifications.subscribePush(pA, { endpoint, keys }, 'ua'), (e: any) => e.code === 'bad_request', endpoint);
+  }
+  for (const endpoint of [
+    'https://fcm.googleapis.com/fcm/send/abc', 'https://android.googleapis.com/gcm/send/abc', 'https://updates.push.services.mozilla.com/wpush/v2/abc',
+    'https://web.push.apple.com/QF0x', 'https://wns2-par02p.notify.windows.com/w/?token=abc', 'https://fcm.googleapis.com:443/fcm/send/def',
+  ]) {
+    await env.s.notifications.subscribePush(pA, { endpoint, keys }, 'ua');
+  }
+  assert.equal(env.db.push.list(p.orgId, p.id).length, 6);
+
+  // A bad endpoint already stored (e.g. before this fix) is dropped, never contacted.
+  env.db.push.upsert(p.orgId, p.id, { endpoint: 'https://127.0.0.1:9/internal', keys }, 'ua', T0);
+  assert.deepEqual(await env.s.notifications.sendTest(pA, 'push'), { ok: true });
+  assert.ok(!env.out.sent.some((s) => s.to.includes('127.0.0.1')), 'no request to the internal URL');
+  assert.ok(!env.db.push.list(p.orgId, p.id).some((s) => s.endpoint.includes('127.0.0.1')), 'bad subscription deleted');
+});
+
+// ─── L1: read-only keys ─────────────────────────────────────────────────────
+
+test('L1: a read-only API key cannot mark notifications read', async () => {
+  const env = makeEnv();
+  const team = await bootstrap(env);
+  const { m: p, a: pA } = await team.add('Priya');
+  await env.s.notifications.notify(p.orgId, p.id, { kind: 'system', title: 'Hello', body: 'b', taskId: null, meetingId: null, link: null, urgent: false });
+  const ro = { ...pA, via: 'api_key' as const, scopes: ['read' as const] };
+  await assert.rejects(env.s.notifications.markRead(ro, 'all'), (e: any) => e.code === 'forbidden');
+  assert.equal(await env.s.notifications.unreadCount(pA), 1);
+  await env.s.notifications.markRead({ ...ro, scopes: ['read', 'write'] }, 'all');
+  assert.equal(await env.s.notifications.unreadCount(pA), 0);
+});

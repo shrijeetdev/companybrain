@@ -235,8 +235,8 @@ test('meeting reminders, daily digest (self-rescheduling), push gone-cleanup', a
   assert.ok((await kinds(env, team.ownerA)).includes('meeting_soon'));
 
   await env.s.members.update(team.ownerA, team.owner.id, { prefs: { digestHour: 8 } });
-  await env.s.notifications.subscribePush(team.ownerA, { endpoint: 'https://push.example/abc', keys: { p256dh: 'k', auth: 'a' } }, 'ua');
-  env.out.goneEndpoints.add('https://push.example/abc');
+  await env.s.notifications.subscribePush(team.ownerA, { endpoint: 'https://updates.push.services.mozilla.com/wpush/v2/abc', keys: { p256dh: 'k', auth: 'a' } }, 'ua');
+  env.out.goneEndpoints.add('https://updates.push.services.mozilla.com/wpush/v2/abc');
   env.clock.set(Date.UTC(2026, 9, 13, 8, 0));
   await env.tick();
   const digest = (await env.s.notifications.list(team.ownerA)).find((n) => n.kind === 'digest')!;

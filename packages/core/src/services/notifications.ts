@@ -2,10 +2,10 @@
 // email) per member prefs through a persisted `notification.deliver` job — held until quiet
 // hours end for non-urgent notifications. Agents get in-app only.
 
-import { AppError, type Member, type Notification, type NotificationService } from '@companybrain/types';
+import { AppError, isAllowedPushEndpoint, type Member, type Notification, type NotificationService } from '@companybrain/types';
 import { newId } from '@companybrain/db';
 import { publish, type Ctx } from '../context.js';
-import { forbidden, notFound } from '../perms.js';
+import { forbidden, notFound, requireWrite } from '../perms.js';
 import { inQuietHours, quietEndsAt } from '../reminders.js';
 import * as v from '../validate.js';
 
@@ -50,6 +50,10 @@ export function createNotificationService(ctx: Ctx): NotificationInternals {
     const ch = externalChannels(m);
     if (ch.push) {
       for (const sub of db.push.list(orgId, m.id)) {
+        if (!isAllowedPushEndpoint(sub.endpoint)) {
+          db.push.delete(orgId, m.id, sub.endpoint); // never POST to a non-push-service URL (SSRF)
+          continue;
+        }
         try {
           const res = await ctx.outbound.push({ endpoint: sub.endpoint, keys: sub.keys }, { title: n.title, body: n.body, url: linkUrl(n.link), tag: n.taskId ?? n.meetingId ?? n.kind });
           if (res === 'gone') db.push.delete(orgId, m.id, sub.endpoint);
@@ -87,6 +91,7 @@ export function createNotificationService(ctx: Ctx): NotificationInternals {
     },
 
     async markRead(actor, ids) {
+      requireWrite(actor);
       if (ids !== 'all') {
         if (!Array.isArray(ids)) v.bad("ids must be an array or 'all'");
         if (ids.length > 1000) v.bad('Too many ids');
@@ -100,6 +105,7 @@ export function createNotificationService(ctx: Ctx): NotificationInternals {
       if (actor.kind !== 'human') forbidden('Only people can subscribe to push notifications');
       if (!v.isObj(sub) || !v.isObj(sub.keys)) v.bad('Invalid push subscription');
       const endpoint = v.url(sub.endpoint, 'endpoint', { httpsOnly: true });
+      if (!isAllowedPushEndpoint(endpoint)) v.bad('endpoint must be a Web Push service URL (FCM, Mozilla, Apple or Windows push service)');
       const p256dh = v.str(sub.keys.p256dh, 'keys.p256dh', { max: 200 });
       const auth = v.str(sub.keys.auth, 'keys.auth', { max: 100 });
       db.push.upsert(actor.orgId, actor.memberId, { endpoint, keys: { p256dh, auth } }, typeof userAgent === 'string' ? userAgent.slice(0, 300) : null, now());
@@ -167,6 +173,10 @@ export function createNotificationService(ctx: Ctx): NotificationInternals {
         if (!subs.length) return { ok: false, error: 'No push subscriptions — enable notifications in this browser first' };
         let sent = 0;
         for (const s of subs) {
+          if (!isAllowedPushEndpoint(s.endpoint)) {
+            db.push.delete(actor.orgId, m.id, s.endpoint);
+            continue;
+          }
           const res = await ctx.outbound.push({ endpoint: s.endpoint, keys: s.keys }, { title: 'Company Brain', body: text, url: '/', tag: 'test' });
           if (res === 'gone') db.push.delete(actor.orgId, m.id, s.endpoint);
           if (res === 'sent') sent++;

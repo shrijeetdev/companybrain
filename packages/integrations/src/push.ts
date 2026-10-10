@@ -3,6 +3,7 @@
 import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import webpush from 'web-push';
+import { isAllowedPushEndpoint } from '@companybrain/types';
 import type { IntegrationsConfig } from './config';
 import { defaultLogger, errMsg, type Logger } from './util';
 
@@ -70,7 +71,8 @@ export async function sendPush(
   const log = deps.log ?? defaultLogger;
   const send: PushSender = deps.send ?? ((s, p, o) => webpush.sendNotification(s, p, o));
   try {
-    if (!sub?.endpoint || !/^https:\/\//.test(sub.endpoint) || !sub.keys?.p256dh || !sub.keys?.auth) return 'gone';
+    // Only ever POST to a known push service (the endpoint is user-supplied: SSRF guard).
+    if (!sub?.endpoint || !isAllowedPushEndpoint(sub.endpoint) || !sub.keys?.p256dh || !sub.keys?.auth) return 'gone';
     await send(sub, JSON.stringify(payload), {
       vapidDetails: { subject, publicKey: keys.publicKey, privateKey: keys.privateKey },
       TTL: 24 * 60 * 60,
