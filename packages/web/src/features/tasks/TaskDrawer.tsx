@@ -112,7 +112,7 @@ function TaskDetailBody({ task }: { task: TaskView }) {
           }} />
         </Popover>
         {task.source.channel !== 'manual' && (
-          <span className="chip" title={task.source.from ?? undefined}><ChannelIcon channel={task.source.channel} size={13} /> {channelName(task.source.channel)}</span>
+          <span className="chip hide-on-mobile" title={task.source.from ?? undefined}><ChannelIcon channel={task.source.channel} size={13} /> {channelName(task.source.channel)}</span>
         )}
         {task.isStale && <span className="chip tone-warning">Agent quiet</span>}
         <span className="grow" />

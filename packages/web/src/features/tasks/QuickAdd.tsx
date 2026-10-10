@@ -61,6 +61,12 @@ export const QuickAdd = forwardRef<QuickAddHandle, Props>(function QuickAdd({ de
     return () => { live = false; };
   }, [debounced]);
 
+  // Keep the token highlight layer scrolled exactly like the input (typing auto-scrolls without a scroll event).
+  useEffect(() => {
+    const id = requestAnimationFrame(() => { if (hlRef.current && inputRef.current) hlRef.current.scrollLeft = inputRef.current.scrollLeft; });
+    return () => cancelAnimationFrame(id);
+  });
+
   const tokens = text.trim() && preview && debounced.trim() === text.trim() ? preview.parsed.tokens : [];
   const offset = text.length - text.trimStart().length;
 

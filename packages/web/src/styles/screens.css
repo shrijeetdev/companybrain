@@ -196,3 +196,4 @@
 .list-row { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--border); }
 .list-row:first-child { border-top: 0; }
 .list-row:hover { background: var(--surface-hover); }
+@media (max-width: 720px) { .hide-on-mobile { display: none !important; } }

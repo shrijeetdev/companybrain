@@ -17,7 +17,7 @@ mkdirSync(out, { recursive: true });
 const want = (k) => !only || only.includes(k);
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
-const ctx = await browser.newContext({ viewport: vp === 'mobile' ? { width: 390, height: 844 } : { width: 1440, height: 900 }, deviceScaleFactor: vp === 'mobile' ? 2 : 1, colorScheme: mode, isMobile: vp === 'mobile', hasTouch: vp === 'mobile' });
+const ctx = await browser.newContext({ viewport: vp === 'mobile' ? { width: 390, height: 844 } : { width: 1440, height: 900 }, deviceScaleFactor: Number(args.dpr ?? (vp === 'mobile' ? 2 : 1)), colorScheme: mode, isMobile: vp === 'mobile', hasTouch: vp === 'mobile' });
 const page = await ctx.newPage();
 let errors = 0;
 page.on('console', (m) => { if (m.type() === 'error') { errors++; console.log('console.error:', m.text()); } });
@@ -42,7 +42,7 @@ if (want('drawer')) {
   await page.goto(base + '/tasks', { waitUntil: 'load' });
   await page.waitForSelector('.task-row');
   await page.waitForTimeout(500);
-  await page.locator('.task-row', { hasText: 'Send Acme proposal v2' }).first().click();
+  await page.locator('.task-row').first().click();
   await page.waitForSelector('.drawer');
   await page.waitForTimeout(900);
   await shot('drawer');
@@ -122,6 +122,23 @@ if (want('crate')) {
   await shot('crate-shake');
   await page.waitForTimeout(1400);
   await shot('crate-reveal');
+  await page.keyboard.press('Escape');
+}
+if (want('fab') && vp === 'mobile') {
+  await page.goto(base + '/', { waitUntil: 'load' });
+  await page.waitForSelector('.fab');
+  await page.waitForTimeout(600);
+  await page.click('.fab');
+  await page.waitForSelector('.modal .quickadd input');
+  await page.keyboard.type('Call Raj tomorrow 3pm #launch !urgent');
+  await page.waitForTimeout(900);
+  await shot('fab-quickadd');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+  await page.click('.tabbar button[aria-label="More"]');
+  await page.waitForTimeout(700);
+  await shot('more');
   await page.keyboard.press('Escape');
 }
 if (want('connect')) {

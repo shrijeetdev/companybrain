@@ -24,7 +24,7 @@ let errors = 0;
 for (const vp of vps) {
   for (const mode of modes) {
     const vw = VIEWPORTS[vp].width;
-    const ctx = await browser.newContext({ viewport: VIEWPORTS[vp], deviceScaleFactor: vp === 'mobile' ? 2 : 1, colorScheme: mode, isMobile: vp === 'mobile', hasTouch: vp === 'mobile', reducedMotion: args.reduced ? 'reduce' : 'no-preference' });
+    const ctx = await browser.newContext({ viewport: VIEWPORTS[vp], deviceScaleFactor: Number(args.dpr ?? (vp === 'mobile' ? 2 : 1)), colorScheme: mode, isMobile: vp === 'mobile', hasTouch: vp === 'mobile', reducedMotion: args.reduced ? 'reduce' : 'no-preference' });
     const page = await ctx.newPage();
     page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') { errors += m.type() === 'error' ? 1 : 0; console.log(`[${vp}/${mode}] console.${m.type()}: ${m.text()}`); } });
     page.on('pageerror', (e) => { errors++; console.log(`[${vp}/${mode}] pageerror: ${e.message}`); });
