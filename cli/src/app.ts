@@ -139,7 +139,7 @@ export async function createApp(opts: CreateAppOptions): Promise<App> {
         verifySignature: (raw, sig) => whatsappCloud.verifySignature(cfg, raw, sig),
         parse: (body) => whatsappCloud.parseWebhook(body),
       },
-      parseEmailWebhook: parseInboundEmailWebhook,
+      parseEmailWebhook: (body) => parseInboundEmailWebhook(body, cfg.emailAuth),
       sendTest: (actor, channel) => services.notifications.sendTest(actor, channel),
     },
     mcp: { handleHttp: handleMcpHttp },

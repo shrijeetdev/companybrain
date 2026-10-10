@@ -8,6 +8,7 @@ import { extractAddress, type IntegrationsConfig } from '../config';
 import { backoffMs, defaultLogger, errMsg, withTimeout, type Logger } from '../util';
 import { createMailer, type Mailer } from './smtp';
 import { bestBody } from './text';
+import { authenticatedByHeader, MAX_AUTH_RESULTS, type EmailAuthOptions } from './auth';
 
 export interface EmailPoller {
   start(): void;
@@ -65,11 +66,28 @@ export function isAutomated(mail: ParsedMail): boolean {
   return false;
 }
 
+/**
+ * Value of the TOPMOST `Authentication-Results` header — the one prepended by the receiving
+ * mailbox provider. Lower ones may have been written by the sender and are ignored.
+ */
+export function topmostAuthenticationResults(mail: ParsedMail): string | null {
+  for (const h of mail.headerLines ?? []) {
+    if (h.key !== 'authentication-results') continue;
+    const line = h.line.slice(0, MAX_AUTH_RESULTS + 64);
+    const colon = line.indexOf(':');
+    return colon < 0 ? null : line.slice(colon + 1).trim();
+  }
+  return null;
+}
+
 /** Convert a parsed email into an InboundMessage (null if it has no usable sender/content). */
-export function mailToInbound(mail: ParsedMail, fallbackId: string): InboundMessage | null {
+export function mailToInbound(mail: ParsedMail, fallbackId: string, auth: EmailAuthOptions = {}): InboundMessage | null {
   const from = firstAddress(mail.from);
   if (!from) return null;
-  const subject = mail.subject?.trim() || null;
+  // Exactly one From address (multiple authors can't all be verified).
+  const fromCount = (Array.isArray(mail.from) ? mail.from : mail.from ? [mail.from] : []).reduce((n, o) => n + (o.value?.length ?? 0), 0);
+  const authenticated = !!auth.trustUnverifiedSenders || (fromCount === 1 && authenticatedByHeader(topmostAuthenticationResults(mail), from.address, auth));
+  const subject = mail.subject?.slice(0, 1024).trim() || null;
   const text = bestBody(mail.text ?? null, typeof mail.html === 'string' ? mail.html : null) || subject || '';
   if (!text) return null;
   return {
@@ -80,6 +98,7 @@ export function mailToInbound(mail: ParsedMail, fallbackId: string): InboundMess
     text,
     externalId: mail.messageId?.trim() || fallbackId,
     receivedAt: mail.date instanceof Date && Number.isFinite(mail.date.getTime()) ? mail.date.getTime() : Date.now(),
+    authenticated,
   };
 }
 
@@ -123,7 +142,7 @@ export function createEmailPoller(cfg: IntegrationsConfig, onInbound: OnInbound,
     const msg = await client.fetchOne(String(uid), { source: true, uid: true }, { uid: true });
     if (!msg || !msg.source) return false;
     const mail = await simpleParser(msg.source);
-    const inbound = mailToInbound(mail, `imap:${imap!.user}:${imap!.mailbox}:${uid}`);
+    const inbound = mailToInbound(mail, `imap:${imap!.user}:${imap!.mailbox}:${uid}`, cfg.emailAuth);
     const sender = inbound?.from ?? '';
     if (!inbound || isAutomated(mail) || ownAddresses.has(sender)) {
       await client.messageFlagsAdd([uid], ['\\Seen'], { uid: true });

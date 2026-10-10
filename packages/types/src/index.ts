@@ -346,6 +346,16 @@ export interface InboundMessage {
   /** External message id (dedupe). */
   externalId: string;
   receivedAt: number;
+  /**
+   * ADDITION (security audit H3): did the transport verify that `from` really sent this?
+   * Email: true only when the receiving mail system vouched for the From address (DMARC pass, or
+   * DKIM/SPF pass aligned with the From domain — see @companybrain/integrations email/auth.ts),
+   * or when EMAIL_TRUST_UNVERIFIED_SENDERS=true (unsafe). Absent/false for email = unverified:
+   * intake never matches it to a member and ignores commands from it.
+   * WhatsApp (Cloud API / QR): the sender number is verified by WhatsApp; intake treats WhatsApp
+   * as authenticated regardless of this field.
+   */
+  authenticated?: boolean;
 }
 
 export interface InboxItem {

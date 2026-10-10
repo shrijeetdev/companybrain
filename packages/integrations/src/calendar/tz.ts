@@ -137,7 +137,7 @@ const WINDOWS_TZ: Record<string, string> = {
 /** Resolve an ICS TZID to an IANA zone Intl understands, or null. */
 export function resolveTzid(tzid: string | null | undefined): string | null {
   if (!tzid) return null;
-  const t = tzid.trim().replace(/^"(.*)"$/, '$1');
+  const t = tzid.trim().slice(0, 128).replace(/^"(.*)"$/, '$1');
   if (!t) return null;
   if (/^(utc|gmt|z|etc\/utc|etc\/gmt)$/i.test(t)) return 'UTC';
   if (isValidTimeZone(t)) return t;

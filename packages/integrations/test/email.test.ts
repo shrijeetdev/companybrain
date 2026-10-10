@@ -55,6 +55,7 @@ test('webhook: Postmark', () => {
     text: 'Please send it by Friday.',
     externalId: '<abc@mail.x.com>',
     receivedAt: Date.UTC(2026, 9, 5, 10),
+    authenticated: false,
   } satisfies InboundMessage);
 });
 
@@ -196,6 +197,7 @@ test('email poller: pollOnce parses UNSEEN, strips quotes, marks seen, sends thr
     text: 'Pay the invoice today',
     externalId: '<m11@x.com>',
     receivedAt: Date.UTC(2026, 9, 5, 10),
+    authenticated: false,
   });
   assert.deepEqual(seen.sort(), [11, 12, 13]);
   assert.deepEqual(sent, [
