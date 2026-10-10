@@ -883,13 +883,13 @@ var require_shared = __commonJS({
       });
       return response;
     };
-    module.exports.callbackPromise = (resolve5, reject) => function() {
+    module.exports.callbackPromise = (resolve6, reject) => function() {
       let args = Array.from(arguments);
       let err = args.shift();
       if (err) {
         reject(err);
       } else {
-        resolve5(...args);
+        resolve6(...args);
       }
     };
     module.exports.parseDataURI = (uri) => {
@@ -951,8 +951,8 @@ var require_shared = __commonJS({
     module.exports.resolveContent = (data, key, callback) => {
       let promise2;
       if (!callback) {
-        promise2 = new Promise((resolve5, reject) => {
-          callback = module.exports.callbackPromise(resolve5, reject);
+        promise2 = new Promise((resolve6, reject) => {
+          callback = module.exports.callbackPromise(resolve6, reject);
         });
       }
       let content = data && data[key] && data[key].content || data[key];
@@ -4859,8 +4859,8 @@ var require_mime_node = __commonJS({
       build(callback) {
         let promise2;
         if (!callback) {
-          promise2 = new Promise((resolve5, reject) => {
-            callback = shared.callbackPromise(resolve5, reject);
+          promise2 = new Promise((resolve6, reject) => {
+            callback = shared.callbackPromise(resolve6, reject);
           });
         }
         let stream = this.createReadStream();
@@ -6985,14 +6985,14 @@ var require_mailer = __commonJS({
           this.getVersionString()
         );
         if (typeof this.transporter.on === "function") {
-          this.transporter.on("log", (log2) => {
+          this.transporter.on("log", (log) => {
             this.logger.debug(
               {
                 tnx: "transport"
               },
               "%s: %s",
-              log2.type,
-              log2.message
+              log.type,
+              log.message
             );
           });
           this.transporter.on("error", (err) => {
@@ -7056,8 +7056,8 @@ var require_mailer = __commonJS({
       sendMail(data, callback = null) {
         let promise2;
         if (!callback) {
-          promise2 = new Promise((resolve5, reject) => {
-            callback = shared.callbackPromise(resolve5, reject);
+          promise2 = new Promise((resolve6, reject) => {
+            callback = shared.callbackPromise(resolve6, reject);
           });
         }
         if (typeof this.getSocket === "function") {
@@ -7705,7 +7705,7 @@ var require_smtp_connection = __commonJS({
           let handler = this.customAuth.get(this._authMethod);
           let lastResponse;
           let returned = false;
-          let resolve5 = () => {
+          let resolve6 = () => {
             if (returned) {
               return;
             }
@@ -7739,8 +7739,8 @@ var require_smtp_connection = __commonJS({
             sendCommand: (cmd, done) => {
               let promise2;
               if (!done) {
-                promise2 = new Promise((resolve6, reject2) => {
-                  done = shared.callbackPromise(resolve6, reject2);
+                promise2 = new Promise((resolve7, reject2) => {
+                  done = shared.callbackPromise(resolve7, reject2);
                 });
               }
               this._responseActions.push((str5) => {
@@ -7765,11 +7765,11 @@ var require_smtp_connection = __commonJS({
               setImmediate(() => this._sendCommand(cmd));
               return promise2;
             },
-            resolve: resolve5,
+            resolve: resolve6,
             reject
           });
           if (handlerResponse && typeof handlerResponse.catch === "function") {
-            handlerResponse.then(resolve5).catch(reject);
+            handlerResponse.then(resolve6).catch(reject);
           }
           return;
         }
@@ -10452,8 +10452,8 @@ var require_smtp_pool = __commonJS({
       verify(callback) {
         let promise2;
         if (!callback) {
-          promise2 = new Promise((resolve5, reject) => {
-            callback = shared.callbackPromise(resolve5, reject);
+          promise2 = new Promise((resolve6, reject) => {
+            callback = shared.callbackPromise(resolve6, reject);
           });
         }
         let auth = new PoolResource(this).auth;
@@ -10804,8 +10804,8 @@ var require_smtp_transport = __commonJS({
       verify(callback) {
         let promise2;
         if (!callback) {
-          promise2 = new Promise((resolve5, reject) => {
-            callback = shared.callbackPromise(resolve5, reject);
+          promise2 = new Promise((resolve6, reject) => {
+            callback = shared.callbackPromise(resolve6, reject);
           });
         }
         this.getSocket(this.options, (err, socketOptions) => {
@@ -11422,8 +11422,8 @@ var require_ses_transport = __commonJS({
       verify(callback) {
         let promise2;
         if (!callback) {
-          promise2 = new Promise((resolve5, reject) => {
-            callback = shared.callbackPromise(resolve5, reject);
+          promise2 = new Promise((resolve6, reject) => {
+            callback = shared.callbackPromise(resolve6, reject);
           });
         }
         const cb = (err) => {
@@ -11522,8 +11522,8 @@ var require_nodemailer = __commonJS({
         apiUrl = false;
       }
       if (!callback) {
-        promise2 = new Promise((resolve5, reject) => {
-          callback = shared.callbackPromise(resolve5, reject);
+        promise2 = new Promise((resolve6, reject) => {
+          callback = shared.callbackPromise(resolve6, reject);
         });
       }
       if (ETHEREAL_CACHE && testAccount) {
@@ -14720,7 +14720,7 @@ var require_buffer = __commonJS({
       const isCompatible = typeof data === "object" && data.constructor.name === "EncoderBuffer" && typeof data.length === "number" && typeof data.join === "function";
       return isCompatible;
     };
-    EncoderBuffer.prototype.join = function join6(out, offset) {
+    EncoderBuffer.prototype.join = function join8(out, offset) {
       if (!out)
         out = Buffer2.alloc(this.length);
       if (!offset)
@@ -15769,12 +15769,12 @@ var require_der3 = __commonJS({
       }
       if (subident & 128)
         identifiers.push(ident);
-      const first = identifiers[0] / 40 | 0;
+      const first2 = identifiers[0] / 40 | 0;
       const second = identifiers[0] % 40;
       if (relative)
         result = identifiers;
       else
-        result = [first, second].concat(identifiers.slice(1));
+        result = [first2, second].concat(identifiers.slice(1));
       if (values) {
         let tmp = values[result.join(" ")];
         if (tmp === void 0)
@@ -18004,7 +18004,7 @@ var require_node2 = __commonJS({
     var tty = __require("tty");
     var util2 = __require("util");
     exports.init = init;
-    exports.log = log2;
+    exports.log = log;
     exports.formatArgs = formatArgs;
     exports.save = save;
     exports.load = load;
@@ -18139,7 +18139,7 @@ var require_node2 = __commonJS({
       }
       return (/* @__PURE__ */ new Date()).toISOString() + " ";
     }
-    function log2(...args) {
+    function log(...args) {
       return process.stderr.write(util2.formatWithOptions(exports.inspectOpts, ...args) + "\n");
     }
     function save(namespaces) {
@@ -18243,8 +18243,8 @@ var require_helpers = __commonJS({
     function req(url3, opts = {}) {
       const href = typeof url3 === "string" ? url3 : url3.href;
       const req2 = (href.startsWith("https:") ? https2 : http2).request(url3, opts);
-      const promise2 = new Promise((resolve5, reject) => {
-        req2.once("response", resolve5).once("error", reject).end();
+      const promise2 = new Promise((resolve6, reject) => {
+        req2.once("response", resolve6).once("error", reject).end();
       });
       req2.then = promise2.then.bind(promise2);
       return req2;
@@ -18421,7 +18421,7 @@ var require_parse_proxy_response = __commonJS({
     var debug_1 = __importDefault(require_src());
     var debug = (0, debug_1.default)("https-proxy-agent:parse-proxy-response");
     function parseProxyResponse(socket) {
-      return new Promise((resolve5, reject) => {
+      return new Promise((resolve6, reject) => {
         let buffersLength = 0;
         const buffers = [];
         function read() {
@@ -18487,7 +18487,7 @@ var require_parse_proxy_response = __commonJS({
           }
           debug("got proxy server response: %o %o", firstLine2, headers);
           cleanup();
-          resolve5({
+          resolve6({
             connect: {
               statusCode,
               statusText,
@@ -18883,7 +18883,7 @@ var require_web_push_lib = __commonJS({
       } catch (err) {
         return Promise.reject(err);
       }
-      return new Promise(function(resolve5, reject) {
+      return new Promise(function(resolve6, reject) {
         const httpsOptions = {};
         const urlParts = url3.parse(requestDetails.endpoint);
         httpsOptions.hostname = urlParts.hostname;
@@ -18916,7 +18916,7 @@ var require_web_push_lib = __commonJS({
                 requestDetails.endpoint
               ));
             } else {
-              resolve5({
+              resolve6({
                 statusCode: pushResponse.statusCode,
                 body: responseText,
                 headers: pushResponse.headers
@@ -19739,7 +19739,7 @@ var require_galois_field = __commonJS({
         EXP_TABLE[i] = EXP_TABLE[i - 255];
       }
     })();
-    exports.log = function log2(n) {
+    exports.log = function log(n) {
       if (n < 1) throw new Error("log(" + n + ")");
       return LOG_TABLE[n];
     };
@@ -23347,10 +23347,10 @@ var require_browser2 = __commonJS({
           text = canvas;
           canvas = void 0;
         }
-        return new Promise(function(resolve5, reject) {
+        return new Promise(function(resolve6, reject) {
           try {
             const data = QRCode2.create(text, opts);
-            resolve5(renderFunc(data, canvas, opts));
+            resolve6(renderFunc(data, canvas, opts));
           } catch (e) {
             reject(e);
           }
@@ -23431,11 +23431,11 @@ var require_server = __commonJS({
     }
     function render(renderFunc, text, params) {
       if (!params.cb) {
-        return new Promise(function(resolve5, reject) {
+        return new Promise(function(resolve6, reject) {
           try {
             const data = QRCode2.create(text, params.opts);
             return renderFunc(data, params.opts, function(err, data2) {
-              return err ? reject(err) : resolve5(data2);
+              return err ? reject(err) : resolve6(data2);
             });
           } catch (e) {
             reject(e);
@@ -24416,9 +24416,9 @@ var require_redaction = __commonJS({
       const { paths, censor, remove } = handle(opts);
       const shape = paths.reduce((o, str5) => {
         rx2.lastIndex = 0;
-        const first = rx2.exec(str5);
+        const first2 = rx2.exec(str5);
         const next = rx2.exec(str5);
-        let ns = first[1] !== void 0 ? first[1].replace(/^(?:"|'|`)(.*)(?:"|'|`)$/, "$1") : first[0];
+        let ns = first2[1] !== void 0 ? first2[1].replace(/^(?:"|'|`)(.*)(?:"|'|`)$/, "$1") : first2[0];
         if (ns === "*") {
           ns = wildcardFirstSym;
         }
@@ -25488,7 +25488,7 @@ var require_thread_stream = __commonJS({
     var { version: version2 } = require_package2();
     var { EventEmitter } = __require("events");
     var { Worker } = __require("worker_threads");
-    var { join: join6 } = __require("path");
+    var { join: join8 } = __require("path");
     var { pathToFileURL } = __require("url");
     var { wait } = require_wait();
     var {
@@ -25539,7 +25539,7 @@ var require_thread_stream = __commonJS({
     function createWorker(stream, opts) {
       const { filename, workerData } = opts;
       const bundlerOverrides = "__bundlerPathsOverrides" in globalThis ? globalThis.__bundlerPathsOverrides : {};
-      const toExecute = bundlerOverrides["thread-stream-worker"] || join6(__dirname, "lib", "worker.js");
+      const toExecute = bundlerOverrides["thread-stream-worker"] || join8(__dirname, "lib", "worker.js");
       const worker = new Worker(toExecute, {
         ...opts.workerOpts,
         name: opts.workerOpts?.name || "thread-stream",
@@ -26005,9 +26005,9 @@ var require_transport = __commonJS({
   "node_modules/.pnpm/pino@10.3.1/node_modules/pino/lib/transport.js"(exports, module) {
     "use strict";
     var { createRequire } = __require("module");
-    var { existsSync: existsSync4 } = __require("node:fs");
+    var { existsSync: existsSync6 } = __require("node:fs");
     var getCallers = require_caller();
-    var { join: join6, isAbsolute, sep: sep2 } = __require("node:path");
+    var { join: join8, isAbsolute, sep: sep2 } = __require("node:path");
     var { fileURLToPath: fileURLToPath2 } = __require("node:url");
     var sleep = require_atomic_sleep();
     var onExit = require_on_exit_leak_free();
@@ -26079,12 +26079,12 @@ var require_transport = __commonJS({
           return false;
         }
       }
-      return isAbsolute(path) && !existsSync4(path);
+      return isAbsolute(path) && !existsSync6(path);
     }
     function stripQuotes(value) {
-      const first = value[0];
+      const first2 = value[0];
       const last = value[value.length - 1];
-      if (first === '"' && last === '"' || first === "'" && last === "'") {
+      if (first2 === '"' && last === '"' || first2 === "'" && last === "'") {
         return value.slice(1, -1);
       }
       return value;
@@ -26160,7 +26160,7 @@ var require_transport = __commonJS({
         throw new Error("only one of target or targets can be specified");
       }
       if (targets) {
-        target = bundlerOverrides["pino-worker"] || join6(__dirname, "worker.js");
+        target = bundlerOverrides["pino-worker"] || join8(__dirname, "worker.js");
         options.targets = targets.filter((dest) => dest.target).map((dest) => {
           return {
             ...dest,
@@ -26178,7 +26178,7 @@ var require_transport = __commonJS({
           });
         });
       } else if (pipeline) {
-        target = bundlerOverrides["pino-worker"] || join6(__dirname, "worker.js");
+        target = bundlerOverrides["pino-worker"] || join8(__dirname, "worker.js");
         options.pipelines = [pipeline.map((dest) => {
           return {
             ...dest,
@@ -26201,7 +26201,7 @@ var require_transport = __commonJS({
           return origin;
         }
         if (origin === "pino/file") {
-          return join6(__dirname, "..", "file.js");
+          return join8(__dirname, "..", "file.js");
         }
         let fixTarget2;
         for (const filePath of callers) {
@@ -26521,11 +26521,11 @@ var require_tools = __commonJS({
         }
       }
     }
-    function buildFormatters(level, bindings, log2) {
+    function buildFormatters(level, bindings, log) {
       return {
         level,
         bindings,
-        log: log2
+        log
       };
     }
     function normalizeDestFileDescriptor(destination) {
@@ -26906,11 +26906,11 @@ var require_proto = __commonJS({
         }
       } else instance[serializersSym] = serializers;
       if (options.hasOwnProperty("formatters")) {
-        const { level, bindings: chindings, log: log2 } = options.formatters;
+        const { level, bindings: chindings, log } = options.formatters;
         instance[formattersSym] = buildFormatters(
           level || formatters2.level,
           chindings || resetChildingsFormatter,
-          log2 || formatters2.log
+          log || formatters2.log
         );
       } else {
         instance[formattersSym] = buildFormatters(
@@ -27181,7 +27181,7 @@ var require_safe_stable_stringify = __commonJS({
               return circularValue;
             }
             let res = "";
-            let join6 = ",";
+            let join8 = ",";
             const originalIndentation = indentation;
             if (Array.isArray(value)) {
               if (value.length === 0) {
@@ -27195,7 +27195,7 @@ var require_safe_stable_stringify = __commonJS({
                 indentation += spacer;
                 res += `
 ${indentation}`;
-                join6 = `,
+                join8 = `,
 ${indentation}`;
               }
               const maximumValuesToStringify = Math.min(value.length, maximumBreadth);
@@ -27203,13 +27203,13 @@ ${indentation}`;
               for (; i < maximumValuesToStringify - 1; i++) {
                 const tmp2 = stringifyFnReplacer(String(i), value, stack, replacer, spacer, indentation);
                 res += tmp2 !== void 0 ? tmp2 : "null";
-                res += join6;
+                res += join8;
               }
               const tmp = stringifyFnReplacer(String(i), value, stack, replacer, spacer, indentation);
               res += tmp !== void 0 ? tmp : "null";
               if (value.length - 1 > maximumBreadth) {
                 const removedKeys = value.length - maximumBreadth - 1;
-                res += `${join6}"... ${getItemCount(removedKeys)} not stringified"`;
+                res += `${join8}"... ${getItemCount(removedKeys)} not stringified"`;
               }
               if (spacer !== "") {
                 res += `
@@ -27230,7 +27230,7 @@ ${originalIndentation}`;
             let separator = "";
             if (spacer !== "") {
               indentation += spacer;
-              join6 = `,
+              join8 = `,
 ${indentation}`;
               whitespace = " ";
             }
@@ -27244,13 +27244,13 @@ ${indentation}`;
               const tmp = stringifyFnReplacer(key2, value, stack, replacer, spacer, indentation);
               if (tmp !== void 0) {
                 res += `${separator}${strEscape(key2)}:${whitespace}${tmp}`;
-                separator = join6;
+                separator = join8;
               }
             }
             if (keyLength > maximumBreadth) {
               const removedKeys = keyLength - maximumBreadth;
               res += `${separator}"...":${whitespace}"${getItemCount(removedKeys)} not stringified"`;
-              separator = join6;
+              separator = join8;
             }
             if (spacer !== "" && separator.length > 1) {
               res = `
@@ -27291,7 +27291,7 @@ ${originalIndentation}`;
             }
             const originalIndentation = indentation;
             let res = "";
-            let join6 = ",";
+            let join8 = ",";
             if (Array.isArray(value)) {
               if (value.length === 0) {
                 return "[]";
@@ -27304,7 +27304,7 @@ ${originalIndentation}`;
                 indentation += spacer;
                 res += `
 ${indentation}`;
-                join6 = `,
+                join8 = `,
 ${indentation}`;
               }
               const maximumValuesToStringify = Math.min(value.length, maximumBreadth);
@@ -27312,13 +27312,13 @@ ${indentation}`;
               for (; i < maximumValuesToStringify - 1; i++) {
                 const tmp2 = stringifyArrayReplacer(String(i), value[i], stack, replacer, spacer, indentation);
                 res += tmp2 !== void 0 ? tmp2 : "null";
-                res += join6;
+                res += join8;
               }
               const tmp = stringifyArrayReplacer(String(i), value[i], stack, replacer, spacer, indentation);
               res += tmp !== void 0 ? tmp : "null";
               if (value.length - 1 > maximumBreadth) {
                 const removedKeys = value.length - maximumBreadth - 1;
-                res += `${join6}"... ${getItemCount(removedKeys)} not stringified"`;
+                res += `${join8}"... ${getItemCount(removedKeys)} not stringified"`;
               }
               if (spacer !== "") {
                 res += `
@@ -27331,7 +27331,7 @@ ${originalIndentation}`;
             let whitespace = "";
             if (spacer !== "") {
               indentation += spacer;
-              join6 = `,
+              join8 = `,
 ${indentation}`;
               whitespace = " ";
             }
@@ -27340,7 +27340,7 @@ ${indentation}`;
               const tmp = stringifyArrayReplacer(key2, value[key2], stack, replacer, spacer, indentation);
               if (tmp !== void 0) {
                 res += `${separator}${strEscape(key2)}:${whitespace}${tmp}`;
-                separator = join6;
+                separator = join8;
               }
             }
             if (spacer !== "" && separator.length > 1) {
@@ -27398,20 +27398,20 @@ ${originalIndentation}`;
               indentation += spacer;
               let res2 = `
 ${indentation}`;
-              const join7 = `,
+              const join9 = `,
 ${indentation}`;
               const maximumValuesToStringify = Math.min(value.length, maximumBreadth);
               let i = 0;
               for (; i < maximumValuesToStringify - 1; i++) {
                 const tmp2 = stringifyIndent(String(i), value[i], stack, spacer, indentation);
                 res2 += tmp2 !== void 0 ? tmp2 : "null";
-                res2 += join7;
+                res2 += join9;
               }
               const tmp = stringifyIndent(String(i), value[i], stack, spacer, indentation);
               res2 += tmp !== void 0 ? tmp : "null";
               if (value.length - 1 > maximumBreadth) {
                 const removedKeys = value.length - maximumBreadth - 1;
-                res2 += `${join7}"... ${getItemCount(removedKeys)} not stringified"`;
+                res2 += `${join9}"... ${getItemCount(removedKeys)} not stringified"`;
               }
               res2 += `
 ${originalIndentation}`;
@@ -27427,16 +27427,16 @@ ${originalIndentation}`;
               return '"[Object]"';
             }
             indentation += spacer;
-            const join6 = `,
+            const join8 = `,
 ${indentation}`;
             let res = "";
             let separator = "";
             let maximumPropertiesToStringify = Math.min(keyLength, maximumBreadth);
             if (isTypedArrayWithEntries(value)) {
-              res += stringifyTypedArray(value, join6, maximumBreadth);
+              res += stringifyTypedArray(value, join8, maximumBreadth);
               keys = keys.slice(value.length);
               maximumPropertiesToStringify -= value.length;
-              separator = join6;
+              separator = join8;
             }
             if (deterministic) {
               keys = sort(keys, comparator);
@@ -27447,13 +27447,13 @@ ${indentation}`;
               const tmp = stringifyIndent(key2, value[key2], stack, spacer, indentation);
               if (tmp !== void 0) {
                 res += `${separator}${strEscape(key2)}: ${tmp}`;
-                separator = join6;
+                separator = join8;
               }
             }
             if (keyLength > maximumBreadth) {
               const removedKeys = keyLength - maximumBreadth;
               res += `${separator}"...": "${getItemCount(removedKeys)} not stringified"`;
-              separator = join6;
+              separator = join8;
             }
             if (separator !== "") {
               res = `
@@ -47195,13 +47195,13 @@ var require_encoding_convert = __commonJS({
       var i = 0;
       var len = data && data.length;
       var isLE = false;
-      var first = true;
+      var first2 = true;
       var c1, c2;
       while (i < len) {
         c1 = data[i++];
         c2 = data[i++];
-        if (first && i === 2) {
-          first = false;
+        if (first2 && i === 2) {
+          first2 = false;
           if (c1 === 254 && c2 === 255) {
             isLE = false;
           } else if (c1 === 255 && c2 === 254) {
@@ -47234,13 +47234,13 @@ var require_encoding_convert = __commonJS({
       var i = 0;
       var len = data && data.length;
       var isLE = false;
-      var first = true;
+      var first2 = true;
       var c1, c2;
       while (i < len) {
         c1 = data[i++];
         c2 = data[i++];
-        if (first && i === 2) {
-          first = false;
+        if (first2 && i === 2) {
+          first2 = false;
           if (c1 === 254 && c2 === 255) {
             isLE = false;
           } else if (c1 === 255 && c2 === 254) {
@@ -47307,13 +47307,13 @@ var require_encoding_convert = __commonJS({
       var i = 0;
       var len = data && data.length;
       var isLE = false;
-      var first = true;
+      var first2 = true;
       var c1, c2;
       while (i < len) {
         c1 = data[i++];
         c2 = data[i++];
-        if (first && i === 2) {
-          first = false;
+        if (first2 && i === 2) {
+          first2 = false;
           if (c1 === 254 && c2 === 255) {
             isLE = false;
           } else if (c1 === 255 && c2 === 254) {
@@ -53726,9 +53726,9 @@ var require_imap_stream = __commonJS({
                   }
                   if (payload.length) {
                     let trailingAfterLine = lineStart < chunk.length || this.inputQueue.length > 0;
-                    await new Promise((resolve5) => {
-                      this.pendingPush = resolve5;
-                      this.push({ payload, literals, next: resolve5, trailingAfterLine });
+                    await new Promise((resolve6) => {
+                      this.pendingPush = resolve6;
+                      this.push({ payload, literals, next: resolve6, trailingAfterLine });
                     });
                     this.pendingPush = null;
                     if (this.destroyed) {
@@ -53783,7 +53783,7 @@ var require_imap_stream = __commonJS({
           this.releaseInput(data);
           processedCount++;
           if (processedCount % 10 === 0) {
-            await new Promise((resolve5) => setImmediate(resolve5));
+            await new Promise((resolve6) => setImmediate(resolve6));
           }
         }
       }
@@ -53846,9 +53846,9 @@ var require_imap_stream = __commonJS({
         this.literals = [];
         this.responseBytes = 0;
         if (typeof this.pendingPush === "function") {
-          const resolve5 = this.pendingPush;
+          const resolve6 = this.pendingPush;
           this.pendingPush = null;
-          resolve5();
+          resolve6();
         }
         this.releaseInput(this.activeInput);
         this.activeInput = null;
@@ -57290,23 +57290,23 @@ var require_helpers2 = __commonJS({
   "node_modules/.pnpm/ip-address@10.7.3/node_modules/ip-address/dist/v6/helpers.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.escapeHtml = escapeHtml;
+    exports.escapeHtml = escapeHtml2;
     exports.spanAllZeroes = spanAllZeroes;
     exports.spanAll = spanAll;
     exports.spanLeadingZeroes = spanLeadingZeroes;
     exports.simpleGroup = simpleGroup;
-    function escapeHtml(s2) {
+    function escapeHtml2(s2) {
       return s2.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     }
     function spanAllZeroes(s2) {
-      return escapeHtml(s2).replace(/(0+)/g, '<span class="zero">$1</span>');
+      return escapeHtml2(s2).replace(/(0+)/g, '<span class="zero">$1</span>');
     }
     function spanAll(s2, offset = 0) {
       const letters = s2.split("");
-      return letters.map((n, i) => `<span class="digit value-${escapeHtml(n)} position-${i + offset}">${spanAllZeroes(n)}</span>`).join("");
+      return letters.map((n, i) => `<span class="digit value-${escapeHtml2(n)} position-${i + offset}">${spanAllZeroes(n)}</span>`).join("");
     }
     function spanLeadingZeroesSimple(group) {
-      return escapeHtml(group).replace(/^(0+)/, '<span class="zero">$1</span>');
+      return escapeHtml2(group).replace(/^(0+)/, '<span class="zero">$1</span>');
     }
     function spanLeadingZeroes(address) {
       const groups = address.split(":");
@@ -58081,22 +58081,22 @@ var require_ipv6 = __commonJS({
         let groups = [];
         const halves = address.split("::");
         if (halves.length === 2) {
-          let first = halves[0].split(":");
+          let first2 = halves[0].split(":");
           let last = halves[1].split(":");
-          if (first.length === 1 && first[0] === "") {
-            first = [];
+          if (first2.length === 1 && first2[0] === "") {
+            first2 = [];
           }
           if (last.length === 1 && last[0] === "") {
             last = [];
           }
-          const remaining = this.groups - (first.length + last.length);
+          const remaining = this.groups - (first2.length + last.length);
           if (!remaining) {
             throw new address_error_1.AddressError("Error parsing groups");
           }
           this.elidedGroups = remaining;
-          this.elisionBegin = first.length;
-          this.elisionEnd = first.length + this.elidedGroups;
-          groups = groups.concat(first);
+          this.elisionBegin = first2.length;
+          this.elisionEnd = first2.length + this.elidedGroups;
+          groups = groups.concat(first2);
           for (let i = 0; i < remaining; i++) {
             groups.push("0");
           }
@@ -58960,11 +58960,11 @@ var require_socksclient = __commonJS({
     "use strict";
     var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
       function adopt(value) {
-        return value instanceof P ? value : new P(function(resolve5) {
-          resolve5(value);
+        return value instanceof P ? value : new P(function(resolve6) {
+          resolve6(value);
         });
       }
-      return new (P || (P = Promise))(function(resolve5, reject) {
+      return new (P || (P = Promise))(function(resolve6, reject) {
         function fulfilled(value) {
           try {
             step2(generator.next(value));
@@ -58980,7 +58980,7 @@ var require_socksclient = __commonJS({
           }
         }
         function step2(result) {
-          result.done ? resolve5(result.value) : adopt(result.value).then(fulfilled, rejected);
+          result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
         }
         step2((generator = generator.apply(thisArg, _arguments || [])).next());
       });
@@ -59014,13 +59014,13 @@ var require_socksclient = __commonJS({
        * @returns { Promise }
        */
       static createConnection(options, callback) {
-        return new Promise((resolve5, reject) => {
+        return new Promise((resolve6, reject) => {
           try {
             (0, helpers_1.validateSocksClientOptions)(options, ["connect"]);
           } catch (err) {
             if (typeof callback === "function") {
               callback(err);
-              return resolve5(err);
+              return resolve6(err);
             } else {
               return reject(err);
             }
@@ -59031,16 +59031,16 @@ var require_socksclient = __commonJS({
             client.removeAllListeners();
             if (typeof callback === "function") {
               callback(null, info);
-              resolve5(info);
+              resolve6(info);
             } else {
-              resolve5(info);
+              resolve6(info);
             }
           });
           client.once("error", (err) => {
             client.removeAllListeners();
             if (typeof callback === "function") {
               callback(err);
-              resolve5(err);
+              resolve6(err);
             } else {
               reject(err);
             }
@@ -59057,13 +59057,13 @@ var require_socksclient = __commonJS({
        * @returns { Promise }
        */
       static createConnectionChain(options, callback) {
-        return new Promise((resolve5, reject) => __awaiter(this, void 0, void 0, function* () {
+        return new Promise((resolve6, reject) => __awaiter(this, void 0, void 0, function* () {
           try {
             (0, helpers_1.validateSocksClientChainOptions)(options);
           } catch (err) {
             if (typeof callback === "function") {
               callback(err);
-              return resolve5(err);
+              return resolve6(err);
             } else {
               return reject(err);
             }
@@ -59089,14 +59089,14 @@ var require_socksclient = __commonJS({
             }
             if (typeof callback === "function") {
               callback(null, { socket: sock });
-              resolve5({ socket: sock });
+              resolve6({ socket: sock });
             } else {
-              resolve5({ socket: sock });
+              resolve6({ socket: sock });
             }
           } catch (err) {
             if (typeof callback === "function") {
               callback(err);
-              resolve5(err);
+              resolve6(err);
             } else {
               reject(err);
             }
@@ -59728,7 +59728,7 @@ var require_connection_deadline = __commonJS({
         try {
           return await Promise.race([
             promise2,
-            new Promise((resolve5, reject) => {
+            new Promise((resolve6, reject) => {
               timer = setTimeout(() => reject(this.error()), this.remaining());
             })
           ]);
@@ -59809,7 +59809,7 @@ var require_proxy_connection = __commonJS({
         throw deadline.error();
       }
       let socket = null;
-      return await new Promise((resolve5, reject) => {
+      return await new Promise((resolve6, reject) => {
         let settled = false;
         let timer = null;
         let headers = "";
@@ -59861,7 +59861,7 @@ var require_proxy_connection = __commonJS({
         function succeed() {
           settled = true;
           cleanup();
-          resolve5(socket);
+          resolve6(socket);
         }
         function onEarlyClose() {
           fail(proxyError("Proxy closed the connection before the tunnel was established", "EPROXY"));
@@ -60378,7 +60378,7 @@ var require_tools2 = __commonJS({
     var libmime = require_libmime();
     var { resolveCharset } = require_charsets2();
     var { compiler } = require_imap_handler();
-    var { createHash: createHash6 } = __require("crypto");
+    var { createHash: createHash7 } = __require("crypto");
     var { JPDecoder } = require_jp_decoder();
     var iconv = require_lib2();
     var FLAG_COLORS = ["red", "orange", "yellow", "green", "blue", "purple", "grey"];
@@ -61008,7 +61008,7 @@ var require_tools2 = __commonJS({
             } catch {
             }
           }
-          map2.id = map2.emailId || createHash6("md5").update([path, mailbox.uidValidity?.toString() || "", map2.uid.toString()].join(":")).digest("hex");
+          map2.id = map2.emailId || createHash7("md5").update([path, mailbox.uidValidity?.toString() || "", map2.uid.toString()].join(":")).digest("hex");
         }
         if (map2.flags) {
           let flagColor = tools.getFlagColor(map2.flags);
@@ -61497,24 +61497,24 @@ var require_tools2 = __commonJS({
             }
             continue;
           }
-          let first = Number(entry.substr(0, colon));
+          let first2 = Number(entry.substr(0, colon));
           let second = Number(entry.substr(colon + 1));
-          if (!tools.isValidSequenceValue(first) || !tools.isValidSequenceValue(second)) {
+          if (!tools.isValidSequenceValue(first2) || !tools.isValidSequenceValue(second)) {
             continue;
           }
-          if (first === second) {
-            result.push(first);
+          if (first2 === second) {
+            result.push(first2);
             continue;
           }
           let remaining = EXPANDED_RANGE_LIMIT - result.length;
-          if (first < second) {
-            let last = Math.min(second, first + remaining - 1);
-            for (let i = first; i <= last; i++) {
+          if (first2 < second) {
+            let last = Math.min(second, first2 + remaining - 1);
+            for (let i = first2; i <= last; i++) {
               result.push(i);
             }
           } else {
-            let last = Math.max(second, first - remaining + 1);
-            for (let i = first; i >= last; i--) {
+            let last = Math.max(second, first2 - remaining + 1);
+            for (let i = first2; i >= last; i--) {
               result.push(i);
             }
           }
@@ -63493,12 +63493,12 @@ var require_fetch2 = __commonJS({
                 messages.count++;
                 let formatted = await formatMessageResponse(untagged, mailbox);
                 if (typeof options.onUntaggedFetch === "function") {
-                  await new Promise((resolve5, reject) => {
+                  await new Promise((resolve6, reject) => {
                     options.onUntaggedFetch(formatted, (err) => {
                       if (err) {
                         reject(err);
                       } else {
-                        resolve5();
+                        resolve6();
                       }
                     });
                   });
@@ -64325,13 +64325,13 @@ var require_search = __commonJS({
                     results.add(value);
                     continue;
                   }
-                  let first = resolveId(part.substr(0, colon));
+                  let first2 = resolveId(part.substr(0, colon));
                   let second = resolveId(part.substr(colon + 1));
-                  if (!isValidSequenceValue(first) || !isValidSequenceValue(second)) {
+                  if (!isValidSequenceValue(first2) || !isValidSequenceValue(second)) {
                     discarded = true;
                     continue;
                   }
-                  for (let id = Math.min(first, second); id <= Math.max(first, second); id++) {
+                  for (let id = Math.min(first2, second); id <= Math.max(first2, second); id++) {
                     if (overBudget()) {
                       truncated = true;
                       break sequenceSetLoop;
@@ -64875,14 +64875,14 @@ var require_idle = __commonJS({
               connection.preCheck = false;
             }
             while (preCheckWaitQueue.length) {
-              let { resolve: resolve5 } = preCheckWaitQueue.shift();
-              resolve5();
+              let { resolve: resolve6 } = preCheckWaitQueue.shift();
+              resolve6();
             }
           }
         };
         let connectionPreCheck = () => {
-          let handler = guardedPromise((resolve5, reject) => {
-            preCheckWaitQueue.push({ resolve: resolve5, reject });
+          let handler = guardedPromise((resolve6, reject) => {
+            preCheckWaitQueue.push({ resolve: resolve6, reject });
           });
           connection.log.trace({
             msg: "Requesting IDLE break",
@@ -64940,8 +64940,8 @@ var require_idle = __commonJS({
           connection.preCheck = false;
         }
         while (preCheckWaitQueue.length) {
-          let { resolve: resolve5 } = preCheckWaitQueue.shift();
-          resolve5();
+          let { resolve: resolve6 } = preCheckWaitQueue.shift();
+          resolve6();
         }
       }
     }
@@ -64989,7 +64989,7 @@ var require_idle = __commonJS({
       let interval = maxIdleTime ? Math.min(NOOP_INTERVAL, maxIdleTime) : NOOP_INTERVAL;
       let releaseIdling = claimIdling(connection);
       try {
-        await new Promise((resolve5) => {
+        await new Promise((resolve6) => {
           const cancel = () => {
             if (session.cancelled) {
               return;
@@ -64997,7 +64997,7 @@ var require_idle = __commonJS({
             session.cancelled = true;
             clearTimeout(session.timer);
             session.timer = null;
-            resolve5();
+            resolve6();
           };
           session.preCheck = async () => {
             connection.log.debug({ msg: `Breaking NOOP loop`, cid: connection.id });
@@ -65353,7 +65353,7 @@ var require_imap_flow = __commonJS({
       SELECTED: 3,
       LOGOUT: 4
     };
-    var normalizeAutoIdleDelay = (value, socketTimeout, log2, cid) => {
+    var normalizeAutoIdleDelay = (value, socketTimeout, log, cid) => {
       const maxDelay = Math.max(0, Math.min(socketTimeout, MAX_TIMER_DELAY) - AUTO_IDLE_SOCKET_MARGIN);
       const configured = value !== void 0 && value !== null;
       let delay = typeof value === "number" || typeof value === "string" && value.trim() ? Number(value) : NaN;
@@ -65367,7 +65367,7 @@ var require_imap_flow = __commonJS({
         delay = maxDelay;
       }
       if (configured && reason) {
-        log2.warn({ msg: "Adjusted unusable autoIdleDelay option", requested: value, autoIdleDelay: delay, reason, cid });
+        log.warn({ msg: "Adjusted unusable autoIdleDelay option", requested: value, autoIdleDelay: delay, reason, cid });
       }
       return Math.floor(delay);
     };
@@ -65779,8 +65779,8 @@ var require_imap_flow = __commonJS({
         }
         let tag = (++this.tagCounter).toString(16).toUpperCase();
         options = options || {};
-        return guardedPromise((resolve5, reject) => {
-          this.requestTagMap.set(tag, { command: command2, attributes, options, resolve: resolve5, reject });
+        return guardedPromise((resolve6, reject) => {
+          this.requestTagMap.set(tag, { command: command2, attributes, options, resolve: resolve6, reject });
           this.requestQueue.push({ tag, command: command2, attributes, options });
           this.trySend().catch((err) => logConnectionError(this, "Failed to dispatch command", err));
         });
@@ -65888,11 +65888,11 @@ var require_imap_flow = __commonJS({
        */
       async throttleWait(delay) {
         delay = Math.min(Math.max(Number(delay) || 0, 0), MAX_THROTTLE_DELAY);
-        return await new Promise((resolve5) => {
-          let entry = { resolve: resolve5 };
+        return await new Promise((resolve6) => {
+          let entry = { resolve: resolve6 };
           entry.timer = setTimeout(() => {
             this._throttleWaits.delete(entry);
-            resolve5(false);
+            resolve6(false);
           }, delay);
           unrefTimer(entry.timer);
           this._throttleWaits.add(entry);
@@ -65921,7 +65921,7 @@ var require_imap_flow = __commonJS({
           }
           processedCount++;
           if (processedCount % 10 === 0) {
-            await new Promise((resolve5) => setImmediate(resolve5));
+            await new Promise((resolve6) => setImmediate(resolve6));
           }
         }
       }
@@ -66082,7 +66082,7 @@ var require_imap_flow = __commonJS({
         switch ((parsed.command || "").toUpperCase()) {
           case "OK":
           case "BYE":
-            await new Promise((resolve5) => request.resolve({ response: parsed, next: resolve5, hasTrailingData }));
+            await new Promise((resolve6) => request.resolve({ response: parsed, next: resolve6, hasTrailingData }));
             break;
           case "NO":
           case "BAD": {
@@ -66100,7 +66100,7 @@ var require_imap_flow = __commonJS({
               err.responseText = txt;
               if (err.responseStatus === "NO" && txt.includes("Some of the requested messages no longer exist")) {
                 this.log.warn({ msg: "Partial FETCH response", cid: this.id, err });
-                await new Promise((resolve5) => request.resolve({ response: parsed, next: resolve5 }));
+                await new Promise((resolve6) => request.resolve({ response: parsed, next: resolve6 }));
                 break;
               }
               let throttleDelay = false;
@@ -66325,7 +66325,7 @@ var require_imap_flow = __commonJS({
               }
               processedChunks++;
               if (processedChunks % 100 === 0) {
-                await new Promise((resolve5) => setImmediate(resolve5));
+                await new Promise((resolve6) => setImmediate(resolve6));
                 if (!this.writeSocket) {
                   break;
                 }
@@ -66402,7 +66402,7 @@ var require_imap_flow = __commonJS({
         if (injectedTail && injectedTail.length) {
           throw failSTARTTLSInjection();
         }
-        let upgraded = await new Promise((resolve5, reject) => {
+        let upgraded = await new Promise((resolve6, reject) => {
           let socketPlain = this.socket;
           let opts = Object.assign(
             {
@@ -66439,7 +66439,7 @@ var require_imap_flow = __commonJS({
               this.closeAfter();
               return reject(err);
             }
-            resolve5(result);
+            resolve6(result);
           };
           this._upgradeReject = settle;
           socketPlain.once("error", settle);
@@ -66551,10 +66551,10 @@ var require_imap_flow = __commonJS({
         }
         this.startSession().then(() => {
           if (typeof this.initialResolve === "function") {
-            let resolve5 = this.initialResolve;
+            let resolve6 = this.initialResolve;
             this.initialResolve = false;
             this.initialReject = false;
-            return resolve5();
+            return resolve6();
           }
         }).catch((err) => {
           this.log.error({ err, cid: this.id });
@@ -66851,7 +66851,7 @@ var require_imap_flow = __commonJS({
             throw error51;
           }
         }
-        let connectPromise = guardedPromise((resolve5, reject) => {
+        let connectPromise = guardedPromise((resolve6, reject) => {
           this.connectTimeout = setTimeout(() => {
             let err = deadline.error();
             this.log.error({ err, cid: this.id });
@@ -66901,7 +66901,7 @@ var require_imap_flow = __commonJS({
               this.setSocketHandlers();
               this.setEventHandlers();
               this.socket.pipe(this.streamer);
-              this.initialResolve = resolve5;
+              this.initialResolve = resolve6;
               this.initialReject = reject;
             } catch (ex) {
               reject(ex);
@@ -67878,17 +67878,17 @@ var require_imap_flow = __commonJS({
         let aborted2 = false;
         let push = false;
         let rowQueue = [];
-        let getNext = () => new Promise((resolve5, reject) => {
+        let getNext = () => new Promise((resolve6, reject) => {
           let check2 = () => {
             if (rowQueue.length) {
               let entry = rowQueue.shift();
               if (entry.err) {
                 return reject(entry.err);
               }
-              return resolve5(entry.value);
+              return resolve6(entry.value);
             }
             if (finished) {
-              return resolve5(null);
+              return resolve6(null);
             }
             push = () => {
               push = false;
@@ -68244,7 +68244,7 @@ var require_imap_flow = __commonJS({
             }
             if (writeChunk(chunk2) === false) {
               try {
-                await new Promise((resolve5, reject) => {
+                await new Promise((resolve6, reject) => {
                   const finish = (err) => {
                     for (let event of ["drain", "error", "close"]) {
                       stream.removeListener(event, finish);
@@ -68252,7 +68252,7 @@ var require_imap_flow = __commonJS({
                     if (err) {
                       reject(err);
                     } else {
-                      resolve5();
+                      resolve6();
                     }
                   };
                   stream.once("drain", finish);
@@ -68509,10 +68509,10 @@ var require_imap_flow = __commonJS({
             }
             processedCount++;
             if (processedCount % 5 === 0) {
-              await new Promise((resolve6) => setImmediate(resolve6));
+              await new Promise((resolve7) => setImmediate(resolve7));
             }
             const lock = this.locks.shift();
-            const { resolve: resolve5, reject, path, options, lockId } = lock;
+            const { resolve: resolve6, reject, path, options, lockId } = lock;
             if (lock.acquireTimer) {
               clearTimeout(lock.acquireTimer);
               lock.acquireTimer = null;
@@ -68573,7 +68573,7 @@ var require_imap_flow = __commonJS({
               this.currentLock = lock;
               armHeldTimer();
               this.autoidle();
-              resolve5({ path, release });
+              resolve6({ path, release });
             };
             if (this.mailbox && this.mailbox.path === path && !!this.mailbox.readOnly === !!options.readOnly) {
               this.log.trace({
@@ -68663,8 +68663,8 @@ var require_imap_flow = __commonJS({
             ...this.currentLock.options?.description && { description: this.currentLock.options?.description }
           } : null
         });
-        let lockPromise = guardedPromise((resolve5, reject) => {
-          let lockEntry = { resolve: resolve5, reject, path, options, lockId };
+        let lockPromise = guardedPromise((resolve6, reject) => {
+          let lockEntry = { resolve: resolve6, reject, path, options, lockId };
           this.locks.push(lockEntry);
           if (Number(options.acquireTimeout) > 0) {
             lockEntry.acquireTimer = setTimeout(() => {
@@ -84261,13 +84261,13 @@ var require_encoding_convert2 = __commonJS({
       var i = 0;
       var len = data && data.length;
       var isLE = false;
-      var first = true;
+      var first2 = true;
       var c1, c2;
       while (i < len) {
         c1 = data[i++];
         c2 = data[i++];
-        if (first && i === 2) {
-          first = false;
+        if (first2 && i === 2) {
+          first2 = false;
           if (c1 === 254 && c2 === 255) {
             isLE = false;
           } else if (c1 === 255 && c2 === 254) {
@@ -84300,13 +84300,13 @@ var require_encoding_convert2 = __commonJS({
       var i = 0;
       var len = data && data.length;
       var isLE = false;
-      var first = true;
+      var first2 = true;
       var c1, c2;
       while (i < len) {
         c1 = data[i++];
         c2 = data[i++];
-        if (first && i === 2) {
-          first = false;
+        if (first2 && i === 2) {
+          first2 = false;
           if (c1 === 254 && c2 === 255) {
             isLE = false;
           } else if (c1 === 255 && c2 === 254) {
@@ -84373,13 +84373,13 @@ var require_encoding_convert2 = __commonJS({
       var i = 0;
       var len = data && data.length;
       var isLE = false;
-      var first = true;
+      var first2 = true;
       var c1, c2;
       while (i < len) {
         c1 = data[i++];
         c2 = data[i++];
-        if (first && i === 2) {
-          first = false;
+        if (first2 && i === 2) {
+          first2 = false;
           if (c1 === 254 && c2 === 255) {
             isLE = false;
           } else if (c1 === 255 && c2 === 254) {
@@ -89197,17 +89197,17 @@ var require_headers2 = __commonJS({
         }
         let rawLines = this.headers.toString("binary").replace(/[\r\n]+$/, "").split(/\r?\n/);
         let i = 1;
-        let first = rawLines[0];
+        let first2 = rawLines[0];
         while (i < rawLines.length && this._isFoldingChar(rawLines[i].charAt(0))) {
-          first += "\r\n" + rawLines[i++];
+          first2 += "\r\n" + rawLines[i++];
         }
         let lines = [];
-        if (/^From /i.test(first)) {
-          this.mbox = first;
-        } else if (/^POST /i.test(first)) {
-          this.http = first;
+        if (/^From /i.test(first2)) {
+          this.mbox = first2;
+        } else if (/^POST /i.test(first2)) {
+          this.http = first2;
         } else {
-          lines.push({ key: this._normalizeHeader(first.substr(0, first.indexOf(":"))), line: first });
+          lines.push({ key: this._normalizeHeader(first2.substr(0, first2.indexOf(":"))), line: first2 });
         }
         for (; i < rawLines.length; i++) {
           let currentLine = rawLines[i];
@@ -89262,7 +89262,7 @@ var require_mime_node3 = __commonJS({
       /** @type {any} */
       libmime.Libmime
     );
-    function stripComments(value) {
+    function stripComments2(value) {
       if (value.indexOf("(") < 0) {
         return value;
       }
@@ -89368,7 +89368,7 @@ var require_mime_node3 = __commonJS({
           /** @type {StructuredHeader} */
           this._parsedContentType
         );
-        this.encoding = stripComments(headers.getFirst("Content-Transfer-Encoding")).toLowerCase().trim();
+        this.encoding = stripComments2(headers.getFirst("Content-Transfer-Encoding")).toLowerCase().trim();
         this.contentType = (parsedContentType.value || "").toLowerCase().trim() || false;
         this.charset = parsedContentType.params.charset || false;
         this.disposition = (parsedContentDisposition.value || "").toLowerCase().trim() || false;
@@ -92118,11 +92118,11 @@ var require_core = __commonJS({
     function mapOuter(r, f) {
       return r.matched ? f(r) : r;
     }
-    function ab(pa, pb, join6) {
-      return (data, i) => mapOuter(pa(data, i), (ma) => mapInner(pb(data, ma.position), (vb, j) => join6(ma.value, vb, data, i, j)));
+    function ab(pa, pb, join8) {
+      return (data, i) => mapOuter(pa(data, i), (ma) => mapInner(pb(data, ma.position), (vb, j) => join8(ma.value, vb, data, i, j)));
     }
-    function abc(pa, pb, pc, join6) {
-      return (data, i) => mapOuter(pa(data, i), (ma) => mapOuter(pb(data, ma.position), (mb) => mapInner(pc(data, mb.position), (vc, j) => join6(ma.value, mb.value, vc, data, i, j))));
+    function abc(pa, pb, pc, join8) {
+      return (data, i) => mapOuter(pa(data, i), (ma) => mapOuter(pb(data, ma.position), (mb) => mapInner(pc(data, mb.position), (vc, j) => join8(ma.value, mb.value, vc, data, i, j))));
     }
     function action(f) {
       return (data, i) => {
@@ -92226,7 +92226,7 @@ var require_core = __commonJS({
     function fail(data, i) {
       return { matched: false };
     }
-    function first(...ps) {
+    function first2(...ps) {
       return (data, i) => {
         for (const p of ps) {
           const result = p(data, i);
@@ -92519,7 +92519,7 @@ ${parserPosition(data, result.position, formatToken)}`);
     exports.between = middle;
     exports.chain = chain;
     exports.chainReduce = chainReduce;
-    exports.choice = first;
+    exports.choice = first2;
     exports.condition = condition;
     exports.decide = decide;
     exports.discard = skip;
@@ -92530,7 +92530,7 @@ ${parserPosition(data, result.position, formatToken)}`);
     exports.error = error51;
     exports.fail = fail;
     exports.filter = filter;
-    exports.first = first;
+    exports.first = first2;
     exports.flatten = flatten;
     exports.flatten1 = flatten1;
     exports.guard = filter;
@@ -92551,7 +92551,7 @@ ${parserPosition(data, result.position, formatToken)}`);
     exports.not = not;
     exports.of = emit;
     exports.option = option;
-    exports.or = first;
+    exports.or = first2;
     exports.otherwise = eitherOr;
     exports.parse = parse4;
     exports.parserPosition = parserPosition;
@@ -98452,12 +98452,12 @@ var require_html_to_text = __commonJS({
           this.nextLineWords.push(word);
           this.nextLineAvailableChars -= cost;
         } else {
-          const [first, ...rest] = this.splitLongWord(word);
+          const [first2, ...rest] = this.splitLongWord(word);
           if (!isLineStart) {
             this.startNewLine();
           }
-          this.nextLineWords.push(first);
-          this.nextLineAvailableChars -= first.length;
+          this.nextLineWords.push(first2);
+          this.nextLineAvailableChars -= first2.length;
           for (const part of rest) {
             this.startNewLine();
             this.nextLineWords.push(part);
@@ -103209,8 +103209,8 @@ var require_simple_parser = __commonJS({
       }
       let promise2;
       if (!callback) {
-        promise2 = new Promise((resolve5, reject) => {
-          callback = callbackPromise(resolve5, reject);
+        promise2 = new Promise((resolve6, reject) => {
+          callback = callbackPromise(resolve6, reject);
         });
       }
       let settled = false;
@@ -103308,13 +103308,13 @@ var require_simple_parser = __commonJS({
       }
       return promise2;
     };
-    function callbackPromise(resolve5, reject) {
+    function callbackPromise(resolve6, reject) {
       return function(...args) {
         let err = args.shift();
         if (err) {
           reject(err);
         } else {
-          resolve5(...args);
+          resolve6(...args);
         }
       };
     }
@@ -106285,7 +106285,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref2];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve5.call(this, root, ref2);
+      let _sch = resolve6.call(this, root, ref2);
       if (_sch === void 0) {
         const schema = (_a3 = root.localRefs) === null || _a3 === void 0 ? void 0 : _a3[ref2];
         const { schemaId } = this.opts;
@@ -106312,7 +106312,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve5(root, ref2) {
+    function resolve6(root, ref2) {
       let sch;
       while (typeof (sch = this.refs[ref2]) == "string")
         ref2 = sch;
@@ -106943,7 +106943,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve5(baseURI, relativeURI, options) {
+    function resolve6(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse4(baseURI, schemelessOptions), parse4(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
@@ -107201,7 +107201,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve5,
+      resolve: resolve6,
       resolveComponent,
       equal,
       serialize,
@@ -107705,11 +107705,11 @@ var require_core2 = __commonJS({
     Ajv2.ValidationError = validation_error_1.default;
     Ajv2.MissingRefError = ref_error_1.default;
     exports.default = Ajv2;
-    function checkOptions(checkOpts, options, msg, log2 = "error") {
+    function checkOptions(checkOpts, options, msg, log = "error") {
       for (const key in checkOpts) {
         const opt = key;
         if (opt in options)
-          this.logger[log2](`${msg}: option ${key}. ${checkOpts[opt]}`);
+          this.logger[log](`${msg}: option ${key}. ${checkOpts[opt]}`);
       }
     }
     function getSchEnv(keyRef) {
@@ -110561,41 +110561,41 @@ var require_queue = __commonJS({
       queue.drained = drained;
       return queue;
       function push(value) {
-        var p = new Promise(function(resolve5, reject) {
+        var p = new Promise(function(resolve6, reject) {
           pushCb(value, function(err, result) {
             if (err) {
               reject(err);
               return;
             }
-            resolve5(result);
+            resolve6(result);
           });
         });
         p.catch(noop);
         return p;
       }
       function unshift(value) {
-        var p = new Promise(function(resolve5, reject) {
+        var p = new Promise(function(resolve6, reject) {
           unshiftCb(value, function(err, result) {
             if (err) {
               reject(err);
               return;
             }
-            resolve5(result);
+            resolve6(result);
           });
         });
         p.catch(noop);
         return p;
       }
       function drained() {
-        var p = new Promise(function(resolve5) {
+        var p = new Promise(function(resolve6) {
           process.nextTick(function() {
             if (queue.idle()) {
-              resolve5();
+              resolve6();
             } else {
               var previousDrain = queue.drain;
               queue.drain = function() {
                 if (typeof previousDrain === "function") previousDrain();
-                resolve5();
+                resolve6();
                 queue.drain = previousDrain;
               };
             }
@@ -110938,8 +110938,8 @@ var require_create_promise = __commonJS({
         reject: null,
         promise: null
       };
-      obj.promise = new Promise((resolve5, reject) => {
-        obj.resolve = resolve5;
+      obj.promise = new Promise((resolve6, reject) => {
+        obj.resolve = resolve6;
         obj.reject = reject;
       });
       return obj;
@@ -111208,11 +111208,11 @@ var require_thenify = __commonJS({
         return;
       }
       debug("thenify");
-      return (resolve5, reject) => {
+      return (resolve6, reject) => {
         const p = this._loadRegistered();
         return p.then(() => {
           this[kThenifyDoNotWrap] = true;
-          return resolve5(this._server);
+          return resolve6(this._server);
         }, reject);
       };
     }
@@ -111349,12 +111349,12 @@ var require_boot = __commonJS({
     inherits(Boot, EE);
     if ("asyncDispose" in Symbol) {
       Boot.prototype[Symbol.asyncDispose] = function() {
-        return new Promise((resolve5, reject) => {
+        return new Promise((resolve6, reject) => {
           this.close((err) => {
             if (err) {
               return reject(err);
             }
-            resolve5();
+            resolve6();
           });
         });
       };
@@ -111501,12 +111501,12 @@ var require_boot = __commonJS({
           throw new AVV_ERR_CALLBACK_NOT_FN("close", typeof func);
         }
       } else {
-        promise2 = new Promise(function(resolve5, reject) {
+        promise2 = new Promise(function(resolve6, reject) {
           func = function(err) {
             if (err) {
               return reject(err);
             }
-            resolve5();
+            resolve6();
           };
         });
       }
@@ -111526,7 +111526,7 @@ var require_boot = __commonJS({
         queueMicrotask(this.start.bind(this));
         return;
       }
-      return new Promise((resolve5, reject) => {
+      return new Promise((resolve6, reject) => {
         this._readyQ.push(readyPromiseCB);
         this.start();
         const relativeContext = this._current[0].server;
@@ -111534,7 +111534,7 @@ var require_boot = __commonJS({
           if (err) {
             reject(err);
           } else {
-            resolve5(relativeContext);
+            resolve6(relativeContext);
           }
           process.nextTick(done);
         }
@@ -112809,8 +112809,8 @@ var require_promise = __commonJS({
     var { kTestInternals } = require_symbols3();
     function withResolvers() {
       let res, rej;
-      const promise2 = new Promise((resolve5, reject) => {
-        res = resolve5;
+      const promise2 = new Promise((resolve6, reject) => {
+        res = resolve6;
         rej = reject;
       });
       return { promise: promise2, resolve: res, reject: rej };
@@ -112909,15 +112909,15 @@ var require_server2 = __commonJS({
         if (cb === void 0) {
           const listening = listenPromise.call(this, server, listenOptions);
           return listening.then((address) => {
-            const { promise: promise2, resolve: resolve5 } = PonyPromise.withResolvers();
+            const { promise: promise2, resolve: resolve6 } = PonyPromise.withResolvers();
             if (host === "localhost") {
               multipleBindings.call(this, server, httpHandler, options, listenOptions, () => {
                 this[kState].listening = true;
-                resolve5(address);
+                resolve6(address);
                 onListenHookRunner(this);
               });
             } else {
-              resolve5(address);
+              resolve6(address);
               onListenHookRunner(this);
             }
             return promise2;
@@ -113044,7 +113044,7 @@ var require_server2 = __commonJS({
       }
       return this.ready().then(() => {
         if (this[kState].aborted) return;
-        const { promise: promise2, resolve: resolve5, reject } = PonyPromise.withResolvers();
+        const { promise: promise2, resolve: resolve6, reject } = PonyPromise.withResolvers();
         const errEventHandler = (err) => {
           cleanup();
           this[kState].listening = false;
@@ -113053,7 +113053,7 @@ var require_server2 = __commonJS({
         const listeningEventHandler = () => {
           cleanup();
           this[kState].listening = true;
-          resolve5(logServerAddress.call(
+          resolve6(logServerAddress.call(
             this,
             server,
             listenOptions.listenTextResolver || defaultResolveServerListeningText
@@ -114832,7 +114832,7 @@ var require_reply = __commonJS({
     } = require_errors3();
     var decorators = require_decorate();
     var toString = Object.prototype.toString;
-    function Reply(res, request, log2) {
+    function Reply(res, request, log) {
       this.raw = res;
       this[kReplySerializer] = null;
       this[kReplyErrorHandlerCalled] = false;
@@ -114843,7 +114843,7 @@ var require_reply = __commonJS({
       this[kReplyTrailers] = null;
       this[kReplyHasStatusCode] = false;
       this[kReplyStartTime] = void 0;
-      this.log = log2;
+      this.log = log;
     }
     Reply.props = [];
     Object.defineProperties(Reply.prototype, {
@@ -115525,7 +115525,7 @@ var require_reply = __commonJS({
     }
     function buildReply(R) {
       const props = R.props.slice();
-      function _Reply(res, request, log2) {
+      function _Reply(res, request, log) {
         this.raw = res;
         this[kReplyIsError] = false;
         this[kReplyErrorHandlerCalled] = false;
@@ -115536,7 +115536,7 @@ var require_reply = __commonJS({
         this[kReplyTrailers] = null;
         this[kReplyStartTime] = void 0;
         this[kReplyEndTime] = void 0;
-        this.log = log2;
+        this.log = log;
         let prop;
         for (let i = 0; i < props.length; i++) {
           prop = props[i];
@@ -115698,8 +115698,8 @@ var require_ipaddr = __commonJS({
           zoneId
         };
       }
-      function matchCIDR(first, second, partSize, cidrBits) {
-        if (first.length !== second.length) {
+      function matchCIDR(first2, second, partSize, cidrBits) {
+        if (first2.length !== second.length) {
           throw new Error("ipaddr: cannot match CIDR for objects with different lengths");
         }
         let part = 0;
@@ -115709,7 +115709,7 @@ var require_ipaddr = __commonJS({
           if (shift < 0) {
             shift = 0;
           }
-          if (first[part] >> shift !== second[part] >> shift) {
+          if (first2[part] >> shift !== second[part] >> shift) {
             return false;
           }
           cidrBits -= partSize;
@@ -116619,13 +116619,13 @@ var require_request = __commonJS({
       querystring: kSchemaQuerystring,
       query: kSchemaQuerystring
     };
-    function Request2(id, params, req, query, log2, context) {
+    function Request2(id, params, req, query, log, context) {
       this.id = id;
       this[kRouteContext] = context;
       this.params = params;
       this.raw = req;
       this.query = query;
-      this.log = log2;
+      this.log = log;
       this.body = void 0;
     }
     Request2.props = [];
@@ -116657,13 +116657,13 @@ var require_request = __commonJS({
     }
     function buildRegularRequest(R) {
       const props = R.props.slice();
-      function _Request(id, params, req, query, log2, context) {
+      function _Request(id, params, req, query, log, context) {
         this.id = id;
         this[kRouteContext] = context;
         this.params = params;
         this.raw = req;
         this.query = query;
-        this.log = log2;
+        this.log = log;
         this.body = void 0;
         let prop;
         for (let i = 0; i < props.length; i++) {
@@ -119075,9 +119075,9 @@ var require_serialize = __commonJS({
     function serializeElements(cxt) {
       const { gen, schema, data } = cxt;
       gen.add(names_1.default.json, (0, codegen_1.str)`[`);
-      const first = gen.let("first", true);
+      const first2 = gen.let("first", true);
       gen.forOf("el", data, (el) => {
-        addComma(cxt, first);
+        addComma(cxt, first2);
         serializeCode({ ...cxt, schema: schema.elements, data: el });
       });
       gen.add(names_1.default.json, (0, codegen_1.str)`]`);
@@ -119085,13 +119085,13 @@ var require_serialize = __commonJS({
     function serializeValues(cxt) {
       const { gen, schema, data } = cxt;
       gen.add(names_1.default.json, (0, codegen_1.str)`{`);
-      const first = gen.let("first", true);
-      gen.forIn("key", data, (key) => serializeKeyValue(cxt, key, schema.values, first));
+      const first2 = gen.let("first", true);
+      gen.forIn("key", data, (key) => serializeKeyValue(cxt, key, schema.values, first2));
       gen.add(names_1.default.json, (0, codegen_1.str)`}`);
     }
-    function serializeKeyValue(cxt, key, schema, first) {
+    function serializeKeyValue(cxt, key, schema, first2) {
       const { gen, data } = cxt;
-      addComma(cxt, first);
+      addComma(cxt, first2);
       serializeString({ ...cxt, data: key });
       gen.add(names_1.default.json, (0, codegen_1.str)`:`);
       const value = gen.const("value", (0, codegen_1._)`${data}${(0, codegen_1.getProperty)(key)}`);
@@ -119124,16 +119124,16 @@ var require_serialize = __commonJS({
       const props = keys(properties);
       const optProps = keys(optionalProperties);
       const allProps = allProperties(props.concat(optProps));
-      let first = !discriminator;
+      let first2 = !discriminator;
       let firstProp;
       for (const key of props) {
-        if (first)
-          first = false;
+        if (first2)
+          first2 = false;
         else
           gen.add(names_1.default.json, (0, codegen_1.str)`,`);
         serializeProperty(key, properties[key], keyValue(key));
       }
-      if (first)
+      if (first2)
         firstProp = gen.let("first", true);
       for (const key of optProps) {
         const value = keyValue(key);
@@ -119212,9 +119212,9 @@ var require_serialize = __commonJS({
     function serializeEmpty({ gen, data }) {
       gen.add(names_1.default.json, (0, codegen_1._)`JSON.stringify(${data})`);
     }
-    function addComma({ gen }, first) {
-      if (first) {
-        gen.if(first, () => gen.assign(first, false), () => gen.add(names_1.default.json, (0, codegen_1.str)`,`));
+    function addComma({ gen }, first2) {
+      if (first2) {
+        gen.if(first2, () => gen.assign(first2, false), () => gen.add(names_1.default.json, (0, codegen_1.str)`,`));
       } else {
         gen.add(names_1.default.json, (0, codegen_1.str)`,`);
       }
@@ -122133,8 +122133,8 @@ const asInteger = serializer.asInteger.bind(serializer)
         } else {
           name = "";
         }
-        const first = validate.errors[0];
-        const err = new Error(`${name}schema is invalid: data${first.instancePath} ${first.message}`);
+        const first2 = validate.errors[0];
+        const err = new Error(`${name}schema is invalid: data${first2.instancePath} ${first2.message}`);
         err.errors = isValidSchema.errors;
         throw err;
       }
@@ -124332,10 +124332,10 @@ var require_range = __commonJS({
           throw new TypeError(`Invalid SemVer Range: ${this.raw}`);
         }
         if (this.set.length > 1) {
-          const first = this.set[0];
+          const first2 = this.set[0];
           this.set = this.set.filter((c) => !isNullSet(c[0]));
           if (this.set.length === 0) {
-            this.set = [first];
+            this.set = [first2];
           } else if (this.set.length > 1) {
             for (const c of this.set) {
               if (c.length === 1 && isAny(c[0])) {
@@ -125071,26 +125071,26 @@ var require_simplify = __commonJS({
     var compare = require_compare();
     module.exports = (versions, range, options) => {
       const set2 = [];
-      let first = null;
+      let first2 = null;
       let prev = null;
       const v = versions.sort((a, b) => compare(a, b, options));
       for (const version2 of v) {
         const included = satisfies(version2, range, options);
         if (included) {
           prev = version2;
-          if (!first) {
-            first = version2;
+          if (!first2) {
+            first2 = version2;
           }
         } else {
           if (prev) {
-            set2.push([first, prev]);
+            set2.push([first2, prev]);
           }
           prev = null;
-          first = null;
+          first2 = null;
         }
       }
-      if (first) {
-        set2.push([first, null]);
+      if (first2) {
+        set2.push([first2, null]);
       }
       const ranges = [];
       for (const [min, max] of set2) {
@@ -132524,9 +132524,9 @@ var require_light_my_request = __commonJS({
         const res = new Response2(req, callback);
         return makeRequest(dispatchFunc, server, req, res);
       } else {
-        return new Promise((resolve5, reject) => {
+        return new Promise((resolve6, reject) => {
           const req = new RequestConstructor(options);
-          const res = new Response2(req, resolve5, reject);
+          const res = new Response2(req, resolve6, reject);
           makeRequest(dispatchFunc, server, req, res);
         });
       }
@@ -134596,9 +134596,9 @@ var require_rate_limit = __commonJS({
         throw new Error("The configured rate-limit store does not implement a `read` method, which is required to use `{ increment: false }`");
       }
       try {
-        const res = await new Promise((resolve5, reject) => {
+        const res = await new Promise((resolve6, reject) => {
           store[storeMethod](key, (err, res2) => {
-            err ? reject(err) : resolve5(res2);
+            err ? reject(err) : resolve6(res2);
           }, timeWindow, max);
         });
         current = res.current;
@@ -135113,7 +135113,7 @@ var require_index_min = __commonJS({
       var yi = (n, { windowsPathsNoEscape: t = false, magicalBraces: e = false } = {}) => e ? t ? n.replace(/[?*()[\]{}]/g, "[$&]") : n.replace(/[?*()[\]\\{}]/g, "\\$&") : t ? n.replace(/[?*()[\]]/g, "[$&]") : n.replace(/[?*()[\]\\]/g, "\\$&");
       Ft.escape = yi;
     });
-    var H = R((g) => {
+    var H2 = R((g) => {
       "use strict";
       Object.defineProperty(g, "__esModule", { value: true });
       g.unescape = g.escape = g.AST = g.Minimatch = g.match = g.makeRe = g.braceExpand = g.defaults = g.filter = g.GLOBSTAR = g.sep = g.minimatch = void 0;
@@ -137103,7 +137103,7 @@ globstar while`, t, d, e, u, m), this.matchOne(t.slice(d), e.slice(u), s2)) retu
       "use strict";
       Object.defineProperty(te, "__esModule", { value: true });
       te.Pattern = void 0;
-      var xr = H(), Tr = (n) => n.length >= 1, Cr = (n) => n.length >= 1, Rr = Symbol.for("nodejs.util.inspect.custom"), Ce = class n {
+      var xr = H2(), Tr = (n) => n.length >= 1, Cr = (n) => n.length >= 1, Rr = Symbol.for("nodejs.util.inspect.custom"), Ce = class n {
         #t;
         #s;
         #n;
@@ -137187,7 +137187,7 @@ globstar while`, t, d, e, u, m), this.matchOne(t.slice(d), e.slice(u), s2)) retu
       "use strict";
       Object.defineProperty(ee, "__esModule", { value: true });
       ee.Ignore = void 0;
-      var Ps = H(), Ar = Re(), kr = typeof process == "object" && process && typeof process.platform == "string" ? process.platform : "linux", Ae = class {
+      var Ps = H2(), Ar = Re(), kr = typeof process == "object" && process && typeof process.platform == "string" ? process.platform : "linux", Ae = class {
         relative;
         relativeChildren;
         absolute;
@@ -137227,7 +137227,7 @@ globstar while`, t, d, e, u, m), this.matchOne(t.slice(d), e.slice(u), s2)) retu
       "use strict";
       Object.defineProperty(z2, "__esModule", { value: true });
       z2.Processor = z2.SubWalks = z2.MatchRecord = z2.HasWalkedCache = void 0;
-      var Ds = H(), se = class n {
+      var Ds = H2(), se = class n {
         store;
         constructor(t = /* @__PURE__ */ new Map()) {
           this.store = t;
@@ -137570,7 +137570,7 @@ globstar while`, t, d, e, u, m), this.matchOne(t.slice(d), e.slice(u), s2)) retu
       "use strict";
       Object.defineProperty(oe, "__esModule", { value: true });
       oe.Glob = void 0;
-      var Dr = H(), Fr = __require("node:url"), ne = Ms(), jr = Re(), he = Ls(), Nr = typeof process == "object" && process && typeof process.platform == "string" ? process.platform : "linux", Fe = class {
+      var Dr = H2(), Fr = __require("node:url"), ne = Ms(), jr = Re(), he = Ls(), Nr = typeof process == "object" && process && typeof process.platform == "string" ? process.platform : "linux", Fe = class {
         absolute;
         cwd;
         root;
@@ -137650,7 +137650,7 @@ globstar while`, t, d, e, u, m), this.matchOne(t.slice(d), e.slice(u), s2)) retu
       "use strict";
       Object.defineProperty(ae, "__esModule", { value: true });
       ae.hasMagic = void 0;
-      var Lr = H(), Wr = (n, t = {}) => {
+      var Lr = H2(), Wr = (n, t = {}) => {
         Array.isArray(n) || (n = [n]);
         for (let e of n) if (new Lr.Minimatch(e, t).hasMagic()) return true;
         return false;
@@ -137664,10 +137664,10 @@ globstar while`, t, d, e, u, m), this.matchOne(t.slice(d), e.slice(u), s2)) retu
     exports.globSync = We;
     exports.globIterateSync = Tt;
     exports.globIterate = Be;
-    var Ws = H();
+    var Ws = H2();
     var tt = je();
     var Br = Ne();
-    var Is = H();
+    var Is = H2();
     Object.defineProperty(exports, "escape", { enumerable: true, get: function() {
       return Is.escape;
     } });
@@ -137898,8 +137898,8 @@ var require_escape_html = __commonJS({
   "node_modules/.pnpm/escape-html@1.0.3/node_modules/escape-html/index.js"(exports, module) {
     "use strict";
     var matchHtmlRegExp = /["'&<>]/;
-    module.exports = escapeHtml;
-    function escapeHtml(string4) {
+    module.exports = escapeHtml2;
+    function escapeHtml2(string4) {
       var str5 = "" + string4;
       var match = matchHtmlRegExp.exec(str5);
       if (!match) {
@@ -138196,7 +138196,7 @@ var require_depd = __commonJS({
       var site = callSiteLocation(stack[1]);
       var file2 = site[0];
       function deprecate(message) {
-        log2.call(deprecate, message);
+        log.call(deprecate, message);
       }
       deprecate._file = file2;
       deprecate._ignored = isignored(namespace);
@@ -138225,7 +138225,7 @@ var require_depd = __commonJS({
       var str5 = process.env.TRACE_DEPRECATION || "";
       return containsNamespace(str5, namespace);
     }
-    function log2(message, site) {
+    function log(message, site) {
       var haslisteners = eehaslisteners(process, "deprecation");
       if (!haslisteners && this._ignored) {
         return;
@@ -138365,7 +138365,7 @@ var require_depd = __commonJS({
         "message",
         "site",
         '"use strict"\nreturn function (' + args + ") {log.call(deprecate, message, site)\nreturn fn.apply(this, arguments)\n}"
-      )(fn, log2, this, message, site);
+      )(fn, log, this, message, site);
       return deprecatedfn;
     }
     function wrapproperty(obj, prop, message) {
@@ -138390,13 +138390,13 @@ var require_depd = __commonJS({
       var set2 = descriptor.set;
       if (typeof get === "function") {
         descriptor.get = function getter() {
-          log2.call(deprecate, message, site);
+          log.call(deprecate, message, site);
           return get.apply(this, arguments);
         };
       }
       if (typeof set2 === "function") {
         descriptor.set = function setter() {
-          log2.call(deprecate, message, site);
+          log.call(deprecate, message, site);
           return set2.apply(this, arguments);
         };
       }
@@ -138807,7 +138807,7 @@ var require_send = __commonJS({
     var stream = __require("node:stream");
     var debug = __require("node:util").debuglog("send");
     var decode3 = require_fast_decode_uri_component();
-    var escapeHtml = require_escape_html();
+    var escapeHtml2 = require_escape_html();
     var mime = require_mime();
     var ms = require_dist8();
     var { collapseLeadingSlashes } = require_collapseLeadingSlashes();
@@ -138820,9 +138820,9 @@ var require_send = __commonJS({
     var { parseTokenList } = require_parseTokenList();
     var { createHttpError } = require_createHttpError();
     var extname = path.extname;
-    var join6 = path.join;
+    var join8 = path.join;
     var normalize = path.normalize;
-    var resolve5 = path.resolve;
+    var resolve6 = path.resolve;
     var sep2 = path.sep;
     var Readable2 = stream.Readable;
     var BYTES_RANGE_REGEXP = /^ *bytes=/;
@@ -138869,7 +138869,7 @@ var require_send = __commonJS({
       const lastModified = options.lastModified !== void 0 ? Boolean(options.lastModified) : true;
       const maxage = normalizeMaxAge(options.maxAge ?? options.maxage);
       const maxContentRangeChunkSize = options.maxContentRangeChunkSize !== void 0 ? Number(options.maxContentRangeChunkSize) : null;
-      const root = options.root ? resolve5(options.root) : null;
+      const root = options.root ? resolve6(options.root) : null;
       const highWaterMark = Number.isSafeInteger(options.highWaterMark) && options.highWaterMark > 0 ? options.highWaterMark : null;
       return {
         acceptRanges,
@@ -138907,14 +138907,14 @@ var require_send = __commonJS({
           return { statusCode: 403 };
         }
         parts = path2.split(sep2);
-        path2 = normalize(join6(root, path2));
+        path2 = normalize(join8(root, path2));
       } else {
         if (UP_PATH_REGEXP.test(path2)) {
           debug('malicious path "%s"', path2);
           return { statusCode: 403 };
         }
         parts = normalize(path2).split(sep2);
-        path2 = resolve5(path2);
+        path2 = resolve6(path2);
       }
       return { path: path2, parts };
     }
@@ -139010,9 +139010,9 @@ var require_send = __commonJS({
       );
     }
     function tryStat(path2) {
-      return new Promise((resolve6) => {
+      return new Promise((resolve7) => {
         fs.stat(path2, function onstat(error51, stat) {
-          resolve6({ error: error51, stat });
+          resolve7({ error: error51, stat });
         });
       });
     }
@@ -139170,7 +139170,7 @@ var require_send = __commonJS({
         return sendError2(403);
       }
       const loc = encodeURI(collapseLeadingSlashes(options.path + "/"));
-      const doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml(loc));
+      const doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml2(loc));
       const headers = {};
       headers["Content-Type"] = "text/html; charset=utf-8";
       headers["Content-Length"] = doc[1];
@@ -139190,7 +139190,7 @@ var require_send = __commonJS({
       let err;
       for (let i = 0; i < options.index.length; i++) {
         const index = options.index[i];
-        const p = join6(path2, index);
+        const p = join8(path2, index);
         const { error: error51, stat } = await tryStat(p);
         if (error51) {
           err = error51;
@@ -140353,9 +140353,8 @@ var require_static = __commonJS({
 });
 
 // cli/bin/companybrain.ts
-import { existsSync as existsSync3, mkdirSync as mkdirSync3, readFileSync as readFileSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import { randomBytes as randomBytes7 } from "node:crypto";
-import { dirname as dirname4, join as join5, resolve as resolve4 } from "node:path";
+import { existsSync as existsSync5, mkdirSync as mkdirSync4 } from "node:fs";
+import { dirname as dirname4, join as join7, resolve as resolve5 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // packages/db/src/index.ts
@@ -141362,14 +141361,14 @@ function memberRepo(db) {
       const r = db.prepare("SELECT * FROM members WHERE org_id=? AND email_lc=? ORDER BY active DESC, created_at LIMIT 1").get(orgId, e);
       return r ? rowToMember(r) : null;
     },
-    /** Match by phone digits; also tolerates a missing/extra country code (suffix match ≥ 8 digits). */
+    /**
+     * Exact E.164 match: all digits including the country code must be equal. No suffix /
+     * "last 10 digits" matching — +44 7700 900123 must never match +1 …7700900123.
+     */
     findByPhone(orgId, phone2) {
       const d = phoneDigits(phone2);
       if (!d) return [];
-      const exact = db.prepare("SELECT * FROM members WHERE org_id=? AND active=1 AND phone_digits=?").all(orgId, d).map(rowToMember);
-      if (exact.length || d.length < 8) return exact;
-      const tail = d.slice(-10);
-      return db.prepare("SELECT * FROM members WHERE org_id=? AND active=1 AND phone_digits IS NOT NULL AND length(phone_digits) >= 8 AND (phone_digits LIKE '%' || ? OR ? LIKE '%' || phone_digits)").all(orgId, tail, d).map(rowToMember);
+      return db.prepare("SELECT * FROM members WHERE org_id=? AND active=1 AND phone_digits=?").all(orgId, d).map(rowToMember);
     },
     countActive(orgId, role) {
       return db.prepare("SELECT COUNT(*) c FROM members WHERE org_id=? AND role=? AND active=1").get(orgId, role).c;
@@ -142287,8503 +142286,24 @@ function openDatabase(path, opts = {}) {
   }
 }
 
-// packages/types/src/index.ts
-var SYSTEM_MEMBER_ID = "system";
-var ROLE_RANK = {
-  guest: 0,
-  agent: 1,
-  member: 2,
-  manager: 3,
-  admin: 4,
-  owner: 5
-};
-var AppError = class extends Error {
-  constructor(code, message, details) {
-    super(message);
-    this.code = code;
-    this.details = details;
-    this.name = "AppError";
-  }
-};
-var HTTP_STATUS = {
-  bad_request: 400,
-  unauthorized: 401,
-  forbidden: 403,
-  not_found: 404,
-  conflict: 409,
-  rate_limited: 429,
-  internal: 500
-};
-
-// packages/core/src/context.ts
-var noopOutbound = {
-  async whatsapp() {
-    return false;
-  },
-  async email() {
-    return false;
-  },
-  async push() {
-    return "failed";
-  },
-  status() {
-    return { whatsapp: false, email: false, push: false };
-  }
-};
-var noCalendar = {
-  async fetch() {
-    throw new Error("calendar fetch not configured");
-  }
-};
-function getOrg(ctx, orgId) {
-  const org = ctx.db.orgs.get(orgId);
-  if (!org) throw new AppError("not_found", "Organization not found");
-  return org;
-}
-function actorMember(ctx, actor) {
-  return ctx.db.members.get(actor.orgId, actor.memberId);
-}
-function actorTz(ctx, actor) {
-  const m = actorMember(ctx, actor);
-  return safeTz(m?.timezone ?? ctx.db.orgs.get(actor.orgId)?.timezone);
-}
-var snap = (v) => v === null || v === void 0 ? null : JSON.parse(JSON.stringify(v));
-async function audit(ctx, actor, e) {
-  const ev = {
-    id: newId("aud"),
-    orgId: actor.orgId,
-    actorId: actor.memberId,
-    type: e.type,
-    entity: e.entity,
-    entityId: e.entityId,
-    summary: e.summary.slice(0, 500),
-    before: snap(e.before),
-    after: snap(e.after),
-    undoable: !!e.undoable,
-    undoneAt: null,
-    undoneBy: null,
-    at: ctx.clock()
-  };
-  ctx.db.audit.insert(ev);
-  await fireAudit(ctx, ev);
-  return ev;
-}
-async function fireAudit(ctx, ev) {
-  if (!ctx.onAudit) return;
-  try {
-    await ctx.onAudit(ev);
-  } catch (err) {
-    ctx.log.error("[core] onAudit hook failed", err);
-  }
-}
-function publish(ctx, orgId, event, memberIds) {
-  try {
-    ctx.live.publish(orgId, event, memberIds ? { memberIds } : void 0);
-  } catch (err) {
-    ctx.log.warn("[core] live publish failed", err);
-  }
-}
-function firstName(name) {
-  return name.trim().split(/\s+/)[0] ?? name;
-}
-function withTimeout(p, ms, label = "operation") {
-  let t;
-  return Promise.race([
-    p.finally(() => clearTimeout(t)),
-    new Promise((_, reject) => {
-      t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
-      t.unref?.();
-    })
-  ]);
-}
-
-// packages/core/src/live.ts
-function createLiveBus(log2) {
-  const subs = /* @__PURE__ */ new Map();
-  return {
-    publish(orgId, event, opts) {
-      const set2 = subs.get(orgId);
-      if (!set2) return;
-      const only = opts?.memberIds ? new Set(opts.memberIds) : null;
-      for (const s2 of [...set2]) {
-        if (only && !only.has(s2.memberId)) continue;
-        try {
-          s2.fn(event);
-        } catch (err) {
-          log2?.warn("[live] subscriber threw", err);
-        }
-      }
-    },
-    subscribe(orgId, memberId, fn) {
-      const sub = { memberId, fn };
-      if (!subs.has(orgId)) subs.set(orgId, /* @__PURE__ */ new Set());
-      subs.get(orgId).add(sub);
-      return () => {
-        const set2 = subs.get(orgId);
-        set2?.delete(sub);
-        if (set2 && !set2.size) subs.delete(orgId);
-      };
-    }
-  };
-}
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/index.js
-var en_exports = {};
-__export(en_exports, {
-  Chrono: () => Chrono,
-  GB: () => GB,
-  Meridiem: () => Meridiem,
-  ParsingComponents: () => ParsingComponents,
-  ParsingResult: () => ParsingResult,
-  ReferenceWithTimezone: () => ReferenceWithTimezone,
-  Weekday: () => Weekday,
-  casual: () => casual,
-  configuration: () => configuration,
-  parse: () => parse,
-  parseDate: () => parseDate,
-  strict: () => strict
-});
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/types.js
-var Meridiem;
-(function(Meridiem2) {
-  Meridiem2[Meridiem2["AM"] = 0] = "AM";
-  Meridiem2[Meridiem2["PM"] = 1] = "PM";
-})(Meridiem || (Meridiem = {}));
-var Weekday;
-(function(Weekday2) {
-  Weekday2[Weekday2["SUNDAY"] = 0] = "SUNDAY";
-  Weekday2[Weekday2["MONDAY"] = 1] = "MONDAY";
-  Weekday2[Weekday2["TUESDAY"] = 2] = "TUESDAY";
-  Weekday2[Weekday2["WEDNESDAY"] = 3] = "WEDNESDAY";
-  Weekday2[Weekday2["THURSDAY"] = 4] = "THURSDAY";
-  Weekday2[Weekday2["FRIDAY"] = 5] = "FRIDAY";
-  Weekday2[Weekday2["SATURDAY"] = 6] = "SATURDAY";
-})(Weekday || (Weekday = {}));
-var Month;
-(function(Month2) {
-  Month2[Month2["JANUARY"] = 1] = "JANUARY";
-  Month2[Month2["FEBRUARY"] = 2] = "FEBRUARY";
-  Month2[Month2["MARCH"] = 3] = "MARCH";
-  Month2[Month2["APRIL"] = 4] = "APRIL";
-  Month2[Month2["MAY"] = 5] = "MAY";
-  Month2[Month2["JUNE"] = 6] = "JUNE";
-  Month2[Month2["JULY"] = 7] = "JULY";
-  Month2[Month2["AUGUST"] = 8] = "AUGUST";
-  Month2[Month2["SEPTEMBER"] = 9] = "SEPTEMBER";
-  Month2[Month2["OCTOBER"] = 10] = "OCTOBER";
-  Month2[Month2["NOVEMBER"] = 11] = "NOVEMBER";
-  Month2[Month2["DECEMBER"] = 12] = "DECEMBER";
-})(Month || (Month = {}));
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/utils/dates.js
-function assignSimilarDate(component, target) {
-  component.assign("day", target.getDate());
-  component.assign("month", target.getMonth() + 1);
-  component.assign("year", target.getFullYear());
-}
-function assignSimilarTime(component, target) {
-  component.assign("hour", target.getHours());
-  component.assign("minute", target.getMinutes());
-  component.assign("second", target.getSeconds());
-  component.assign("millisecond", target.getMilliseconds());
-  component.assign("meridiem", target.getHours() < 12 ? Meridiem.AM : Meridiem.PM);
-}
-function implySimilarDate(component, target) {
-  component.imply("day", target.getDate());
-  component.imply("month", target.getMonth() + 1);
-  component.imply("year", target.getFullYear());
-}
-function implySimilarTime(component, target) {
-  component.imply("hour", target.getHours());
-  component.imply("minute", target.getMinutes());
-  component.imply("second", target.getSeconds());
-  component.imply("millisecond", target.getMilliseconds());
-  component.imply("meridiem", target.getHours() < 12 ? Meridiem.AM : Meridiem.PM);
-}
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/timezone.js
-var TIMEZONE_ABBR_MAP = {
-  ACDT: 630,
-  ACST: 570,
-  ADT: -180,
-  AEDT: 660,
-  AEST: 600,
-  AFT: 270,
-  AKDT: -480,
-  AKST: -540,
-  ALMT: 360,
-  AMST: -180,
-  AMT: -240,
-  ANAST: 720,
-  ANAT: 720,
-  AQTT: 300,
-  ART: -180,
-  AST: -240,
-  AWDT: 540,
-  AWST: 480,
-  AZOST: 0,
-  AZOT: -60,
-  AZST: 300,
-  AZT: 240,
-  BNT: 480,
-  BOT: -240,
-  BRST: -120,
-  BRT: -180,
-  BST: 60,
-  BTT: 360,
-  CAST: 480,
-  CAT: 120,
-  CCT: 390,
-  CDT: -300,
-  CEST: 120,
-  CET: {
-    timezoneOffsetDuringDst: 2 * 60,
-    timezoneOffsetNonDst: 60,
-    dstStart: (year) => getLastWeekdayOfMonth(year, Month.MARCH, Weekday.SUNDAY, 2),
-    dstEnd: (year) => getLastWeekdayOfMonth(year, Month.OCTOBER, Weekday.SUNDAY, 3)
-  },
-  CHADT: 825,
-  CHAST: 765,
-  CKT: -600,
-  CLST: -180,
-  CLT: -240,
-  COT: -300,
-  CST: -360,
-  CT: {
-    timezoneOffsetDuringDst: -5 * 60,
-    timezoneOffsetNonDst: -6 * 60,
-    dstStart: (year) => getNthWeekdayOfMonth(year, Month.MARCH, Weekday.SUNDAY, 2, 2),
-    dstEnd: (year) => getNthWeekdayOfMonth(year, Month.NOVEMBER, Weekday.SUNDAY, 1, 2)
-  },
-  CVT: -60,
-  CXT: 420,
-  ChST: 600,
-  DAVT: 420,
-  EASST: -300,
-  EAST: -360,
-  EAT: 180,
-  ECT: -300,
-  EDT: -240,
-  EEST: 180,
-  EET: 120,
-  EGST: 0,
-  EGT: -60,
-  EST: -300,
-  ET: {
-    timezoneOffsetDuringDst: -4 * 60,
-    timezoneOffsetNonDst: -5 * 60,
-    dstStart: (year) => getNthWeekdayOfMonth(year, Month.MARCH, Weekday.SUNDAY, 2, 2),
-    dstEnd: (year) => getNthWeekdayOfMonth(year, Month.NOVEMBER, Weekday.SUNDAY, 1, 2)
-  },
-  FJST: 780,
-  FJT: 720,
-  FKST: -180,
-  FKT: -240,
-  FNT: -120,
-  GALT: -360,
-  GAMT: -540,
-  GET: 240,
-  GFT: -180,
-  GILT: 720,
-  GMT: 0,
-  GST: 240,
-  GYT: -240,
-  HAA: -180,
-  HAC: -300,
-  HADT: -540,
-  HAE: -240,
-  HAP: -420,
-  HAR: -360,
-  HAST: -600,
-  HAT: -90,
-  HAY: -480,
-  HKT: 480,
-  HLV: -210,
-  HNA: -240,
-  HNC: -360,
-  HNE: -300,
-  HNP: -480,
-  HNR: -420,
-  HNT: -150,
-  HNY: -540,
-  HOVT: 420,
-  ICT: 420,
-  IDT: 180,
-  IOT: 360,
-  IRDT: 270,
-  IRKST: 540,
-  IRKT: 540,
-  IRST: 210,
-  IST: 330,
-  JST: 540,
-  KGT: 360,
-  KRAST: 480,
-  KRAT: 480,
-  KST: 540,
-  KUYT: 240,
-  LHDT: 660,
-  LHST: 630,
-  LINT: 840,
-  MAGST: 720,
-  MAGT: 720,
-  MART: -510,
-  MAWT: 300,
-  MDT: -360,
-  MESZ: 120,
-  MEZ: 60,
-  MHT: 720,
-  MMT: 390,
-  MSD: 240,
-  MSK: 180,
-  MST: -420,
-  MT: {
-    timezoneOffsetDuringDst: -6 * 60,
-    timezoneOffsetNonDst: -7 * 60,
-    dstStart: (year) => getNthWeekdayOfMonth(year, Month.MARCH, Weekday.SUNDAY, 2, 2),
-    dstEnd: (year) => getNthWeekdayOfMonth(year, Month.NOVEMBER, Weekday.SUNDAY, 1, 2)
-  },
-  MUT: 240,
-  MVT: 300,
-  MYT: 480,
-  NCT: 660,
-  NDT: -90,
-  NFT: 690,
-  NOVST: 420,
-  NOVT: 360,
-  NPT: 345,
-  NST: -150,
-  NUT: -660,
-  NZDT: 780,
-  NZST: 720,
-  OMSST: 420,
-  OMST: 420,
-  PDT: -420,
-  PET: -300,
-  PETST: 720,
-  PETT: 720,
-  PGT: 600,
-  PHOT: 780,
-  PHT: 480,
-  PKT: 300,
-  PMDT: -120,
-  PMST: -180,
-  PONT: 660,
-  PST: -480,
-  PT: {
-    timezoneOffsetDuringDst: -7 * 60,
-    timezoneOffsetNonDst: -8 * 60,
-    dstStart: (year) => getNthWeekdayOfMonth(year, Month.MARCH, Weekday.SUNDAY, 2, 2),
-    dstEnd: (year) => getNthWeekdayOfMonth(year, Month.NOVEMBER, Weekday.SUNDAY, 1, 2)
-  },
-  PWT: 540,
-  PYST: -180,
-  PYT: -240,
-  RET: 240,
-  SAMT: 240,
-  SAST: 120,
-  SBT: 660,
-  SCT: 240,
-  SGT: 480,
-  SRT: -180,
-  SST: -660,
-  TAHT: -600,
-  TFT: 300,
-  TJT: 300,
-  TKT: 780,
-  TLT: 540,
-  TMT: 300,
-  TVT: 720,
-  ULAT: 480,
-  UTC: 0,
-  UYST: -120,
-  UYT: -180,
-  UZT: 300,
-  VET: -210,
-  VLAST: 660,
-  VLAT: 660,
-  VUT: 660,
-  WAST: 120,
-  WAT: 60,
-  WEST: 60,
-  WESZ: 60,
-  WET: 0,
-  WEZ: 0,
-  WFT: 720,
-  WGST: -120,
-  WGT: -180,
-  WIB: 420,
-  WIT: 540,
-  WITA: 480,
-  WST: 780,
-  WT: 0,
-  YAKST: 600,
-  YAKT: 600,
-  YAPT: 600,
-  YEKST: 360,
-  YEKT: 360
-};
-function getNthWeekdayOfMonth(year, month, weekday2, n, hour = 0) {
-  let dayOfMonth = 0;
-  let i = 0;
-  while (i < n) {
-    dayOfMonth++;
-    const date5 = new Date(year, month - 1, dayOfMonth);
-    if (date5.getDay() === weekday2)
-      i++;
-  }
-  return new Date(year, month - 1, dayOfMonth, hour);
-}
-function getLastWeekdayOfMonth(year, month, weekday2, hour = 0) {
-  const oneIndexedWeekday = weekday2 === 0 ? 7 : weekday2;
-  const date5 = new Date(year, month - 1 + 1, 1, 12);
-  const firstWeekdayNextMonth = date5.getDay() === 0 ? 7 : date5.getDay();
-  let dayDiff;
-  if (firstWeekdayNextMonth === oneIndexedWeekday)
-    dayDiff = 7;
-  else if (firstWeekdayNextMonth < oneIndexedWeekday)
-    dayDiff = 7 + firstWeekdayNextMonth - oneIndexedWeekday;
-  else
-    dayDiff = firstWeekdayNextMonth - oneIndexedWeekday;
-  date5.setDate(date5.getDate() - dayDiff);
-  return new Date(year, month - 1, date5.getDate(), hour);
-}
-function toTimezoneOffset(timezoneInput, date5, timezoneOverrides = {}) {
-  if (timezoneInput == null) {
-    return null;
-  }
-  if (typeof timezoneInput === "number") {
-    return timezoneInput;
-  }
-  const matchedTimezone = timezoneOverrides[timezoneInput] ?? TIMEZONE_ABBR_MAP[timezoneInput];
-  if (matchedTimezone == null) {
-    return null;
-  }
-  if (typeof matchedTimezone == "number") {
-    return matchedTimezone;
-  }
-  if (date5 == null) {
-    return null;
-  }
-  if (date5 > matchedTimezone.dstStart(date5.getFullYear()) && !(date5 > matchedTimezone.dstEnd(date5.getFullYear()))) {
-    return matchedTimezone.timezoneOffsetDuringDst;
-  }
-  return matchedTimezone.timezoneOffsetNonDst;
-}
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/calculation/duration.js
-var EmptyDuration = {
-  day: 0,
-  second: 0,
-  millisecond: 0
-};
-function addDuration(ref2, duration3) {
-  let date5 = new Date(ref2);
-  if (duration3["y"]) {
-    duration3["year"] = duration3["y"];
-    delete duration3["y"];
-  }
-  if (duration3["mo"]) {
-    duration3["month"] = duration3["mo"];
-    delete duration3["mo"];
-  }
-  if (duration3["M"]) {
-    duration3["month"] = duration3["M"];
-    delete duration3["M"];
-  }
-  if (duration3["w"]) {
-    duration3["week"] = duration3["w"];
-    delete duration3["w"];
-  }
-  if (duration3["d"]) {
-    duration3["day"] = duration3["d"];
-    delete duration3["d"];
-  }
-  if (duration3["h"]) {
-    duration3["hour"] = duration3["h"];
-    delete duration3["h"];
-  }
-  if (duration3["m"]) {
-    duration3["minute"] = duration3["m"];
-    delete duration3["m"];
-  }
-  if (duration3["s"]) {
-    duration3["second"] = duration3["s"];
-    delete duration3["s"];
-  }
-  if (duration3["ms"]) {
-    duration3["millisecond"] = duration3["ms"];
-    delete duration3["ms"];
-  }
-  if ("year" in duration3) {
-    const floor = Math.floor(duration3["year"]);
-    date5.setFullYear(date5.getFullYear() + floor);
-    const remainingFraction = duration3["year"] - floor;
-    if (remainingFraction > 0) {
-      duration3.month = duration3?.month ?? 0;
-      duration3.month += remainingFraction * 12;
-    }
-  }
-  if ("quarter" in duration3) {
-    const floor = Math.floor(duration3["quarter"]);
-    date5.setMonth(date5.getMonth() + floor * 3);
-    const remainingFraction = duration3["quarter"] - floor;
-    if (remainingFraction > 0) {
-      duration3.month = duration3?.month ?? 0;
-      duration3.month += remainingFraction * 3;
-    }
-  }
-  if ("month" in duration3) {
-    const floor = Math.floor(duration3["month"]);
-    date5.setMonth(date5.getMonth() + floor);
-    const remainingFraction = duration3["month"] - floor;
-    if (remainingFraction > 0) {
-      duration3.week = duration3?.week ?? 0;
-      duration3.week += remainingFraction * 4;
-    }
-  }
-  if ("week" in duration3) {
-    const floor = Math.floor(duration3["week"]);
-    date5.setDate(date5.getDate() + floor * 7);
-    const remainingFraction = duration3["week"] - floor;
-    if (remainingFraction > 0) {
-      duration3.day = duration3?.day ?? 0;
-      duration3.day += Math.round(remainingFraction * 7);
-    }
-  }
-  if ("day" in duration3) {
-    const floor = Math.floor(duration3["day"]);
-    date5.setDate(date5.getDate() + floor);
-    const remainingFraction = duration3["day"] - floor;
-    if (remainingFraction > 0) {
-      duration3.hour = duration3?.hour ?? 0;
-      duration3.hour += Math.round(remainingFraction * 24);
-    }
-  }
-  if ("hour" in duration3) {
-    const floor = Math.floor(duration3["hour"]);
-    date5.setHours(date5.getHours() + floor);
-    const remainingFraction = duration3["hour"] - floor;
-    if (remainingFraction > 0) {
-      duration3.minute = duration3?.minute ?? 0;
-      duration3.minute += Math.round(remainingFraction * 60);
-    }
-  }
-  if ("minute" in duration3) {
-    const floor = Math.floor(duration3["minute"]);
-    date5.setMinutes(date5.getMinutes() + floor);
-    const remainingFraction = duration3["minute"] - floor;
-    if (remainingFraction > 0) {
-      duration3.second = duration3?.second ?? 0;
-      duration3.second += Math.round(remainingFraction * 60);
-    }
-  }
-  if ("second" in duration3) {
-    const floor = Math.floor(duration3["second"]);
-    date5.setSeconds(date5.getSeconds() + floor);
-    const remainingFraction = duration3["second"] - floor;
-    if (remainingFraction > 0) {
-      duration3.millisecond = duration3?.millisecond ?? 0;
-      duration3.millisecond += Math.round(remainingFraction * 1e3);
-    }
-  }
-  if ("millisecond" in duration3) {
-    const floor = Math.floor(duration3["millisecond"]);
-    date5.setMilliseconds(date5.getMilliseconds() + floor);
-  }
-  return date5;
-}
-function reverseDuration(duration3) {
-  const reversed = {};
-  for (const key in duration3) {
-    reversed[key] = -duration3[key];
-  }
-  return reversed;
-}
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/results.js
-var ReferenceWithTimezone = class _ReferenceWithTimezone {
-  instant;
-  timezoneOffset;
-  constructor(instant, timezoneOffset) {
-    this.instant = instant ?? /* @__PURE__ */ new Date();
-    this.timezoneOffset = timezoneOffset ?? null;
-  }
-  static fromDate(date5) {
-    return new _ReferenceWithTimezone(date5);
-  }
-  static fromInput(input, timezoneOverrides) {
-    if (input instanceof Date) {
-      return _ReferenceWithTimezone.fromDate(input);
-    }
-    const instant = input?.instant ?? /* @__PURE__ */ new Date();
-    const timezoneOffset = toTimezoneOffset(input?.timezone, instant, timezoneOverrides);
-    return new _ReferenceWithTimezone(instant, timezoneOffset);
-  }
-  getDateWithAdjustedTimezone() {
-    const date5 = new Date(this.instant);
-    if (this.timezoneOffset !== null) {
-      date5.setMinutes(date5.getMinutes() - this.getSystemTimezoneAdjustmentMinute(this.instant));
-    }
-    return date5;
-  }
-  getSystemTimezoneAdjustmentMinute(date5, overrideTimezoneOffset) {
-    if (!date5) {
-      date5 = /* @__PURE__ */ new Date();
-    }
-    const currentTimezoneOffset = -date5.getTimezoneOffset();
-    const targetTimezoneOffset = overrideTimezoneOffset ?? this.timezoneOffset ?? currentTimezoneOffset;
-    return currentTimezoneOffset - targetTimezoneOffset;
-  }
-  getTimezoneOffset() {
-    return this.timezoneOffset ?? -this.instant.getTimezoneOffset();
-  }
-};
-var ParsingComponents = class _ParsingComponents {
-  knownValues;
-  impliedValues;
-  reference;
-  _tags = /* @__PURE__ */ new Set();
-  constructor(reference, knownComponents) {
-    this.reference = reference;
-    this.knownValues = {};
-    this.impliedValues = {};
-    if (knownComponents) {
-      for (const key in knownComponents) {
-        this.knownValues[key] = knownComponents[key];
-      }
-    }
-    const date5 = reference.getDateWithAdjustedTimezone();
-    this.imply("day", date5.getDate());
-    this.imply("month", date5.getMonth() + 1);
-    this.imply("year", date5.getFullYear());
-    this.imply("hour", 12);
-    this.imply("minute", 0);
-    this.imply("second", 0);
-    this.imply("millisecond", 0);
-  }
-  static createRelativeFromReference(reference, duration3 = EmptyDuration) {
-    let date5 = addDuration(reference.getDateWithAdjustedTimezone(), duration3);
-    const components = new _ParsingComponents(reference);
-    components.addTag("result/relativeDate");
-    if ("hour" in duration3 || "minute" in duration3 || "second" in duration3 || "millisecond" in duration3) {
-      components.addTag("result/relativeDateAndTime");
-      assignSimilarTime(components, date5);
-      assignSimilarDate(components, date5);
-      components.assign("timezoneOffset", reference.getTimezoneOffset());
-    } else {
-      implySimilarTime(components, date5);
-      components.imply("timezoneOffset", reference.getTimezoneOffset());
-      if ("day" in duration3) {
-        components.assign("day", date5.getDate());
-        components.assign("month", date5.getMonth() + 1);
-        components.assign("year", date5.getFullYear());
-        components.assign("weekday", date5.getDay());
-      } else if ("week" in duration3) {
-        components.assign("day", date5.getDate());
-        components.assign("month", date5.getMonth() + 1);
-        components.assign("year", date5.getFullYear());
-        components.imply("weekday", date5.getDay());
-      } else {
-        components.imply("day", date5.getDate());
-        if ("month" in duration3) {
-          components.assign("month", date5.getMonth() + 1);
-          components.assign("year", date5.getFullYear());
-        } else {
-          components.imply("month", date5.getMonth() + 1);
-          if ("year" in duration3) {
-            components.assign("year", date5.getFullYear());
-          } else {
-            components.imply("year", date5.getFullYear());
-          }
-        }
-      }
-    }
-    return components;
-  }
-  get(component) {
-    if (component in this.knownValues) {
-      return this.knownValues[component];
-    }
-    if (component in this.impliedValues) {
-      return this.impliedValues[component];
-    }
-    return null;
-  }
-  isCertain(component) {
-    return component in this.knownValues;
-  }
-  getCertainComponents() {
-    return Object.keys(this.knownValues);
-  }
-  imply(component, value) {
-    if (component in this.knownValues) {
-      return this;
-    }
-    this.impliedValues[component] = value;
-    return this;
-  }
-  assign(component, value) {
-    this.knownValues[component] = value;
-    delete this.impliedValues[component];
-    return this;
-  }
-  addDurationAsImplied(duration3) {
-    const currentDate = this.dateWithoutTimezoneAdjustment();
-    const date5 = addDuration(currentDate, duration3);
-    if ("day" in duration3 || "week" in duration3 || "month" in duration3 || "year" in duration3) {
-      this.delete(["day", "weekday", "month", "year"]);
-      this.imply("day", date5.getDate());
-      this.imply("weekday", date5.getDay());
-      this.imply("month", date5.getMonth() + 1);
-      this.imply("year", date5.getFullYear());
-    }
-    if ("second" in duration3 || "minute" in duration3 || "hour" in duration3) {
-      this.delete(["second", "minute", "hour"]);
-      this.imply("second", date5.getSeconds());
-      this.imply("minute", date5.getMinutes());
-      this.imply("hour", date5.getHours());
-    }
-    return this;
-  }
-  delete(components) {
-    if (typeof components === "string") {
-      components = [components];
-    }
-    for (const component of components) {
-      delete this.knownValues[component];
-      delete this.impliedValues[component];
-    }
-  }
-  clone() {
-    const component = new _ParsingComponents(this.reference);
-    component.knownValues = {};
-    component.impliedValues = {};
-    for (const key in this.knownValues) {
-      component.knownValues[key] = this.knownValues[key];
-    }
-    for (const key in this.impliedValues) {
-      component.impliedValues[key] = this.impliedValues[key];
-    }
-    return component;
-  }
-  isOnlyDate() {
-    return !this.isCertain("hour") && !this.isCertain("minute") && !this.isCertain("second");
-  }
-  isOnlyTime() {
-    return !this.isCertain("weekday") && !this.isCertain("day") && !this.isCertain("month") && !this.isCertain("year");
-  }
-  isOnlyWeekdayComponent() {
-    return this.isCertain("weekday") && !this.isCertain("day") && !this.isCertain("month");
-  }
-  isDateWithUnknownYear() {
-    return this.isCertain("month") && !this.isCertain("year");
-  }
-  isValidDate() {
-    const date5 = new Date(Date.UTC(this.get("year"), this.get("month") - 1, this.get("day"), this.get("hour"), this.get("minute"), this.get("second"), this.get("millisecond")));
-    date5.setUTCFullYear(this.get("year"));
-    if (date5.getUTCFullYear() !== this.get("year"))
-      return false;
-    if (date5.getUTCMonth() !== this.get("month") - 1)
-      return false;
-    if (date5.getUTCDate() !== this.get("day"))
-      return false;
-    if (this.get("hour") != null && date5.getUTCHours() != this.get("hour"))
-      return false;
-    if (this.get("minute") != null && date5.getUTCMinutes() != this.get("minute"))
-      return false;
-    return true;
-  }
-  toString() {
-    return `[ParsingComponents {
-            tags: ${JSON.stringify(Array.from(this._tags).sort())}, 
-            knownValues: ${JSON.stringify(this.knownValues)}, 
-            impliedValues: ${JSON.stringify(this.impliedValues)}}, 
-            reference: ${JSON.stringify(this.reference)}]`;
-  }
-  date() {
-    const timezoneOffset = this.get("timezoneOffset") ?? this.reference.timezoneOffset;
-    if (timezoneOffset === null || timezoneOffset === void 0) {
-      return this.dateWithoutTimezoneAdjustment();
-    }
-    const date5 = new Date(Date.UTC(this.get("year"), this.get("month") - 1, this.get("day"), this.get("hour"), this.get("minute"), this.get("second"), this.get("millisecond")));
-    date5.setUTCFullYear(this.get("year"));
-    return new Date(date5.getTime() - timezoneOffset * 6e4);
-  }
-  addTag(tag) {
-    this._tags.add(tag);
-    return this;
-  }
-  addTags(tags3) {
-    for (const tag of tags3) {
-      this._tags.add(tag);
-    }
-    return this;
-  }
-  tags() {
-    return new Set(this._tags);
-  }
-  dateWithoutTimezoneAdjustment() {
-    const date5 = new Date(this.get("year"), this.get("month") - 1, this.get("day"), this.get("hour"), this.get("minute"), this.get("second"), this.get("millisecond"));
-    date5.setFullYear(this.get("year"));
-    return date5;
-  }
-};
-var ParsingResult = class _ParsingResult {
-  refDate;
-  index;
-  text;
-  reference;
-  start;
-  end;
-  constructor(reference, index, text, start, end) {
-    this.reference = reference;
-    this.refDate = reference.instant;
-    this.index = index;
-    this.text = text;
-    this.start = start || new ParsingComponents(reference);
-    this.end = end;
-  }
-  clone() {
-    const result = new _ParsingResult(this.reference, this.index, this.text);
-    result.start = this.start ? this.start.clone() : null;
-    result.end = this.end ? this.end.clone() : null;
-    return result;
-  }
-  date() {
-    return this.start.date();
-  }
-  addTag(tag) {
-    this.start.addTag(tag);
-    if (this.end) {
-      this.end.addTag(tag);
-    }
-    return this;
-  }
-  addTags(tags3) {
-    this.start.addTags(tags3);
-    if (this.end) {
-      this.end.addTags(tags3);
-    }
-    return this;
-  }
-  tags() {
-    const combinedTags = new Set(this.start.tags());
-    if (this.end) {
-      for (const tag of this.end.tags()) {
-        combinedTags.add(tag);
-      }
-    }
-    return combinedTags;
-  }
-  toString() {
-    const tags3 = Array.from(this.tags()).sort();
-    return `[ParsingResult {index: ${this.index}, text: '${this.text}', tags: ${JSON.stringify(tags3)} ...}]`;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/utils/pattern.js
-function repeatedTimeunitPattern(prefix, singleTimeunitPattern, connectorPattern = "\\s{0,5},?\\s{0,5}") {
-  const singleTimeunitPatternNoCapture = singleTimeunitPattern.replace(/\((?!\?)/g, "(?:");
-  return `${prefix}${singleTimeunitPatternNoCapture}(?:${connectorPattern}${singleTimeunitPatternNoCapture}){0,10}`;
-}
-function extractTerms(dictionary) {
-  let keys;
-  if (dictionary instanceof Array) {
-    keys = [...dictionary];
-  } else if (dictionary instanceof Map) {
-    keys = Array.from(dictionary.keys());
-  } else {
-    keys = Object.keys(dictionary);
-  }
-  return keys;
-}
-function matchAnyPattern(dictionary) {
-  const joinedTerms = extractTerms(dictionary).sort((a, b) => b.length - a.length).join("|").replace(/\./g, "\\.");
-  return `(?:${joinedTerms})`;
-}
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/calculation/years.js
-function findMostLikelyADYear(yearNumber) {
-  if (yearNumber < 100) {
-    if (yearNumber > 50) {
-      yearNumber = yearNumber + 1900;
-    } else {
-      yearNumber = yearNumber + 2e3;
-    }
-  }
-  return yearNumber;
-}
-function findYearClosestToRef(refDate, day, month) {
-  let date5 = new Date(refDate);
-  date5.setMonth(month - 1);
-  date5.setDate(day);
-  const nextYear = addDuration(date5, { "year": 1 });
-  const lastYear = addDuration(date5, { "year": -1 });
-  if (Math.abs(nextYear.getTime() - refDate.getTime()) < Math.abs(date5.getTime() - refDate.getTime())) {
-    date5 = nextYear;
-  } else if (Math.abs(lastYear.getTime() - refDate.getTime()) < Math.abs(date5.getTime() - refDate.getTime())) {
-    date5 = lastYear;
-  }
-  return date5.getFullYear();
-}
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/constants.js
-var WEEKDAY_DICTIONARY = {
-  sunday: 0,
-  sun: 0,
-  "sun.": 0,
-  monday: 1,
-  mon: 1,
-  "mon.": 1,
-  tuesday: 2,
-  tue: 2,
-  "tue.": 2,
-  wednesday: 3,
-  wed: 3,
-  "wed.": 3,
-  thursday: 4,
-  thurs: 4,
-  "thurs.": 4,
-  thur: 4,
-  "thur.": 4,
-  thu: 4,
-  "thu.": 4,
-  friday: 5,
-  fri: 5,
-  "fri.": 5,
-  saturday: 6,
-  sat: 6,
-  "sat.": 6
-};
-var FULL_MONTH_NAME_DICTIONARY = {
-  january: 1,
-  february: 2,
-  march: 3,
-  april: 4,
-  may: 5,
-  june: 6,
-  july: 7,
-  august: 8,
-  september: 9,
-  october: 10,
-  november: 11,
-  december: 12
-};
-var MONTH_DICTIONARY = {
-  ...FULL_MONTH_NAME_DICTIONARY,
-  jan: 1,
-  "jan.": 1,
-  feb: 2,
-  "feb.": 2,
-  mar: 3,
-  "mar.": 3,
-  apr: 4,
-  "apr.": 4,
-  jun: 6,
-  "jun.": 6,
-  jul: 7,
-  "jul.": 7,
-  aug: 8,
-  "aug.": 8,
-  sep: 9,
-  "sep.": 9,
-  sept: 9,
-  "sept.": 9,
-  oct: 10,
-  "oct.": 10,
-  nov: 11,
-  "nov.": 11,
-  dec: 12,
-  "dec.": 12
-};
-var INTEGER_WORD_DICTIONARY = {
-  one: 1,
-  two: 2,
-  three: 3,
-  four: 4,
-  five: 5,
-  six: 6,
-  seven: 7,
-  eight: 8,
-  nine: 9,
-  ten: 10,
-  eleven: 11,
-  twelve: 12
-};
-var ORDINAL_WORD_DICTIONARY = {
-  first: 1,
-  second: 2,
-  third: 3,
-  fourth: 4,
-  fifth: 5,
-  sixth: 6,
-  seventh: 7,
-  eighth: 8,
-  ninth: 9,
-  tenth: 10,
-  eleventh: 11,
-  twelfth: 12,
-  thirteenth: 13,
-  fourteenth: 14,
-  fifteenth: 15,
-  sixteenth: 16,
-  seventeenth: 17,
-  eighteenth: 18,
-  nineteenth: 19,
-  twentieth: 20,
-  "twenty first": 21,
-  "twenty-first": 21,
-  "twenty second": 22,
-  "twenty-second": 22,
-  "twenty third": 23,
-  "twenty-third": 23,
-  "twenty fourth": 24,
-  "twenty-fourth": 24,
-  "twenty fifth": 25,
-  "twenty-fifth": 25,
-  "twenty sixth": 26,
-  "twenty-sixth": 26,
-  "twenty seventh": 27,
-  "twenty-seventh": 27,
-  "twenty eighth": 28,
-  "twenty-eighth": 28,
-  "twenty ninth": 29,
-  "twenty-ninth": 29,
-  "thirtieth": 30,
-  "thirty first": 31,
-  "thirty-first": 31
-};
-var TIME_UNIT_DICTIONARY_NO_ABBR = {
-  second: "second",
-  seconds: "second",
-  minute: "minute",
-  minutes: "minute",
-  hour: "hour",
-  hours: "hour",
-  day: "day",
-  days: "day",
-  week: "week",
-  weeks: "week",
-  month: "month",
-  months: "month",
-  quarter: "quarter",
-  quarters: "quarter",
-  year: "year",
-  years: "year"
-};
-var TIME_UNIT_DICTIONARY = {
-  s: "second",
-  sec: "second",
-  second: "second",
-  seconds: "second",
-  m: "minute",
-  min: "minute",
-  mins: "minute",
-  minute: "minute",
-  minutes: "minute",
-  h: "hour",
-  hr: "hour",
-  hrs: "hour",
-  hour: "hour",
-  hours: "hour",
-  d: "day",
-  day: "day",
-  days: "day",
-  w: "week",
-  week: "week",
-  weeks: "week",
-  mo: "month",
-  mon: "month",
-  mos: "month",
-  month: "month",
-  months: "month",
-  qtr: "quarter",
-  quarter: "quarter",
-  quarters: "quarter",
-  y: "year",
-  yr: "year",
-  year: "year",
-  years: "year",
-  ...TIME_UNIT_DICTIONARY_NO_ABBR
-};
-var NUMBER_PATTERN = `(?:${matchAnyPattern(INTEGER_WORD_DICTIONARY)}|[0-9]+|[0-9]+\\.[0-9]+|half(?:\\s{0,2}an?)?|an?\\b(?:\\s{0,2}few)?|few|several|the|a?\\s{0,2}couple\\s{0,2}(?:of)?)`;
-function parseNumberPattern(match) {
-  const num4 = match.toLowerCase();
-  if (INTEGER_WORD_DICTIONARY[num4] !== void 0) {
-    return INTEGER_WORD_DICTIONARY[num4];
-  } else if (num4 === "a" || num4 === "an" || num4 == "the") {
-    return 1;
-  } else if (num4.match(/few/)) {
-    return 3;
-  } else if (num4.match(/half/)) {
-    return 0.5;
-  } else if (num4.match(/couple/)) {
-    return 2;
-  } else if (num4.match(/several/)) {
-    return 7;
-  }
-  return parseFloat(num4);
-}
-var ORDINAL_NUMBER_PATTERN = `(?:${matchAnyPattern(ORDINAL_WORD_DICTIONARY)}|[0-9]{1,2}(?:st|nd|rd|th)?)`;
-function parseOrdinalNumberPattern(match) {
-  let num4 = match.toLowerCase();
-  if (ORDINAL_WORD_DICTIONARY[num4] !== void 0) {
-    return ORDINAL_WORD_DICTIONARY[num4];
-  }
-  num4 = num4.replace(/(?:st|nd|rd|th)$/i, "");
-  return parseInt(num4);
-}
-var YEAR_PATTERN = `(?:[1-9][0-9]{0,3}\\s{0,2}(?:BE|AD|BC|BCE|CE)|[1-9][0-9]{3}|[0-9]{2}(?!\\w|:\\d|\\s+(?:am|pm|o\\s*clock|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)))`;
-function parseYear(match) {
-  if (/BE/i.test(match)) {
-    match = match.replace(/BE/i, "");
-    return parseInt(match) - 543;
-  }
-  if (/BCE?/i.test(match)) {
-    match = match.replace(/BCE?/i, "");
-    return -parseInt(match);
-  }
-  if (/(AD|CE)/i.test(match)) {
-    match = match.replace(/(AD|CE)/i, "");
-    return parseInt(match);
-  }
-  const rawYearNumber = parseInt(match);
-  return findMostLikelyADYear(rawYearNumber);
-}
-var SINGLE_TIME_UNIT_PATTERN = `(${NUMBER_PATTERN})\\s{0,3}(${matchAnyPattern(TIME_UNIT_DICTIONARY)})`;
-var SINGLE_TIME_UNIT_REGEX = new RegExp(SINGLE_TIME_UNIT_PATTERN, "i");
-var SINGLE_TIME_UNIT_NO_ABBR_PATTERN = `(${NUMBER_PATTERN})\\s{0,3}(${matchAnyPattern(TIME_UNIT_DICTIONARY_NO_ABBR)})`;
-var TIME_UNIT_CONNECTOR_PATTERN = `\\s{0,5},?(?:\\s*and)?\\s{0,5}`;
-var TIME_UNITS_PATTERN = repeatedTimeunitPattern(`(?:(?:about|around)\\s{0,3})?`, SINGLE_TIME_UNIT_PATTERN, TIME_UNIT_CONNECTOR_PATTERN);
-var TIME_UNITS_NO_ABBR_PATTERN = repeatedTimeunitPattern(`(?:(?:about|around)\\s{0,3})?`, SINGLE_TIME_UNIT_NO_ABBR_PATTERN, TIME_UNIT_CONNECTOR_PATTERN);
-function parseDuration(timeunitText) {
-  const fragments = {};
-  let remainingText = timeunitText;
-  let match = SINGLE_TIME_UNIT_REGEX.exec(remainingText);
-  while (match) {
-    collectDateTimeFragment(fragments, match);
-    remainingText = remainingText.substring(match[0].length).trim();
-    match = SINGLE_TIME_UNIT_REGEX.exec(remainingText);
-  }
-  if (Object.keys(fragments).length == 0) {
-    return null;
-  }
-  return fragments;
-}
-function collectDateTimeFragment(fragments, match) {
-  if (match[0].match(/^[a-zA-Z]+$/)) {
-    return;
-  }
-  const num4 = parseNumberPattern(match[1]);
-  const unit = TIME_UNIT_DICTIONARY[match[2].toLowerCase()];
-  fragments[unit] = num4;
-}
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/parsers/AbstractParserWithWordBoundary.js
-var AbstractParserWithWordBoundaryChecking = class {
-  innerPatternHasChange(context, currentInnerPattern) {
-    return this.innerPattern(context) !== currentInnerPattern;
-  }
-  patternLeftBoundary() {
-    return `(\\W|^)`;
-  }
-  cachedInnerPattern = null;
-  cachedPattern = null;
-  pattern(context) {
-    if (this.cachedInnerPattern) {
-      if (!this.innerPatternHasChange(context, this.cachedInnerPattern)) {
-        return this.cachedPattern;
-      }
-    }
-    this.cachedInnerPattern = this.innerPattern(context);
-    this.cachedPattern = new RegExp(`${this.patternLeftBoundary()}${this.cachedInnerPattern.source}`, this.cachedInnerPattern.flags);
-    return this.cachedPattern;
-  }
-  extract(context, match) {
-    const header = match[1] ?? "";
-    match.index = match.index + header.length;
-    match[0] = match[0].substring(header.length);
-    for (let i = 2; i < match.length; i++) {
-      match[i - 1] = match[i];
-    }
-    return this.innerExtract(context, match);
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENTimeUnitWithinFormatParser.js
-var PATTERN_WITH_OPTIONAL_PREFIX = new RegExp(`(?:(?:within|in|for)\\s*)?(?:(?:about|around|roughly|approximately|just)\\s*(?:~\\s*)?)?(${TIME_UNITS_PATTERN})(?=\\W|$)`, "i");
-var PATTERN_WITH_PREFIX = new RegExp(`(?:within|in|for)\\s*(?:(?:about|around|roughly|approximately|just)\\s*(?:~\\s*)?)?(${TIME_UNITS_PATTERN})(?=\\W|$)`, "i");
-var PATTERN_WITH_PREFIX_STRICT = new RegExp(`(?:within|in|for)\\s*(?:(?:about|around|roughly|approximately|just)\\s*(?:~\\s*)?)?(${TIME_UNITS_NO_ABBR_PATTERN})(?=\\W|$)`, "i");
-var ENTimeUnitWithinFormatParser = class extends AbstractParserWithWordBoundaryChecking {
-  strictMode;
-  constructor(strictMode) {
-    super();
-    this.strictMode = strictMode;
-  }
-  innerPattern(context) {
-    if (this.strictMode) {
-      return PATTERN_WITH_PREFIX_STRICT;
-    }
-    return context.option.forwardDate ? PATTERN_WITH_OPTIONAL_PREFIX : PATTERN_WITH_PREFIX;
-  }
-  innerExtract(context, match) {
-    if (match[0].match(/^for\s*the\s*\w+/i)) {
-      return null;
-    }
-    const timeUnits = parseDuration(match[1]);
-    if (!timeUnits) {
-      return null;
-    }
-    return ParsingComponents.createRelativeFromReference(context.reference, timeUnits);
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENMonthNameLittleEndianParser.js
-var PATTERN = new RegExp(`(?:on\\s{0,3})?(${ORDINAL_NUMBER_PATTERN})(?:\\s{0,3}(?:to|\\-|\\\u2013|until|through|till)\\s{0,3}(${ORDINAL_NUMBER_PATTERN}))?(?:-|/|\\s{0,3}(?:of)?\\s{0,3})(${matchAnyPattern(MONTH_DICTIONARY)})(?:(?:-|/|,?\\s{0,3})(${YEAR_PATTERN}(?!\\w)))?(?=\\W|$)`, "i");
-var DATE_GROUP = 1;
-var DATE_TO_GROUP = 2;
-var MONTH_NAME_GROUP = 3;
-var YEAR_GROUP = 4;
-var ENMonthNameLittleEndianParser = class extends AbstractParserWithWordBoundaryChecking {
-  innerPattern() {
-    return PATTERN;
-  }
-  innerExtract(context, match) {
-    const result = context.createParsingResult(match.index, match[0]);
-    const month = MONTH_DICTIONARY[match[MONTH_NAME_GROUP].toLowerCase()];
-    const day = parseOrdinalNumberPattern(match[DATE_GROUP]);
-    if (day > 31) {
-      match.index = match.index + match[DATE_GROUP].length;
-      return null;
-    }
-    result.start.assign("month", month);
-    result.start.assign("day", day);
-    if (match[YEAR_GROUP]) {
-      const yearNumber = parseYear(match[YEAR_GROUP]);
-      result.start.assign("year", yearNumber);
-    } else {
-      const year = findYearClosestToRef(context.refDate, day, month);
-      result.start.imply("year", year);
-    }
-    if (match[DATE_TO_GROUP]) {
-      const endDate = parseOrdinalNumberPattern(match[DATE_TO_GROUP]);
-      result.end = result.start.clone();
-      result.end.assign("day", endDate);
-    }
-    return result;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENMonthNameMiddleEndianParser.js
-var PATTERN2 = new RegExp(`(${matchAnyPattern(MONTH_DICTIONARY)})(?:-|/|\\s*,?\\s*)(${ORDINAL_NUMBER_PATTERN})(?!\\s*(?:am|pm))\\s*(?:(?:to|\\-)\\s*(${ORDINAL_NUMBER_PATTERN})\\s*)?(?:(?:-|/|\\s*,\\s*|\\s+)(${YEAR_PATTERN}))?(?=\\W|$)(?!\\:\\d)`, "i");
-var MONTH_NAME_GROUP2 = 1;
-var DATE_GROUP2 = 2;
-var DATE_TO_GROUP2 = 3;
-var YEAR_GROUP2 = 4;
-var ENMonthNameMiddleEndianParser = class extends AbstractParserWithWordBoundaryChecking {
-  shouldSkipYearLikeDate;
-  constructor(shouldSkipYearLikeDate) {
-    super();
-    this.shouldSkipYearLikeDate = shouldSkipYearLikeDate;
-  }
-  innerPattern() {
-    return PATTERN2;
-  }
-  innerExtract(context, match) {
-    const month = MONTH_DICTIONARY[match[MONTH_NAME_GROUP2].toLowerCase()];
-    const day = parseOrdinalNumberPattern(match[DATE_GROUP2]);
-    if (day > 31) {
-      return null;
-    }
-    if (this.shouldSkipYearLikeDate) {
-      if (!match[DATE_TO_GROUP2] && !match[YEAR_GROUP2] && match[DATE_GROUP2].match(/^\d{2}$/)) {
-        return null;
-      }
-    }
-    const components = context.createParsingComponents({
-      day,
-      month
-    }).addTag("parser/ENMonthNameMiddleEndianParser");
-    if (match[YEAR_GROUP2]) {
-      const year = parseYear(match[YEAR_GROUP2]);
-      components.assign("year", year);
-    } else {
-      const year = findYearClosestToRef(context.refDate, day, month);
-      components.imply("year", year);
-    }
-    if (!match[DATE_TO_GROUP2]) {
-      return components;
-    }
-    const endDate = parseOrdinalNumberPattern(match[DATE_TO_GROUP2]);
-    const result = context.createParsingResult(match.index, match[0]);
-    result.start = components;
-    result.end = components.clone();
-    result.end.assign("day", endDate);
-    return result;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENMonthNameParser.js
-var PATTERN3 = new RegExp(`((?:in)\\s*)?(${matchAnyPattern(MONTH_DICTIONARY)})\\s*(?:(?:,|-|of)?\\s*(${YEAR_PATTERN})?)?(?=[^\\s\\w]|\\s+[^0-9]|\\s+$|$)`, "i");
-var PREFIX_GROUP = 1;
-var MONTH_NAME_GROUP3 = 2;
-var YEAR_GROUP3 = 3;
-var ENMonthNameParser = class extends AbstractParserWithWordBoundaryChecking {
-  innerPattern() {
-    return PATTERN3;
-  }
-  innerExtract(context, match) {
-    const monthName = match[MONTH_NAME_GROUP3].toLowerCase();
-    if (match[0].length <= 3 && !FULL_MONTH_NAME_DICTIONARY[monthName]) {
-      return null;
-    }
-    const result = context.createParsingResult(match.index + (match[PREFIX_GROUP] || "").length, match.index + match[0].length);
-    result.start.imply("day", 1);
-    result.start.addTag("parser/ENMonthNameParser");
-    const month = MONTH_DICTIONARY[monthName];
-    result.start.assign("month", month);
-    if (match[YEAR_GROUP3]) {
-      const year = parseYear(match[YEAR_GROUP3]);
-      result.start.assign("year", year);
-    } else {
-      const year = findYearClosestToRef(context.refDate, 1, month);
-      result.start.imply("year", year);
-    }
-    return result;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENYearMonthDayParser.js
-var PATTERN4 = new RegExp(`([0-9]{4})[-\\.\\/\\s](?:(${matchAnyPattern(MONTH_DICTIONARY)})|([0-9]{1,2}))[-\\.\\/\\s]([0-9]{1,2})(?=\\W|$)`, "i");
-var YEAR_NUMBER_GROUP = 1;
-var MONTH_NAME_GROUP4 = 2;
-var MONTH_NUMBER_GROUP = 3;
-var DATE_NUMBER_GROUP = 4;
-var ENYearMonthDayParser = class extends AbstractParserWithWordBoundaryChecking {
-  strictMonthDateOrder;
-  constructor(strictMonthDateOrder) {
-    super();
-    this.strictMonthDateOrder = strictMonthDateOrder;
-  }
-  innerPattern() {
-    return PATTERN4;
-  }
-  innerExtract(context, match) {
-    const year = parseInt(match[YEAR_NUMBER_GROUP]);
-    let day = parseInt(match[DATE_NUMBER_GROUP]);
-    let month = match[MONTH_NUMBER_GROUP] ? parseInt(match[MONTH_NUMBER_GROUP]) : MONTH_DICTIONARY[match[MONTH_NAME_GROUP4].toLowerCase()];
-    if (month < 1 || month > 12) {
-      if (this.strictMonthDateOrder) {
-        return null;
-      }
-      if (day >= 1 && day <= 12) {
-        [month, day] = [day, month];
-      }
-    }
-    if (day < 1 || day > 31) {
-      return null;
-    }
-    return {
-      day,
-      month,
-      year
-    };
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENYearMonthNameParser.js
-var YEAR_PATTERN2 = `(?:[1-9][0-9]{0,3}\\s{0,2}(?:BE|AD|BC|BCE|CE)|[1-9][0-9]{3})`;
-var PATTERN5 = new RegExp(`(${YEAR_PATTERN2})(?:\\s*[-.\\/,]?\\s*|\\s+of\\s+)(${matchAnyPattern(MONTH_DICTIONARY)})(?=[^\\s\\w]|\\s+[^0-9]|\\s+$|$)`, "i");
-var YEAR_GROUP4 = 1;
-var MONTH_NAME_GROUP5 = 2;
-var ENYearMonthNameParser = class extends AbstractParserWithWordBoundaryChecking {
-  innerPattern() {
-    return PATTERN5;
-  }
-  innerExtract(context, match) {
-    const year = parseYear(match[YEAR_GROUP4]);
-    const monthName = match[MONTH_NAME_GROUP5].toLowerCase();
-    const month = MONTH_DICTIONARY[monthName];
-    const result = context.createParsingResult(match.index, match[0]);
-    result.start.imply("day", 1);
-    result.start.assign("month", month);
-    result.start.assign("year", year);
-    result.start.addTag("parser/ENYearMonthNameParser");
-    return result;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENSlashMonthFormatParser.js
-var PATTERN6 = new RegExp("([0-9]|0[1-9]|1[012])/([0-9]{4})", "i");
-var MONTH_GROUP = 1;
-var YEAR_GROUP5 = 2;
-var ENSlashMonthFormatParser = class extends AbstractParserWithWordBoundaryChecking {
-  innerPattern() {
-    return PATTERN6;
-  }
-  innerExtract(context, match) {
-    if (/\d\/?$/.test(context.text.substring(0, match.index))) {
-      return null;
-    }
-    const year = parseInt(match[YEAR_GROUP5]);
-    const month = parseInt(match[MONTH_GROUP]);
-    return context.createParsingComponents().imply("day", 1).assign("month", month).assign("year", year);
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/parsers/AbstractTimeExpressionParser.js
-function primaryTimePattern(leftBoundary, primaryPrefix, primarySuffix, flags) {
-  return new RegExp(`${leftBoundary}${primaryPrefix}(\\d{1,4})(?:(?:\\.|:|\uFF1A)(\\d{1,2})(?:(?::|\uFF1A)(\\d{2})(?:\\.(\\d{1,6}))?)?)?(?:\\s*(a\\.m\\.|p\\.m\\.|am?|pm?))?${primarySuffix}`, flags);
-}
-function followingTimePatten(followingPhase, followingSuffix) {
-  return new RegExp(`^(${followingPhase})(\\d{1,4})(?:(?:\\.|\\:|\\\uFF1A)(\\d{1,2})(?:(?:\\.|\\:|\\\uFF1A)(\\d{1,2})(?:\\.(\\d{1,6}))?)?)?(?:\\s*(a\\.m\\.|p\\.m\\.|am?|pm?))?${followingSuffix}`, "i");
-}
-var HOUR_GROUP = 2;
-var MINUTE_GROUP = 3;
-var SECOND_GROUP = 4;
-var MILLI_SECOND_GROUP = 5;
-var AM_PM_HOUR_GROUP = 6;
-var AbstractTimeExpressionParser = class {
-  strictMode;
-  constructor(strictMode = false) {
-    this.strictMode = strictMode;
-  }
-  patternFlags() {
-    return "i";
-  }
-  primaryPatternLeftBoundary() {
-    return `(^|\\s|T|\\b)`;
-  }
-  primarySuffix() {
-    return `(?!/)(?=\\W|$)`;
-  }
-  followingSuffix() {
-    return `(?!/)(?=\\W|$)`;
-  }
-  pattern(context) {
-    return this.getPrimaryTimePatternThroughCache();
-  }
-  extract(context, match) {
-    const startComponents = this.extractPrimaryTimeComponents(context, match);
-    if (!startComponents) {
-      if (match[0].match(/^\d{4}/)) {
-        match.index += 4;
-        return null;
-      }
-      match.index += match[0].length;
-      return null;
-    }
-    const index = match.index + match[1].length;
-    const text = match[0].substring(match[1].length);
-    const result = context.createParsingResult(index, text, startComponents);
-    match.index += match[0].length;
-    const remainingText = context.text.substring(match.index);
-    const followingPattern = this.getFollowingTimePatternThroughCache();
-    const followingMatch = followingPattern.exec(remainingText);
-    if (text.match(/^\d{3,4}/) && followingMatch) {
-      if (followingMatch[0].match(/^\s*([+-])\s*\d{2,4}$/)) {
-        return null;
-      }
-      if (followingMatch[0].match(/^\s*([+-])\s*\d{2}\W\d{2}/)) {
-        return null;
-      }
-    }
-    if (!followingMatch || followingMatch[0].match(/^\s*([+-])\s*\d{3,4}$/)) {
-      return this.checkAndReturnWithoutFollowingPattern(result);
-    }
-    result.end = this.extractFollowingTimeComponents(context, followingMatch, result);
-    if (result.end) {
-      result.text += followingMatch[0];
-    }
-    return this.checkAndReturnWithFollowingPattern(result);
-  }
-  extractPrimaryTimeComponents(context, match, strict2 = false) {
-    const components = context.createParsingComponents();
-    let minute = 0;
-    let meridiem = null;
-    let hour = parseInt(match[HOUR_GROUP]);
-    if (hour > 100) {
-      if (match[HOUR_GROUP].length == 4 && match[MINUTE_GROUP] == null && !match[AM_PM_HOUR_GROUP]) {
-        return null;
-      }
-      if (this.strictMode || match[MINUTE_GROUP] != null) {
-        return null;
-      }
-      minute = hour % 100;
-      hour = Math.floor(hour / 100);
-    }
-    if (hour > 24) {
-      return null;
-    }
-    if (match[MINUTE_GROUP] != null) {
-      if (match[MINUTE_GROUP].length == 1 && !match[AM_PM_HOUR_GROUP]) {
-        return null;
-      }
-      minute = parseInt(match[MINUTE_GROUP]);
-    }
-    if (minute >= 60) {
-      return null;
-    }
-    if (hour > 12) {
-      meridiem = Meridiem.PM;
-    }
-    if (match[AM_PM_HOUR_GROUP] != null) {
-      if (hour > 12)
-        return null;
-      const ampm = match[AM_PM_HOUR_GROUP][0].toLowerCase();
-      if (ampm == "a") {
-        meridiem = Meridiem.AM;
-        if (hour == 12) {
-          hour = 0;
-        }
-      }
-      if (ampm == "p") {
-        meridiem = Meridiem.PM;
-        if (hour != 12) {
-          hour += 12;
-        }
-      }
-    }
-    components.assign("hour", hour);
-    components.assign("minute", minute);
-    if (meridiem !== null) {
-      components.assign("meridiem", meridiem);
-    } else {
-      if (hour < 12) {
-        components.imply("meridiem", Meridiem.AM);
-      } else {
-        components.imply("meridiem", Meridiem.PM);
-      }
-    }
-    if (match[MILLI_SECOND_GROUP] != null) {
-      const millisecond = parseInt(match[MILLI_SECOND_GROUP].substring(0, 3));
-      if (millisecond >= 1e3)
-        return null;
-      components.assign("millisecond", millisecond);
-    }
-    if (match[SECOND_GROUP] != null) {
-      const second = parseInt(match[SECOND_GROUP]);
-      if (second >= 60)
-        return null;
-      components.assign("second", second);
-    }
-    return components;
-  }
-  extractFollowingTimeComponents(context, match, result) {
-    const components = context.createParsingComponents();
-    if (match[MILLI_SECOND_GROUP] != null) {
-      const millisecond = parseInt(match[MILLI_SECOND_GROUP].substring(0, 3));
-      if (millisecond >= 1e3)
-        return null;
-      components.assign("millisecond", millisecond);
-    }
-    if (match[SECOND_GROUP] != null) {
-      const second = parseInt(match[SECOND_GROUP]);
-      if (second >= 60)
-        return null;
-      components.assign("second", second);
-    }
-    let hour = parseInt(match[HOUR_GROUP]);
-    let minute = 0;
-    let meridiem = -1;
-    if (match[MINUTE_GROUP] != null) {
-      minute = parseInt(match[MINUTE_GROUP]);
-    } else if (hour > 100) {
-      minute = hour % 100;
-      hour = Math.floor(hour / 100);
-    }
-    if (minute >= 60 || hour > 24) {
-      return null;
-    }
-    if (hour >= 12) {
-      meridiem = Meridiem.PM;
-    }
-    if (match[AM_PM_HOUR_GROUP] != null) {
-      if (hour > 12) {
-        return null;
-      }
-      const ampm = match[AM_PM_HOUR_GROUP][0].toLowerCase();
-      if (ampm == "a") {
-        meridiem = Meridiem.AM;
-        if (hour == 12) {
-          hour = 0;
-          if (!components.isCertain("day")) {
-            components.imply("day", components.get("day") + 1);
-          }
-        }
-      }
-      if (ampm == "p") {
-        meridiem = Meridiem.PM;
-        if (hour != 12)
-          hour += 12;
-      }
-      if (!result.start.isCertain("meridiem")) {
-        if (meridiem == Meridiem.AM) {
-          result.start.imply("meridiem", Meridiem.AM);
-          if (result.start.get("hour") == 12) {
-            result.start.assign("hour", 0);
-          }
-        } else {
-          result.start.imply("meridiem", Meridiem.PM);
-          if (result.start.get("hour") != 12) {
-            result.start.assign("hour", result.start.get("hour") + 12);
-          }
-        }
-      }
-    }
-    components.assign("hour", hour);
-    components.assign("minute", minute);
-    if (meridiem >= 0) {
-      components.assign("meridiem", meridiem);
-    } else {
-      const startAtPM = result.start.isCertain("meridiem") && result.start.get("hour") > 12;
-      if (startAtPM) {
-        if (result.start.get("hour") - 12 > hour) {
-          components.imply("meridiem", Meridiem.AM);
-        } else if (hour <= 12) {
-          components.assign("hour", hour + 12);
-          components.assign("meridiem", Meridiem.PM);
-        }
-      } else if (hour > 12) {
-        components.imply("meridiem", Meridiem.PM);
-      } else if (hour <= 12) {
-        components.imply("meridiem", Meridiem.AM);
-      }
-    }
-    if (components.date().getTime() < result.start.date().getTime()) {
-      components.imply("day", components.get("day") + 1);
-    }
-    return components;
-  }
-  checkAndReturnWithoutFollowingPattern(result) {
-    if (result.text.match(/^\d$/)) {
-      return null;
-    }
-    if (result.text.match(/^\d\d\d+$/)) {
-      return null;
-    }
-    if (result.text.match(/\d[apAP]$/)) {
-      return null;
-    }
-    const endingWithNumbers = result.text.match(/[^\d:.](\d[\d.]+)$/);
-    if (endingWithNumbers) {
-      const endingNumbers = endingWithNumbers[1];
-      if (this.strictMode) {
-        return null;
-      }
-      if (endingNumbers.includes(".") && !endingNumbers.match(/\d(\.\d{2})+$/)) {
-        return null;
-      }
-      const endingNumberVal = parseInt(endingNumbers);
-      if (endingNumberVal > 24) {
-        return null;
-      }
-    }
-    return result;
-  }
-  checkAndReturnWithFollowingPattern(result) {
-    if (result.text.match(/^\d+-\d+$/)) {
-      return null;
-    }
-    const endingWithNumbers = result.text.match(/[^\d:.](\d[\d.]+)\s*-\s*(\d[\d.]+)$/);
-    if (endingWithNumbers) {
-      if (this.strictMode) {
-        return null;
-      }
-      const startingNumbers = endingWithNumbers[1];
-      const endingNumbers = endingWithNumbers[2];
-      if (endingNumbers.includes(".") && !endingNumbers.match(/\d(\.\d{2})+$/)) {
-        return null;
-      }
-      const endingNumberVal = parseInt(endingNumbers);
-      const startingNumberVal = parseInt(startingNumbers);
-      if (endingNumberVal > 24 || startingNumberVal > 24) {
-        return null;
-      }
-    }
-    return result;
-  }
-  cachedPrimaryPrefix = null;
-  cachedPrimarySuffix = null;
-  cachedPrimaryTimePattern = null;
-  getPrimaryTimePatternThroughCache() {
-    const primaryPrefix = this.primaryPrefix();
-    const primarySuffix = this.primarySuffix();
-    if (this.cachedPrimaryPrefix === primaryPrefix && this.cachedPrimarySuffix === primarySuffix) {
-      return this.cachedPrimaryTimePattern;
-    }
-    this.cachedPrimaryTimePattern = primaryTimePattern(this.primaryPatternLeftBoundary(), primaryPrefix, primarySuffix, this.patternFlags());
-    this.cachedPrimaryPrefix = primaryPrefix;
-    this.cachedPrimarySuffix = primarySuffix;
-    return this.cachedPrimaryTimePattern;
-  }
-  cachedFollowingPhase = null;
-  cachedFollowingSuffix = null;
-  cachedFollowingTimePatten = null;
-  getFollowingTimePatternThroughCache() {
-    const followingPhase = this.followingPhase();
-    const followingSuffix = this.followingSuffix();
-    if (this.cachedFollowingPhase === followingPhase && this.cachedFollowingSuffix === followingSuffix) {
-      return this.cachedFollowingTimePatten;
-    }
-    this.cachedFollowingTimePatten = followingTimePatten(followingPhase, followingSuffix);
-    this.cachedFollowingPhase = followingPhase;
-    this.cachedFollowingSuffix = followingSuffix;
-    return this.cachedFollowingTimePatten;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENTimeExpressionParser.js
-var ENTimeExpressionParser = class extends AbstractTimeExpressionParser {
-  constructor(strictMode) {
-    super(strictMode);
-  }
-  followingPhase() {
-    return "\\s*(?:\\-|\\\u2013|\\~|\\\u301C|to|until|through|till|\\?)\\s*";
-  }
-  primaryPrefix() {
-    return "(?:(?:at|from)\\s*)??";
-  }
-  primarySuffix() {
-    return "(?:\\s*(?:o\\W*clock|at\\s*night|in\\s*the\\s*(?:morning|afternoon)))?(?!/)(?=\\W|$)";
-  }
-  extractPrimaryTimeComponents(context, match) {
-    const components = super.extractPrimaryTimeComponents(context, match);
-    if (!components) {
-      return components;
-    }
-    if (match[0].endsWith("night")) {
-      const hour = components.get("hour");
-      if (hour >= 6 && hour < 12) {
-        components.assign("hour", components.get("hour") + 12);
-        components.assign("meridiem", Meridiem.PM);
-      } else if (hour < 6) {
-        components.assign("meridiem", Meridiem.AM);
-      }
-    }
-    if (match[0].endsWith("afternoon")) {
-      components.assign("meridiem", Meridiem.PM);
-      const hour = components.get("hour");
-      if (hour >= 0 && hour <= 6) {
-        components.assign("hour", components.get("hour") + 12);
-      }
-    }
-    if (match[0].endsWith("morning")) {
-      components.assign("meridiem", Meridiem.AM);
-      const hour = components.get("hour");
-      if (hour < 12) {
-        components.assign("hour", components.get("hour"));
-      }
-    }
-    return components.addTag("parser/ENTimeExpressionParser");
-  }
-  extractFollowingTimeComponents(context, match, result) {
-    const followingComponents = super.extractFollowingTimeComponents(context, match, result);
-    if (followingComponents) {
-      followingComponents.addTag("parser/ENTimeExpressionParser");
-    }
-    return followingComponents;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENTimeUnitAgoFormatParser.js
-var PATTERN7 = new RegExp(`(${TIME_UNITS_PATTERN})\\s{0,5}(?:ago|before|earlier)(?=\\W|$)`, "i");
-var STRICT_PATTERN = new RegExp(`(${TIME_UNITS_NO_ABBR_PATTERN})\\s{0,5}(?:ago|before|earlier)(?=\\W|$)`, "i");
-var ENTimeUnitAgoFormatParser = class extends AbstractParserWithWordBoundaryChecking {
-  strictMode;
-  constructor(strictMode) {
-    super();
-    this.strictMode = strictMode;
-  }
-  innerPattern() {
-    return this.strictMode ? STRICT_PATTERN : PATTERN7;
-  }
-  innerExtract(context, match) {
-    const duration3 = parseDuration(match[1]);
-    if (!duration3) {
-      return null;
-    }
-    return ParsingComponents.createRelativeFromReference(context.reference, reverseDuration(duration3));
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENTimeUnitLaterFormatParser.js
-var PATTERN8 = new RegExp(`(${TIME_UNITS_PATTERN})\\s{0,5}(?:later|after|from now|henceforth|forward|out)(?=(?:\\W|$))`, "i");
-var STRICT_PATTERN2 = new RegExp(`(${TIME_UNITS_NO_ABBR_PATTERN})\\s{0,5}(later|after|from now)(?=\\W|$)`, "i");
-var GROUP_NUM_TIMEUNITS = 1;
-var ENTimeUnitLaterFormatParser = class extends AbstractParserWithWordBoundaryChecking {
-  strictMode;
-  constructor(strictMode) {
-    super();
-    this.strictMode = strictMode;
-  }
-  innerPattern() {
-    return this.strictMode ? STRICT_PATTERN2 : PATTERN8;
-  }
-  innerExtract(context, match) {
-    const timeUnits = parseDuration(match[GROUP_NUM_TIMEUNITS]);
-    if (!timeUnits) {
-      return null;
-    }
-    return ParsingComponents.createRelativeFromReference(context.reference, timeUnits);
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/abstractRefiners.js
-var Filter = class {
-  refine(context, results) {
-    return results.filter((r) => this.isValid(context, r));
-  }
-};
-var MergingRefiner = class {
-  refine(context, results) {
-    if (results.length < 2) {
-      return results;
-    }
-    const mergedResults = [];
-    let curResult = results[0];
-    let nextResult = null;
-    for (let i = 1; i < results.length; i++) {
-      nextResult = results[i];
-      const textBetween = context.text.substring(curResult.index + curResult.text.length, nextResult.index);
-      if (!this.shouldMergeResults(textBetween, curResult, nextResult, context)) {
-        mergedResults.push(curResult);
-        curResult = nextResult;
-      } else {
-        const left = curResult;
-        const right = nextResult;
-        const mergedResult = this.mergeResults(textBetween, left, right, context);
-        context.debug(() => {
-          console.log(`${this.constructor.name} merged ${left} and ${right} into ${mergedResult}`);
-        });
-        curResult = mergedResult;
-      }
-    }
-    if (curResult != null) {
-      mergedResults.push(curResult);
-    }
-    return mergedResults;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/AbstractMergeDateRangeRefiner.js
-var AbstractMergeDateRangeRefiner = class extends MergingRefiner {
-  shouldMergeResults(textBetween, currentResult, nextResult) {
-    return !currentResult.end && !nextResult.end && textBetween.match(this.patternBetween()) != null;
-  }
-  mergeResults(textBetween, fromResult, toResult) {
-    if (!fromResult.start.isOnlyWeekdayComponent() && !toResult.start.isOnlyWeekdayComponent()) {
-      toResult.start.getCertainComponents().forEach((key) => {
-        if (!fromResult.start.isCertain(key)) {
-          fromResult.start.imply(key, toResult.start.get(key));
-        }
-      });
-      fromResult.start.getCertainComponents().forEach((key) => {
-        if (!toResult.start.isCertain(key)) {
-          toResult.start.imply(key, fromResult.start.get(key));
-        }
-      });
-    }
-    if (fromResult.start.date() > toResult.start.date()) {
-      let fromDate = fromResult.start.date();
-      let toDate = toResult.start.date();
-      if (toResult.start.isOnlyWeekdayComponent() && addDuration(toDate, { day: 7 }) > fromDate) {
-        toDate = addDuration(toDate, { day: 7 });
-        toResult.start.imply("day", toDate.getDate());
-        toResult.start.imply("month", toDate.getMonth() + 1);
-        toResult.start.imply("year", toDate.getFullYear());
-      } else if (fromResult.start.isOnlyWeekdayComponent() && addDuration(fromDate, { day: -7 }) < toDate) {
-        fromDate = addDuration(fromDate, { day: -7 });
-        fromResult.start.imply("day", fromDate.getDate());
-        fromResult.start.imply("month", fromDate.getMonth() + 1);
-        fromResult.start.imply("year", fromDate.getFullYear());
-      } else if (toResult.start.isDateWithUnknownYear() && addDuration(toDate, { year: 1 }) > fromDate) {
-        toDate = addDuration(toDate, { year: 1 });
-        toResult.start.imply("year", toDate.getFullYear());
-      } else if (fromResult.start.isDateWithUnknownYear() && addDuration(fromDate, { year: -1 }) < toDate) {
-        fromDate = addDuration(fromDate, { year: -1 });
-        fromResult.start.imply("year", fromDate.getFullYear());
-      } else {
-        [toResult, fromResult] = [fromResult, toResult];
-      }
-    }
-    const result = fromResult.clone();
-    result.start = fromResult.start;
-    result.end = toResult.start;
-    result.index = Math.min(fromResult.index, toResult.index);
-    if (fromResult.index < toResult.index) {
-      result.text = fromResult.text + textBetween + toResult.text;
-    } else {
-      result.text = toResult.text + textBetween + fromResult.text;
-    }
-    return result;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENMergeDateRangeRefiner.js
-var ENMergeDateRangeRefiner = class extends AbstractMergeDateRangeRefiner {
-  patternBetween() {
-    return /^\s*(to|-|–|until|through|till)\s*$/i;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/calculation/mergingCalculation.js
-function mergeDateTimeResult(dateResult, timeResult) {
-  const result = dateResult.clone();
-  const beginDate = dateResult.start;
-  const beginTime = timeResult.start;
-  result.start = mergeDateTimeComponent(beginDate, beginTime);
-  if (dateResult.end != null || timeResult.end != null) {
-    const endDate = dateResult.end == null ? dateResult.start : dateResult.end;
-    const endTime = timeResult.end == null ? timeResult.start : timeResult.end;
-    const endDateTime = mergeDateTimeComponent(endDate, endTime);
-    if (dateResult.end == null && endDateTime.date().getTime() < result.start.date().getTime()) {
-      const nextDay = new Date(endDateTime.date().getTime());
-      nextDay.setDate(nextDay.getDate() + 1);
-      if (endDateTime.isCertain("day")) {
-        assignSimilarDate(endDateTime, nextDay);
-      } else {
-        implySimilarDate(endDateTime, nextDay);
-      }
-    }
-    result.end = endDateTime;
-  }
-  return result;
-}
-function mergeDateTimeComponent(dateComponent, timeComponent) {
-  const dateTimeComponent = dateComponent.clone();
-  if (timeComponent.isCertain("hour")) {
-    dateTimeComponent.assign("hour", timeComponent.get("hour"));
-    dateTimeComponent.assign("minute", timeComponent.get("minute"));
-    if (timeComponent.isCertain("second")) {
-      dateTimeComponent.assign("second", timeComponent.get("second"));
-      if (timeComponent.isCertain("millisecond")) {
-        dateTimeComponent.assign("millisecond", timeComponent.get("millisecond"));
-      } else {
-        dateTimeComponent.imply("millisecond", timeComponent.get("millisecond"));
-      }
-    } else {
-      dateTimeComponent.imply("second", timeComponent.get("second"));
-      dateTimeComponent.imply("millisecond", timeComponent.get("millisecond"));
-    }
-  } else {
-    dateTimeComponent.imply("hour", timeComponent.get("hour"));
-    dateTimeComponent.imply("minute", timeComponent.get("minute"));
-    dateTimeComponent.imply("second", timeComponent.get("second"));
-    dateTimeComponent.imply("millisecond", timeComponent.get("millisecond"));
-  }
-  if (timeComponent.isCertain("timezoneOffset")) {
-    dateTimeComponent.assign("timezoneOffset", timeComponent.get("timezoneOffset"));
-  }
-  const dateHasMeaningfulMeridiem = dateComponent.get("meridiem") != null && (dateComponent.isCertain("meridiem") || Array.from(dateComponent.tags()).some((t) => t.startsWith("casualReference/")));
-  if (timeComponent.isCertain("meridiem")) {
-    dateTimeComponent.assign("meridiem", timeComponent.get("meridiem"));
-  } else if (timeComponent.get("meridiem") != null && !dateHasMeaningfulMeridiem) {
-    dateTimeComponent.imply("meridiem", timeComponent.get("meridiem"));
-  }
-  if (dateTimeComponent.get("meridiem") == Meridiem.PM && dateTimeComponent.get("hour") < 12) {
-    if (timeComponent.isCertain("hour")) {
-      dateTimeComponent.assign("hour", dateTimeComponent.get("hour") + 12);
-    } else {
-      dateTimeComponent.imply("hour", dateTimeComponent.get("hour") + 12);
-    }
-  }
-  dateTimeComponent.addTags(dateComponent.tags());
-  dateTimeComponent.addTags(timeComponent.tags());
-  return dateTimeComponent;
-}
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/AbstractMergeDateTimeRefiner.js
-var AbstractMergeDateTimeRefiner = class extends MergingRefiner {
-  shouldMergeResults(textBetween, currentResult, nextResult) {
-    const isDateThenTime = currentResult.start.isOnlyDate() && nextResult.start.isOnlyTime();
-    const isTimeThenDate = currentResult.start.isOnlyTime() && nextResult.start.isOnlyDate();
-    if (isTimeThenDate && textBetween.trim() === ":") {
-      return false;
-    }
-    return (isDateThenTime || isTimeThenDate) && textBetween.match(this.patternBetween()) != null;
-  }
-  mergeResults(textBetween, currentResult, nextResult) {
-    const result = currentResult.start.isOnlyDate() ? mergeDateTimeResult(currentResult, nextResult) : mergeDateTimeResult(nextResult, currentResult);
-    result.index = currentResult.index;
-    result.text = currentResult.text + textBetween + nextResult.text;
-    return result;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENMergeDateTimeRefiner.js
-var ENMergeDateTimeRefiner = class extends AbstractMergeDateTimeRefiner {
-  patternBetween() {
-    return new RegExp("^\\s*(T|at|after|before|on|of|,|-|\\.|\u2219|:)?\\s*$");
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/ExtractTimezoneAbbrRefiner.js
-var TIMEZONE_NAME_PATTERN = new RegExp("^\\s*,?\\s*\\(?([A-Z]{2,4})\\)?(?=\\W|$)", "i");
-var ExtractTimezoneAbbrRefiner = class {
-  timezoneOverrides;
-  constructor(timezoneOverrides) {
-    this.timezoneOverrides = timezoneOverrides;
-  }
-  refine(context, results) {
-    const timezoneOverrides = context.option.timezones ?? {};
-    results.forEach((result) => {
-      const suffix = context.text.substring(result.index + result.text.length);
-      const match = TIMEZONE_NAME_PATTERN.exec(suffix);
-      if (!match) {
-        return;
-      }
-      const timezoneAbbr = match[1].toUpperCase();
-      const refDate = result.start.date() ?? result.refDate ?? /* @__PURE__ */ new Date();
-      const tzOverrides = { ...this.timezoneOverrides, ...timezoneOverrides };
-      const extractedTimezoneOffset = toTimezoneOffset(timezoneAbbr, refDate, tzOverrides);
-      if (extractedTimezoneOffset == null) {
-        return;
-      }
-      context.debug(() => {
-        console.log(`Extracting timezone: '${timezoneAbbr}' into: ${extractedTimezoneOffset} for: ${result.start}`);
-      });
-      const currentTimezoneOffset = result.start.get("timezoneOffset");
-      if (currentTimezoneOffset !== null && extractedTimezoneOffset != currentTimezoneOffset) {
-        if (result.start.isCertain("timezoneOffset")) {
-          return;
-        }
-        if (timezoneAbbr != match[1]) {
-          return;
-        }
-      }
-      if (result.start.isOnlyDate()) {
-        if (timezoneAbbr != match[1]) {
-          return;
-        }
-      }
-      result.text += match[0];
-      if (!result.start.isCertain("timezoneOffset")) {
-        result.start.assign("timezoneOffset", extractedTimezoneOffset);
-      }
-      if (result.end != null && !result.end.isCertain("timezoneOffset")) {
-        result.end.assign("timezoneOffset", extractedTimezoneOffset);
-      }
-    });
-    return results;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/ExtractTimezoneOffsetRefiner.js
-var TIMEZONE_OFFSET_PATTERN = new RegExp("^\\s*(?:\\(?(?:GMT|UTC)\\s?)?([+-])(\\d{1,2})(?::?(\\d{2}))?\\)?", "i");
-var TIMEZONE_OFFSET_SIGN_GROUP = 1;
-var TIMEZONE_OFFSET_HOUR_OFFSET_GROUP = 2;
-var TIMEZONE_OFFSET_MINUTE_OFFSET_GROUP = 3;
-var ExtractTimezoneOffsetRefiner = class {
-  refine(context, results) {
-    results.forEach(function(result) {
-      if (result.start.isCertain("timezoneOffset")) {
-        return;
-      }
-      const suffix = context.text.substring(result.index + result.text.length);
-      const match = TIMEZONE_OFFSET_PATTERN.exec(suffix);
-      if (!match) {
-        return;
-      }
-      context.debug(() => {
-        console.log(`Extracting timezone: '${match[0]}' into : ${result}`);
-      });
-      const hourOffset = parseInt(match[TIMEZONE_OFFSET_HOUR_OFFSET_GROUP]);
-      const minuteOffset = parseInt(match[TIMEZONE_OFFSET_MINUTE_OFFSET_GROUP] || "0");
-      let timezoneOffset = hourOffset * 60 + minuteOffset;
-      if (timezoneOffset > 14 * 60) {
-        return;
-      }
-      if (match[TIMEZONE_OFFSET_SIGN_GROUP] === "-") {
-        timezoneOffset = -timezoneOffset;
-      }
-      if (result.end != null) {
-        result.end.assign("timezoneOffset", timezoneOffset);
-      }
-      result.start.assign("timezoneOffset", timezoneOffset);
-      result.text += match[0];
-    });
-    return results;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/OverlapRemovalRefiner.js
-var OverlapRemovalRefiner = class {
-  refine(context, results) {
-    if (results.length < 2) {
-      return results;
-    }
-    const filteredResults = [];
-    let prevResult = results[0];
-    for (let i = 1; i < results.length; i++) {
-      const result = results[i];
-      if (result.index >= prevResult.index + prevResult.text.length) {
-        filteredResults.push(prevResult);
-        prevResult = result;
-        continue;
-      }
-      let kept = null;
-      let removed = null;
-      if (result.text.length > prevResult.text.length) {
-        kept = result;
-        removed = prevResult;
-      } else {
-        kept = prevResult;
-        removed = result;
-      }
-      context.debug(() => {
-        console.log(`${this.constructor.name} remove ${removed} by ${kept}`);
-      });
-      prevResult = kept;
-    }
-    if (prevResult != null) {
-      filteredResults.push(prevResult);
-    }
-    return filteredResults;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/calculation/weekdays.js
-function createParsingComponentsAtWeekday(reference, weekday2, modifier) {
-  const refDate = reference.getDateWithAdjustedTimezone();
-  const daysToWeekday = getDaysToWeekday(refDate, weekday2, modifier);
-  let components = new ParsingComponents(reference);
-  components = components.addDurationAsImplied({ day: daysToWeekday });
-  components.assign("weekday", weekday2);
-  return components;
-}
-function getDaysToWeekday(refDate, weekday2, modifier) {
-  const refWeekday = refDate.getDay();
-  switch (modifier) {
-    case "this":
-      return getDaysForwardToWeekday(refDate, weekday2);
-    case "last":
-      return getBackwardDaysToWeekday(refDate, weekday2);
-    case "next":
-      if (refWeekday == Weekday.SUNDAY) {
-        return weekday2 == Weekday.SUNDAY ? 7 : weekday2;
-      }
-      if (refWeekday == Weekday.SATURDAY) {
-        if (weekday2 == Weekday.SATURDAY)
-          return 7;
-        if (weekday2 == Weekday.SUNDAY)
-          return 8;
-        return 1 + weekday2;
-      }
-      if (weekday2 < refWeekday && weekday2 != Weekday.SUNDAY) {
-        return getDaysForwardToWeekday(refDate, weekday2);
-      } else {
-        return getDaysForwardToWeekday(refDate, weekday2) + 7;
-      }
-  }
-  return getDaysToWeekdayClosest(refDate, weekday2);
-}
-function getDaysToWeekdayClosest(refDate, weekday2) {
-  const backward = getBackwardDaysToWeekday(refDate, weekday2);
-  const forward = getDaysForwardToWeekday(refDate, weekday2);
-  return forward < -backward ? forward : backward;
-}
-function getDaysForwardToWeekday(refDate, weekday2) {
-  const refWeekday = refDate.getDay();
-  let forwardCount = weekday2 - refWeekday;
-  if (forwardCount < 0) {
-    forwardCount += 7;
-  }
-  return forwardCount;
-}
-function getBackwardDaysToWeekday(refDate, weekday2) {
-  const refWeekday = refDate.getDay();
-  let backwardCount = weekday2 - refWeekday;
-  if (backwardCount >= 0) {
-    backwardCount -= 7;
-  }
-  return backwardCount;
-}
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/ForwardDateRefiner.js
-var ForwardDateRefiner = class {
-  refine(context, results) {
-    if (!context.option.forwardDate) {
-      return results;
-    }
-    results.forEach((result) => {
-      let refDate = context.reference.getDateWithAdjustedTimezone();
-      if (result.start.isOnlyTime() && context.reference.instant > result.start.date()) {
-        const refDate2 = context.reference.getDateWithAdjustedTimezone();
-        const refFollowingDay = new Date(refDate2);
-        refFollowingDay.setDate(refFollowingDay.getDate() + 1);
-        implySimilarDate(result.start, refFollowingDay);
-        context.debug(() => {
-          console.log(`${this.constructor.name} adjusted ${result} time from the ref date (${refDate2}) to the following day (${refFollowingDay})`);
-        });
-        if (result.end && result.end.isOnlyTime()) {
-          implySimilarDate(result.end, refFollowingDay);
-          if (result.start.date() > result.end.date()) {
-            refFollowingDay.setDate(refFollowingDay.getDate() + 1);
-            implySimilarDate(result.end, refFollowingDay);
-          }
-        }
-      }
-      if (result.start.isOnlyWeekdayComponent() && refDate > result.start.date()) {
-        let daysToAdd = getDaysForwardToWeekday(refDate, result.start.get("weekday")) || 7;
-        const forwardedWeekday = addDuration(refDate, { day: daysToAdd });
-        implySimilarDate(result.start, forwardedWeekday);
-        context.debug(() => {
-          console.log(`${this.constructor.name} adjusted ${result} weekday (${result.start})`);
-        });
-        if (result.end && result.start.date() > result.end.date()) {
-          let daysToAdd2 = getDaysForwardToWeekday(refDate, result.start.get("weekday")) || 7;
-          const forwardedWeekday2 = addDuration(refDate, { day: daysToAdd2 });
-          implySimilarDate(result.end, forwardedWeekday2);
-          context.debug(() => {
-            console.log(`${this.constructor.name} adjusted ${result} weekday (${result.end})`);
-          });
-        }
-      }
-      if (result.start.isDateWithUnknownYear() && refDate > result.start.date()) {
-        for (let i = 0; i < 3 && refDate > result.start.date(); i++) {
-          result.start.imply("year", result.start.get("year") + 1);
-          context.debug(() => {
-            console.log(`${this.constructor.name} adjusted ${result} year (${result.start})`);
-          });
-          if (result.end && !result.end.isCertain("year")) {
-            result.end.imply("year", result.end.get("year") + 1);
-            context.debug(() => {
-              console.log(`${this.constructor.name} adjusted ${result} month (${result.start})`);
-            });
-          }
-        }
-      }
-    });
-    return results;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/UnlikelyFormatFilter.js
-var UnlikelyFormatFilter = class extends Filter {
-  strictMode;
-  constructor(strictMode) {
-    super();
-    this.strictMode = strictMode;
-  }
-  isValid(context, result) {
-    if (result.text.replace(" ", "").match(/^\d*(\.\d*)?$/)) {
-      context.debug(() => {
-        console.log(`Removing unlikely result '${result.text}'`);
-      });
-      return false;
-    }
-    if (!result.start.isValidDate()) {
-      context.debug(() => {
-        console.log(`Removing invalid result: ${result} (${result.start})`);
-      });
-      return false;
-    }
-    if (result.end && !result.end.isValidDate()) {
-      context.debug(() => {
-        console.log(`Removing invalid result: ${result} (${result.end})`);
-      });
-      return false;
-    }
-    if (this.strictMode) {
-      return this.isStrictModeValid(context, result);
-    }
-    return true;
-  }
-  isStrictModeValid(context, result) {
-    if (result.start.isOnlyWeekdayComponent()) {
-      context.debug(() => {
-        console.log(`(Strict) Removing weekday only component: ${result} (${result.end})`);
-      });
-      return false;
-    }
-    return true;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/parsers/ISOFormatParser.js
-var PATTERN9 = new RegExp("([0-9]{4})\\-([0-9]{1,2})\\-([0-9]{1,2})(?:T([0-9]{1,2}):([0-9]{1,2})(?::([0-9]{1,2})(?:\\.(\\d{1,4}))?)?(Z|([+-]\\d{2}):?(\\d{2})?)?)?(?=\\W|$)", "i");
-var YEAR_NUMBER_GROUP2 = 1;
-var MONTH_NUMBER_GROUP2 = 2;
-var DATE_NUMBER_GROUP2 = 3;
-var HOUR_NUMBER_GROUP = 4;
-var MINUTE_NUMBER_GROUP = 5;
-var SECOND_NUMBER_GROUP = 6;
-var MILLISECOND_NUMBER_GROUP = 7;
-var TZD_GROUP = 8;
-var TZD_HOUR_OFFSET_GROUP = 9;
-var TZD_MINUTE_OFFSET_GROUP = 10;
-var ISOFormatParser = class extends AbstractParserWithWordBoundaryChecking {
-  innerPattern() {
-    return PATTERN9;
-  }
-  innerExtract(context, match) {
-    const components = context.createParsingComponents({
-      "year": parseInt(match[YEAR_NUMBER_GROUP2]),
-      "month": parseInt(match[MONTH_NUMBER_GROUP2]),
-      "day": parseInt(match[DATE_NUMBER_GROUP2])
-    });
-    if (match[HOUR_NUMBER_GROUP] != null) {
-      components.assign("hour", parseInt(match[HOUR_NUMBER_GROUP]));
-      components.assign("minute", parseInt(match[MINUTE_NUMBER_GROUP]));
-      if (match[SECOND_NUMBER_GROUP] != null) {
-        components.assign("second", parseInt(match[SECOND_NUMBER_GROUP]));
-      }
-      if (match[MILLISECOND_NUMBER_GROUP] != null) {
-        components.assign("millisecond", parseInt(match[MILLISECOND_NUMBER_GROUP]));
-      }
-      if (match[TZD_GROUP] != null) {
-        let offset = 0;
-        if (match[TZD_HOUR_OFFSET_GROUP]) {
-          const hourOffset = parseInt(match[TZD_HOUR_OFFSET_GROUP]);
-          let minuteOffset = 0;
-          if (match[TZD_MINUTE_OFFSET_GROUP] != null) {
-            minuteOffset = parseInt(match[TZD_MINUTE_OFFSET_GROUP]);
-          }
-          offset = hourOffset * 60;
-          if (offset < 0) {
-            offset -= minuteOffset;
-          } else {
-            offset += minuteOffset;
-          }
-        }
-        components.assign("timezoneOffset", offset);
-      }
-    }
-    return components.addTag("parser/ISOFormatParser");
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/MergeWeekdayComponentRefiner.js
-var MergeWeekdayComponentRefiner = class extends MergingRefiner {
-  mergeResults(textBetween, currentResult, nextResult) {
-    const newResult = nextResult.clone();
-    newResult.index = currentResult.index;
-    newResult.text = currentResult.text + textBetween + newResult.text;
-    newResult.start.assign("weekday", currentResult.start.get("weekday"));
-    if (newResult.end) {
-      newResult.end.assign("weekday", currentResult.start.get("weekday"));
-    }
-    return newResult;
-  }
-  shouldMergeResults(textBetween, currentResult, nextResult) {
-    const weekdayThenNormalDate = currentResult.start.isOnlyWeekdayComponent() && !currentResult.start.isCertain("hour") && nextResult.start.isCertain("day") && !nextResult.start.tags().has("result/relativeDate");
-    return weekdayThenNormalDate && textBetween.match(/^,?\s*$/) != null;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/configurations.js
-function includeCommonConfiguration(configuration2, strictMode = false) {
-  configuration2.parsers.unshift(new ISOFormatParser());
-  configuration2.refiners.unshift(new MergeWeekdayComponentRefiner());
-  configuration2.refiners.unshift(new ExtractTimezoneOffsetRefiner());
-  configuration2.refiners.unshift(new OverlapRemovalRefiner());
-  configuration2.refiners.push(new ExtractTimezoneAbbrRefiner());
-  configuration2.refiners.push(new OverlapRemovalRefiner());
-  configuration2.refiners.push(new ForwardDateRefiner());
-  configuration2.refiners.push(new UnlikelyFormatFilter(strictMode));
-  return configuration2;
-}
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/casualReferences.js
-function now(reference) {
-  const targetDate = reference.getDateWithAdjustedTimezone();
-  const component = new ParsingComponents(reference, {});
-  assignSimilarDate(component, targetDate);
-  assignSimilarTime(component, targetDate);
-  component.assign("timezoneOffset", reference.getTimezoneOffset());
-  component.addTag("casualReference/now");
-  return component;
-}
-function today(reference) {
-  const targetDate = reference.getDateWithAdjustedTimezone();
-  const component = new ParsingComponents(reference, {});
-  assignSimilarDate(component, targetDate);
-  implySimilarTime(component, targetDate);
-  component.delete("meridiem");
-  component.addTag("casualReference/today");
-  return component;
-}
-function yesterday(reference) {
-  return theDayBefore(reference, 1).addTag("casualReference/yesterday");
-}
-function tomorrow(reference) {
-  return theDayAfter(reference, 1).addTag("casualReference/tomorrow");
-}
-function theDayBefore(reference, numDay) {
-  return theDayAfter(reference, -numDay);
-}
-function theDayAfter(reference, nDays) {
-  const targetDate = reference.getDateWithAdjustedTimezone();
-  const component = new ParsingComponents(reference, {});
-  const newDate = new Date(targetDate.getTime());
-  newDate.setDate(newDate.getDate() + nDays);
-  assignSimilarDate(component, newDate);
-  implySimilarTime(component, newDate);
-  component.delete("meridiem");
-  return component;
-}
-function tonight(reference, implyHour = 22) {
-  const targetDate = reference.getDateWithAdjustedTimezone();
-  const component = new ParsingComponents(reference, {});
-  assignSimilarDate(component, targetDate);
-  component.imply("hour", implyHour);
-  component.imply("meridiem", Meridiem.PM);
-  component.addTag("casualReference/tonight");
-  return component;
-}
-function evening(reference, implyHour = 20) {
-  const component = new ParsingComponents(reference, {});
-  component.imply("meridiem", Meridiem.PM);
-  component.imply("hour", implyHour);
-  component.addTag("casualReference/evening");
-  return component;
-}
-function midnight(reference) {
-  const component = new ParsingComponents(reference, {});
-  if (reference.getDateWithAdjustedTimezone().getHours() > 2) {
-    component.addDurationAsImplied({ day: 1 });
-  }
-  component.assign("hour", 0);
-  component.imply("minute", 0);
-  component.imply("second", 0);
-  component.imply("millisecond", 0);
-  component.addTag("casualReference/midnight");
-  return component;
-}
-function morning(reference, implyHour = 6) {
-  const component = new ParsingComponents(reference, {});
-  component.imply("meridiem", Meridiem.AM);
-  component.imply("hour", implyHour);
-  component.imply("minute", 0);
-  component.imply("second", 0);
-  component.imply("millisecond", 0);
-  component.addTag("casualReference/morning");
-  return component;
-}
-function afternoon(reference, implyHour = 15) {
-  const component = new ParsingComponents(reference, {});
-  component.imply("meridiem", Meridiem.PM);
-  component.imply("hour", implyHour);
-  component.imply("minute", 0);
-  component.imply("second", 0);
-  component.imply("millisecond", 0);
-  component.addTag("casualReference/afternoon");
-  return component;
-}
-function noon(reference) {
-  const component = new ParsingComponents(reference, {});
-  component.imply("meridiem", Meridiem.AM);
-  component.assign("hour", 12);
-  component.imply("minute", 0);
-  component.imply("second", 0);
-  component.imply("millisecond", 0);
-  component.addTag("casualReference/noon");
-  return component;
-}
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENCasualDateParser.js
-var PATTERN10 = /(now|today|tonight|tomorrow|overmorrow|tmr|tmrw|yesterday|last\s*night)(?=\W|$)/i;
-var ENCasualDateParser = class extends AbstractParserWithWordBoundaryChecking {
-  innerPattern(context) {
-    return PATTERN10;
-  }
-  innerExtract(context, match) {
-    let targetDate = context.refDate;
-    const lowerText = match[0].toLowerCase();
-    let component = context.createParsingComponents();
-    switch (lowerText) {
-      case "now":
-        component = now(context.reference);
-        break;
-      case "today":
-        component = today(context.reference);
-        break;
-      case "yesterday":
-        component = yesterday(context.reference);
-        break;
-      case "tomorrow":
-      case "tmr":
-      case "tmrw":
-        component = tomorrow(context.reference);
-        break;
-      case "tonight":
-        component = tonight(context.reference);
-        break;
-      case "overmorrow":
-        component = theDayAfter(context.reference, 2);
-        break;
-      default:
-        if (lowerText.match(/last\s*night/)) {
-          if (targetDate.getHours() > 6) {
-            const previousDay = new Date(targetDate.getTime());
-            previousDay.setDate(previousDay.getDate() - 1);
-            targetDate = previousDay;
-          }
-          assignSimilarDate(component, targetDate);
-          component.imply("hour", 0);
-        }
-        break;
-    }
-    component.addTag("parser/ENCasualDateParser");
-    return component;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENCasualTimeParser.js
-var PATTERN11 = /(?:this)?\s{0,3}(morning|afternoon|evening|night|midnight|midday|noon)(?=\W|$)/i;
-var ENCasualTimeParser = class extends AbstractParserWithWordBoundaryChecking {
-  innerPattern() {
-    return PATTERN11;
-  }
-  innerExtract(context, match) {
-    let component = null;
-    switch (match[1].toLowerCase()) {
-      case "afternoon":
-        component = afternoon(context.reference);
-        break;
-      case "evening":
-      case "night":
-        component = evening(context.reference);
-        break;
-      case "midnight":
-        component = midnight(context.reference);
-        break;
-      case "morning":
-        component = morning(context.reference);
-        break;
-      case "noon":
-      case "midday":
-        component = noon(context.reference);
-        break;
-    }
-    if (component) {
-      component.addTag("parser/ENCasualTimeParser");
-    }
-    return component;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENWeekdayParser.js
-var PATTERN12 = new RegExp(`(?:(?:\\,|\\(|\\\uFF08)\\s*)?(?:on\\s*?)?(?:(this|last|past|next)\\s*)?(${matchAnyPattern(WEEKDAY_DICTIONARY)}|weekend|weekday)(?:\\s*(?:\\,|\\)|\\\uFF09))?(?:\\s*(?:of\\s*)?(this|last|past|next)\\s*week)?(?=\\W|$)`, "i");
-var PREFIX_GROUP2 = 1;
-var WEEKDAY_GROUP = 2;
-var POSTFIX_GROUP = 3;
-var ENWeekdayParser = class extends AbstractParserWithWordBoundaryChecking {
-  innerPattern() {
-    return PATTERN12;
-  }
-  innerExtract(context, match) {
-    const prefix = match[PREFIX_GROUP2];
-    const postfix = match[POSTFIX_GROUP];
-    let modifierWord = prefix || postfix;
-    modifierWord = modifierWord || "";
-    modifierWord = modifierWord.toLowerCase();
-    let modifier = null;
-    if (modifierWord == "last" || modifierWord == "past") {
-      modifier = "last";
-    } else if (modifierWord == "next") {
-      modifier = "next";
-    } else if (modifierWord == "this") {
-      modifier = "this";
-    }
-    const weekday_word = match[WEEKDAY_GROUP].toLowerCase();
-    let weekday2;
-    if (WEEKDAY_DICTIONARY[weekday_word] !== void 0) {
-      weekday2 = WEEKDAY_DICTIONARY[weekday_word];
-    } else if (weekday_word == "weekend") {
-      weekday2 = modifier == "last" ? Weekday.SUNDAY : Weekday.SATURDAY;
-    } else if (weekday_word == "weekday") {
-      const refWeekday = context.reference.getDateWithAdjustedTimezone().getDay();
-      if (refWeekday == Weekday.SUNDAY || refWeekday == Weekday.SATURDAY) {
-        weekday2 = modifier == "last" ? Weekday.FRIDAY : Weekday.MONDAY;
-      } else {
-        weekday2 = refWeekday - 1;
-        weekday2 = modifier == "last" ? weekday2 - 1 : weekday2 + 1;
-        weekday2 = weekday2 % 5 + 1;
-      }
-    } else {
-      return null;
-    }
-    return createParsingComponentsAtWeekday(context.reference, weekday2, modifier);
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENRelativeDateFormatParser.js
-var PATTERN13 = new RegExp(`(this|last|past|next|after\\s*this)\\s*(${matchAnyPattern(TIME_UNIT_DICTIONARY)})(?=\\s*)(?=\\W|$)`, "i");
-var MODIFIER_WORD_GROUP = 1;
-var RELATIVE_WORD_GROUP = 2;
-var ENRelativeDateFormatParser = class extends AbstractParserWithWordBoundaryChecking {
-  innerPattern() {
-    return PATTERN13;
-  }
-  innerExtract(context, match) {
-    const modifier = match[MODIFIER_WORD_GROUP].toLowerCase();
-    const unitWord = match[RELATIVE_WORD_GROUP].toLowerCase();
-    const timeunit = TIME_UNIT_DICTIONARY[unitWord];
-    if (modifier == "next" || modifier.startsWith("after")) {
-      const timeUnits = {};
-      timeUnits[timeunit] = 1;
-      return ParsingComponents.createRelativeFromReference(context.reference, timeUnits);
-    }
-    if (modifier == "last" || modifier == "past") {
-      const timeUnits = {};
-      timeUnits[timeunit] = -1;
-      return ParsingComponents.createRelativeFromReference(context.reference, timeUnits);
-    }
-    const components = context.createParsingComponents();
-    let date5 = new Date(context.reference.instant.getTime());
-    if (unitWord.match(/week/i)) {
-      date5.setDate(date5.getDate() - date5.getDay());
-      components.imply("day", date5.getDate());
-      components.imply("month", date5.getMonth() + 1);
-      components.imply("year", date5.getFullYear());
-    } else if (unitWord.match(/month/i)) {
-      date5.setDate(1);
-      components.imply("day", date5.getDate());
-      components.assign("year", date5.getFullYear());
-      components.assign("month", date5.getMonth() + 1);
-    } else if (unitWord.match(/year/i)) {
-      date5.setDate(1);
-      date5.setMonth(0);
-      components.imply("day", date5.getDate());
-      components.imply("month", date5.getMonth() + 1);
-      components.assign("year", date5.getFullYear());
-    }
-    return components;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/parsers/SlashDateFormatParser.js
-var PATTERN14 = new RegExp("([^\\d]|^)([0-3]{0,1}[0-9]{1})[\\/\\.\\-]([0-3]{0,1}[0-9]{1})(?:[\\/\\.\\-]([0-9]{4}|[0-9]{2}))?(\\W|$)", "i");
-var OPENING_GROUP = 1;
-var ENDING_GROUP = 5;
-var FIRST_NUMBERS_GROUP = 2;
-var SECOND_NUMBERS_GROUP = 3;
-var YEAR_GROUP6 = 4;
-var SlashDateFormatParser = class {
-  groupNumberMonth;
-  groupNumberDay;
-  constructor(littleEndian) {
-    this.groupNumberMonth = littleEndian ? SECOND_NUMBERS_GROUP : FIRST_NUMBERS_GROUP;
-    this.groupNumberDay = littleEndian ? FIRST_NUMBERS_GROUP : SECOND_NUMBERS_GROUP;
-  }
-  pattern() {
-    return PATTERN14;
-  }
-  extract(context, match) {
-    const index = match.index + match[OPENING_GROUP].length;
-    const indexEnd = match.index + match[0].length - match[ENDING_GROUP].length;
-    if (index > 0) {
-      const textBefore = context.text.substring(0, index);
-      if (textBefore.match("\\d/?$")) {
-        return;
-      }
-    }
-    if (indexEnd < context.text.length) {
-      const textAfter = context.text.substring(indexEnd);
-      if (textAfter.match("^/?\\d")) {
-        return;
-      }
-    }
-    const text = context.text.substring(index, indexEnd);
-    if (text.match(/^\d\.\d$/) || text.match(/^\d\.\d{1,2}\.\d{1,2}\s*$/)) {
-      return;
-    }
-    if (!match[YEAR_GROUP6] && text.indexOf("/") < 0) {
-      return;
-    }
-    const result = context.createParsingResult(index, text);
-    let month = parseInt(match[this.groupNumberMonth]);
-    let day = parseInt(match[this.groupNumberDay]);
-    if (month < 1 || month > 12) {
-      if (month > 12) {
-        if (day >= 1 && day <= 12 && month <= 31) {
-          [day, month] = [month, day];
-        } else {
-          return null;
-        }
-      }
-    }
-    if (day < 1 || day > 31) {
-      return null;
-    }
-    result.start.assign("day", day);
-    result.start.assign("month", month);
-    if (match[YEAR_GROUP6]) {
-      const rawYearNumber = parseInt(match[YEAR_GROUP6]);
-      const year = findMostLikelyADYear(rawYearNumber);
-      result.start.assign("year", year);
-    } else {
-      const year = findYearClosestToRef(context.refDate, day, month);
-      result.start.imply("year", year);
-    }
-    return result.addTag("parser/SlashDateFormatParser");
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENTimeUnitCasualRelativeFormatParser.js
-var PATTERN15 = new RegExp(`(this|last|past|next|after|\\+|-)\\s*(${TIME_UNITS_PATTERN})(?=\\W|$)`, "i");
-var PATTERN_NO_ABBR = new RegExp(`(this|last|past|next|after|\\+|-)\\s*(${TIME_UNITS_NO_ABBR_PATTERN})(?=\\W|$)`, "i");
-var ENTimeUnitCasualRelativeFormatParser = class extends AbstractParserWithWordBoundaryChecking {
-  allowAbbreviations;
-  constructor(allowAbbreviations = true) {
-    super();
-    this.allowAbbreviations = allowAbbreviations;
-  }
-  innerPattern() {
-    return this.allowAbbreviations ? PATTERN15 : PATTERN_NO_ABBR;
-  }
-  innerExtract(context, match) {
-    const prefix = match[1].toLowerCase();
-    let duration3 = parseDuration(match[2]);
-    if (!duration3) {
-      return null;
-    }
-    switch (prefix) {
-      case "last":
-      case "past":
-      case "-":
-        duration3 = reverseDuration(duration3);
-        break;
-    }
-    return ParsingComponents.createRelativeFromReference(context.reference, duration3);
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENMergeRelativeAfterDateRefiner.js
-function IsPositiveFollowingReference(result) {
-  return result.text.match(/^[+-]/i) != null;
-}
-function IsNegativeFollowingReference(result) {
-  return result.text.match(/^-/i) != null;
-}
-var ENMergeRelativeAfterDateRefiner = class extends MergingRefiner {
-  shouldMergeResults(textBetween, currentResult, nextResult) {
-    if (!textBetween.match(/^\s*$/i)) {
-      return false;
-    }
-    return IsPositiveFollowingReference(nextResult) || IsNegativeFollowingReference(nextResult);
-  }
-  mergeResults(textBetween, currentResult, nextResult, context) {
-    let timeUnits = parseDuration(nextResult.text);
-    if (IsNegativeFollowingReference(nextResult)) {
-      timeUnits = reverseDuration(timeUnits);
-    }
-    const components = ParsingComponents.createRelativeFromReference(ReferenceWithTimezone.fromDate(currentResult.start.date()), timeUnits);
-    return new ParsingResult(currentResult.reference, currentResult.index, `${currentResult.text}${textBetween}${nextResult.text}`, components);
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENMergeRelativeFollowByDateRefiner.js
-function hasImpliedEarlierReferenceDate(result) {
-  return result.text.match(/\s+(before|from)$/i) != null;
-}
-function hasImpliedLaterReferenceDate(result) {
-  return result.text.match(/\s+(after|since)$/i) != null;
-}
-var ENMergeRelativeFollowByDateRefiner = class extends MergingRefiner {
-  patternBetween() {
-    return /^\s*$/i;
-  }
-  shouldMergeResults(textBetween, currentResult, nextResult) {
-    if (!textBetween.match(this.patternBetween())) {
-      return false;
-    }
-    if (!hasImpliedEarlierReferenceDate(currentResult) && !hasImpliedLaterReferenceDate(currentResult)) {
-      return false;
-    }
-    return !!nextResult.start.get("day") && !!nextResult.start.get("month") && !!nextResult.start.get("year");
-  }
-  mergeResults(textBetween, currentResult, nextResult) {
-    let duration3 = parseDuration(currentResult.text);
-    if (hasImpliedEarlierReferenceDate(currentResult)) {
-      duration3 = reverseDuration(duration3);
-    }
-    const components = ParsingComponents.createRelativeFromReference(ReferenceWithTimezone.fromDate(nextResult.start.date()), duration3);
-    return new ParsingResult(nextResult.reference, currentResult.index, `${currentResult.text}${textBetween}${nextResult.text}`, components);
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENExtractYearSuffixRefiner.js
-var YEAR_SUFFIX_PATTERN = new RegExp(`^\\s*(${YEAR_PATTERN})`, "i");
-var YEAR_GROUP7 = 1;
-var ENExtractYearSuffixRefiner = class {
-  refine(context, results) {
-    results.forEach(function(result) {
-      if (!result.start.isDateWithUnknownYear()) {
-        return;
-      }
-      const suffix = context.text.substring(result.index + result.text.length);
-      const match = YEAR_SUFFIX_PATTERN.exec(suffix);
-      if (!match) {
-        return;
-      }
-      if (match[0].trim().length <= 3) {
-        return;
-      }
-      context.debug(() => {
-        console.log(`Extracting year: '${match[0]}' into : ${result}`);
-      });
-      const year = parseYear(match[YEAR_GROUP7]);
-      if (result.end != null) {
-        result.end.assign("year", year);
-      }
-      result.start.assign("year", year);
-      result.text += match[0];
-    });
-    return results;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENUnlikelyFormatFilter.js
-var ENUnlikelyFormatFilter = class extends Filter {
-  constructor() {
-    super();
-  }
-  isValid(context, result) {
-    const text = result.text.trim();
-    if (text === context.text.trim()) {
-      return true;
-    }
-    if (text.toLowerCase() === "may") {
-      const textBefore = context.text.substring(0, result.index).trim();
-      if (!textBefore.match(/\b(in)$/i)) {
-        context.debug(() => {
-          console.log(`Removing unlikely result: ${result}`);
-        });
-        return false;
-      }
-    }
-    if (text.toLowerCase().endsWith("the second")) {
-      const textAfter = context.text.substring(result.index + result.text.length).trim();
-      if (textAfter.length > 0) {
-        context.debug(() => {
-          console.log(`Removing unlikely result: ${result}`);
-        });
-      }
-      return false;
-    }
-    return true;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENEndOfPeriodRefiner.js
-var PREFIX_PATTERN = /\b(?:last\s+day|end)\s+of\s+(?:the\s+)?$/i;
-var RELATIVE_PERIOD_PATTERN = /^(this|last|past|next)\s*(week|month|year)$/i;
-var RELATIVE_YEAR_SUFFIX_PATTERN = /^\s+(this|last|past|next)\s+year(?=\W|$)/i;
-function modifierOffset(modifier) {
-  return modifier === "next" ? 1 : modifier === "last" || modifier === "past" ? -1 : 0;
-}
-var ENEndOfPeriodRefiner = class {
-  refine(context, results) {
-    results.forEach((result) => {
-      const prefix = context.text.substring(0, result.index).match(PREFIX_PATTERN);
-      if (!prefix) {
-        return;
-      }
-      const relativePeriod = result.text.match(RELATIVE_PERIOD_PATTERN);
-      if (relativePeriod) {
-        const modifier = relativePeriod[1].toLowerCase();
-        this.moveToEndOfRelativePeriod(context, result, modifier, relativePeriod[2].toLowerCase());
-      } else if (result.start.isCertain("month") && !result.start.isCertain("day")) {
-        this.moveToEndOfMonth(context, result);
-      } else {
-        return;
-      }
-      result.start.imply("hour", 12);
-      result.start.imply("minute", 0);
-      result.start.imply("second", 0);
-      result.start.imply("millisecond", 0);
-      if (!result.start.isCertain("timezoneOffset")) {
-        result.start.delete("timezoneOffset");
-      }
-      result.index -= prefix[0].length;
-      result.text = prefix[0] + result.text;
-      result.addTag("refiner/ENEndOfPeriodRefiner");
-    });
-    return results;
-  }
-  moveToEndOfRelativePeriod(context, result, modifier, period) {
-    const offset = modifierOffset(modifier);
-    const referenceDate = context.reference.getDateWithAdjustedTimezone();
-    let lastDay;
-    if (period === "week") {
-      lastDay = new Date(referenceDate.getTime());
-      lastDay.setDate(referenceDate.getDate() + (6 - referenceDate.getDay()) + offset * 7);
-    } else if (period === "month") {
-      lastDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + offset + 1, 0);
-    } else {
-      lastDay = new Date(referenceDate.getFullYear() + offset, 11, 31);
-    }
-    result.start.assign("day", lastDay.getDate());
-    result.start.assign("month", lastDay.getMonth() + 1);
-    result.start.assign("year", lastDay.getFullYear());
-    result.start.delete("weekday");
-    result.start.imply("weekday", lastDay.getDay());
-  }
-  moveToEndOfMonth(context, result) {
-    let year = result.start.get("year");
-    const month = result.start.get("month");
-    const suffix = context.text.substring(result.index + result.text.length).match(RELATIVE_YEAR_SUFFIX_PATTERN);
-    if (suffix) {
-      const modifier = suffix[1].toLowerCase();
-      const referenceYear = context.reference.getDateWithAdjustedTimezone().getFullYear();
-      year = referenceYear + modifierOffset(modifier);
-      result.start.assign("year", year);
-      result.text += suffix[0];
-    }
-    if (!result.start.isCertain("year")) {
-      const lastDayInReferenceYear = new Date(year, month, 0).getDate();
-      year = findYearClosestToRef(context.reference.getDateWithAdjustedTimezone(), lastDayInReferenceYear, month);
-      result.start.imply("year", year);
-    }
-    result.start.assign("day", new Date(year, month, 0).getDate());
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENEndOfCurrentMonthParser.js
-var PATTERN16 = /(?:last\s+day|end)\s+of\s+(?:the\s+)?month(?=\W|$)/i;
-var ENEndOfCurrentMonthParser = class extends AbstractParserWithWordBoundaryChecking {
-  innerPattern() {
-    return PATTERN16;
-  }
-  innerExtract(context) {
-    const targetDate = context.reference.getDateWithAdjustedTimezone();
-    const year = targetDate.getFullYear();
-    const month = targetDate.getMonth() + 1;
-    const lastDay = new Date(year, month, 0).getDate();
-    const components = context.createParsingComponents();
-    components.assign("day", lastDay);
-    components.assign("month", month);
-    components.assign("year", year);
-    components.addTag("parser/ENEndOfCurrentMonthParser");
-    return components;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/configuration.js
-var ENDefaultConfiguration = class {
-  createCasualConfiguration(littleEndian = false) {
-    const option = this.createConfiguration(false, littleEndian);
-    option.parsers.push(new ENCasualDateParser());
-    option.parsers.push(new ENCasualTimeParser());
-    option.parsers.push(new ENEndOfCurrentMonthParser());
-    option.parsers.push(new ENMonthNameParser());
-    option.parsers.push(new ENRelativeDateFormatParser());
-    option.parsers.push(new ENTimeUnitCasualRelativeFormatParser());
-    option.refiners.unshift(new ENEndOfPeriodRefiner());
-    option.refiners.push(new ENUnlikelyFormatFilter());
-    return option;
-  }
-  createConfiguration(strictMode = true, littleEndian = false) {
-    const options = includeCommonConfiguration({
-      parsers: [
-        new SlashDateFormatParser(littleEndian),
-        new ENTimeUnitWithinFormatParser(strictMode),
-        new ENMonthNameLittleEndianParser(),
-        new ENMonthNameMiddleEndianParser(littleEndian),
-        new ENWeekdayParser(),
-        new ENSlashMonthFormatParser(),
-        new ENTimeExpressionParser(strictMode),
-        new ENTimeUnitAgoFormatParser(strictMode),
-        new ENTimeUnitLaterFormatParser(strictMode),
-        new ENYearMonthNameParser()
-      ],
-      refiners: [new ENMergeDateTimeRefiner()]
-    }, strictMode);
-    options.parsers.unshift(new ENYearMonthDayParser(strictMode));
-    options.refiners.unshift(new ENMergeRelativeFollowByDateRefiner());
-    options.refiners.unshift(new ENMergeRelativeAfterDateRefiner());
-    options.refiners.unshift(new OverlapRemovalRefiner());
-    options.refiners.push(new ENMergeDateTimeRefiner());
-    options.refiners.push(new ENExtractYearSuffixRefiner());
-    options.refiners.push(new ENMergeDateRangeRefiner());
-    return options;
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/chrono.js
-var Chrono = class _Chrono {
-  parsers;
-  refiners;
-  defaultConfig = new ENDefaultConfiguration();
-  constructor(configuration2) {
-    configuration2 = configuration2 || this.defaultConfig.createCasualConfiguration();
-    this.parsers = [...configuration2.parsers];
-    this.refiners = [...configuration2.refiners];
-  }
-  clone() {
-    return new _Chrono({
-      parsers: [...this.parsers],
-      refiners: [...this.refiners]
-    });
-  }
-  parseDate(text, referenceDate, option) {
-    const results = this.parse(text, referenceDate, option);
-    return results.length > 0 ? results[0].start.date() : null;
-  }
-  parse(text, referenceDate, option) {
-    const context = new ParsingContext(text, referenceDate, option);
-    let results = [];
-    this.parsers.forEach((parser) => {
-      const parsedResults = _Chrono.executeParser(context, parser);
-      results = results.concat(parsedResults);
-    });
-    results.sort((a, b) => {
-      return a.index - b.index;
-    });
-    this.refiners.forEach(function(refiner) {
-      results = refiner.refine(context, results);
-    });
-    return results;
-  }
-  static executeParser(context, parser) {
-    const results = [];
-    const pattern = parser.pattern(context);
-    const originalText = context.text;
-    let remainingText = context.text;
-    let match = pattern.exec(remainingText);
-    while (match) {
-      const index = match.index + originalText.length - remainingText.length;
-      match.index = index;
-      const result = parser.extract(context, match);
-      if (!result) {
-        remainingText = originalText.substring(match.index + 1);
-        match = pattern.exec(remainingText);
-        continue;
-      }
-      let parsedResult = null;
-      if (result instanceof ParsingResult) {
-        parsedResult = result;
-      } else if (result instanceof ParsingComponents) {
-        parsedResult = context.createParsingResult(match.index, match[0]);
-        parsedResult.start = result;
-      } else {
-        parsedResult = context.createParsingResult(match.index, match[0], result);
-      }
-      const parsedIndex = parsedResult.index;
-      const parsedText = parsedResult.text;
-      context.debug(() => console.log(`${parser.constructor.name} extracted (at index=${parsedIndex}) '${parsedText}'`));
-      results.push(parsedResult);
-      remainingText = originalText.substring(parsedIndex + parsedText.length);
-      match = pattern.exec(remainingText);
-    }
-    return results;
-  }
-};
-var ParsingContext = class {
-  text;
-  option;
-  reference;
-  refDate;
-  constructor(text, refDate, option) {
-    this.text = text;
-    this.option = option ?? {};
-    this.reference = ReferenceWithTimezone.fromInput(refDate, this.option.timezones);
-    this.refDate = this.reference.instant;
-  }
-  createParsingComponents(components) {
-    if (components instanceof ParsingComponents) {
-      return components;
-    }
-    return new ParsingComponents(this.reference, components);
-  }
-  createParsingResult(index, textOrEndIndex, startComponents, endComponents) {
-    const text = typeof textOrEndIndex === "string" ? textOrEndIndex : this.text.substring(index, textOrEndIndex);
-    const start = startComponents ? this.createParsingComponents(startComponents) : null;
-    const end = endComponents ? this.createParsingComponents(endComponents) : null;
-    return new ParsingResult(this.reference, index, text, start, end);
-  }
-  debug(block) {
-    if (this.option.debug) {
-      if (this.option.debug instanceof Function) {
-        this.option.debug(block);
-      } else {
-        const handler = this.option.debug;
-        handler.debug(block);
-      }
-    }
-  }
-};
-
-// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/index.js
-var configuration = new ENDefaultConfiguration();
-var casual = new Chrono(configuration.createCasualConfiguration(false));
-var strict = new Chrono(configuration.createConfiguration(true, false));
-var GB = new Chrono(configuration.createCasualConfiguration(true));
-function parse(text, ref2, option) {
-  return casual.parse(text, ref2, option);
-}
-function parseDate(text, ref2, option) {
-  return casual.parseDate(text, ref2, option);
-}
-
-// packages/nlp/src/time.ts
-var DAY_MS = 864e5;
-function fromUtcDay(ms) {
-  const dt = new Date(ms);
-  return { y: dt.getUTCFullYear(), m: dt.getUTCMonth() + 1, d: dt.getUTCDate() };
-}
-function utcDay(cd) {
-  return Date.UTC(cd.y, cd.m - 1, cd.d);
-}
-function addDays(cd, n) {
-  return fromUtcDay(utcDay(cd) + n * DAY_MS);
-}
-function daysInMonth(y, m) {
-  return new Date(Date.UTC(y, m, 0)).getUTCDate();
-}
-function addMonths(cd, n) {
-  const idx = cd.y * 12 + (cd.m - 1) + n;
-  const y = Math.floor(idx / 12);
-  const m = idx % 12 + 1;
-  return { y, m, d: Math.min(cd.d, daysInMonth(y, m)) };
-}
-function dow(cd) {
-  return new Date(utcDay(cd)).getUTCDay();
-}
-function cmpCD(a, b) {
-  return utcDay(a) - utcDay(b);
-}
-function isValidCD(y, m, d) {
-  return Number.isInteger(y) && m >= 1 && m <= 12 && d >= 1 && d <= daysInMonth(y, m);
-}
-var formatters = /* @__PURE__ */ new Map();
-function formatter2(tz) {
-  let f = formatters.get(tz);
-  if (!f) {
-    f = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      hourCycle: "h23",
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric"
-    });
-    formatters.set(tz, f);
-  }
-  return f;
-}
-function resolveTimeZone(tz) {
-  if (typeof tz !== "string" || !tz.trim()) return "UTC";
-  try {
-    formatter2(tz.trim());
-    return tz.trim();
-  } catch {
-    return "UTC";
-  }
-}
-function wallClock(ms, tz) {
-  const out = {};
-  for (const p of formatter2(tz).formatToParts(new Date(ms))) {
-    if (p.type !== "literal") out[p.type] = Number(p.value);
-  }
-  return {
-    y: out.year ?? 1970,
-    m: out.month ?? 1,
-    d: out.day ?? 1,
-    h: (out.hour ?? 0) % 24,
-    // some engines report midnight as 24
-    mi: out.minute ?? 0,
-    s: out.second ?? 0
-  };
-}
-function offsetMinutes(ms, tz) {
-  const base = Math.floor(ms / 1e3) * 1e3;
-  const w = wallClock(base, tz);
-  return Math.round((Date.UTC(w.y, w.m - 1, w.d, w.h, w.mi, w.s) - base) / 6e4);
-}
-function zonedToUtc2(cd, h, mi, tz) {
-  const guess = Date.UTC(cd.y, cd.m - 1, cd.d, h, mi);
-  const before = offsetMinutes(guess - DAY_MS / 2, tz);
-  const after = offsetMinutes(guess + DAY_MS / 2, tz);
-  const candidates = [];
-  for (const off of before === after ? [before] : [before, after]) {
-    const t = guess - off * 6e4;
-    const w = wallClock(t, tz);
-    if (w.y === cd.y && w.m === cd.m && w.d === cd.d && w.h === h && w.mi === mi) candidates.push(t);
-  }
-  if (candidates.length) return Math.min(...candidates);
-  return guess - before * 6e4;
-}
-
-// packages/nlp/src/index.ts
-function prefersMonthFirst(timezone2) {
-  return /^(America|US)\//i.test(timezone2);
-}
-var S = String.raw;
-var rx = (src) => new RegExp(src, "giu");
-var B = S`(?<![\p{L}\p{N}_])`;
-var E = S`(?![\p{L}\p{N}_])`;
-var EP = S`(?![\p{L}\p{N}_'’])`;
-var TE = S`(?![\p{L}\p{N}_:])`;
-var NUM_WORDS = {
-  a: 1,
-  an: 1,
-  one: 1,
-  two: 2,
-  three: 3,
-  four: 4,
-  five: 5,
-  six: 6,
-  seven: 7,
-  eight: 8,
-  nine: 9,
-  ten: 10,
-  eleven: 11,
-  twelve: 12
-};
-var NUM_SP = S`(?:\d{1,3}\s*|(?:an?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+)`;
-function num(s2) {
-  if (!s2) return NaN;
-  const t = s2.trim().toLowerCase();
-  if (/^\d+$/.test(t)) return parseInt(t, 10);
-  return NUM_WORDS[t] ?? NaN;
-}
-var U_MIN = "minutes|minute|mins|min|m";
-var U_H = "hours|hour|hrs|hr|h";
-var U_D = "days|day|d";
-var U_W = "weeks|week|wks|wk|w";
-var U_MO = "months|month|mos|mo";
-var U_Y = "years|year|yrs|yr|y";
-function unitOf(u) {
-  const t = u.toLowerCase();
-  if (/^(minutes?|mins?|m)$/.test(t)) return "min";
-  if (/^(hours?|hrs?|h)$/.test(t)) return "h";
-  if (/^(days?|d)$/.test(t)) return "d";
-  if (/^(weeks?|wks?|w)$/.test(t)) return "w";
-  if (/^(months?|mos?)$/.test(t)) return "mo";
-  return "y";
-}
-var UNIT_MINUTES = { min: 1, h: 60, d: 1440, w: 10080, mo: 43200, y: 525600 };
-var WD_FULL = "monday|tuesday|wednesday|thursday|friday|saturday|sunday";
-var WD_ABBR = "mon|tues|tue|weds|wed|thurs|thur|thu|fri|sat|sun";
-var WD = S`(?:${WD_FULL}|${WD_ABBR})`;
-var WD_PLURAL = "mondays|tuesdays|wednesdays|thursdays|fridays|saturdays|sundays";
-var LIST_SEP = S`(?:\s*,\s*and\s+|\s*,\s*|\s+and\s+|\s*&\s*|\s*\/\s*)`;
-var WD_LIST = S`${WD}s?${E}(?:${LIST_SEP}${WD}s?${E})*`;
-var WD_INDEX = { su: 0, mo: 1, tu: 2, we: 3, th: 4, fr: 5, sa: 6 };
-function weekdayNum(s2) {
-  return WD_INDEX[s2.toLowerCase().slice(0, 2)] ?? -1;
-}
-function weekdayList(s2) {
-  const out = /* @__PURE__ */ new Set();
-  for (const m of s2.matchAll(rx(WD))) {
-    const n = weekdayNum(m[0]);
-    if (n >= 0) out.add(n);
-  }
-  return [...out].sort((a, b) => a - b);
-}
-var MONTH = S`(?:january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)`;
-var MONTH_INDEX = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-function monthNum(s2) {
-  return MONTH_INDEX.indexOf(s2.toLowerCase().slice(0, 3)) + 1;
-}
-var PREP_WORDS = S`(?:due\s+(?:by|on|before)|due|by|before|on|until|till|til)`;
-var PREP_D = S`(?:${PREP_WORDS}\s+)?`;
-var TPREP = S`(?:(?:due\s+)?(?:(?:at|by|before|around|until|till)\s+|@\s*)|due\s+)`;
-var TIME_CORE = S`(?:\d{1,2}(?:[:.]\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)|\d{1,2}:\d{2}|noon|midday|midnight)`;
-var DUR = S`(?:half\s+an?\s+hour|${NUM_SP}(?:${U_MIN}|${U_H}|${U_D}|${U_W})${E})`;
-var RE_REM_DUR = rx(S`${B}remind(?:\s+me)?(?:\s+about\s+(?:it|this))?\s+(${DUR}(?:${LIST_SEP}${DUR})*)\s+(?:before(?:hand)?|prior|ahead|earlier|in\s+advance)${E}`);
-var RE_DUR_ITEM = rx(S`(half\s+an?\s+hour)|(${NUM_SP})(${U_MIN}|${U_H}|${U_D}|${U_W})${E}`);
-var RE_REM_DAY_BEFORE = rx(S`${B}remind(?:\s+me)?\s+(?:on\s+)?the\s+(day|week)\s+before${E}`);
-var RE_REM_AT = rx(S`${B}remind(?:\s+me)?\s+(?:at|@)\s*(${TIME_CORE}|\d{1,2}(?![\p{N}:.]))(?:\s+(the\s+day\s+before|on\s+the\s+day|(${NUM_SP})days?\s+before))?${TE}`);
-var EVERY = S`(?:every|each)`;
-var REC_UNIT = S`(days?|weekdays?|workdays?|business\s+days?|weeks?|fortnight|months?|years?|weekends?)`;
-var RE_REC_EVERY_UNIT = rx(S`${B}${EVERY}\s+(?:(other)\s+|(${NUM_SP}))?${REC_UNIT}(?:\s+on\s+(${WD_LIST}))?${E}`);
-var RE_REC_EVERY_WD = rx(S`${B}${EVERY}\s+(?:(other)\s+)?(${WD_LIST})`);
-var RE_REC_EVERY_NTH = rx(S`${B}${EVERY}\s+(\d{1,2})(?:st|nd|rd|th)(?:\s+(?:day\s+)?of\s+(?:the|each|every)\s+month)?${E}`);
-var RE_REC_PLURAL = rx(S`${B}(?:on\s+)?((?:${WD_PLURAL})(?:${LIST_SEP}(?:${WD_PLURAL}))*)${E}`);
-var RE_REC_WEEKDAYS = rx(S`${B}(?:on\s+)?(?:weekdays|workdays|business\s+days)${E}`);
-var RE_REC_WEEKENDS = rx(S`${B}(?:on\s+)?weekends${E}`);
-var RE_REC_ADVERB = rx(S`${B}(daily|everyday|nightly|weekly|bi-?weekly|fortnightly|monthly|bi-?monthly|quarterly|yearly|annually)(?:\s+on\s+(${WD_LIST}))?${E}`);
-var RE_AT_NAME = rx(S`(?:${B}for\s+)?(?<![\p{L}\p{N}_.@])@([\p{L}\p{N}_][\p{L}\p{N}_.\-]*)`);
-var RE_ASSIGN = rx(S`${B}assign(?:ed)?(?:\s+(?:it|this))?\s+to\s+@?([\p{L}][\p{L}\p{N}_.\-]*)`);
-var RE_HASH = rx(S`(?<![\p{L}\p{N}_&#/\\])#([\p{L}\p{N}_][\p{L}\p{N}_\-/.]*)`);
-var RE_PLUS = rx(S`(?<![\p{L}\p{N}_+])\+([\p{L}][\p{L}\p{N}_\-]*)`);
-var KEEP_NAME_AFTER = /(?:^|[^\p{L}])(to|with|from|cc|ask|ping|call|email|tell|message|text|remind|meet|thank)\s*$/iu;
-var RE_PRI_BANG = rx(S`(?<!\S)!(urgent|high|hi|medium|med|normal|low|lo)${E}`);
-var RE_PRI_EXCL = rx(S`(?<!\S)(!{2,})(?!\S)`);
-var RE_PRI_P = rx(S`(?<![\p{L}\p{N}_\-])[pP]([0-3])(?![\p{L}\p{N}_\-])`);
-var RE_PRI_PHRASE = rx(S`${B}(?:(urgent|high|medium|med|normal|low)[\s\-]+priority|prio(?:rity)?\s*[:=]?\s*(urgent|high|medium|med|normal|low|p[0-3]))${E}`);
-var RE_PRI_BARE = rx(S`${B}(urgent(?:ly)?|asap|a\.s\.a\.p\.?|important)${E}!*`);
-var RE_ISO = rx(S`${B}${PREP_D}(\d{4})-(\d{1,2})-(\d{1,2})(?:T(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+\-]\d{2}:?\d{2})?)?(?![\p{L}\p{N}_\-:])`);
-var RE_NUMERIC_Y = rx(S`${B}${PREP_D}(\d{1,2})([\/.\-])(\d{1,2})\2(\d{4}|\d{2})(?![\p{N}\/.\-])`);
-var RE_MONTH_DAY = rx(S`${B}${PREP_D}(?:(?:${WD}),?\s+)?(${MONTH})\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?${EP}(?!:)`);
-var RE_DAY_MONTH = rx(S`${B}${PREP_D}(?:(?:${WD}),?\s+)?(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(${MONTH})\.?(?:,?\s+(\d{4}))?${EP}`);
-var RE_DAY_AFTER_TOMORROW = rx(S`${B}${PREP_D}(?:(?:the\s+)?day\s+after\s+(?:tomorrow|tmrw)|overmorrow)${EP}`);
-var RE_TODAY_TOMORROW = rx(S`${B}${PREP_D}(today|tdy|tomorrow|tmrw|tmr|tmw|tomorow|2moro|2mrw)${EP}`);
-var RE_TONIGHT = rx(S`${B}${PREP_D}(?:tonight|tonite|this\s+(morning|afternoon|evening|night))${EP}`);
-var RE_IN_N = rx(S`${B}(?:due\s+)?in\s+(${NUM_SP}|half\s+an?\s+)(${U_MIN}|${U_H}|${U_D}|${U_W}|${U_MO}|${U_Y})${E}`);
-var RE_N_FROM_NOW = rx(S`${B}(${NUM_SP})(days?|weeks?|months?)\s+from\s+(?:now|today)${E}`);
-var RE_PERIOD = rx(S`${B}${PREP_D}(?:the\s+)?(?:end\s+of\s+(?:the\s+)?(?:(this|next)\s+)?(week|month|year)|(eow|eom|eoy)|(this|next)\s+(week|month|year))${EP}`);
-var RE_WEEKEND = rx(S`${B}(?:(?:${PREP_WORDS}|over|during)\s+)?(?:the\s+)?(?:(this|next)\s+)?weekend${EP}`);
-var RE_WD_FULL = rx(S`${B}${PREP_D}(?:(this|next|coming|the\s+coming)\s+)?(${WD_FULL})(?:\s+(next|this)\s+week)?${EP}`);
-var RE_WD_ABBR_PREP = rx(S`${B}(?:${PREP_WORDS}\s+(?:(this|next|coming)\s+)?|(this|next|coming)\s+)(${WD_ABBR})\.?${EP}`);
-var RE_WD_TIME_PAIR = rx(S`${B}(${WD_ABBR})\.?\s+(\d{1,2}(?:[:.]\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)|\d{1,2}:\d{2})${TE}`);
-var RE_ORDINAL_PREP = rx(S`${B}${PREP_WORDS}\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)${EP}`);
-var RE_NUMERIC_PREP = rx(S`${B}${PREP_WORDS}\s+(\d{1,2})\/(\d{1,2})(?![\p{N}\/])`);
-var RE_EOD = rx(S`${B}(?:(?:due\s+)?(?:at|by|before|until|till)\s+)?(?:the\s+)?(?:eod|cob|end\s+of\s+(?:the\s+)?(?:business\s+)?day|close\s+of\s+(?:business|play))${EP}`);
-var RE_TIME_PREP = rx(S`${B}${TPREP}(${TIME_CORE})${TE}`);
-var RE_HOUR_PREP = rx(S`${B}${TPREP}(\d{1,2})(?![\p{L}\p{N}_:.\/%])`);
-var RE_DAYPART_PREP = rx(S`${B}(?:in\s+the|by(?:\s+the)?|during\s+the)\s+(morning|afternoon|evening|night)${EP}`);
-var RE_A_WD = rx(S`${B}(${WD_ABBR})\.?${EP}`);
-var RE_A_ORDINAL = rx(S`${B}the\s+(\d{1,2})(?:st|nd|rd|th)${EP}`);
-var RE_A_NUMERIC = rx(S`(?<![\p{L}\p{N}_\/.\-])(\d{1,2})\/(\d{1,2})(?![\p{N}\/])`);
-var RE_A_TIME = rx(S`(?<![\p{L}\p{N}_:.\/])(${TIME_CORE})${TE}`);
-var RE_A_DAYPART = rx(S`${B}(morning|afternoon|evening|night)${EP}`);
-var RE_A_WEEKEND = rx(S`${B}weekend${EP}`);
-var DAYPART = {
-  morning: { h: 9, pm: false },
-  afternoon: { h: 14, pm: true },
-  evening: { h: 18, pm: true },
-  night: { h: 20, pm: true }
-};
-var MASK = "\0";
-var FILLER = /[\s\u0000,.;:!?()[\]{}"'“”‘’\-–—]/u;
-var PRIORITY_WORD = {
-  urgent: "urgent",
-  high: "high",
-  hi: "high",
-  medium: "medium",
-  med: "medium",
-  normal: "medium",
-  low: "low",
-  lo: "low",
-  p0: "urgent",
-  p1: "high",
-  p2: "medium",
-  p3: "low"
-};
-function parseTimeOfDay(s2) {
-  const t = s2.toLowerCase().replace(/\s+/g, "");
-  if (t === "noon" || t === "midday") return { h: 12, mi: 0, explicit: true, guessedPm: false };
-  if (t === "midnight") return { h: 0, mi: 0, explicit: true, guessedPm: false };
-  const m = /^(\d{1,2})(?:[:.](\d{2}))?(a\.?m\.?|p\.?m\.?)?$/.exec(t);
-  if (!m || !m[1]) return null;
-  let h = parseInt(m[1], 10);
-  const mi = m[2] ? parseInt(m[2], 10) : 0;
-  if (mi > 59) return null;
-  if (m[3]) {
-    if (h < 1 || h > 12) return null;
-    h = h % 12 + (m[3].startsWith("p") ? 12 : 0);
-    return { h, mi, explicit: true, guessedPm: false };
-  }
-  if (h > 23) return null;
-  if (h === 0 || h >= 13 || m[1].length === 2 && m[1].startsWith("0")) return { h, mi, explicit: true, guessedPm: false };
-  if (h <= 6) return { h: h + 12, mi, explicit: false, guessedPm: true };
-  return { h, mi, explicit: false, guessedPm: false };
-}
-function emptyResult(title) {
-  return {
-    title: title.trim().replace(/\s+/g, " "),
-    dueAt: null,
-    dueAllDay: false,
-    priority: null,
-    assigneeHints: [],
-    projectHint: null,
-    tags: [],
-    recurrence: null,
-    reminderOffsets: null,
-    tokens: []
-  };
-}
-var Ctx = class {
-  constructor(raw, now2, tz, today2, monthFirst) {
-    this.raw = raw;
-    this.now = now2;
-    this.tz = tz;
-    this.today = today2;
-    this.monthFirst = monthFirst;
-    this.mask = raw;
-  }
-  mask;
-  tokens = [];
-  /** token start → text to keep in the title instead of removing the token */
-  keep = /* @__PURE__ */ new Map();
-  date = null;
-  instant = null;
-  time = null;
-  softTime = null;
-  pmHint = false;
-  amHint = false;
-  priority = null;
-  assignees = [];
-  project = null;
-  tags = [];
-  recurrence = null;
-  recDay = null;
-  reminderOffsets = [];
-  reminderAt = [];
-  get haveDate() {
-    return this.date !== null || this.instant !== null;
-  }
-  get haveTime() {
-    return this.time !== null || this.instant !== null;
-  }
-  isFree(start, end) {
-    return end > start && !this.mask.slice(start, end).includes(MASK);
-  }
-  claim(start, end, kind) {
-    this.tokens.push({ start, end, kind });
-    this.mask = this.mask.slice(0, start) + MASK.repeat(end - start) + this.mask.slice(end);
-  }
-  /**
-   * Run `re` over the current mask. `fn` returns the token kind to claim the whole match,
-   * `[kind, start, end]` to claim a sub-span, or null to leave the match alone.
-   */
-  each(re, fn) {
-    let any2 = false;
-    re.lastIndex = 0;
-    for (const m of [...this.mask.matchAll(re)]) {
-      const start = m.index ?? 0;
-      const end = start + m[0].length;
-      if (!this.isFree(start, end)) continue;
-      const r = fn(m, start, end);
-      if (!r) continue;
-      const [kind, s2, e] = typeof r === "string" ? [r, start, end] : r;
-      if (!this.isFree(s2, e)) continue;
-      this.claim(s2, e, kind);
-      any2 = true;
-    }
-    return any2;
-  }
-  leading(start) {
-    for (let i = 0; i < start; i++) if (!FILLER.test(this.mask[i])) return false;
-    return true;
-  }
-  trailing(end) {
-    for (let i = end; i < this.mask.length; i++) if (!FILLER.test(this.mask[i])) return false;
-    return true;
-  }
-  /** Directly next to an accepted date/time/recurrence token (only spaces, commas or other tokens between). */
-  adjacent(start, end) {
-    for (const t of this.tokens) {
-      if (t.kind !== "date" && t.kind !== "recurrence") continue;
-      if (t.end <= start && /^[\s,\u0000]*$/u.test(this.mask.slice(t.end, start))) return true;
-      if (t.start >= end && /^[\s,\u0000]*$/u.test(this.mask.slice(end, t.start))) return true;
-    }
-    return false;
-  }
-  anchored(start, end) {
-    return this.leading(start) || this.trailing(end) || this.adjacent(start, end);
-  }
-  at(cd, t) {
-    return zonedToUtc2(cd, t.h, t.mi, this.tz);
-  }
-  /** First civil date ≥ today matching `pred`; with a time, today only counts if still ahead. */
-  firstOn(pred, time4) {
-    let cd = this.today;
-    if (time4 && this.at(cd, time4) <= this.now) cd = addDays(cd, 1);
-    for (let i = 0; i < 800; i++) {
-      if (pred(cd)) return cd;
-      cd = addDays(cd, 1);
-    }
-    return cd;
-  }
-  setDate(cd) {
-    if (!cd || this.haveDate) return false;
-    this.date = cd;
-    return true;
-  }
-  setTime(t) {
-    if (!t || this.haveTime) return false;
-    this.time = t;
-    return true;
-  }
-  setPriority(p) {
-    if (p && !this.priority) this.priority = p;
-  }
-  setRecurrence(r) {
-    if (this.recurrence) return false;
-    this.recurrence = r;
-    return true;
-  }
-};
-function daysToNextMonday(today2) {
-  return (8 - dow(today2)) % 7 || 7;
-}
-function weekdayDate(today2, wd, mod) {
-  const m = (mod ?? "").toLowerCase().replace(/\s+/g, " ");
-  if (m === "next") return addDays(addDays(today2, daysToNextMonday(today2)), (wd + 6) % 7);
-  let diff = (wd - dow(today2) + 7) % 7;
-  if (diff === 0 && m !== "this") diff = 7;
-  return addDays(today2, diff);
-}
-function endOfWeek(today2) {
-  const t = dow(today2);
-  return addDays(today2, t === 6 ? 6 : t === 0 ? 5 : 5 - t);
-}
-function thisWeekendSaturday(today2) {
-  const t = dow(today2);
-  return t === 0 ? addDays(today2, -1) : addDays(today2, 6 - t);
-}
-function nextDayOfMonth(today2, d) {
-  if (d < 1 || d > 31) return null;
-  for (let i = 0; i < 14; i++) {
-    const base = addMonths({ y: today2.y, m: today2.m, d: 1 }, i);
-    if (d <= daysInMonth(base.y, base.m)) {
-      const cd = { y: base.y, m: base.m, d };
-      if (cmpCD(cd, today2) >= 0) return cd;
-    }
-  }
-  return null;
-}
-function monthDay(today2, m, d, y) {
-  if (y !== void 0) return isValidCD(y, m, d) ? { y, m, d } : null;
-  for (let yy = today2.y; yy < today2.y + 9; yy++) {
-    if (isValidCD(yy, m, d) && cmpCD({ y: yy, m, d }, today2) >= 0) return { y: yy, m, d };
-  }
-  return null;
-}
-function fullYear(s2) {
-  const y = parseInt(s2, 10);
-  return s2.length <= 2 ? 2e3 + y : y;
-}
-function numericDate(ctx, a, b, y) {
-  const [m1, d1] = ctx.monthFirst ? [a, b] : [b, a];
-  return monthDay(ctx.today, m1, d1, y) ?? monthDay(ctx.today, d1, m1, y);
-}
-function durMinutes(text) {
-  const out = [];
-  RE_DUR_ITEM.lastIndex = 0;
-  for (const m of text.matchAll(RE_DUR_ITEM)) {
-    if (m[1]) out.push(30);
-    else {
-      const n = num(m[2]);
-      if (Number.isFinite(n) && m[3]) out.push(n * UNIT_MINUTES[unitOf(m[3])]);
-    }
-  }
-  return out;
-}
-function recognizeReminders(ctx) {
-  ctx.each(RE_REM_DUR, (m) => {
-    const mins = durMinutes(m[1] ?? "");
-    if (!mins.length) return null;
-    ctx.reminderOffsets.push(...mins);
-    return "reminder";
-  });
-  ctx.each(RE_REM_DAY_BEFORE, (m) => {
-    ctx.reminderOffsets.push((m[1] ?? "").toLowerCase() === "week" ? 10080 : 1440);
-    return "reminder";
-  });
-  ctx.each(RE_REM_AT, (m) => {
-    const time4 = parseTimeOfDay(m[1] ?? "");
-    if (!time4) return null;
-    const q = (m[2] ?? "").toLowerCase();
-    const daysBefore = !q ? null : q.startsWith("the day") ? 1 : q.startsWith("on the day") ? 0 : num(m[3]);
-    ctx.reminderAt.push({ time: time4, daysBefore: Number.isFinite(daysBefore) || daysBefore === null ? daysBefore : null });
-    return "reminder";
-  });
-}
-function recognizeRecurrence(ctx) {
-  ctx.each(RE_REC_EVERY_NTH, (m) => {
-    const d = num(m[1]);
-    if (!(d >= 1 && d <= 31) || ctx.recurrence) return null;
-    ctx.setRecurrence({ freq: "monthly", interval: 1 });
-    ctx.recDay = d;
-    return "recurrence";
-  });
-  ctx.each(RE_REC_EVERY_UNIT, (m) => {
-    if (ctx.recurrence) return null;
-    const interval = m[1] ? 2 : m[2] ? num(m[2]) : 1;
-    if (!(interval >= 1)) return null;
-    const unit = (m[3] ?? "").toLowerCase().replace(/\s+/g, " ");
-    const byWeekday = m[4] ? weekdayList(m[4]) : void 0;
-    let r;
-    if (/^(weekdays?|workdays?|business days?)$/.test(unit)) r = { freq: "weekdays", interval: 1, byWeekday: [1, 2, 3, 4, 5] };
-    else if (/^weekends?$/.test(unit)) r = { freq: "weekly", interval, byWeekday: [0, 6] };
-    else if (unit.startsWith("day")) r = { freq: "daily", interval };
-    else if (unit.startsWith("week")) r = { freq: "weekly", interval, ...byWeekday ? { byWeekday } : {} };
-    else if (unit === "fortnight") r = { freq: "weekly", interval: 2 * interval, ...byWeekday ? { byWeekday } : {} };
-    else if (unit.startsWith("month")) r = { freq: "monthly", interval };
-    else r = { freq: "yearly", interval };
-    ctx.setRecurrence(r);
-    return "recurrence";
-  });
-  ctx.each(RE_REC_EVERY_WD, (m) => {
-    if (ctx.recurrence) return null;
-    const days = weekdayList(m[2] ?? "");
-    if (!days.length) return null;
-    ctx.setRecurrence({ freq: "weekly", interval: m[1] ? 2 : 1, byWeekday: days });
-    return "recurrence";
-  });
-  ctx.each(RE_REC_WEEKDAYS, () => ctx.setRecurrence({ freq: "weekdays", interval: 1, byWeekday: [1, 2, 3, 4, 5] }) ? "recurrence" : null);
-  ctx.each(RE_REC_WEEKENDS, () => ctx.setRecurrence({ freq: "weekly", interval: 1, byWeekday: [0, 6] }) ? "recurrence" : null);
-  ctx.each(RE_REC_PLURAL, (m) => {
-    const days = weekdayList(m[1] ?? "");
-    return days.length && ctx.setRecurrence({ freq: "weekly", interval: 1, byWeekday: days }) ? "recurrence" : null;
-  });
-  ctx.each(RE_REC_ADVERB, (m) => {
-    const w = (m[1] ?? "").toLowerCase().replace("-", "");
-    const byWeekday = m[2] ? weekdayList(m[2]) : void 0;
-    const wk = (interval) => ({ freq: "weekly", interval, ...byWeekday ? { byWeekday } : {} });
-    const table = {
-      daily: { freq: "daily", interval: 1 },
-      everyday: { freq: "daily", interval: 1 },
-      nightly: { freq: "daily", interval: 1 },
-      weekly: wk(1),
-      biweekly: wk(2),
-      fortnightly: wk(2),
-      monthly: { freq: "monthly", interval: 1 },
-      bimonthly: { freq: "monthly", interval: 2 },
-      quarterly: { freq: "monthly", interval: 3 },
-      yearly: { freq: "yearly", interval: 1 },
-      annually: { freq: "yearly", interval: 1 }
-    };
-    const r = table[w];
-    return r && ctx.setRecurrence(r) ? "recurrence" : null;
-  });
-}
-function trimName(name) {
-  return name.replace(/[.\-]+$/u, "");
-}
-function addUnique(list, v) {
-  if (v && !list.some((x) => x.toLowerCase() === v.toLowerCase())) list.push(v);
-}
-function recognizePeople(ctx) {
-  ctx.each(RE_ASSIGN, (m, start) => {
-    const name = trimName(m[1] ?? "");
-    if (!name) return null;
-    addUnique(ctx.assignees, name);
-    return ["assignee", start, start + m[0].length - ((m[1] ?? "").length - name.length)];
-  });
-  ctx.each(RE_AT_NAME, (m, start, end) => {
-    const rawName = m[1] ?? "";
-    const name = trimName(rawName);
-    if (!name || /^\d{1,2}(?::\d{2})?(?:am|pm)?$/i.test(name) || /^\d+$/.test(name)) return null;
-    addUnique(ctx.assignees, name);
-    const tokEnd = end - (rawName.length - name.length);
-    const hasFor = /^for\s/i.test(m[0]);
-    if (!hasFor && KEEP_NAME_AFTER.test(ctx.mask.slice(0, start))) ctx.keep.set(start, name);
-    return ["assignee", start, tokEnd];
-  });
-}
-function recognizeProjectsAndTags(ctx) {
-  ctx.each(RE_HASH, (m, start, end) => {
-    const rawName = m[1] ?? "";
-    const name = rawName.replace(/[.\-/]+$/u, "");
-    if (!name || /^\d+$/.test(name)) return null;
-    const tokEnd = end - (rawName.length - name.length);
-    if (ctx.project === null) {
-      ctx.project = name;
-      return ["project", start, tokEnd];
-    }
-    if (ctx.project.toLowerCase() !== name.toLowerCase()) addUnique(ctx.tags, name);
-    return ["tag", start, tokEnd];
-  });
-  ctx.each(RE_PLUS, (m, start, end) => {
-    const rawName = m[1] ?? "";
-    const name = rawName.replace(/[\-]+$/u, "");
-    if (!name) return null;
-    addUnique(ctx.tags, name);
-    return ["tag", start, end - (rawName.length - name.length)];
-  });
-}
-function recognizePriority(ctx) {
-  ctx.each(RE_PRI_BANG, (m) => {
-    ctx.setPriority(PRIORITY_WORD[(m[1] ?? "").toLowerCase()]);
-    return "priority";
-  });
-  ctx.each(RE_PRI_EXCL, (m) => {
-    ctx.setPriority((m[1] ?? "").length >= 3 ? "urgent" : "high");
-    return "priority";
-  });
-  ctx.each(RE_PRI_P, (m) => {
-    ctx.setPriority(PRIORITY_WORD[`p${m[1]}`]);
-    return "priority";
-  });
-  ctx.each(RE_PRI_PHRASE, (m) => {
-    ctx.setPriority(PRIORITY_WORD[(m[1] ?? m[2] ?? "").toLowerCase()]);
-    return "priority";
-  });
-}
-function recognizeDates(ctx) {
-  const { today: today2 } = ctx;
-  ctx.each(RE_ISO, (m) => {
-    const y = num(m[1]), mo = num(m[2]), d = num(m[3]);
-    if (ctx.haveDate || !isValidCD(y, mo, d)) return null;
-    if (m[4] !== void 0) {
-      const h = num(m[4]), mi = num(m[5]);
-      if (h > 23 || mi > 59) return null;
-      if (m[6]) {
-        const z2 = m[6].toUpperCase();
-        let off = 0;
-        if (z2 !== "Z") {
-          const zm = /^([+-])(\d{2}):?(\d{2})$/.exec(z2);
-          if (!zm) return null;
-          off = (zm[1] === "-" ? -1 : 1) * (num(zm[2]) * 60 + num(zm[3]));
-        }
-        ctx.instant = Date.UTC(y, mo - 1, d, h, mi) - off * 6e4;
-        return "date";
-      }
-      ctx.date = { y, m: mo, d };
-      ctx.time = { h, mi, explicit: true, guessedPm: false };
-      return "date";
-    }
-    return ctx.setDate({ y, m: mo, d }) ? "date" : null;
-  });
-  ctx.each(RE_NUMERIC_Y, (m) => ctx.setDate(numericDate(ctx, num(m[1]), num(m[3]), fullYear(m[4] ?? ""))) ? "date" : null);
-  ctx.each(
-    RE_MONTH_DAY,
-    (m) => ctx.setDate(monthDay(today2, monthNum(m[1] ?? ""), num(m[2]), m[3] ? num(m[3]) : void 0)) ? "date" : null
-  );
-  ctx.each(
-    RE_DAY_MONTH,
-    (m) => ctx.setDate(monthDay(today2, monthNum(m[2] ?? ""), num(m[1]), m[3] ? num(m[3]) : void 0)) ? "date" : null
-  );
-  ctx.each(RE_DAY_AFTER_TOMORROW, () => ctx.setDate(addDays(today2, 2)) ? "date" : null);
-  ctx.each(RE_TODAY_TOMORROW, (m) => {
-    const w = (m[1] ?? "").toLowerCase();
-    return ctx.setDate(w === "today" || w === "tdy" ? today2 : addDays(today2, 1)) ? "date" : null;
-  });
-  ctx.each(RE_TONIGHT, (m) => {
-    if (!ctx.setDate(today2)) return null;
-    const part = DAYPART[(m[1] ?? "night").toLowerCase()] ?? { h: 20, pm: true };
-    ctx.softTime = { h: part.h, mi: 0, explicit: true, guessedPm: false };
-    if (part.pm) ctx.pmHint = true;
-    else ctx.amHint = true;
-    return "date";
-  });
-  ctx.each(RE_IN_N, (m) => {
-    if (ctx.haveDate) return null;
-    const n = /^half/i.test(m[1] ?? "") ? 0.5 : num(m[1]);
-    if (!(n > 0)) return null;
-    const unit = unitOf(m[2] ?? "");
-    if (unit === "min" || unit === "h" || !Number.isInteger(n)) {
-      if (ctx.haveTime) return null;
-      ctx.instant = ctx.now + Math.round(n * UNIT_MINUTES[unit] * 6e4);
-      return "date";
-    }
-    const cd = unit === "d" ? addDays(today2, n) : unit === "w" ? addDays(today2, 7 * n) : addMonths(today2, unit === "mo" ? n : 12 * n);
-    return ctx.setDate(cd) ? "date" : null;
-  });
-  ctx.each(RE_N_FROM_NOW, (m) => {
-    const n = num(m[1]);
-    if (!(n > 0)) return null;
-    const u = (m[2] ?? "").toLowerCase();
-    const cd = u.startsWith("day") ? addDays(today2, n) : u.startsWith("week") ? addDays(today2, 7 * n) : addMonths(today2, n);
-    return ctx.setDate(cd) ? "date" : null;
-  });
-  ctx.each(RE_WD_FULL, (m) => {
-    const wd = weekdayNum(m[2] ?? "");
-    const mod = m[3] ? m[3].toLowerCase() === "next" ? "next" : "this" : m[1];
-    return ctx.setDate(weekdayDate(today2, wd, mod)) ? "date" : null;
-  });
-  ctx.each(RE_WD_ABBR_PREP, (m) => ctx.setDate(weekdayDate(today2, weekdayNum(m[3] ?? ""), m[1] ?? m[2])) ? "date" : null);
-  ctx.each(RE_WD_TIME_PAIR, (m) => {
-    const t = parseTimeOfDay(m[2] ?? "");
-    if (!t || ctx.haveDate || ctx.haveTime) return null;
-    ctx.setDate(weekdayDate(today2, weekdayNum(m[1] ?? ""), void 0));
-    ctx.setTime(t);
-    return "date";
-  });
-  ctx.each(RE_PERIOD, (m) => {
-    let cd;
-    if (m[2] || m[3]) {
-      const what = m[3] ? { eow: "week", eom: "month", eoy: "year" }[(m[3] ?? "").toLowerCase()] : (m[2] ?? "").toLowerCase();
-      const next = (m[1] ?? "").toLowerCase() === "next";
-      if (what === "week") cd = next ? addDays(addDays(today2, daysToNextMonday(today2)), 4) : endOfWeek(today2);
-      else if (what === "month") {
-        const base = next ? addMonths({ ...today2, d: 1 }, 1) : today2;
-        cd = { y: base.y, m: base.m, d: daysInMonth(base.y, base.m) };
-      } else cd = { y: today2.y + (next ? 1 : 0), m: 12, d: 31 };
-    } else {
-      const mod = (m[4] ?? "").toLowerCase();
-      const what = (m[5] ?? "").toLowerCase();
-      if (what === "week") cd = mod === "next" ? addDays(today2, daysToNextMonday(today2)) : endOfWeek(today2);
-      else if (what === "month") cd = mod === "next" ? addMonths({ ...today2, d: 1 }, 1) : { ...today2, d: daysInMonth(today2.y, today2.m) };
-      else cd = mod === "next" ? { y: today2.y + 1, m: 1, d: 1 } : { y: today2.y, m: 12, d: 31 };
-    }
-    return ctx.setDate(cd) ? "date" : null;
-  });
-  ctx.each(RE_WEEKEND, (m) => {
-    if (/^weekend$/i.test(m[0])) return null;
-    const sat = thisWeekendSaturday(today2);
-    const cd = (m[1] ?? "").toLowerCase() === "next" ? addDays(sat, 7) : cmpCD(sat, today2) < 0 ? today2 : sat;
-    return ctx.setDate(cd) ? "date" : null;
-  });
-  ctx.each(RE_ORDINAL_PREP, (m) => ctx.setDate(nextDayOfMonth(today2, num(m[1]))) ? "date" : null);
-  ctx.each(RE_NUMERIC_PREP, (m) => ctx.setDate(numericDate(ctx, num(m[1]), num(m[2]))) ? "date" : null);
-}
-function recognizeTimes(ctx, defaultHour) {
-  ctx.each(RE_EOD, () => ctx.setTime({ h: defaultHour, mi: 0, explicit: true, guessedPm: false, eod: true }) ? "date" : null);
-  ctx.each(RE_TIME_PREP, (m) => ctx.setTime(parseTimeOfDay(m[1] ?? "")) ? "date" : null);
-  ctx.each(RE_HOUR_PREP, (m) => ctx.setTime(parseTimeOfDay(m[1] ?? "")) ? "date" : null);
-  ctx.each(RE_DAYPART_PREP, (m) => applyDaypart(ctx, m[1] ?? "") ? "date" : null);
-}
-function applyDaypart(ctx, word) {
-  const part = DAYPART[word.toLowerCase()];
-  if (!part) return false;
-  if (ctx.instant !== null) return false;
-  if (ctx.time) {
-    if (part.pm) ctx.pmHint = true;
-    else ctx.amHint = true;
-    return true;
-  }
-  ctx.time = { h: part.h, mi: 0, explicit: true, guessedPm: false };
-  return true;
-}
-function bareModifierOk(ctx, start, end) {
-  if (ctx.trailing(end)) return true;
-  if (!ctx.leading(start)) return false;
-  const rest = ctx.mask.slice(end).replace(/^[\s\u0000]+/u, "");
-  return /^[:,\-–—!|]/u.test(rest) || rest === "";
-}
-function recognizeAmbiguous(ctx) {
-  for (let pass = 0; pass < 8; pass++) {
-    let changed = false;
-    changed = ctx.each(
-      RE_A_WD,
-      (m, s2, e) => !ctx.haveDate && (ctx.trailing(e) || ctx.adjacent(s2, e)) && ctx.setDate(weekdayDate(ctx.today, weekdayNum(m[1] ?? ""), void 0)) ? "date" : null
-    ) || changed;
-    changed = ctx.each(
-      RE_A_ORDINAL,
-      (m, s2, e) => !ctx.haveDate && ctx.anchored(s2, e) && ctx.setDate(nextDayOfMonth(ctx.today, num(m[1]))) ? "date" : null
-    ) || changed;
-    changed = ctx.each(
-      RE_A_NUMERIC,
-      (m, s2, e) => !ctx.haveDate && ctx.anchored(s2, e) && ctx.setDate(numericDate(ctx, num(m[1]), num(m[2]))) ? "date" : null
-    ) || changed;
-    changed = ctx.each(RE_A_WEEKEND, (_m, s2, e) => {
-      if (ctx.haveDate || !ctx.anchored(s2, e)) return null;
-      const sat = thisWeekendSaturday(ctx.today);
-      return ctx.setDate(cmpCD(sat, ctx.today) < 0 ? ctx.today : sat) ? "date" : null;
-    }) || changed;
-    changed = ctx.each(RE_A_TIME, (m, s2, e) => {
-      if (ctx.haveTime) return null;
-      const isWord = /^[a-z]/i.test(m[1] ?? "");
-      const ok = isWord ? ctx.trailing(e) || ctx.adjacent(s2, e) : ctx.anchored(s2, e);
-      return ok && ctx.setTime(parseTimeOfDay(m[1] ?? "")) ? "date" : null;
-    }) || changed;
-    changed = ctx.each(RE_A_DAYPART, (m, s2, e) => {
-      const word = (m[1] ?? "").toLowerCase();
-      const ok = ctx.adjacent(s2, e) || word !== "night" && !ctx.haveTime && ctx.trailing(e);
-      return ok && applyDaypart(ctx, word) ? "date" : null;
-    }) || changed;
-    changed = ctx.each(RE_PRI_BARE, (m, s2, e) => {
-      if (!bareModifierOk(ctx, s2, e)) return null;
-      const w = (m[1] ?? "").toLowerCase();
-      ctx.setPriority(w === "important" ? "high" : "urgent");
-      return "priority";
-    }) || changed;
-    if (!changed) break;
-  }
-}
-function chronoFallback(ctx) {
-  if (ctx.haveDate || ctx.haveTime) return;
-  const text = ctx.mask.replace(/\u0000/g, " ");
-  if (!/[a-z]{3}/i.test(text)) return;
-  const w = wallClock(ctx.now, ctx.tz);
-  const ref2 = new Date(w.y, w.m - 1, w.d, w.h, w.mi);
-  const parser = ctx.monthFirst ? en_exports.casual : en_exports.GB;
-  let results;
-  try {
-    results = parser.parse(text, ref2, { forwardDate: true });
-  } catch {
-    return;
-  }
-  for (const r of results) {
-    const st = r.start;
-    if (!st.isCertain("day") || !st.isCertain("month")) continue;
-    if (!/[a-z]{2}/i.test(r.text)) continue;
-    let start = r.index;
-    const end = r.index + r.text.length;
-    if (!ctx.isFree(start, end)) continue;
-    const prep = /(?:^|\s)((?:due\s+)?(?:by|on|before|until|due)\s+)$/i.exec(ctx.mask.slice(0, start));
-    if (!prep && !ctx.leading(start) && !ctx.trailing(end)) continue;
-    if (prep?.[1]) start -= prep[1].length;
-    const y = st.get("year") ?? ctx.today.y;
-    const m = st.get("month") ?? 0;
-    const d = st.get("day") ?? 0;
-    let cd = isValidCD(y, m, d) ? { y, m, d } : null;
-    if (cd && !st.isCertain("year") && cmpCD(cd, ctx.today) < 0) cd = monthDay(ctx.today, m, d);
-    if (!cd) continue;
-    ctx.date = cd;
-    if (st.isCertain("hour")) ctx.time = { h: st.get("hour") ?? 0, mi: st.get("minute") ?? 0, explicit: true, guessedPm: false };
-    ctx.claim(start, end, "date");
-    return;
-  }
-}
-function recurrencePredicate(ctx) {
-  const r = ctx.recurrence;
-  if (!r) return () => true;
-  if (r.freq === "weekdays") return (cd) => dow(cd) >= 1 && dow(cd) <= 5;
-  if (r.freq === "weekly" && r.byWeekday?.length) {
-    const set2 = new Set(r.byWeekday);
-    return (cd) => set2.has(dow(cd));
-  }
-  if (r.freq === "monthly" && ctx.recDay !== null) {
-    const day = ctx.recDay;
-    return (cd) => cd.d === day;
-  }
-  return () => true;
-}
-function resolveDue(ctx, defaultHour) {
-  let time4 = ctx.time;
-  if (time4 && !time4.eod) {
-    if (ctx.amHint && time4.guessedPm) time4 = { ...time4, h: time4.h - 12 };
-    else if (ctx.pmHint && !time4.explicit && time4.h < 12) time4 = { ...time4, h: time4.h + 12 };
-  }
-  const dflt = { h: defaultHour, mi: 0 };
-  if (ctx.instant !== null) return { dueAt: ctx.instant, allDay: false };
-  if (ctx.date) {
-    if (time4) return { dueAt: ctx.at(ctx.date, time4.eod ? dflt : time4), allDay: false };
-    if (ctx.softTime) {
-      let t = ctx.at(ctx.date, ctx.softTime);
-      if (t <= ctx.now && cmpCD(ctx.date, ctx.today) === 0) t = Math.max(t, ctx.at(ctx.date, { h: 23, mi: 59 }));
-      return { dueAt: t, allDay: false };
-    }
-    return { dueAt: ctx.at(ctx.date, dflt), allDay: true };
-  }
-  const pred = recurrencePredicate(ctx);
-  if (time4) {
-    if (time4.eod && !ctx.recurrence) {
-      const t2 = ctx.at(ctx.today, dflt);
-      return { dueAt: t2 > ctx.now ? t2 : ctx.at(ctx.today, { h: 23, mi: 59 }), allDay: false };
-    }
-    const t = time4.eod ? dflt : time4;
-    return { dueAt: ctx.at(ctx.firstOn(pred, t), t), allDay: false };
-  }
-  if (ctx.recurrence) return { dueAt: ctx.at(ctx.firstOn(pred, null), dflt), allDay: true };
-  return { dueAt: null, allDay: false };
-}
-var SENT = "";
-var DANGLING = new RegExp(
-  S`(^|[\s(])(?:by|at|on|due|before|until|till|for|to|from|every|each|and|&|@)\s*\u0001(?=[\s\u0001]*(?:$|[,.;:!?)\]]))`,
-  "giu"
-);
-function buildTitle(ctx) {
-  const toks = [...ctx.tokens].sort((a, b) => a.start - b.start);
-  let out = "";
-  let i = 0;
-  for (const t2 of toks) {
-    out += ctx.raw.slice(i, t2.start);
-    const kept = ctx.keep.get(t2.start);
-    out += kept !== void 0 ? kept : SENT;
-    i = t2.end;
-  }
-  out += ctx.raw.slice(i);
-  for (let guard = 0; guard < 10; guard++) {
-    const next = out.replace(DANGLING, `$1${SENT}`);
-    if (next === out) break;
-    out = next;
-  }
-  let t = out.replace(/\u0001/g, " ").replace(/\s+/g, " ").replace(/\s+([,.;:!?)\]])/g, "$1").replace(/([(\[])\s+/g, "$1").replace(/\(\s*\)|\[\s*\]/g, "").replace(/([,;:])(?:\s*[,;:])+/g, "$1").replace(/\s+/g, " ").trim().replace(/^[\s,;:.\-–—&|/]+/u, "").replace(/[\s,;:\-–—&|/]+$/u, "").trim();
-  if (!t) return "";
-  return t.charAt(0).toUpperCase() + t.slice(1);
-}
-function parseImpl(raw, opts) {
-  const tz = resolveTimeZone(opts?.timezone);
-  const now2 = typeof opts?.now === "number" && Number.isFinite(opts.now) ? opts.now : Date.now();
-  const dh = opts?.defaultHour;
-  const defaultHour = typeof dh === "number" && Number.isInteger(dh) && dh >= 0 && dh <= 23 ? dh : 18;
-  const w = wallClock(now2, tz);
-  const ctx = new Ctx(raw, now2, tz, { y: w.y, m: w.m, d: w.d }, prefersMonthFirst(tz));
-  recognizeReminders(ctx);
-  recognizeRecurrence(ctx);
-  recognizePeople(ctx);
-  recognizeProjectsAndTags(ctx);
-  recognizePriority(ctx);
-  recognizeDates(ctx);
-  recognizeTimes(ctx, defaultHour);
-  recognizeAmbiguous(ctx);
-  chronoFallback(ctx);
-  let { dueAt, allDay } = resolveDue(ctx, defaultHour);
-  const offsets2 = [...ctx.reminderOffsets];
-  for (const r of ctx.reminderAt) {
-    if (dueAt === null) {
-      dueAt = ctx.at(ctx.firstOn(recurrencePredicate(ctx), r.time), r.time);
-      allDay = false;
-      offsets2.push(0);
-      continue;
-    }
-    const due = wallClock(dueAt, tz);
-    const dueCd = { y: due.y, m: due.m, d: due.d };
-    let at = ctx.at(addDays(dueCd, -(r.daysBefore ?? 0)), r.time);
-    if (r.daysBefore === null && at > dueAt) at = ctx.at(addDays(dueCd, -1), r.time);
-    const off = Math.round((dueAt - at) / 6e4);
-    if (off >= 0) offsets2.push(off);
-  }
-  const reminderOffsets = offsets2.length ? [...new Set(offsets2)].sort((a, b) => a - b) : null;
-  let title = buildTitle(ctx);
-  if (!title) title = raw.trim().replace(/\s+/g, " ");
-  return {
-    title,
-    dueAt,
-    dueAllDay: dueAt !== null && allDay,
-    priority: ctx.priority,
-    assigneeHints: ctx.assignees,
-    projectHint: ctx.project,
-    tags: ctx.tags,
-    recurrence: ctx.recurrence,
-    reminderOffsets,
-    tokens: [...ctx.tokens].sort((a, b) => a.start - b.start)
-  };
-}
-function parseQuickAdd(text, opts) {
-  const raw = typeof text === "string" ? text : text == null ? "" : String(text);
-  try {
-    return parseImpl(raw, opts);
-  } catch {
-    return emptyResult(raw);
-  }
-}
-
-// packages/core/src/perms.ts
-var forbidden = (msg = "You do not have permission to do that") => {
-  throw new AppError("forbidden", msg);
-};
-var notFound = (what = "Not found") => {
-  throw new AppError("not_found", what);
-};
-var isSystem = (a) => a.via === "system" && a.memberId === SYSTEM_MEMBER_ID;
-var rank = (r) => ROLE_RANK[r] ?? 0;
-var atLeast = (a, r) => isSystem(a) || a.kind === "human" && rank(a.role) >= rank(r);
-var isManager = (a) => atLeast(a, "manager");
-var isAdmin = (a) => atLeast(a, "admin");
-function systemActor(orgId) {
-  return { orgId, memberId: SYSTEM_MEMBER_ID, role: "owner", kind: "human", via: "system" };
-}
-function hasWriteScope(a) {
-  return a.via !== "api_key" || (a.scopes ?? []).includes("write");
-}
-function requireWrite(a) {
-  if (!hasWriteScope(a)) forbidden("This API key is read-only (missing 'write' scope)");
-  if (a.role === "guest" && !isSystem(a)) forbidden("Guests have read-only access");
-}
-function requireRole(a, r, msg) {
-  if (!atLeast(a, r)) forbidden(msg ?? `Requires ${r} role or higher`);
-}
-function visibility(a) {
-  if (isManager(a)) return { mode: "all" };
-  if (a.kind === "agent") return { mode: "agent", memberId: a.memberId };
-  if (a.role === "guest") return { mode: "guest", memberId: a.memberId };
-  return { mode: "member", memberId: a.memberId };
-}
-function canEditTask(a, t) {
-  if (!hasWriteScope(a) || a.role === "guest") return false;
-  if (isManager(a)) return true;
-  const involved = t.creatorId === a.memberId || t.assigneeIds.includes(a.memberId);
-  if (a.kind === "agent") return involved;
-  return true;
-}
-function canDeleteTask(a, t, projectLeadId) {
-  if (!hasWriteScope(a) || a.role === "guest") return false;
-  if (isManager(a)) return true;
-  return t.creatorId === a.memberId || projectLeadId !== null && projectLeadId === a.memberId;
-}
-
-// packages/core/src/validate.ts
-function bad(message, details) {
-  throw new AppError("bad_request", message, details);
-}
-function isObj(v) {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-function str(v, field, opts = {}) {
-  if (typeof v !== "string") bad(`${field} must be a string`);
-  const s2 = opts.trim === false ? v : v.trim();
-  const min = opts.min ?? 1;
-  const max = opts.max ?? 1e3;
-  if (s2.length < min) bad(min <= 1 ? `${field} is required` : `${field} must be at least ${min} characters`);
-  if (s2.length > max) bad(`${field} must be at most ${max} characters`);
-  return s2;
-}
-function optStr(v, field, max = 1e3) {
-  if (v === null || v === void 0) return null;
-  if (typeof v !== "string") bad(`${field} must be a string`);
-  const s2 = v.trim();
-  if (s2.length > max) bad(`${field} must be at most ${max} characters`);
-  return s2 || null;
-}
-function bool(v, field) {
-  if (typeof v !== "boolean") bad(`${field} must be a boolean`);
-  return v;
-}
-function int(v, field, min, max) {
-  if (typeof v !== "number" || !Number.isInteger(v)) bad(`${field} must be an integer`);
-  if (v < min || v > max) bad(`${field} must be between ${min} and ${max}`);
-  return v;
-}
-function num2(v, field, min = -Infinity, max = Infinity) {
-  if (typeof v !== "number" || !Number.isFinite(v)) bad(`${field} must be a number`);
-  if (v < min || v > max) bad(`${field} is out of range`);
-  return v;
-}
-function optTime(v, field) {
-  if (v === null || v === void 0) return null;
-  return time(v, field);
-}
-function time(v, field) {
-  if (typeof v !== "number" || !Number.isFinite(v)) bad(`${field} must be a timestamp (epoch ms)`);
-  if (v < 9466848e5 || v > 72581184e5) bad(`${field} is out of range`);
-  return Math.round(v);
-}
-function oneOf(v, field, allowed) {
-  if (typeof v !== "string" || !allowed.includes(v)) bad(`${field} must be one of: ${allowed.join(", ")}`);
-  return v;
-}
-function ref(v, field) {
-  if (typeof v !== "string" || !v || v.length > 64 || !/^[A-Za-z0-9_-]+$/.test(v)) bad(`${field} is not a valid id`);
-  return v;
-}
-function refs(v, field, max = 50) {
-  if (!Array.isArray(v)) bad(`${field} must be an array`);
-  if (v.length > max) bad(`${field} has too many entries (max ${max})`);
-  return [...new Set(v.map((x, i) => ref(x, `${field}[${i}]`)))];
-}
-function timezone(v, field = "timezone") {
-  if (!isValidTimezone(v)) bad(`${field} must be a valid IANA time zone`);
-  return v;
-}
-var EMAIL = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
-function email(v, field = "email") {
-  const s2 = str(v, field, { max: 254 }).toLowerCase();
-  if (!EMAIL.test(s2)) bad(`${field} is not a valid email address`);
-  return s2;
-}
-function phone(v, field = "phone") {
-  const s2 = optStr(v, field, 32);
-  if (s2 === null) return null;
-  if (!/^\+?[0-9 ()-]{6,24}$/.test(s2) || s2.replace(/\D/g, "").length < 6) bad(`${field} is not a valid phone number`);
-  const digits = s2.replace(/\D/g, "");
-  return s2.startsWith("+") ? `+${digits}` : digits;
-}
-function color(v, field = "color") {
-  if (typeof v !== "string" || !/^#[0-9a-fA-F]{6}$/.test(v)) bad(`${field} must be a hex color like #6366f1`);
-  return v.toLowerCase();
-}
-function url(v, field, opts = {}) {
-  const s2 = str(v, field, { max: 2048 });
-  let u;
-  try {
-    u = new URL(s2);
-  } catch {
-    bad(`${field} must be a valid URL`);
-  }
-  const ok = opts.httpsOnly ? ["https:"] : ["https:", "http:"];
-  if (!ok.includes(u.protocol)) bad(`${field} must use ${ok.join(" or ")}`);
-  return u.toString();
-}
-function password(v, field = "password") {
-  if (typeof v !== "string") bad(`${field} must be a string`);
-  if (v.length < 8) bad(`${field} must be at least 8 characters`);
-  if (v.length > 256) bad(`${field} must be at most 256 characters`);
-  return v;
-}
-function tags(v) {
-  if (!Array.isArray(v)) bad("tags must be an array");
-  if (v.length > 30) bad("too many tags (max 30)");
-  const out = [];
-  for (const t of v) {
-    const s2 = str(t, "tag", { max: 40 }).replace(/^#/, "");
-    if (s2 && !out.some((o) => o.toLowerCase() === s2.toLowerCase())) out.push(s2);
-  }
-  return out;
-}
-function offsets(v, field = "reminderOffsets") {
-  if (!Array.isArray(v)) bad(`${field} must be an array of minutes`);
-  if (v.length > 10) bad(`${field}: at most 10 reminders`);
-  const out = [...new Set(v.map((x) => int(x, field, 0, 60 * 24 * 60)))];
-  return out.sort((a, b) => b - a);
-}
-
-// packages/core/src/recurrence.ts
-function validateRecurrence(v) {
-  if (v === null || v === void 0) return null;
-  if (!isObj(v)) bad("recurrence must be an object");
-  const freq = oneOf(v.freq, "recurrence.freq", ["daily", "weekdays", "weekly", "monthly", "yearly"]);
-  const interval = v.interval === void 0 ? 1 : int(v.interval, "recurrence.interval", 1, 365);
-  const out = { freq, interval };
-  if (v.byWeekday !== void 0 && v.byWeekday !== null) {
-    if (!Array.isArray(v.byWeekday) || v.byWeekday.length > 7) bad("recurrence.byWeekday must be an array of 0-6");
-    const days = [...new Set(v.byWeekday.map((d) => int(d, "recurrence.byWeekday", 0, 6)))].sort();
-    if (days.length) out.byWeekday = days;
-  }
-  if (v.until !== void 0) out.until = optTime(v.until, "recurrence.until");
-  return out;
-}
-function step(t, r, tz) {
-  const n = Math.max(1, r.interval || 1);
-  switch (r.freq) {
-    case "daily":
-      return addLocalDays(t, n, tz);
-    case "weekdays": {
-      let c = t;
-      for (let i = 0; i < 7; i++) {
-        c = addLocalDays(c, 1, tz);
-        const wd = localParts(c, tz).weekday;
-        if (wd >= 1 && wd <= 5) return c;
-      }
-      return c;
-    }
-    case "weekly": {
-      const days = r.byWeekday?.length ? r.byWeekday : null;
-      if (!days) return addLocalDays(t, 7 * n, tz);
-      const cur = localParts(t, tz).weekday;
-      for (let i = 1; i <= 7; i++) {
-        const c = addLocalDays(t, i, tz);
-        const wd = localParts(c, tz).weekday;
-        if (days.includes(wd)) return wd <= cur ? addLocalDays(c, 7 * (n - 1), tz) : c;
-      }
-      return addLocalDays(t, 7 * n, tz);
-    }
-    case "monthly":
-      return addLocalMonths(t, n, tz);
-    case "yearly":
-      return addLocalMonths(t, 12 * n, tz);
-  }
-}
-function nextOccurrence(base, r, tz, now2) {
-  let next = step(base, r, tz);
-  for (let i = 0; i < 5e3 && next <= now2; i++) next = step(next, r, tz);
-  if (r.until && next > r.until) return null;
-  return next;
-}
-
-// packages/core/src/services/tasks.ts
-var STATUSES = ["todo", "in_progress", "blocked", "review", "done", "cancelled"];
-var PRIORITIES = ["urgent", "high", "medium", "low", "none"];
-var CLOSED = /* @__PURE__ */ new Set(["done", "cancelled"]);
-var isOpen = (t) => !CLOSED.has(t.status);
-var STATUS_LABEL = { todo: "To do", in_progress: "In progress", blocked: "Blocked", review: "Review", done: "Done", cancelled: "Cancelled" };
-var normName = (s2) => s2.toLowerCase().replace(/[\s._-]+/g, "");
-function resolveMemberHint(hint, members, selfId) {
-  const h = hint.replace(/^@/, "").trim().toLowerCase();
-  if (!h) return null;
-  if ((h === "me" || h === "myself") && selfId) return members.find((m) => m.id === selfId) ?? null;
-  const nh = normName(h);
-  const keys = (m) => {
-    const email4 = (m.email ?? "").toLowerCase();
-    return [m.name.toLowerCase(), normName(m.name), firstName(m.name).toLowerCase(), email4, email4.split("@")[0] ?? ""].filter(Boolean);
-  };
-  const exact = members.filter((m) => keys(m).some((k) => k === h || k === nh));
-  if (exact.length === 1) return exact[0];
-  if (exact.length > 1) return null;
-  const prefix = members.filter((m) => keys(m).some((k) => k.startsWith(h) || k.startsWith(nh)));
-  return prefix.length === 1 ? prefix[0] : null;
-}
-function resolveProjectHint(hint, projects) {
-  const h = normName(hint.replace(/^#/, ""));
-  if (!h) return null;
-  const exact = projects.filter((p) => normName(p.name) === h);
-  if (exact.length === 1) return exact[0];
-  if (exact.length > 1) return null;
-  const prefix = projects.filter((p) => normName(p.name).startsWith(h));
-  if (prefix.length === 1) return prefix[0];
-  const sub = projects.filter((p) => normName(p.name).includes(h));
-  return sub.length === 1 ? sub[0] : null;
-}
-function extractMentions(text) {
-  const out = /* @__PURE__ */ new Set();
-  for (const m of text.matchAll(/(^|[^\w@])@([A-Za-z0-9][\w.-]{0,63})/g)) out.add(m[2].replace(/[.-]+$/, ""));
-  return [...out];
-}
-function createTaskService(ctx) {
-  const { db } = ctx;
-  const now2 = () => ctx.clock();
-  function views(orgId, tasks, tz) {
-    if (!tasks.length) return [];
-    const org = db.orgs.get(orgId);
-    const staleMs = (org?.agentStaleAfterMin ?? 240) * 6e4;
-    const agents = new Set(db.members.list(orgId, { includeInactive: true, kind: "agent" }).map((m) => m.id));
-    const counts = db.tasks.commentCounts(orgId, tasks.map((t) => t.id));
-    const t0 = now2();
-    const dayStart = startOfLocalDay(t0, tz);
-    const dayEnd = startOfLocalDay(t0, tz, 1);
-    return tasks.map((t) => {
-      const open = isOpen(t);
-      return {
-        ...t,
-        isOverdue: open && t.dueAt !== null && t.dueAt < t0,
-        isDueToday: t.dueAt !== null && t.dueAt >= dayStart && t.dueAt < dayEnd,
-        isStale: open && t.assigneeIds.some((a) => agents.has(a)) && t0 - t.lastActivityAt > staleMs,
-        commentCount: counts.get(t.id) ?? 0
-      };
-    });
-  }
-  const view = (actor, t) => views(actor.orgId, [t], actorTz(ctx, actor))[0];
-  const orgView = (t) => views(t.orgId, [t], safeTz(db.orgs.get(t.orgId)?.timezone))[0];
-  function audience(t) {
-    const members = db.members.list(t.orgId);
-    const project = t.projectId ? db.projects.get(t.orgId, t.projectId) : null;
-    const out = /* @__PURE__ */ new Set([t.creatorId, ...t.assigneeIds]);
-    for (const m of members) {
-      if (m.kind === "human" && rank(m.role) >= rank("manager")) out.add(m.id);
-      else if (project) {
-        if (m.kind === "agent") out.add(m.id);
-        else if (project.leadId === m.id || project.createdBy === m.id || project.memberIds.includes(m.id)) out.add(m.id);
-        else if (!project.memberIds.length && m.role !== "guest") out.add(m.id);
-      }
-    }
-    out.delete(SYSTEM_MEMBER_ID);
-    return [...out];
-  }
-  function publishTask(t) {
-    publish(ctx, t.orgId, { type: "task.upserted", task: orgView(t) }, audience(t));
-    ctx.internal.invalidateBriefings(t.orgId);
-  }
-  function publishTaskDeleted(t) {
-    publish(ctx, t.orgId, { type: "task.deleted", taskId: t.id }, audience(t));
-    ctx.internal.invalidateBriefings(t.orgId);
-  }
-  function loadVisible(actor, id) {
-    const t = typeof id === "string" && id ? db.tasks.get(actor.orgId, id, visibility(actor)) : null;
-    if (!t) notFound("Task not found");
-    return t;
-  }
-  function loadEditable(actor, id) {
-    requireWrite(actor);
-    const t = loadVisible(actor, id);
-    if (!canEditTask(actor, t)) forbidden(actor.kind === "agent" ? "AI agents can only update tasks assigned to them" : "You cannot edit this task");
-    return t;
-  }
-  function addActivity(t, actorId, kind, text, data = null, bump = true) {
-    const a = { id: newId("act"), orgId: t.orgId, taskId: t.id, actorId, kind, text: text.slice(0, 1e4), data, at: now2() };
-    db.activity.insert(a);
-    if (bump) t.lastActivityAt = a.at;
-    return a;
-  }
-  function publishActivity(t, acts) {
-    if (!acts.length) return;
-    const aud = audience(t);
-    for (const a of acts) publish(ctx, t.orgId, { type: "activity", activity: a }, aud);
-  }
-  const memberName = (orgId, id) => id === SYSTEM_MEMBER_ID ? "System" : db.members.get(orgId, id)?.name ?? "Someone";
-  function validAssignees(actor, ids2) {
-    const list2 = refs(ids2, "assigneeIds", 20);
-    if (!list2.length) return [];
-    const found = db.members.getMany(actor.orgId, list2).filter((m) => m.active);
-    if (found.length !== list2.length) bad("assigneeIds contains an unknown or inactive member");
-    return list2;
-  }
-  function validProject(actor, pid) {
-    if (pid === null || pid === void 0) return null;
-    const id = ref(pid, "projectId");
-    const p = db.projects.get(actor.orgId, id, visibility(actor));
-    if (!p) bad("projectId refers to an unknown project");
-    return id;
-  }
-  function validWaiting(w, prev) {
-    if (w === null || w === void 0) return null;
-    if (!isObj(w)) bad("waitingOn must be an object");
-    const name = str(w.name, "waitingOn.name", { max: 100 });
-    const channel = oneOf(w.channel ?? "other", "waitingOn.channel", ["whatsapp", "email", "other"]);
-    let contact = optStr(w.contact, "waitingOn.contact", 254);
-    if (contact && channel === "email") contact = email(contact, "waitingOn.contact");
-    if (contact && channel === "whatsapp") contact = phone(contact, "waitingOn.contact");
-    const nudgeEveryHours = w.nudgeEveryHours === null || w.nudgeEveryHours === void 0 ? null : int(w.nudgeEveryHours, "waitingOn.nudgeEveryHours", 1, 24 * 30);
-    const same = prev && prev.name === name && prev.contact === contact;
-    return { name, contact, channel, nudgeEveryHours, lastNudgedAt: same ? prev.lastNudgedAt : null, since: same ? prev.since : now2() };
-  }
-  function normalizeDue(actor, dueAt, allDay) {
-    if (dueAt === null || !allDay) return dueAt;
-    const org = getOrg(ctx, actor.orgId);
-    const tz = actorTz(ctx, actor);
-    const p = localParts(dueAt, tz);
-    return zonedToUtc(p.year, p.month, p.day, Math.min(org.workdayEnd, 23), org.workdayEnd >= 24 ? 59 : 0, tz);
-  }
-  async function create(actor, input) {
-    requireWrite(actor);
-    if (!isObj(input)) bad("task input required");
-    const t0 = now2();
-    const status = input.status === void 0 ? "todo" : oneOf(input.status, "status", STATUSES);
-    const allDay = input.dueAllDay === void 0 ? false : bool(input.dueAllDay, "dueAllDay");
-    const dueAt = normalizeDue(actor, optTime(input.dueAt, "dueAt"), allDay);
-    const real = !isSystem(actor) && !!actorMember(ctx, actor);
-    const assigneeIds = input.assigneeIds === void 0 || input.assigneeIds === null ? real ? [actor.memberId] : [] : validAssignees(actor, input.assigneeIds);
-    const src = isObj(input.source) ? input.source : {};
-    const subtasks = Array.isArray(input.subtasks) ? input.subtasks.slice(0, 100).map((s2, i) => ({ id: newId("sub"), title: str(isObj(s2) ? s2.title : s2, `subtasks[${i}].title`, { max: 300 }), done: false, doneAt: null, doneBy: null })) : [];
-    const task = {
-      id: newId("task"),
-      orgId: actor.orgId,
-      projectId: validProject(actor, input.projectId),
-      title: str(input.title, "title", { max: 500 }),
-      notes: optStr(input.notes, "notes", 2e4) ?? "",
-      status,
-      priority: input.priority === void 0 ? "none" : oneOf(input.priority, "priority", PRIORITIES),
-      assigneeIds,
-      creatorId: actor.memberId,
-      dueAt,
-      dueAllDay: dueAt !== null && allDay,
-      reminderOffsets: input.reminderOffsets === void 0 || input.reminderOffsets === null ? null : offsets(input.reminderOffsets),
-      recurrence: validateRecurrence(input.recurrence),
-      recurrenceParentId: null,
-      waitingOn: validWaiting(input.waitingOn, null),
-      tags: input.tags === void 0 ? [] : tags(input.tags),
-      subtasks,
-      source: {
-        channel: src.channel !== void 0 ? oneOf(src.channel, "source.channel", ["manual", "quick_add", "voice", "whatsapp", "email", "mcp", "api", "calendar", "recurring", "import"]) : actor.via === "api_key" ? "api" : "manual",
-        ref: optStr(src.ref, "source.ref", 300),
-        from: optStr(src.from, "source.from", 300)
-      },
-      order: t0,
-      startedAt: status === "in_progress" ? t0 : null,
-      completedAt: status === "done" ? t0 : null,
-      completedBy: status === "done" ? actor.memberId : null,
-      lastActivityAt: t0,
-      createdAt: t0,
-      updatedAt: t0
-    };
-    const act = db.tx(() => {
-      db.tasks.insert(task);
-      return addActivity(task, actor.memberId, "created", `${memberName(actor.orgId, actor.memberId)} created this task`, { source: task.source.channel });
-    });
-    await afterCreate(actor, task, [act]);
-    return view(actor, task);
-  }
-  async function afterCreate(actor, task, acts) {
-    await audit(ctx, actor, { type: "task.created", entity: "task", entityId: task.id, summary: `Created "${task.title}"`, after: task, undoable: true });
-    ctx.internal.scheduleTask(task);
-    publishTask(task);
-    publishActivity(task, acts);
-    await notifyAssigned(actor, task, task.assigneeIds);
-  }
-  async function notifyAssigned(actor, task, ids2) {
-    const by = memberName(task.orgId, actor.memberId);
-    for (const id of ids2) {
-      if (id === actor.memberId) continue;
-      await safeNotify(task.orgId, id, {
-        kind: "task_assigned",
-        title: `New task: ${task.title}`,
-        body: `${by} assigned you "${task.title}"`,
-        taskId: task.id,
-        meetingId: null,
-        link: `/tasks/${task.id}`,
-        urgent: task.priority === "urgent"
-      });
-    }
-  }
-  async function safeNotify(orgId, memberId, n) {
-    try {
-      await ctx.services.notifications.notify(orgId, memberId, n);
-    } catch (err) {
-      ctx.log.warn("[tasks] notify failed", err);
-    }
-  }
-  function draftFromText(actor, text) {
-    const raw = str(text, "text", { max: 2e3 });
-    const org = getOrg(ctx, actor.orgId);
-    const tz = actorTz(ctx, actor);
-    let parsed;
-    try {
-      parsed = parseQuickAdd(raw, { now: now2(), timezone: tz, defaultHour: Math.min(org.workdayEnd, 23) });
-    } catch (err) {
-      ctx.log.warn("[tasks] parseQuickAdd failed, using raw text", err);
-      parsed = { title: raw, dueAt: null, dueAllDay: false, priority: null, assigneeHints: [], projectHint: null, tags: [], recurrence: null, reminderOffsets: null, tokens: [] };
-    }
-    const unresolved = [];
-    const members = db.members.list(actor.orgId);
-    const assigneeIds = [];
-    for (const h of parsed.assigneeHints ?? []) {
-      const m = resolveMemberHint(h, members, isSystem(actor) ? null : actor.memberId);
-      if (m) {
-        if (!assigneeIds.includes(m.id)) assigneeIds.push(m.id);
-      } else unresolved.push(`@${h.replace(/^@/, "")}`);
-    }
-    let projectId = null;
-    if (parsed.projectHint) {
-      const projects = db.projects.list(actor.orgId, { visibility: visibility(actor) });
-      const p = resolveProjectHint(parsed.projectHint, projects);
-      if (p) projectId = p.id;
-      else unresolved.push(`#${parsed.projectHint.replace(/^#/, "")}`);
-    }
-    const draft = {
-      title: (parsed.title || raw).trim().slice(0, 500) || raw.slice(0, 500),
-      dueAt: parsed.dueAt,
-      dueAllDay: parsed.dueAllDay,
-      priority: parsed.priority ?? "none",
-      assigneeIds,
-      projectId,
-      tags: parsed.tags ?? [],
-      recurrence: parsed.recurrence,
-      reminderOffsets: parsed.reminderOffsets
-    };
-    return { parsed, draft, unresolved };
-  }
-  async function quickAdd(actor, text, defaults = {}) {
-    requireWrite(actor);
-    const { draft } = draftFromText(actor, text);
-    const d = isObj(defaults) ? defaults : {};
-    const input = {
-      ...d,
-      title: draft.title,
-      dueAt: draft.dueAt ?? d.dueAt ?? null,
-      dueAllDay: draft.dueAt !== null && draft.dueAt !== void 0 ? draft.dueAllDay : d.dueAllDay,
-      priority: draft.priority && draft.priority !== "none" ? draft.priority : d.priority ?? "none",
-      assigneeIds: draft.assigneeIds?.length ? draft.assigneeIds : d.assigneeIds,
-      projectId: draft.projectId ?? d.projectId ?? null,
-      tags: [.../* @__PURE__ */ new Set([...d.tags ?? [], ...draft.tags ?? []])],
-      recurrence: draft.recurrence ?? d.recurrence ?? null,
-      reminderOffsets: draft.reminderOffsets ?? d.reminderOffsets ?? null,
-      source: { channel: "quick_add", ...isObj(d.source) ? d.source : {} }
-    };
-    return create(actor, input);
-  }
-  function applyPatch(actor, cur, patch) {
-    if (!isObj(patch)) bad("patch must be an object");
-    const next = { ...cur, assigneeIds: [...cur.assigneeIds], tags: [...cur.tags], subtasks: cur.subtasks.map((s2) => ({ ...s2 })) };
-    const changes = [];
-    const who = memberName(cur.orgId, actor.memberId);
-    if (patch.title !== void 0) next.title = str(patch.title, "title", { max: 500 });
-    if (patch.notes !== void 0) next.notes = optStr(patch.notes, "notes", 2e4) ?? "";
-    if (patch.tags !== void 0) next.tags = tags(patch.tags);
-    if (patch.order !== void 0) next.order = num2(patch.order, "order");
-    if (patch.reminderOffsets !== void 0) next.reminderOffsets = patch.reminderOffsets === null ? null : offsets(patch.reminderOffsets);
-    if (patch.recurrence !== void 0) next.recurrence = validateRecurrence(patch.recurrence);
-    if (patch.waitingOn !== void 0) next.waitingOn = validWaiting(patch.waitingOn, cur.waitingOn);
-    if (next.title !== cur.title || next.notes !== cur.notes || JSON.stringify(next.tags) !== JSON.stringify(cur.tags) || JSON.stringify(next.recurrence) !== JSON.stringify(cur.recurrence) || JSON.stringify(next.waitingOn) !== JSON.stringify(cur.waitingOn) || JSON.stringify(next.reminderOffsets) !== JSON.stringify(cur.reminderOffsets)) {
-      changes.push({ kind: "edited", text: `${who} edited the task` });
-    }
-    if (patch.priority !== void 0) {
-      next.priority = oneOf(patch.priority, "priority", PRIORITIES);
-      if (next.priority !== cur.priority) changes.push({ kind: "priority", text: `${who} set priority to ${next.priority}`, data: { from: cur.priority, to: next.priority } });
-    }
-    if (patch.projectId !== void 0) {
-      next.projectId = validProject(actor, patch.projectId);
-      if (next.projectId !== cur.projectId) {
-        const pname = next.projectId ? db.projects.get(cur.orgId, next.projectId)?.name ?? "a project" : "no project";
-        changes.push({ kind: "moved_project", text: `${who} moved this to ${pname}`, data: { from: cur.projectId, to: next.projectId } });
-      }
-    }
-    if (patch.dueAt !== void 0 || patch.dueAllDay !== void 0) {
-      const allDay = patch.dueAllDay !== void 0 ? bool(patch.dueAllDay, "dueAllDay") : cur.dueAllDay;
-      const raw = patch.dueAt !== void 0 ? optTime(patch.dueAt, "dueAt") : cur.dueAt;
-      next.dueAt = normalizeDue(actor, raw, allDay);
-      next.dueAllDay = next.dueAt !== null && allDay;
-      if (next.dueAt !== cur.dueAt) changes.push({ kind: "due_changed", text: next.dueAt ? `${who} changed the due date` : `${who} removed the due date`, data: { from: cur.dueAt, to: next.dueAt } });
-    }
-    if (patch.assigneeIds !== void 0) {
-      next.assigneeIds = validAssignees(actor, patch.assigneeIds);
-      const added = next.assigneeIds.filter((a) => !cur.assigneeIds.includes(a));
-      const removed = cur.assigneeIds.filter((a) => !next.assigneeIds.includes(a));
-      for (const a of added) changes.push({ kind: "assigned", text: `${who} assigned ${memberName(cur.orgId, a)}`, data: { memberId: a } });
-      for (const a of removed) changes.push({ kind: "unassigned", text: `${who} unassigned ${memberName(cur.orgId, a)}`, data: { memberId: a } });
-    }
-    if (patch.status !== void 0) {
-      const s2 = oneOf(patch.status, "status", STATUSES);
-      if (s2 !== cur.status) {
-        next.status = s2;
-        const t0 = now2();
-        if (s2 === "in_progress" && next.startedAt === null) next.startedAt = t0;
-        if (s2 === "done") {
-          next.completedAt = t0;
-          next.completedBy = actor.memberId;
-        } else if (cur.status === "done") {
-          next.completedAt = null;
-          next.completedBy = null;
-        }
-        changes.push({ kind: "status", text: `${who} moved this to ${STATUS_LABEL[s2]}`, data: { from: cur.status, to: s2 } });
-      }
-    }
-    return { next, changes };
-  }
-  async function commit(actor, cur, next, changes, opts = {}) {
-    if (!changes.length && JSON.stringify(cur) === JSON.stringify(next)) return cur;
-    next.updatedAt = now2();
-    const acts = db.tx(() => {
-      const list2 = changes.map((c) => addActivity(next, actor.memberId, c.kind, c.text, c.data ?? null));
-      if (!list2.length) next.lastActivityAt = next.updatedAt;
-      db.tasks.save(next);
-      return list2;
-    });
-    const completed = next.status === "done" && cur.status !== "done";
-    const reopened = cur.status === "done" && next.status !== "done";
-    const type = opts.auditType ?? (completed ? "task.completed" : reopened ? "task.reopened" : "task.updated");
-    const summary = opts.summary ?? (completed ? `Completed "${next.title}"` : reopened ? `Reopened "${next.title}"` : `Updated "${next.title}"`);
-    await audit(ctx, actor, { type, entity: "task", entityId: next.id, summary, before: cur, after: next, undoable: true });
-    ctx.internal.scheduleTask(next);
-    publishTask(next);
-    publishActivity(next, acts);
-    const added = next.assigneeIds.filter((a) => !cur.assigneeIds.includes(a));
-    if (added.length && isOpen(next)) await notifyAssigned(actor, next, added);
-    if (completed) {
-      if (next.creatorId !== actor.memberId && next.creatorId !== SYSTEM_MEMBER_ID && !next.assigneeIds.includes(next.creatorId)) {
-        await safeNotify(next.orgId, next.creatorId, {
-          kind: "task_completed",
-          title: `Done: ${next.title}`,
-          body: `${memberName(next.orgId, actor.memberId)} completed "${next.title}"`,
-          taskId: next.id,
-          meetingId: null,
-          link: `/tasks/${next.id}`,
-          urgent: false
-        });
-      }
-      if (next.recurrence) {
-        try {
-          await spawnNext(next.orgId, next.id);
-        } catch (err) {
-          ctx.log.warn("[tasks] recurrence spawn failed; retrying via job", err);
-          db.jobs.schedule(next.orgId, "task.recur", `task.recur:${next.id}`, now2(), { taskId: next.id }, now2());
-        }
-      }
-    }
-    return next;
-  }
-  async function update(actor, id, patch) {
-    const cur = loadEditable(actor, id);
-    const { next, changes } = applyPatch(actor, cur, patch);
-    const saved = await commit(actor, cur, next, changes);
-    return view(actor, saved);
-  }
-  async function spawnNext(orgId, taskId2) {
-    const src = db.tasks.get(orgId, taskId2);
-    if (!src || !src.recurrence || src.status !== "done") return null;
-    const existingNext = db.tasks.getRecurrenceNext(orgId, src.id);
-    if (existingNext) return db.tasks.get(orgId, existingNext);
-    const rootId = src.recurrenceParentId ?? src.id;
-    const assigneeTz = src.assigneeIds.map((a) => db.members.get(orgId, a)).find((m) => m?.active)?.timezone;
-    const tz = safeTz(assigneeTz ?? db.orgs.get(orgId)?.timezone);
-    const t0 = now2();
-    const org = getOrg(ctx, orgId);
-    const base = src.dueAt ?? atLocalHour(src.completedAt ?? t0, tz, Math.min(org.workdayEnd, 23));
-    const due = nextOccurrence(base, src.recurrence, tz, t0);
-    if (due === null) return null;
-    const activeAssignees = db.members.getMany(orgId, src.assigneeIds).filter((m) => m.active).map((m) => m.id);
-    const next = {
-      ...src,
-      id: newId("task"),
-      status: "todo",
-      assigneeIds: activeAssignees,
-      dueAt: due,
-      recurrenceParentId: rootId,
-      waitingOn: null,
-      subtasks: src.subtasks.map((s2) => ({ ...s2, id: newId("sub"), done: false, doneAt: null, doneBy: null })),
-      source: { channel: "recurring", ref: src.id, from: null },
-      order: t0,
-      startedAt: null,
-      completedAt: null,
-      completedBy: null,
-      lastActivityAt: t0,
-      createdAt: t0,
-      updatedAt: t0
-    };
-    const created = db.tx(() => {
-      if (!db.tasks.claimRecurrenceNext(orgId, src.id, next.id)) return null;
-      const dup = db.tasks.findOccurrence(orgId, rootId, due);
-      if (dup) {
-        db.tasks.setRecurrenceNext(orgId, src.id, dup.id);
-        return null;
-      }
-      db.tasks.insert(next);
-      addActivity(next, SYSTEM_MEMBER_ID, "created", "Next occurrence of a recurring task", { from: src.id });
-      return next;
-    });
-    if (!created) {
-      const id = db.tasks.getRecurrenceNext(orgId, src.id);
-      return id ? db.tasks.get(orgId, id) : null;
-    }
-    await audit(ctx, systemActor(orgId), { type: "task.created", entity: "task", entityId: next.id, summary: `Recurring: "${next.title}"`, after: next, undoable: true });
-    ctx.internal.scheduleTask(next);
-    publishTask(next);
-    return next;
-  }
-  async function subtaskChange(actor, id, mutate) {
-    const cur = loadEditable(actor, id);
-    const next = { ...cur, subtasks: cur.subtasks.map((s2) => ({ ...s2 })) };
-    const text = mutate(next);
-    const saved = await commit(actor, cur, next, [{ kind: "subtask", text }], { auditType: "task.updated", summary: `Updated subtasks of "${cur.title}"` });
-    return view(actor, saved);
-  }
-  async function list(actor, q = {}) {
-    const query = isObj(q) ? q : {};
-    const tz = actorTz(ctx, actor);
-    const f = { visibility: visibility(actor) };
-    if (query.assigneeId === "me") f.assigneeId = actor.memberId;
-    else if (query.assigneeId === "unassigned") f.unassigned = true;
-    else if (query.assigneeId) f.assigneeId = ref(query.assigneeId, "assigneeId");
-    if (query.projectId === "none") f.noProject = true;
-    else if (query.projectId) f.projectId = ref(query.projectId, "projectId");
-    if (query.status !== void 0) {
-      const arr2 = Array.isArray(query.status) ? query.status : String(query.status).split(",").filter(Boolean);
-      if (arr2.length) f.statuses = arr2.map((s2) => oneOf(s2, "status", STATUSES));
-    }
-    if (query.search) f.search = str(query.search, "search", { max: 200 });
-    if (query.tag) f.tag = str(query.tag, "tag", { max: 40 }).replace(/^#/, "");
-    if (query.dueBefore !== void 0) f.dueBefore = time(query.dueBefore, "dueBefore");
-    if (query.dueAfter !== void 0) f.dueAfter = time(query.dueAfter, "dueAfter");
-    let includeClosed = !!query.includeDone || !!f.statuses;
-    const t0 = now2();
-    switch (query.view) {
-      case void 0:
-      case "all":
-        if (query.view === "all") includeClosed = true;
-        break;
-      case "today":
-        f.dueBefore = Math.min(f.dueBefore ?? Infinity, startOfLocalDay(t0, tz, 1));
-        f.order = "due";
-        break;
-      case "upcoming":
-        f.dueAfter = Math.max(f.dueAfter ?? -Infinity, startOfLocalDay(t0, tz, 1));
-        f.order = "due";
-        break;
-      case "overdue":
-        f.dueBefore = Math.min(f.dueBefore ?? Infinity, t0);
-        f.order = "due";
-        break;
-      case "waiting":
-        f.waiting = true;
-        break;
-      case "done":
-        f.statuses = ["done"];
-        f.order = "completed";
-        includeClosed = true;
-        break;
-      case "agents":
-        f.assigneeKind = "agent";
-        break;
-      default:
-        bad("view must be one of: today, upcoming, overdue, waiting, done, all, agents");
-    }
-    if (!includeClosed) f.open = true;
-    f.limit = query.limit !== void 0 ? int(query.limit, "limit", 1, 1e3) : 200;
-    f.offset = query.offset !== void 0 ? int(query.offset, "offset", 0, 1e6) : 0;
-    return views(actor.orgId, db.tasks.query(actor.orgId, f), tz);
-  }
-  async function comment(actor, id, text, kind = "comment") {
-    requireWrite(actor);
-    const t = loadVisible(actor, id);
-    const body = str(text, "text", { max: 1e4 });
-    const k = oneOf(kind ?? "comment", "kind", ["comment", "handoff"]);
-    const a = db.tx(() => {
-      const act = addActivity(t, actor.memberId, k, body, null);
-      db.tasks.touchActivity(t.orgId, t.id, t.lastActivityAt);
-      return act;
-    });
-    publishActivity(t, [a]);
-    publishTask(t);
-    const members = db.members.list(actor.orgId);
-    const mentioned = /* @__PURE__ */ new Set();
-    for (const h of extractMentions(body)) {
-      const m = resolveMemberHint(h, members, null);
-      if (m && m.id !== actor.memberId) mentioned.add(m.id);
-    }
-    const who = memberName(actor.orgId, actor.memberId);
-    const snippet = body.length > 140 ? body.slice(0, 137) + "\u2026" : body;
-    for (const mid of mentioned) {
-      await safeNotify(t.orgId, mid, { kind: "task_mention", title: `${who} mentioned you`, body: `On "${t.title}": ${snippet}`, taskId: t.id, meetingId: null, link: `/tasks/${t.id}`, urgent: false });
-    }
-    const involved = /* @__PURE__ */ new Set([...t.assigneeIds, t.creatorId]);
-    for (const mid of involved) {
-      if (mid === actor.memberId || mentioned.has(mid) || mid === SYSTEM_MEMBER_ID) continue;
-      await safeNotify(t.orgId, mid, {
-        kind: "task_comment",
-        title: k === "handoff" ? `Hand-off from ${who}` : `${who} commented`,
-        body: `On "${t.title}": ${snippet}`,
-        taskId: t.id,
-        meetingId: null,
-        link: `/tasks/${t.id}`,
-        urgent: false
-      });
-    }
-    return a;
-  }
-  async function nudge(actor, id) {
-    const cur = loadEditable(actor, id);
-    const sent = await sendNudge(cur, actor.memberId);
-    if (!sent.ok) bad(sent.error);
-    return view(actor, db.tasks.get(actor.orgId, cur.id));
-  }
-  async function remove(actor, id) {
-    requireWrite(actor);
-    const t = loadVisible(actor, id);
-    const lead = t.projectId ? db.projects.get(t.orgId, t.projectId)?.leadId ?? null : null;
-    if (!canDeleteTask(actor, t, lead)) forbidden("Only the creator, the project lead or a manager can delete this task");
-    const aud = audience(t);
-    db.tasks.delete(actor.orgId, t.id);
-    ctx.internal.cancelTask(actor.orgId, t.id);
-    await audit(ctx, actor, { type: "task.deleted", entity: "task", entityId: t.id, summary: `Deleted "${t.title}"`, before: t, undoable: true });
-    publish(ctx, t.orgId, { type: "task.deleted", taskId: t.id }, aud);
-    ctx.internal.invalidateBriefings(t.orgId);
-  }
-  const service = {
-    list,
-    async get(actor, id) {
-      return view(actor, loadVisible(actor, id));
-    },
-    create,
-    quickAdd,
-    async preview(actor, text) {
-      return draftFromText(actor, text);
-    },
-    update,
-    async complete(actor, id) {
-      const cur = loadEditable(actor, id);
-      if (cur.status === "done") return view(actor, cur);
-      return update(actor, id, { status: "done" });
-    },
-    async reopen(actor, id) {
-      const cur = loadEditable(actor, id);
-      if (isOpen(cur)) return view(actor, cur);
-      return update(actor, id, { status: "todo" });
-    },
-    remove,
-    async addSubtask(actor, id, title) {
-      const tt = str(title, "title", { max: 300 });
-      return subtaskChange(actor, id, (t) => {
-        if (t.subtasks.length >= 100) bad("Too many subtasks (max 100)");
-        t.subtasks.push({ id: newId("sub"), title: tt, done: false, doneAt: null, doneBy: null });
-        return `Added subtask "${tt}"`;
-      });
-    },
-    async updateSubtask(actor, id, subtaskId, patch) {
-      if (!isObj(patch)) bad("patch must be an object");
-      return subtaskChange(actor, id, (t) => {
-        const s2 = t.subtasks.find((x) => x.id === subtaskId);
-        if (!s2) notFound("Subtask not found");
-        if (patch.title !== void 0) s2.title = str(patch.title, "title", { max: 300 });
-        if (patch.done !== void 0) {
-          const d = bool(patch.done, "done");
-          if (d !== s2.done) {
-            s2.done = d;
-            s2.doneAt = d ? now2() : null;
-            s2.doneBy = d ? actor.memberId : null;
-          }
-        }
-        return patch.done === true ? `Completed subtask "${s2.title}"` : patch.done === false ? `Reopened subtask "${s2.title}"` : `Renamed subtask to "${s2.title}"`;
-      });
-    },
-    async removeSubtask(actor, id, subtaskId) {
-      return subtaskChange(actor, id, (t) => {
-        const s2 = t.subtasks.find((x) => x.id === subtaskId);
-        if (!s2) notFound("Subtask not found");
-        t.subtasks = t.subtasks.filter((x) => x.id !== subtaskId);
-        return `Removed subtask "${s2.title}"`;
-      });
-    },
-    comment,
-    async activity(actor, id) {
-      const t = loadVisible(actor, id);
-      return db.activity.list(actor.orgId, t.id);
-    },
-    nudge,
-    async bulk(actor, ids2, op) {
-      requireWrite(actor);
-      if (!Array.isArray(ids2) || !ids2.length) bad("ids must be a non-empty array");
-      if (ids2.length > 200) bad("At most 200 tasks per bulk operation");
-      if (!isObj(op)) bad("op is required");
-      const kind = oneOf(op.kind, "op.kind", ["complete", "delete", "assign", "move", "status"]);
-      const ok = [];
-      const failed = [];
-      for (const raw of [...new Set(ids2)]) {
-        const id = String(raw);
-        try {
-          if (kind === "complete") await service.complete(actor, id);
-          else if (kind === "delete") await remove(actor, id);
-          else if (kind === "assign") await update(actor, id, { assigneeIds: Array.isArray(op.value) ? op.value : op.value === null || op.value === void 0 ? [] : [op.value] });
-          else if (kind === "move") await update(actor, id, { projectId: op.value ?? null });
-          else await update(actor, id, { status: op.value });
-          ok.push(id);
-        } catch (err) {
-          failed.push({ id, error: err instanceof AppError ? err.message : "Failed" });
-        }
-      }
-      return { ok, failed };
-    }
-  };
-  async function sendNudge(cur, actorId) {
-    const w = cur.waitingOn;
-    if (!w) return { ok: false, error: "This task is not waiting on anyone" };
-    if (!w.contact) return { ok: false, error: `No contact saved for ${w.name}` };
-    if (w.channel === "other") return { ok: false, error: "Set the waiting-on channel to WhatsApp or email to send nudges" };
-    const org = getOrg(ctx, cur.orgId);
-    const sender = actorId === SYSTEM_MEMBER_ID ? org.name : `${memberName(cur.orgId, actorId)} (${org.name})`;
-    const text = `Hi ${firstName(w.name)}, a friendly reminder from ${sender} about: "${cur.title}". Any update? Thank you!`;
-    let sent = false;
-    try {
-      sent = w.channel === "whatsapp" ? await ctx.outbound.whatsapp(w.contact, text) : await ctx.outbound.email(w.contact, `Following up: ${cur.title}`, text);
-    } catch (err) {
-      ctx.log.warn("[tasks] nudge send failed", err);
-    }
-    if (!sent) return { ok: false, error: `Could not send the nudge \u2014 ${w.channel === "whatsapp" ? "WhatsApp" : "email"} is not configured or the send failed` };
-    const t0 = now2();
-    const fresh = db.tasks.get(cur.orgId, cur.id);
-    if (!fresh || !fresh.waitingOn) return { ok: true };
-    fresh.waitingOn = { ...fresh.waitingOn, lastNudgedAt: t0 };
-    fresh.updatedAt = t0;
-    const act = db.tx(() => {
-      const a = addActivity(fresh, actorId, "nudge_sent", `Nudged ${w.name} via ${w.channel}`, { channel: w.channel, to: w.contact }, actorId !== SYSTEM_MEMBER_ID);
-      db.tasks.save(fresh);
-      return a;
-    });
-    ctx.internal.scheduleTask(fresh);
-    publishTask(fresh);
-    publishActivity(fresh, [act]);
-    return { ok: true };
-  }
-  return {
-    service,
-    views,
-    publishTask,
-    publishTaskDeleted,
-    spawnNext,
-    audience,
-    draftFromText,
-    sendNudge,
-    addActivity
-  };
-}
-
-// packages/core/src/reminders.ts
-var OVERDUE_AFTER_MS = 60 * 6e4;
-var OVERDUE_REPEAT_MS = 24 * 36e5;
-var STALE_SCAN_EVERY_MS = 15 * 6e4;
-var CALENDAR_SYNC_EVERY_MS = 15 * 6e4;
-var MEETING_REMINDER_MS = 10 * 6e4;
-var K = {
-  reminderPrefix: (id) => `task.reminder:${id}:`,
-  reminder: (id, off) => `task.reminder:${id}:${off}`,
-  overdue: (id) => `task.overdue:${id}`,
-  escalate: (id) => `task.escalate:${id}`,
-  nudge: (id) => `task.nudge:${id}`,
-  recur: (id) => `task.recur:${id}`,
-  meeting: (id) => `meeting.reminder:${id}`,
-  digest: (id) => `member.digest:${id}`,
-  stale: (orgId) => `agent.staleScan:${orgId}`,
-  feed: (id) => `calendar.sync:${id}`
-};
-function formatOffset(min) {
-  if (min < 60) return `${min} minute${min === 1 ? "" : "s"}`;
-  if (min < 2880 && min % 60 === 0) return min === 60 ? "1 hour" : `${min / 60} hours`;
-  if (min < 2880) return `${Math.round(min / 60)} hours`;
-  const d = Math.round(min / 1440);
-  return `${d} days`;
-}
-function inQuietHours(m, at) {
-  const { quietStart: s2, quietEnd: e } = m.prefs;
-  if (s2 === null || e === null || s2 === e) return false;
-  const h = Number(new Intl.DateTimeFormat("en-US", { timeZone: safeTz(m.timezone), hour: "numeric", hourCycle: "h23" }).format(at)) % 24;
-  return s2 < e ? h >= s2 && h < e : h >= s2 || h < e;
-}
-function quietEndsAt(m, at) {
-  const tz = safeTz(m.timezone);
-  const end = m.prefs.quietEnd ?? 7;
-  let t = atLocalHour(at, tz, end);
-  if (t <= at) t = atLocalHour(at, tz, end, 0, 1);
-  return t;
-}
-function nextDigestAt(m, at) {
-  if (m.prefs.digestHour === null || m.prefs.digestHour === void 0) return null;
-  const tz = safeTz(m.timezone);
-  let t = atLocalHour(at, tz, m.prefs.digestHour);
-  if (t <= at + 6e4) t = atLocalHour(at, tz, m.prefs.digestHour, 0, 1);
-  return t;
-}
-function createReminders(ctx, tasks) {
-  const { db } = ctx;
-  const now2 = () => ctx.clock();
-  const notify = (orgId, memberId, n) => ctx.services.notifications.notify(orgId, memberId, n);
-  function scheduleTask(t) {
-    const t0 = now2();
-    const org = db.orgs.get(t.orgId);
-    if (!org) return;
-    const want = /* @__PURE__ */ new Map();
-    if (isOpen(t)) {
-      if (t.dueAt !== null) {
-        for (const off of t.reminderOffsets ?? org.defaultReminderOffsets) {
-          const runAt = t.dueAt - off * 6e4;
-          if (runAt > t0) want.set(K.reminder(t.id, off), { kind: "task.reminder", runAt, payload: { taskId: t.id, offsetMin: off, dueAt: t.dueAt } });
-        }
-        const od = db.jobs.getPending(t.orgId, K.overdue(t.id));
-        if (od && od.payload.dueAt === t.dueAt) want.set(K.overdue(t.id), "keep");
-        else want.set(K.overdue(t.id), { kind: "task.overdue", runAt: Math.max(t.dueAt + OVERDUE_AFTER_MS, t0), payload: { taskId: t.id, dueAt: t.dueAt } });
-        if (org.escalateAfterMin !== null && db.kv.get(t.orgId, `escalated:${t.id}`) !== t.dueAt) {
-          const es = db.jobs.getPending(t.orgId, K.escalate(t.id));
-          if (es && es.payload.dueAt === t.dueAt) want.set(K.escalate(t.id), "keep");
-          else want.set(K.escalate(t.id), { kind: "task.escalate", runAt: Math.max(t.dueAt + org.escalateAfterMin * 6e4, t0), payload: { taskId: t.id, dueAt: t.dueAt } });
-        }
-      }
-      const w = t.waitingOn;
-      if (w && w.nudgeEveryHours && w.contact && w.channel !== "other") {
-        const runAt = Math.max((w.lastNudgedAt ?? w.since) + w.nudgeEveryHours * 36e5, t0);
-        want.set(K.nudge(t.id), { kind: "task.nudge", runAt, payload: { taskId: t.id } });
-      }
-    }
-    const existing = db.jobs.list(t.orgId, { status: "pending", keyPrefix: K.reminderPrefix(t.id) }).map((j) => j.key);
-    const stale = [...existing, K.overdue(t.id), K.escalate(t.id), K.nudge(t.id)].filter((k) => !want.has(k));
-    db.jobs.cancel(t.orgId, stale, [], t0);
-    for (const [key, w] of want) if (w !== "keep") db.jobs.schedule(t.orgId, w.kind, key, w.runAt, w.payload, t0);
-  }
-  function cancelTask(orgId, taskId2) {
-    db.jobs.cancel(orgId, [K.overdue(taskId2), K.escalate(taskId2), K.nudge(taskId2), K.recur(taskId2)], [K.reminderPrefix(taskId2)], now2());
-  }
-  function scheduleMeeting(m) {
-    const runAt = m.startAt - MEETING_REMINDER_MS;
-    if (runAt > now2() && !m.allDay) db.jobs.schedule(m.orgId, "meeting.reminder", K.meeting(m.id), runAt, { meetingId: m.id, startAt: m.startAt }, now2());
-    else db.jobs.cancel(m.orgId, [K.meeting(m.id)], [], now2());
-  }
-  function cancelMeeting(orgId, id) {
-    db.jobs.cancel(orgId, [K.meeting(id)], [], now2());
-  }
-  function scheduleDigest(m, opts = {}) {
-    const at = m.active && m.kind === "human" ? nextDigestAt(m, now2()) : null;
-    if (at === null) {
-      db.jobs.cancel(m.orgId, [K.digest(m.id)], [], now2());
-      return;
-    }
-    db.jobs.schedule(m.orgId, "member.digest", K.digest(m.id), at, { memberId: m.id }, now2(), opts);
-  }
-  function scheduleFeedSync(orgId, feedId, runAt) {
-    db.jobs.schedule(orgId, "calendar.sync", K.feed(feedId), runAt, { feedId }, now2());
-  }
-  function ensurePeriodic(orgId) {
-    const t0 = now2();
-    db.jobs.schedule(orgId, "agent.staleScan", K.stale(orgId), t0 + STALE_SCAN_EVERY_MS, {}, t0, { ifAbsent: true });
-    for (const m of db.members.list(orgId, { kind: "human" })) scheduleDigest(m, { ifAbsent: true });
-    for (const f of db.feeds.list(orgId)) db.jobs.schedule(orgId, "calendar.sync", K.feed(f.id), t0, { feedId: f.id }, t0, { ifAbsent: true });
-  }
-  const activeMembers = (orgId, ids2) => db.members.getMany(orgId, ids2).filter((m) => m.active);
-  function reminderRecipients(t) {
-    const a = activeMembers(t.orgId, t.assigneeIds);
-    if (a.length) return a;
-    return t.creatorId !== SYSTEM_MEMBER_ID ? activeMembers(t.orgId, [t.creatorId]) : [];
-  }
-  function loadDueTask(job) {
-    const t = db.tasks.get(job.orgId, String(job.payload.taskId ?? ""));
-    if (!t || !isOpen(t) || t.dueAt === null) return null;
-    if (job.payload.dueAt !== void 0 && job.payload.dueAt !== t.dueAt) return null;
-    return t;
-  }
-  function logReminder(t, text, data) {
-    const act = tasks.addActivity(t, SYSTEM_MEMBER_ID, "reminder_sent", text, data, false);
-    ctx.live.publish(t.orgId, { type: "activity", activity: act }, { memberIds: tasks.audience(t) });
-  }
-  const tzOf = (m) => safeTz(m.timezone);
-  const handlers = {
-    async "task.reminder"(job) {
-      const t = loadDueTask(job);
-      if (!t) return;
-      const off = Number(job.payload.offsetMin ?? 0);
-      const recipients = reminderRecipients(t);
-      for (const m of recipients) {
-        await notify(t.orgId, m.id, {
-          kind: off === 0 ? "task_due_now" : "task_due_soon",
-          title: off === 0 ? `Due now: ${t.title}` : `Due in ${formatOffset(off)}: ${t.title}`,
-          body: `"${t.title}" is due ${dueLabel(t.dueAt, now2(), tzOf(m), t.dueAllDay)}.`,
-          taskId: t.id,
-          meetingId: null,
-          link: `/tasks/${t.id}`,
-          urgent: t.priority === "urgent"
-        });
-      }
-      if (recipients.length) logReminder(t, off === 0 ? "Reminder sent: due now" : `Reminder sent: due in ${formatOffset(off)}`, { offsetMin: off, to: recipients.map((m) => m.id) });
-    },
-    async "task.overdue"(job) {
-      const t = loadDueTask(job);
-      if (!t) return;
-      const recipients = reminderRecipients(t);
-      for (const m of recipients) {
-        await notify(t.orgId, m.id, {
-          kind: "task_overdue",
-          title: `Overdue: ${t.title}`,
-          body: `"${t.title}" was due ${dueLabel(t.dueAt, now2(), tzOf(m), t.dueAllDay)}. Finish it or move the date.`,
-          taskId: t.id,
-          meetingId: null,
-          link: `/tasks/${t.id}`,
-          urgent: true
-        });
-      }
-      if (recipients.length) logReminder(t, "Overdue reminder sent", { overdue: true, to: recipients.map((m) => m.id) });
-      db.jobs.schedule(t.orgId, "task.overdue", K.overdue(t.id), now2() + OVERDUE_REPEAT_MS, { taskId: t.id, dueAt: t.dueAt }, now2());
-    },
-    async "task.escalate"(job) {
-      const t = loadDueTask(job);
-      if (!t) return;
-      const flag = `escalated:${t.id}`;
-      if (db.kv.get(t.orgId, flag) === t.dueAt) return;
-      const assignees = activeMembers(t.orgId, t.assigneeIds);
-      const ids2 = /* @__PURE__ */ new Set();
-      if (t.creatorId !== SYSTEM_MEMBER_ID) ids2.add(t.creatorId);
-      for (const a of assignees) if (a.kind === "agent" && a.agent?.supervisorId) ids2.add(a.agent.supervisorId);
-      if (t.projectId) {
-        const lead = db.projects.get(t.orgId, t.projectId)?.leadId;
-        if (lead) ids2.add(lead);
-      }
-      for (const a of t.assigneeIds) ids2.delete(a);
-      let recipients = activeMembers(t.orgId, [...ids2]).filter((m) => m.kind === "human");
-      if (!recipients.length) {
-        recipients = db.members.list(t.orgId, { kind: "human" }).filter((m) => rank(m.role) >= rank("admin") && !t.assigneeIds.includes(m.id));
-      }
-      const names = assignees.map((a) => a.name).join(", ") || "nobody";
-      for (const m of recipients) {
-        await notify(t.orgId, m.id, {
-          kind: "task_escalated",
-          title: `Escalation: "${t.title}" is overdue`,
-          body: `Assigned to ${names}; it was due ${dueLabel(t.dueAt, now2(), tzOf(m), t.dueAllDay)} and is still open.`,
-          taskId: t.id,
-          meetingId: null,
-          link: `/tasks/${t.id}`,
-          urgent: true
-        });
-      }
-      db.kv.set(t.orgId, flag, t.dueAt, now2());
-      if (recipients.length) logReminder(t, `Escalated to ${recipients.map((m) => m.name).join(", ")}`, { escalated: true, to: recipients.map((m) => m.id) });
-    },
-    async "task.nudge"(job) {
-      const t = db.tasks.get(job.orgId, String(job.payload.taskId ?? ""));
-      if (!t || !isOpen(t) || !t.waitingOn?.nudgeEveryHours) return;
-      const res = await tasks.sendNudge(t, SYSTEM_MEMBER_ID);
-      if (!res.ok) throw new Error(res.error);
-    },
-    async "task.recur"(job) {
-      await tasks.spawnNext(job.orgId, String(job.payload.taskId ?? ""));
-    },
-    async "meeting.reminder"(job) {
-      const m = db.meetings.get(job.orgId, String(job.payload.meetingId ?? ""));
-      if (!m || m.startAt !== job.payload.startAt) return;
-      let recipients = activeMembers(m.orgId, [.../* @__PURE__ */ new Set([...m.ownerId ? [m.ownerId] : [], ...m.attendeeIds])]);
-      if (!m.ownerId && !m.attendeeIds.length) recipients = db.members.list(m.orgId, { kind: "human" });
-      for (const r of recipients) {
-        await notify(m.orgId, r.id, {
-          kind: "meeting_soon",
-          title: `Meeting at ${spokenTime(m.startAt, tzOf(r))}: ${m.title}`,
-          body: `Starts in 10 minutes${m.location ? ` \xB7 ${m.location}` : ""}${m.url ? ` \xB7 ${m.url}` : ""}`,
-          taskId: null,
-          meetingId: m.id,
-          link: `/meetings`,
-          urgent: false
-        });
-      }
-    },
-    async "member.digest"(job) {
-      const m = db.members.get(job.orgId, String(job.payload.memberId ?? ""));
-      if (!m || !m.active || m.kind !== "human" || m.prefs.digestHour === null) return;
-      try {
-        const b = await ctx.internal.composeBriefing(m, { polish: false });
-        await notify(m.orgId, m.id, { kind: "digest", title: b.greeting, body: b.spoken, taskId: null, meetingId: null, link: "/", urgent: false });
-      } finally {
-        scheduleDigest(m);
-      }
-    },
-    async "agent.staleScan"(job) {
-      const orgId = job.orgId;
-      const org = db.orgs.get(orgId);
-      if (!org) return;
-      try {
-        const cutoff = now2() - org.agentStaleAfterMin * 6e4;
-        const stale = db.tasks.query(orgId, { statuses: ["todo", "in_progress"], assigneeKind: "agent", lastActivityBefore: cutoff, limit: 1e3 });
-        for (const t of stale) {
-          const flag = `stale:${t.id}`;
-          if (db.kv.get(orgId, flag) === t.lastActivityAt) continue;
-          const agents = activeMembers(orgId, t.assigneeIds).filter((a) => a.kind === "agent");
-          const ids2 = /* @__PURE__ */ new Set();
-          for (const a of agents) if (a.agent?.supervisorId) ids2.add(a.agent.supervisorId);
-          if (t.creatorId !== SYSTEM_MEMBER_ID) ids2.add(t.creatorId);
-          const recipients = activeMembers(orgId, [...ids2]).filter((m) => m.kind === "human");
-          const names = agents.map((a) => a.name).join(", ") || "The agent";
-          const hours = Math.max(1, Math.round((now2() - t.lastActivityAt) / 36e5));
-          for (const r of recipients) {
-            await notify(orgId, r.id, {
-              kind: "agent_stale",
-              title: `${names} went quiet on "${t.title}"`,
-              body: `No activity for ${hours} hour${hours === 1 ? "" : "s"}. Check in or reassign.`,
-              taskId: t.id,
-              meetingId: null,
-              link: `/tasks/${t.id}`,
-              urgent: false
-            });
-          }
-          db.kv.set(orgId, flag, t.lastActivityAt, now2());
-          tasks.publishTask(t);
-        }
-      } finally {
-        db.jobs.schedule(orgId, "agent.staleScan", K.stale(orgId), now2() + STALE_SCAN_EVERY_MS, {}, now2());
-      }
-    },
-    async "calendar.sync"(job) {
-      const feedId = String(job.payload.feedId ?? "");
-      if (!db.feeds.get(job.orgId, feedId)) return;
-      try {
-        await ctx.internal.syncFeed(job.orgId, feedId);
-      } catch (err) {
-        ctx.log.warn("[calendar] sync failed", err);
-      } finally {
-        if (db.feeds.get(job.orgId, feedId)) scheduleFeedSync(job.orgId, feedId, now2() + CALENDAR_SYNC_EVERY_MS);
-      }
-    },
-    async "notification.deliver"(job) {
-      await ctx.internal.deliver(job.orgId, String(job.payload.notificationId ?? ""));
-    },
-    async "email.poll"() {
-    }
-  };
-  return { scheduleTask, cancelTask, scheduleMeeting, cancelMeeting, scheduleDigest, scheduleFeedSync, ensurePeriodic, handlers };
-}
-
-// packages/core/src/scheduler.ts
-var MAX_ATTEMPTS = 5;
-var BACKOFF_BASE_MS = 3e4;
-var MAX_ROUNDS = 20;
-function createScheduler(ctx, handlers) {
-  let timer = null;
-  let running = null;
-  const recovered = ctx.db.jobs.recoverRunning(ctx.clock());
-  if (recovered) ctx.log.info(`[scheduler] recovered ${recovered} interrupted job(s)`);
-  async function runOne(job) {
-    const handler = handlers[job.kind];
-    try {
-      if (!handler) throw new Error(`no handler for job kind ${job.kind}`);
-      await handler(job);
-      ctx.db.jobs.complete(job.orgId, job.id, ctx.clock());
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const now2 = ctx.clock();
-      const retryAt = job.attempts < MAX_ATTEMPTS ? now2 + BACKOFF_BASE_MS * 2 ** (job.attempts - 1) : null;
-      const status = ctx.db.jobs.fail(job.orgId, job.id, msg.slice(0, 1e3), retryAt, now2);
-      ctx.log.warn(`[scheduler] job ${job.kind} (${job.key}) failed (attempt ${job.attempts}/${MAX_ATTEMPTS}) \u2192 ${status}: ${msg}`);
-    }
-  }
-  async function doTick() {
-    let total = 0;
-    for (let round2 = 0; round2 < MAX_ROUNDS; round2++) {
-      const jobs = ctx.db.jobs.claimDue(ctx.clock(), 100);
-      if (!jobs.length) break;
-      for (const job of jobs) await runOne(job);
-      total += jobs.length;
-    }
-    return total;
-  }
-  const scheduler = {
-    tick() {
-      if (running) return running.then(() => scheduler.tick());
-      running = doTick().finally(() => {
-        running = null;
-      });
-      return running;
-    },
-    start(intervalMs = 1e4) {
-      if (timer) return;
-      const fire = () => {
-        scheduler.tick().catch((err) => ctx.log.error("[scheduler] tick failed", err));
-      };
-      timer = setInterval(fire, Math.max(250, intervalMs));
-      timer.unref?.();
-      fire();
-    },
-    async stop() {
-      if (timer) clearInterval(timer);
-      timer = null;
-      if (running) await running.catch(() => 0);
-    }
-  };
-  return scheduler;
-}
-
-// packages/core/src/services/audit.ts
-var ENTITIES = ["task", "project", "member", "meeting", "inbox", "org", "api_key", "lead"];
-var IMMUTABLE = /* @__PURE__ */ new Set(["id", "orgId", "createdAt", "createdBy", "creatorId", "updatedAt"]);
-function restoreFields(cur, before, after) {
-  const next = { ...cur };
-  for (const k of Object.keys(before)) {
-    if (IMMUTABLE.has(k) || !(k in cur)) continue;
-    if (after && JSON.stringify(before[k]) === JSON.stringify(after[k])) continue;
-    next[k] = before[k];
-  }
-  return next;
-}
-var conflict = (msg) => {
-  throw new AppError("conflict", msg);
-};
-function createAuditService(ctx) {
-  const { db } = ctx;
-  const now2 = () => ctx.clock();
-  function canUndo(actor, e) {
-    if (e.entity === "member" || e.entity === "org") return isAdmin(actor);
-    return e.actorId === actor.memberId || isManager(actor);
-  }
-  function apply(actor, e) {
-    const org = actor.orgId;
-    const before = e.before;
-    const created = e.before === null;
-    const deleted = e.after === null;
-    const t0 = now2();
-    switch (e.entity) {
-      case "task": {
-        const cur = db.tasks.get(org, e.entityId);
-        if (created) {
-          if (!cur) conflict("The task no longer exists");
-          db.tasks.delete(org, cur.id);
-          return {
-            snapshot: { type: "task.deleted", before: cur, after: null },
-            after: () => {
-              ctx.internal.cancelTask(org, cur.id);
-              ctx.internal.publishTaskDeleted(cur);
-            }
-          };
-        }
-        const b = before;
-        if (deleted) {
-          if (cur || db.tasks.exists(org, e.entityId)) conflict("The task already exists");
-          const projectOk = b.projectId ? !!db.projects.get(org, b.projectId) : true;
-          const assignees = db.members.getMany(org, b.assigneeIds ?? []).map((m) => m.id);
-          const restored = { ...b, orgId: org, projectId: projectOk ? b.projectId : null, assigneeIds: assignees, updatedAt: t0 };
-          db.tasks.insert(restored);
-          return {
-            snapshot: { type: "task.created", before: null, after: restored },
-            after: () => {
-              ctx.internal.scheduleTask(restored);
-              ctx.internal.publishTask(restored);
-            }
-          };
-        }
-        if (!cur) conflict("The task no longer exists");
-        const next = restoreFields(cur, before, e.after);
-        next.assigneeIds = db.members.getMany(org, next.assigneeIds).map((m) => m.id);
-        if (next.projectId && !db.projects.get(org, next.projectId)) next.projectId = null;
-        next.updatedAt = t0;
-        next.lastActivityAt = t0;
-        db.tasks.save(next);
-        const type = cur.status !== "done" && next.status === "done" ? "task.completed" : cur.status === "done" && next.status !== "done" ? "task.reopened" : "task.updated";
-        return {
-          snapshot: { type, before: cur, after: next },
-          after: () => {
-            ctx.internal.scheduleTask(next);
-            ctx.internal.publishTask(next);
-          }
-        };
-      }
-      case "project": {
-        const cur = db.projects.get(org, e.entityId);
-        if (created) {
-          if (!cur) conflict("The project no longer exists");
-          db.projects.delete(org, cur.id);
-          return { snapshot: { type: "project.deleted", before: cur, after: null }, after: () => ctx.internal.invalidateBriefings(org) };
-        }
-        if (deleted) {
-          if (cur) conflict("The project already exists");
-          const { taskIds, ...rest } = before;
-          const p = { ...rest, orgId: org, memberIds: db.members.getMany(org, rest.memberIds ?? []).map((m) => m.id), updatedAt: t0 };
-          if (p.leadId && !db.members.get(org, p.leadId)) p.leadId = null;
-          db.projects.insert(p);
-          db.projects.relinkTasks(org, p.id, taskIds ?? []);
-          return {
-            snapshot: { type: "project.created", before: null, after: p },
-            after: () => {
-              publish(ctx, org, { type: "project.upserted", project: p });
-              for (const id of taskIds ?? []) {
-                const t = db.tasks.get(org, id);
-                if (t) ctx.internal.publishTask(t);
-              }
-            }
-          };
-        }
-        if (!cur) conflict("The project no longer exists");
-        const next = restoreFields(cur, before, e.after);
-        next.memberIds = db.members.getMany(org, next.memberIds).map((m) => m.id);
-        next.updatedAt = t0;
-        db.projects.save(next);
-        return { snapshot: { type: "project.updated", before: cur, after: next }, after: () => publish(ctx, org, { type: "project.upserted", project: next }) };
-      }
-      case "member": {
-        const cur = db.members.get(org, e.entityId);
-        if (!cur || created) conflict("This change cannot be undone");
-        if (rank(cur.role) > rank(actor.role) && actor.via !== "system") forbidden("You cannot modify a higher role");
-        const next = restoreFields(cur, before, e.after);
-        if (rank(next.role) > rank(actor.role) && actor.via !== "system") forbidden("You cannot grant a role higher than your own");
-        if (cur.role === "owner" && cur.active && (next.role !== "owner" || !next.active) && db.members.countActive(org, "owner") <= 1) conflict("This is the last owner");
-        next.updatedAt = t0;
-        db.members.save(next);
-        if (next.role !== cur.role || cur.active && !next.active) db.sessions.deleteForMember(org, next.id);
-        return {
-          snapshot: { type: "member.updated", before: cur, after: next },
-          after: () => {
-            ctx.internal.scheduleDigest(next);
-            publish(ctx, org, { type: "member.upserted", member: next });
-          }
-        };
-      }
-      case "org": {
-        const cur = db.orgs.get(org);
-        if (!cur || created || deleted) conflict("This change cannot be undone");
-        const next = { ...restoreFields(cur, before, e.after), id: org, updatedAt: t0 };
-        db.orgs.save(next);
-        return { snapshot: { type: "org.updated", before: cur, after: next }, after: () => ctx.internal.invalidateBriefings(org) };
-      }
-      case "meeting": {
-        const cur = db.meetings.get(org, e.entityId);
-        if (created) {
-          if (!cur) conflict("The meeting no longer exists");
-          db.meetings.delete(org, cur.id);
-          return { snapshot: { type: "meeting.deleted", before: cur, after: null }, after: () => ctx.internal.cancelMeeting(org, cur.id) };
-        }
-        if (deleted) {
-          if (cur) conflict("The meeting already exists");
-          const b = before;
-          const m = { ...b, orgId: org, attendeeIds: db.members.getMany(org, b.attendeeIds ?? []).map((x) => x.id), feedId: b.feedId && db.feeds.get(org, b.feedId) ? b.feedId : null, updatedAt: t0 };
-          db.meetings.insert(m);
-          return { snapshot: { type: "meeting.created", before: null, after: m }, after: () => ctx.internal.scheduleMeeting(m) };
-        }
-        if (!cur) conflict("The meeting no longer exists");
-        const next = { ...restoreFields(cur, before, e.after), updatedAt: t0 };
-        next.attendeeIds = db.members.getMany(org, next.attendeeIds).map((x) => x.id);
-        db.meetings.save(next);
-        return { snapshot: { type: "meeting.updated", before: cur, after: next }, after: () => ctx.internal.scheduleMeeting(next) };
-      }
-      case "lead": {
-        const cur = db.leads.get(org, e.entityId);
-        if (created) {
-          if (!cur) conflict("The lead no longer exists");
-          db.leads.delete(org, cur.id);
-          return { snapshot: { type: "lead.deleted", before: cur, after: null }, after: () => {
-          } };
-        }
-        if (deleted) {
-          if (cur) conflict("The lead already exists");
-          const l = { ...before, orgId: org, updatedAt: t0 };
-          db.leads.insert(l);
-          return { snapshot: { type: "lead.created", before: null, after: l }, after: () => {
-          } };
-        }
-        if (!cur) conflict("The lead no longer exists");
-        const next = { ...restoreFields(cur, before, e.after), updatedAt: t0 };
-        db.leads.save(next);
-        return { snapshot: { type: "lead.updated", before: cur, after: next }, after: () => {
-        } };
-      }
-      case "inbox": {
-        const cur = db.inbox.get(org, e.entityId);
-        if (!cur || created || deleted) conflict("This change cannot be undone");
-        const next = restoreFields(cur, before, e.after);
-        db.inbox.save(next);
-        return { snapshot: { type: "inbox.updated", before: cur, after: next }, after: () => {
-        } };
-      }
-      default:
-        throw new AppError("bad_request", "This change cannot be undone");
-    }
-  }
-  return {
-    async list(actor, opts = {}) {
-      const entity = opts.entity !== void 0 ? oneOf(opts.entity, "entity", ENTITIES) : void 0;
-      const entityId = opts.entityId !== void 0 ? str(opts.entityId, "entityId", { max: 64 }) : void 0;
-      const limit = opts.limit !== void 0 ? int(opts.limit, "limit", 1, 1e3) : 100;
-      return db.audit.list(actor.orgId, { entity, entityId, limit, actorId: isManager(actor) ? void 0 : actor.memberId });
-    },
-    async undo(actor, eventId) {
-      requireWrite(actor);
-      const e = typeof eventId === "string" ? db.audit.get(actor.orgId, eventId) : null;
-      if (!e) notFound("Audit event not found");
-      if (!e.undoable) throw new AppError("bad_request", "This change cannot be undone");
-      if (e.undoneAt !== null) conflict("This change was already undone");
-      if (!canUndo(actor, e)) forbidden("You can only undo your own changes");
-      const t0 = now2();
-      const result = db.tx(() => {
-        if (!db.audit.markUndone(actor.orgId, e.id, actor.memberId, t0)) conflict("This change was already undone");
-        return apply(actor, e);
-      });
-      try {
-        result.after();
-      } catch (err) {
-        ctx.log.warn("[audit] undo side effects failed", err);
-      }
-      await audit(ctx, actor, {
-        type: result.snapshot.type,
-        entity: e.entity,
-        entityId: e.entityId,
-        summary: `Undid: ${e.summary}`,
-        before: result.snapshot.before,
-        after: result.snapshot.after
-      });
-      return db.audit.get(actor.orgId, e.id);
-    }
-  };
-}
-
-// packages/core/src/services/briefing.ts
-var CACHE_MS = 6e4;
-var POLISH_TIMEOUT_MS = 4e3;
-var MAX_WORDS = 120;
-var CLASSIC = { task: "task", tasks: "tasks", greeting: (p, n) => `Good ${p}, ${n}`, opener: null, team: "the team" };
-var TACTICAL = { task: "mission", tasks: "missions", greeting: (p, n) => `Good ${p}, Commander ${n}`, opener: "Mission briefing for today:", team: "the squad" };
-var plural = (n, one, many) => `${n === 1 ? "one" : n} ${n === 1 ? one : many}`;
-var quote = (t) => `"${t.length > 60 ? t.slice(0, 57) + "\u2026" : t}"`;
-function listJoin(items) {
-  if (items.length <= 1) return items[0] ?? "";
-  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
-}
-function partOfDay(hour) {
-  if (hour >= 5 && hour < 12) return "morning";
-  if (hour >= 12 && hour < 17) return "afternoon";
-  return "evening";
-}
-var byPriorityThenDue = (a, b) => (PRIORITY_RANK2[a.priority] ?? 4) - (PRIORITY_RANK2[b.priority] ?? 4) || (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity);
-function createBriefingService(ctx) {
-  const { db } = ctx;
-  const cache2 = /* @__PURE__ */ new Map();
-  const now2 = () => ctx.clock();
-  function actorOf(m) {
-    return { orgId: m.orgId, memberId: m.id, role: m.role, kind: m.kind, via: "session" };
-  }
-  async function compose(m, opts = {}) {
-    const t0 = now2();
-    const tz = safeTz(m.timezone);
-    const actor = actorOf(m);
-    const vis = visibility(actor);
-    const voice = m.prefs.theme === "classic" ? CLASSIC : TACTICAL;
-    const views = (ts2) => ctx.internal.views(m.orgId, ts2, tz);
-    const dayStart = startOfLocalDay(t0, tz);
-    const dayEnd = startOfLocalDay(t0, tz, 1);
-    const weekEnd = startOfLocalDay(t0, tz, 8);
-    const overdue = views(db.tasks.query(m.orgId, { assigneeId: m.id, open: true, dueBefore: t0, order: "due", limit: 50 }));
-    const today2 = views(db.tasks.query(m.orgId, { assigneeId: m.id, open: true, dueAfter: t0, dueBefore: dayEnd, limit: 50 })).sort(byPriorityThenDue);
-    const upcoming = views(db.tasks.query(m.orgId, { assigneeId: m.id, open: true, dueAfter: dayEnd, dueBefore: weekEnd, order: "due", limit: 10 }));
-    const meetings = db.meetings.list(m.orgId, { from: Math.max(t0 - 30 * 6e4, dayStart), to: dayEnd, memberId: m.id });
-    const waitingOn = views(db.tasks.query(m.orgId, { involvedId: m.id, open: true, waiting: true, limit: 20 }));
-    const isMgr = m.kind === "human" && rank(m.role) >= ROLE_RANK.manager;
-    const team = [];
-    if (isMgr) {
-      for (const p of db.members.list(m.orgId, { kind: "human" })) {
-        if (p.role === "guest") continue;
-        team.push({
-          member: p,
-          open: db.tasks.count(m.orgId, { assigneeId: p.id, open: true }),
-          overdue: db.tasks.count(m.orgId, { assigneeId: p.id, open: true, dueBefore: t0 }),
-          dueToday: db.tasks.count(m.orgId, { assigneeId: p.id, open: true, dueAfter: dayStart, dueBefore: dayEnd }),
-          doneToday: db.tasks.count(m.orgId, { assigneeId: p.id, statuses: ["done"], completedAfter: dayStart }),
-          doneThisWeek: db.tasks.count(m.orgId, { assigneeId: p.id, statuses: ["done"], completedAfter: t0 - 7 * 864e5 }),
-          inProgress: views(db.tasks.query(m.orgId, { assigneeId: p.id, statuses: ["in_progress"], limit: 3 }))
-        });
-      }
-    }
-    const agents = [];
-    for (const a of db.members.list(m.orgId, { kind: "agent" })) {
-      const open = views(db.tasks.query(m.orgId, { visibility: vis, assigneeId: a.id, open: true, limit: 50 }));
-      const inProgress = open.filter((t) => t.status === "in_progress");
-      const stale = open.filter((t) => t.isStale);
-      if (inProgress.length || stale.length || isMgr) agents.push({ member: a, inProgress, stale });
-    }
-    const unreadNotifications = db.notifications.unreadCount(m.orgId, m.id);
-    const inboxNew = isMgr ? db.inbox.countNew(m.orgId) : 0;
-    const name = firstName(m.name);
-    const greeting = voice.greeting(partOfDay(localParts(t0, tz).hour), name);
-    const mtgToday = meetings.filter((x) => x.startAt >= t0 - 30 * 6e4);
-    const headParts = [];
-    if (overdue.length) headParts.push(`${overdue.length} overdue`);
-    if (today2.length) headParts.push(`${today2.length} ${today2.length === 1 ? voice.task : voice.tasks} due today`);
-    if (mtgToday.length) headParts.push(`${mtgToday.length} meeting${mtgToday.length === 1 ? "" : "s"}`);
-    if (waitingOn.length) headParts.push(`waiting on ${waitingOn.length}`);
-    const headline = headParts.length ? headParts.join(" \xB7 ") : voice === TACTICAL ? "All clear \u2014 no missions due today" : "All clear \u2014 nothing due today";
-    const sentences = [`${greeting}.`];
-    if (voice.opener) sentences.push(voice.opener);
-    const dueTodayCount = overdue.length + today2.length;
-    if (overdue.length === 1) sentences.push(`One ${voice.task} is overdue: ${quote(overdue[0].title)}.`);
-    else if (overdue.length > 1) sentences.push(`${overdue.length} ${voice.tasks} are overdue, starting with ${quote(overdue[0].title)}.`);
-    if (today2.length) {
-      const top = today2.slice(0, 5);
-      const named = listJoin(top.slice(0, 3).map((t) => quote(t.title)));
-      sentences.push(`You have ${plural(today2.length, voice.task, voice.tasks)} due today${today2.length <= 3 ? `: ${named}` : `, including ${named}`}.`);
-    } else if (!dueTodayCount) {
-      sentences.push(voice === TACTICAL ? "No missions are due today." : "Nothing is due today.");
-    }
-    if (mtgToday.length) {
-      const items = mtgToday.slice(0, 3).map((x) => x.allDay ? `${x.title} all day` : `${x.title} at ${spokenTime(x.startAt, tz)}`);
-      sentences.push(mtgToday.length === 1 ? `You have a meeting: ${items[0]}.` : `You have ${mtgToday.length} meetings: ${listJoin(items)}.`);
-    }
-    if (waitingOn.length) {
-      const w = waitingOn[0];
-      sentences.push(waitingOn.length === 1 ? `You're waiting on ${w.waitingOn.name} for ${quote(w.title)}.` : `You're waiting on ${waitingOn.length} people, including ${w.waitingOn.name} for ${quote(w.title)}.`);
-    }
-    if (isMgr && team.length) {
-      const open = team.reduce((s2, p) => s2 + p.open, 0);
-      const od = team.reduce((s2, p) => s2 + p.overdue, 0);
-      const doneToday = team.reduce((s2, p) => s2 + p.doneToday, 0);
-      sentences.push(`Across ${voice.team}, ${open} ${open === 1 ? `${voice.task} is` : `${voice.tasks} are`} open, ${od} overdue, and ${doneToday} finished today.`);
-      const star = [...team].sort((a, b) => b.doneThisWeek - a.doneThisWeek)[0];
-      if (star && star.doneThisWeek > 0 && star.member.id !== m.id) sentences.push(`${firstName(star.member.name)} has closed ${plural(star.doneThisWeek, voice.task, voice.tasks)} this week.`);
-    }
-    if (isMgr) {
-      const working = agents.filter((a) => a.inProgress.length).slice(0, 2).map((a) => `${a.member.name} is working on ${quote(a.inProgress[0].title)}`);
-      if (working.length) sentences.push(`${listJoin(working)}.`);
-      const quiet = agents.filter((a) => a.stale.length).slice(0, 2).map((a) => `${a.member.name} has gone quiet on ${quote(a.stale[0].title)}`);
-      if (quiet.length) sentences.push(`Heads up: ${listJoin(quiet)}.`);
-      if (inboxNew) sentences.push(`${plural(inboxNew, "new message is", "new messages are")} waiting in the inbox.`);
-    }
-    let words = 0;
-    const kept = [];
-    for (const s2 of sentences) {
-      const n = s2.split(/\s+/).length;
-      if (kept.length >= 2 && words + n > MAX_WORDS) break;
-      kept.push(s2);
-      words += n;
-    }
-    let spoken = kept.join(" ");
-    if (opts.polish !== false && ctx.llm) {
-      try {
-        const polished = await withTimeout(ctx.llm.polishBriefing({ script: spoken, name, timezone: tz }), POLISH_TIMEOUT_MS, "polishBriefing");
-        if (typeof polished === "string" && polished.trim() && polished.length < 2e3) spoken = polished.trim();
-      } catch (err) {
-        ctx.log.warn("[briefing] polish failed, using deterministic script", err);
-      }
-    }
-    return { memberId: m.id, generatedAt: t0, greeting, spoken, headline, myTasks: { overdue, today: today2, upcoming }, meetings, waitingOn, team, agents, unreadNotifications, inboxNew };
-  }
-  return {
-    compose,
-    invalidate(orgId) {
-      for (const [k, e] of cache2) if (e.orgId === orgId) cache2.delete(k);
-    },
-    service: {
-      async get(actor) {
-        const m = db.members.get(actor.orgId, actor.memberId);
-        if (!m) notFound("Member not found");
-        const hit = cache2.get(m.id);
-        const t0 = now2();
-        if (hit && t0 - hit.at < CACHE_MS && t0 >= hit.at) return hit.b;
-        const b = await compose(m);
-        cache2.set(m.id, { at: t0, orgId: m.orgId, b });
-        return b;
-      }
-    }
-  };
-}
-
-// packages/core/src/services/identity.ts
-import { randomBytes as randomBytes4 } from "node:crypto";
-
-// packages/core/src/password.ts
-import { randomBytes as randomBytes3, scrypt, timingSafeEqual } from "node:crypto";
-var KEY_LENGTH = 64;
-function scryptAsync(password2, salt) {
-  return new Promise((resolve5, reject) => {
-    scrypt(password2, salt, KEY_LENGTH, (err, key) => err ? reject(err) : resolve5(key));
-  });
-}
-async function hashPassword(password2) {
-  const salt = randomBytes3(16).toString("hex");
-  const hash2 = await scryptAsync(password2, salt);
-  return `scrypt$${salt}$${hash2.toString("hex")}`;
-}
-var dummy = null;
-function dummyHash() {
-  dummy ??= hashPassword(randomBytes3(16).toString("hex"));
-  return dummy;
-}
-async function verifyPassword(password2, stored) {
-  const parts = (stored ?? "").split("$");
-  const valid = parts.length === 3 && parts[0] === "scrypt" && !!parts[1] && /^[0-9a-f]+$/i.test(parts[2] ?? "");
-  const [, salt, hashHex] = valid ? parts : (await dummyHash()).split("$");
-  const expected = Buffer.from(hashHex, "hex");
-  const actual = await scryptAsync(password2, salt);
-  const same = actual.length === expected.length && timingSafeEqual(actual, expected);
-  return valid && same;
-}
-
-// packages/core/src/services/identity.ts
-var SESSION_TTL_MS = 30 * 864e5;
-var TOUCH_EVERY_MS = 6e4;
-var ROLES = ["owner", "admin", "manager", "member", "guest", "agent"];
-var PROVIDERS = ["claude", "chatgpt", "gemini", "cursor", "copilot", "n8n", "custom"];
-var KEY_PREFIX = "cb_live_";
-function actorFor(m, via, scopes) {
-  return { orgId: m.orgId, memberId: m.id, role: m.role, kind: m.kind, via, ...scopes ? { scopes } : {} };
-}
-function createAuthService(ctx) {
-  const { db } = ctx;
-  function newSession(m, meta3) {
-    const token = randomBytes4(32).toString("base64url");
-    const now2 = ctx.clock();
-    const expiresAt = now2 + SESSION_TTL_MS;
-    db.sessions.insert({
-      id: newId("ses"),
-      orgId: m.orgId,
-      memberId: m.id,
-      tokenHash: sha256Hex(token),
-      createdAt: now2,
-      expiresAt,
-      lastUsedAt: now2,
-      ip: (meta3.ip ?? "").slice(0, 64) || null,
-      userAgent: (meta3.userAgent ?? "").slice(0, 300) || null
-    });
-    return { token, member: m, expiresAt };
-  }
-  return {
-    async login(identifier, password2, meta3) {
-      const ident = typeof identifier === "string" ? identifier.trim().slice(0, 254) : "";
-      const pw = typeof password2 === "string" ? password2.slice(0, 256) : "";
-      const found = ident ? db.members.findForLogin(ident) : null;
-      const ok = await verifyPassword(pw, found?.passwordHash ?? null);
-      if (!found || !ok || !pw) throw new AppError("unauthorized", "Invalid email or password");
-      return newSession(found.member, meta3 ?? { ip: "", userAgent: "" });
-    },
-    async logout(token) {
-      if (typeof token === "string" && token) db.sessions.deleteByHash(sha256Hex(token));
-    },
-    async resolveSession(token) {
-      if (typeof token !== "string" || token.length < 20 || token.length > 200) return null;
-      const s2 = db.sessions.findByHash(sha256Hex(token));
-      if (!s2) return null;
-      const now2 = ctx.clock();
-      if (s2.expiresAt <= now2) {
-        db.sessions.delete(s2.orgId, s2.id);
-        return null;
-      }
-      const m = db.members.get(s2.orgId, s2.memberId);
-      if (!m || !m.active || m.kind !== "human") {
-        db.sessions.delete(s2.orgId, s2.id);
-        return null;
-      }
-      if (now2 - s2.lastUsedAt >= TOUCH_EVERY_MS) db.sessions.touch(s2.orgId, s2.id, now2 + SESSION_TTL_MS, now2);
-      return actorFor(m, "session");
-    },
-    async resolveApiKey(rawKey) {
-      if (typeof rawKey !== "string" || !rawKey.startsWith(KEY_PREFIX) || rawKey.length > 200) return null;
-      const key = db.apiKeys.findByHash(sha256Hex(rawKey));
-      if (!key || key.revokedAt !== null) return null;
-      const now2 = ctx.clock();
-      if (key.expiresAt !== null && key.expiresAt <= now2) return null;
-      const m = db.members.get(key.orgId, key.memberId);
-      if (!m || !m.active) return null;
-      if (key.lastUsedAt === null || now2 - key.lastUsedAt >= TOUCH_EVERY_MS) {
-        db.apiKeys.touch(key.orgId, key.id, now2);
-        if (m.kind === "agent") db.members.touchAgentSeen(m.orgId, m.id, now2);
-      }
-      return actorFor(m, "api_key", [...key.scopes]);
-    },
-    async needsSetup() {
-      return !db.members.anyActiveOwner();
-    },
-    async setup(input) {
-      if (!isObj(input)) bad("setup input required");
-      const orgName = str(input.orgName, "orgName", { max: 100 });
-      const name = str(input.name, "name", { max: 100 });
-      const email4 = email(input.email);
-      const password2 = password(input.password);
-      const tz = timezone(input.timezone ?? systemTimezone());
-      const hash2 = await hashPassword(password2);
-      const now2 = ctx.clock();
-      const member = db.tx(() => {
-        if (db.members.anyActiveOwner()) throw new AppError("conflict", "Setup has already been completed");
-        let org = db.orgs.list()[0] ?? null;
-        if (org) {
-          org = { ...org, name: orgName, timezone: tz, updatedAt: now2 };
-          db.orgs.save(org);
-          if (db.members.findByEmail(org.id, email4)) throw new AppError("conflict", "A member with this email already exists");
-        } else {
-          org = {
-            id: newId("org"),
-            name: orgName,
-            timezone: tz,
-            logo: null,
-            workdayStart: 9,
-            workdayEnd: 18,
-            defaultReminderOffsets: [1440, 60, 0],
-            escalateAfterMin: 1440,
-            agentStaleAfterMin: 240,
-            intakeAutoAck: false,
-            createdAt: now2,
-            updatedAt: now2
-          };
-          db.orgs.insert(org);
-        }
-        const id = newId("mem");
-        const m = {
-          id,
-          orgId: org.id,
-          kind: "human",
-          role: "owner",
-          name,
-          email: email4,
-          phone: null,
-          title: null,
-          initials: initialsFor(name),
-          color: colorFor(id),
-          avatarUrl: null,
-          timezone: tz,
-          active: true,
-          prefs: defaultPrefs("human"),
-          agent: null,
-          createdAt: now2,
-          updatedAt: now2
-        };
-        db.members.insert(m, hash2);
-        return m;
-      });
-      ctx.internal.ensurePeriodic(member.orgId);
-      ctx.internal.scheduleDigest(member);
-      await audit(ctx, { orgId: member.orgId, memberId: member.id }, { type: "org.setup", entity: "org", entityId: member.orgId, summary: `${name} set up ${orgName}`, after: { orgName, ownerId: member.id } });
-      return newSession(member, { ip: "", userAgent: "" });
-    },
-    async orgId() {
-      return db.orgs.list()[0]?.id ?? null;
-    }
-  };
-}
-function validatePrefs(cur, patch) {
-  if (!isObj(patch)) bad("prefs must be an object");
-  const p = { ...cur };
-  const hour = (x, f) => x === null ? null : int(x, f, 0, 23);
-  if (patch.briefingVoice !== void 0) p.briefingVoice = oneOf(patch.briefingVoice, "prefs.briefingVoice", ["auto", "button", "off"]);
-  if (patch.voiceName !== void 0) p.voiceName = optStr(patch.voiceName, "prefs.voiceName", 200);
-  if (patch.digestHour !== void 0) p.digestHour = hour(patch.digestHour, "prefs.digestHour");
-  if (patch.notifyPush !== void 0) p.notifyPush = bool(patch.notifyPush, "prefs.notifyPush");
-  if (patch.notifyWhatsapp !== void 0) p.notifyWhatsapp = bool(patch.notifyWhatsapp, "prefs.notifyWhatsapp");
-  if (patch.notifyEmail !== void 0) p.notifyEmail = bool(patch.notifyEmail, "prefs.notifyEmail");
-  if (patch.quietStart !== void 0) p.quietStart = hour(patch.quietStart, "prefs.quietStart");
-  if (patch.quietEnd !== void 0) p.quietEnd = hour(patch.quietEnd, "prefs.quietEnd");
-  if (patch.theme !== void 0) p.theme = oneOf(patch.theme, "prefs.theme", ["tactical", "classic"]);
-  if (patch.sound !== void 0) p.sound = bool(patch.sound, "prefs.sound");
-  return p;
-}
-function createMemberService(ctx) {
-  const { db } = ctx;
-  function load(actor, id) {
-    const m = typeof id === "string" ? db.members.get(actor.orgId, id) : null;
-    if (!m) notFound("Member not found");
-    return m;
-  }
-  function revokeAccess(m, keys) {
-    db.sessions.deleteForMember(m.orgId, m.id);
-    if (keys) db.apiKeys.revokeForMember(m.orgId, m.id, ctx.clock());
-  }
-  function assertNotLastOwner(m) {
-    if (m.role === "owner" && m.active && db.members.countActive(m.orgId, "owner") <= 1) throw new AppError("conflict", "This is the last owner \u2014 promote someone else first");
-  }
-  function validSupervisor(actor, sid) {
-    if (sid === null || sid === void 0) return null;
-    const id = ref(sid, "agent.supervisorId");
-    const s2 = db.members.get(actor.orgId, id);
-    if (!s2 || !s2.active || s2.kind !== "human") bad("agent.supervisorId must be an active human member");
-    return id;
-  }
-  return {
-    async list(actor, opts = {}) {
-      const includeInactive = !!opts.includeInactive && isManager(actor);
-      const kind = opts.kind === "human" || opts.kind === "agent" ? opts.kind : void 0;
-      return db.members.list(actor.orgId, { includeInactive, kind });
-    },
-    async get(actor, id) {
-      const m = load(actor, id);
-      if (!m.active && !isManager(actor) && m.id !== actor.memberId) notFound("Member not found");
-      return m;
-    },
-    async me(actor) {
-      return load(actor, actor.memberId);
-    },
-    async create(actor, input) {
-      requireWrite(actor);
-      if (!isObj(input)) bad("member input required");
-      const kind = oneOf(input.kind, "kind", ["human", "agent"]);
-      if (kind === "agent") requireRole(actor, "manager", "Managers and above can add AI agents");
-      else requireRole(actor, "admin", "Only owners and admins can add people");
-      let role = oneOf(input.role ?? (kind === "agent" ? "agent" : "member"), "role", ROLES);
-      if (kind === "agent") role = "agent";
-      else if (role === "agent") bad("Humans cannot have the agent role");
-      if (!isSystem(actor) && rank(role) > rank(actor.role)) forbidden("You cannot grant a role higher than your own");
-      if (role === "owner" && !isSystem(actor) && actor.role !== "owner") forbidden("Only owners can add owners");
-      const org = getOrg(ctx, actor.orgId);
-      const name = str(input.name, "name", { max: 100 });
-      const email4 = kind === "human" ? email(input.email) : input.email ? email(input.email) : null;
-      if (email4 && db.members.findByEmail(actor.orgId, email4) && kind === "human") throw new AppError("conflict", "A member with this email already exists");
-      const hash2 = kind === "human" ? await hashPassword(password(input.password)) : null;
-      const now2 = ctx.clock();
-      const id = newId("mem");
-      const m = {
-        id,
-        orgId: actor.orgId,
-        kind,
-        role,
-        name,
-        email: email4,
-        phone: phone(input.phone),
-        title: optStr(input.title, "title", 100),
-        initials: initialsFor(name),
-        color: colorFor(id),
-        avatarUrl: null,
-        timezone: input.timezone !== void 0 ? timezone(input.timezone) : org.timezone,
-        active: true,
-        prefs: defaultPrefs(kind),
-        agent: kind === "agent" ? {
-          provider: oneOf(input.agent?.provider ?? "custom", "agent.provider", PROVIDERS),
-          description: optStr(input.agent?.description, "agent.description", 2e3) ?? "",
-          lastSeenAt: null,
-          supervisorId: input.agent?.supervisorId !== void 0 ? validSupervisor(actor, input.agent.supervisorId) : actor.kind === "human" && !isSystem(actor) ? actor.memberId : null
-        } : null,
-        createdAt: now2,
-        updatedAt: now2
-      };
-      db.members.insert(m, hash2);
-      ctx.internal.scheduleDigest(m);
-      await audit(ctx, actor, { type: "member.created", entity: "member", entityId: id, summary: `Added ${kind === "agent" ? "AI agent" : "member"} ${name}`, after: m });
-      publish(ctx, actor.orgId, { type: "member.upserted", member: m });
-      return m;
-    },
-    async update(actor, id, patch) {
-      requireWrite(actor);
-      if (!isObj(patch)) bad("patch must be an object");
-      const cur = load(actor, id);
-      const self = cur.id === actor.memberId;
-      const adminOver = isAdmin(actor) && (isSystem(actor) || rank(cur.role) <= rank(actor.role));
-      const managerOverAgent = cur.kind === "agent" && isManager(actor);
-      const privileged = adminOver || managerOverAgent;
-      if (!self && !privileged) forbidden("You can only edit your own profile");
-      const touchesAdminFields = patch.role !== void 0 || patch.active !== void 0 || patch.agent !== void 0 || patch.email !== void 0;
-      if (touchesAdminFields && !privileged) forbidden("Only admins can change role, status or email");
-      if (self && !isSystem(actor) && (patch.role !== void 0 && patch.role !== cur.role || patch.active === false)) forbidden("You cannot change your own role or deactivate yourself");
-      const next = { ...cur, prefs: { ...cur.prefs }, agent: cur.agent ? { ...cur.agent } : null };
-      if (patch.name !== void 0) {
-        next.name = str(patch.name, "name", { max: 100 });
-        next.initials = initialsFor(next.name);
-      }
-      if (patch.email !== void 0) {
-        next.email = cur.kind === "human" ? email(patch.email) : patch.email ? email(patch.email) : null;
-        const clash = next.email ? db.members.findByEmail(actor.orgId, next.email) : null;
-        if (clash && clash.id !== cur.id && cur.kind === "human") throw new AppError("conflict", "A member with this email already exists");
-      }
-      if (patch.phone !== void 0) next.phone = phone(patch.phone);
-      if (patch.title !== void 0) next.title = optStr(patch.title, "title", 100);
-      if (patch.timezone !== void 0) next.timezone = timezone(patch.timezone);
-      if (patch.color !== void 0) next.color = color(patch.color);
-      if (patch.avatarUrl !== void 0) next.avatarUrl = patch.avatarUrl === null ? null : url(patch.avatarUrl, "avatarUrl");
-      if (patch.prefs !== void 0) next.prefs = validatePrefs(cur.prefs, patch.prefs);
-      if (patch.role !== void 0) {
-        const role = oneOf(patch.role, "role", ROLES);
-        if (cur.kind === "agent" && role !== "agent") bad("Agents always have the agent role");
-        if (cur.kind === "human" && role === "agent") bad("Humans cannot have the agent role");
-        if (!isSystem(actor) && rank(role) > rank(actor.role)) forbidden("You cannot grant a role higher than your own");
-        if (cur.role === "owner" && role !== "owner") assertNotLastOwner(cur);
-        next.role = role;
-      }
-      if (patch.active !== void 0) {
-        next.active = bool(patch.active, "active");
-        if (!next.active) assertNotLastOwner(cur);
-      }
-      if (patch.agent !== void 0) {
-        if (cur.kind !== "agent" || !next.agent) bad("agent settings only apply to AI agents");
-        if (!isObj(patch.agent)) bad("agent must be an object");
-        if (patch.agent.provider !== void 0) next.agent.provider = oneOf(patch.agent.provider, "agent.provider", PROVIDERS);
-        if (patch.agent.description !== void 0) next.agent.description = optStr(patch.agent.description, "agent.description", 2e3) ?? "";
-        if (patch.agent.supervisorId !== void 0) next.agent.supervisorId = validSupervisor(actor, patch.agent.supervisorId);
-      }
-      next.updatedAt = ctx.clock();
-      db.members.save(next);
-      if (next.role !== cur.role || cur.active && !next.active) revokeAccess(next, cur.active && !next.active);
-      if (next.timezone !== cur.timezone || next.prefs.digestHour !== cur.prefs.digestHour || next.active !== cur.active) ctx.internal.scheduleDigest(next);
-      await audit(ctx, actor, { type: "member.updated", entity: "member", entityId: id, summary: `Updated ${next.name}`, before: cur, after: next, undoable: true });
-      publish(ctx, actor.orgId, { type: "member.upserted", member: next });
-      ctx.internal.invalidateBriefings(actor.orgId);
-      return next;
-    },
-    async setPassword(actor, id, password2) {
-      requireWrite(actor);
-      requireRole(actor, "admin", "Only owners and admins can reset passwords");
-      const m = load(actor, id);
-      if (m.kind !== "human") bad("AI agents authenticate with API keys, not passwords");
-      if (!isSystem(actor) && rank(m.role) > rank(actor.role)) forbidden("You cannot reset the password of a higher role");
-      const hash2 = await hashPassword(password(password2));
-      db.members.setPasswordHash(actor.orgId, m.id, hash2, ctx.clock());
-      db.sessions.deleteForMember(actor.orgId, m.id);
-      await audit(ctx, actor, { type: "member.password_reset", entity: "member", entityId: m.id, summary: `Reset password for ${m.name}` });
-    },
-    async changeOwnPassword(actor, current, next) {
-      if (actor.via !== "session") forbidden("Change your password from a signed-in session");
-      const m = load(actor, actor.memberId);
-      const ok = await verifyPassword(typeof current === "string" ? current : "", db.members.getPasswordHash(actor.orgId, m.id));
-      if (!ok) throw new AppError("bad_request", "Current password is incorrect");
-      const hash2 = await hashPassword(password(next, "new password"));
-      db.members.setPasswordHash(actor.orgId, m.id, hash2, ctx.clock());
-      db.sessions.deleteForMember(actor.orgId, m.id);
-      await audit(ctx, actor, { type: "member.password_changed", entity: "member", entityId: m.id, summary: `${m.name} changed their password` });
-    },
-    async remove(actor, id) {
-      requireWrite(actor);
-      const m = load(actor, id);
-      if (m.id === actor.memberId) forbidden("You cannot remove yourself");
-      if (m.kind === "agent") requireRole(actor, "manager");
-      else {
-        requireRole(actor, "admin", "Only owners and admins can remove people");
-        if (!isSystem(actor) && rank(m.role) > rank(actor.role)) forbidden("You cannot remove a higher role");
-      }
-      if (!m.active) return;
-      assertNotLastOwner(m);
-      const next = { ...m, active: false, updatedAt: ctx.clock() };
-      db.members.save(next);
-      revokeAccess(next, true);
-      ctx.internal.scheduleDigest(next);
-      await audit(ctx, actor, { type: "member.deleted", entity: "member", entityId: m.id, summary: `Removed ${m.name}`, before: m, after: next, undoable: true });
-      publish(ctx, actor.orgId, { type: "member.upserted", member: next });
-    }
-  };
-}
-function createApiKeyService(ctx) {
-  const { db } = ctx;
-  function canManage(actor, m) {
-    if (m.id === actor.memberId) return true;
-    if (isAdmin(actor)) return true;
-    return m.kind === "agent" && isManager(actor);
-  }
-  return {
-    async list(actor, memberId) {
-      if (memberId !== void 0 && memberId !== null && memberId !== "") {
-        const m = db.members.get(actor.orgId, String(memberId));
-        if (!m) notFound("Member not found");
-        if (!canManage(actor, m)) forbidden();
-        return db.apiKeys.list(actor.orgId, [m.id]);
-      }
-      if (isAdmin(actor)) return db.apiKeys.list(actor.orgId);
-      if (isManager(actor)) {
-        const agentIds = db.members.list(actor.orgId, { includeInactive: true, kind: "agent" }).map((a) => a.id);
-        return db.apiKeys.list(actor.orgId, [actor.memberId, ...agentIds]);
-      }
-      return db.apiKeys.list(actor.orgId, [actor.memberId]);
-    },
-    async create(actor, input) {
-      requireWrite(actor);
-      if (actor.via === "api_key") forbidden("API keys cannot mint other API keys");
-      if (!isObj(input)) bad("key input required");
-      const m = db.members.get(actor.orgId, ref(input.memberId, "memberId"));
-      if (!m || !m.active) notFound("Member not found");
-      if (!canManage(actor, m)) forbidden("Managers can mint keys for AI agents; anyone can mint keys for themselves");
-      if (m.kind === "human" && m.id !== actor.memberId) forbidden("Keys for a person can only be created by that person");
-      const name = str(input.name, "name", { max: 100 });
-      if (!Array.isArray(input.scopes) || !input.scopes.length) bad("scopes must include read and/or write");
-      const scopes = [...new Set(input.scopes.map((s2) => oneOf(s2, "scope", ["read", "write"])))];
-      if (scopes.includes("write") && !scopes.includes("read")) scopes.unshift("read");
-      if (m.role === "guest" && scopes.includes("write")) bad("Guests can only have read-only keys");
-      const now2 = ctx.clock();
-      const expiresAt = optTime(input.expiresAt, "expiresAt");
-      if (expiresAt !== null && expiresAt <= now2) bad("expiresAt must be in the future");
-      const raw = KEY_PREFIX + randomBase62(43);
-      const key = {
-        id: newId("key"),
-        orgId: actor.orgId,
-        memberId: m.id,
-        name,
-        prefix: raw.slice(0, 12),
-        scopes,
-        createdBy: actor.memberId,
-        createdAt: now2,
-        lastUsedAt: null,
-        expiresAt,
-        revokedAt: null
-      };
-      db.apiKeys.insert(key, sha256Hex(raw));
-      await audit(ctx, actor, { type: "api_key.created", entity: "api_key", entityId: key.id, summary: `Created API key "${name}" for ${m.name}`, after: key });
-      return { key, raw };
-    },
-    async revoke(actor, id) {
-      requireWrite(actor);
-      const key = typeof id === "string" ? db.apiKeys.get(actor.orgId, id) : null;
-      if (!key) notFound("API key not found");
-      const m = db.members.get(actor.orgId, key.memberId);
-      if (!m || !canManage(actor, m)) forbidden();
-      if (key.revokedAt !== null) return;
-      db.apiKeys.revoke(actor.orgId, key.id, ctx.clock());
-      await audit(ctx, actor, { type: "api_key.revoked", entity: "api_key", entityId: key.id, summary: `Revoked API key "${key.name}"`, before: key });
-    }
-  };
-}
-function validateOrgPatch(cur, patch) {
-  if (!isObj(patch)) bad("patch must be an object");
-  const n = { ...cur };
-  if (patch.name !== void 0) n.name = str(patch.name, "name", { max: 100 });
-  if (patch.timezone !== void 0) n.timezone = timezone(patch.timezone);
-  if (patch.logo !== void 0) n.logo = optStr(patch.logo, "logo", 2048);
-  if (patch.workdayStart !== void 0) n.workdayStart = int(patch.workdayStart, "workdayStart", 0, 23);
-  if (patch.workdayEnd !== void 0) n.workdayEnd = int(patch.workdayEnd, "workdayEnd", 1, 24);
-  if (n.workdayEnd <= n.workdayStart) bad("workdayEnd must be after workdayStart");
-  if (patch.defaultReminderOffsets !== void 0) n.defaultReminderOffsets = offsets(patch.defaultReminderOffsets, "defaultReminderOffsets");
-  if (patch.escalateAfterMin !== void 0) n.escalateAfterMin = patch.escalateAfterMin === null ? null : int(patch.escalateAfterMin, "escalateAfterMin", 1, 60 * 24 * 60);
-  if (patch.agentStaleAfterMin !== void 0) n.agentStaleAfterMin = int(patch.agentStaleAfterMin, "agentStaleAfterMin", 5, 60 * 24 * 30);
-  if (patch.intakeAutoAck !== void 0) n.intakeAutoAck = bool(patch.intakeAutoAck, "intakeAutoAck");
-  return n;
-}
-function createOrgService(ctx) {
-  return {
-    async get(actor) {
-      return getOrg(ctx, actor.orgId);
-    },
-    async update(actor, patch) {
-      requireWrite(actor);
-      requireRole(actor, "admin", "Only owners and admins can change organization settings");
-      const cur = getOrg(ctx, actor.orgId);
-      const next = { ...validateOrgPatch(cur, patch), updatedAt: ctx.clock() };
-      ctx.db.orgs.save(next);
-      if (JSON.stringify(cur.defaultReminderOffsets) !== JSON.stringify(next.defaultReminderOffsets) || cur.escalateAfterMin !== next.escalateAfterMin) {
-        for (const t of ctx.db.tasks.query(actor.orgId, { open: true, hasDue: true, limit: 5e3 })) ctx.internal.scheduleTask(t);
-      }
-      await audit(ctx, actor, { type: "org.updated", entity: "org", entityId: cur.id, summary: "Updated organization settings", before: cur, after: next, undoable: true });
-      ctx.internal.invalidateBriefings(actor.orgId);
-      return next;
-    }
-  };
-}
-
-// packages/core/src/services/inbox.ts
-var LLM_TIMEOUT_MS = 8e3;
-var HELP = [
-  `Send me any message and I'll turn it into a task, e.g. "Call Raj tomorrow 5pm !high".`,
-  "Commands:",
-  "\u2022 list \u2014 your open tasks",
-  "\u2022 done 2 \u2014 complete task #2 from your last list",
-  "\u2022 help \u2014 this message"
-].join("\n");
-function memberActor(m) {
-  return { orgId: m.orgId, memberId: m.id, role: m.role, kind: m.kind, via: "system" };
-}
-var firstLine = (s2) => s2.split(/\r?\n/).map((l) => l.trim()).find(Boolean) ?? "";
-function createInboxService(ctx, tasks) {
-  const { db } = ctx;
-  const now2 = () => ctx.clock();
-  function load(actor, id) {
-    const i = typeof id === "string" ? db.inbox.get(actor.orgId, id) : null;
-    if (!i) notFound("Inbox item not found");
-    return i;
-  }
-  function matchSender(orgId, msg) {
-    if (msg.channel === "whatsapp") {
-      const hits = db.members.findByPhone(orgId, msg.from);
-      return hits.length === 1 ? hits[0] : null;
-    }
-    const m = db.members.findByEmail(orgId, msg.from.replace(/^.*<([^>]+)>.*$/, "$1"));
-    return m && m.active ? m : null;
-  }
-  async function suggest(orgId, msg, tz) {
-    if (ctx.llm) {
-      try {
-        const d = await withTimeout(
-          ctx.llm.extractTask({
-            text: msg.text,
-            subject: msg.subject,
-            from: msg.from,
-            now: now2(),
-            timezone: tz,
-            members: db.members.list(orgId).map((m) => ({ id: m.id, name: m.name })),
-            projects: db.projects.list(orgId).map((p) => ({ id: p.id, name: p.name }))
-          }),
-          LLM_TIMEOUT_MS,
-          "llm.extractTask"
-        );
-        if (d && typeof d.title === "string" && d.title.trim()) return d;
-      } catch (err) {
-        ctx.log.warn("[intake] llm.extractTask failed, using parser", err);
-      }
-    }
-    const text = msg.subject?.trim() || firstLine(msg.text);
-    if (!text) return null;
-    try {
-      return tasks.draftFromText(systemActor(orgId), text.slice(0, 500)).draft;
-    } catch {
-      return { title: text.slice(0, 500) };
-    }
-  }
-  function taskReply(t, m) {
-    const tz = safeTz(m.timezone);
-    let s2 = `\u2705 Added: "${t.title}"`;
-    if (t.dueAt) s2 += ` \u2014 due ${dueLabel(t.dueAt, now2(), tz, t.dueAllDay)}`;
-    const others = t.assigneeIds.filter((a) => a !== m.id);
-    if (others.length) s2 += ` \xB7 assigned to ${db.members.getMany(m.orgId, others).map((x) => x.name).join(", ")}`;
-    return s2;
-  }
-  async function memberCommand(m, text) {
-    const cmd = text.trim().toLowerCase().replace(/[.!]+$/, "");
-    const actor = memberActor(m);
-    const listKey = `intake:list:${m.id}`;
-    if (cmd === "help" || cmd === "?" || cmd === "commands") return HELP;
-    if (cmd === "list" || cmd === "today" || cmd === "tasks" || cmd === "my tasks") {
-      const open = await ctx.services.tasks.list(actor, { assigneeId: "me", limit: 10 });
-      db.kv.set(m.orgId, listKey, open.map((t) => t.id), now2());
-      if (!open.length) return "Nothing open \u2014 you're all caught up. \u{1F389}";
-      const tz = safeTz(m.timezone);
-      const lines = open.map((t, i) => `${i + 1}. ${t.title}${t.dueAt ? ` \u2014 ${t.isOverdue ? "OVERDUE, " : ""}due ${dueLabel(t.dueAt, now2(), tz, t.dueAllDay)}` : ""}`);
-      return `Your open tasks:
-${lines.join("\n")}
-
-Reply "done 1" to complete one.`;
-    }
-    const done = /^(done|complete|finished|close)\s+#?(\d{1,3})$/.exec(cmd);
-    if (done) {
-      const ids2 = db.kv.get(m.orgId, listKey) ?? [];
-      const id = ids2[Number(done[2]) - 1];
-      if (!id) return `I don't have that number \u2014 send "list" first, then "done 1".`;
-      try {
-        const t = await ctx.services.tasks.complete(actor, id);
-        return `\u2705 Done: "${t.title}". Nice work!`;
-      } catch (err) {
-        return err instanceof AppError && err.code === "not_found" ? "That task no longer exists." : "Sorry, I couldn't complete that task.";
-      }
-    }
-    return null;
-  }
-  async function createForMember(m, msg) {
-    const actor = memberActor(m);
-    const source = { channel: msg.channel, ref: msg.externalId, from: msg.from };
-    const body = msg.text.trim();
-    const headline = msg.subject?.trim() || firstLine(body);
-    const notes = msg.subject?.trim() ? body : body.includes("\n") ? body : "";
-    if (ctx.llm) {
-      const d = await suggest(m.orgId, msg, safeTz(m.timezone));
-      if (d && d.title) {
-        try {
-          return await ctx.services.tasks.create(actor, { ...d, notes: d.notes ?? notes, source });
-        } catch (err) {
-          ctx.log.warn("[intake] llm draft rejected, using parser", err);
-        }
-      }
-    }
-    const view = await ctx.services.tasks.quickAdd(actor, headline.slice(0, 2e3), { source });
-    if (notes) return ctx.services.tasks.update(actor, view.id, { notes: notes.slice(0, 2e4) });
-    return view;
-  }
-  async function ingest(orgId, msg) {
-    const empty2 = { item: null, task: null, reply: null };
-    try {
-      if (!isObj(msg) || typeof orgId !== "string") return empty2;
-      if (msg.channel !== "whatsapp" && msg.channel !== "email") return empty2;
-      if (typeof msg.from !== "string" || !msg.from.trim() || typeof msg.externalId !== "string" || !msg.externalId.trim()) return empty2;
-      const text = typeof msg.text === "string" ? msg.text.slice(0, 2e4) : "";
-      const subject = typeof msg.subject === "string" ? msg.subject.slice(0, 500) : null;
-      if (!text.trim() && !subject?.trim()) return empty2;
-      const org = db.orgs.get(orgId);
-      if (!org) return empty2;
-      const clean2 = {
-        channel: msg.channel,
-        from: msg.from.trim().slice(0, 254),
-        fromName: typeof msg.fromName === "string" ? msg.fromName.slice(0, 200) : null,
-        subject,
-        text,
-        externalId: msg.externalId.trim().slice(0, 300),
-        receivedAt: typeof msg.receivedAt === "number" && Number.isFinite(msg.receivedAt) ? msg.receivedAt : now2()
-      };
-      const dup = db.inbox.findByExternal(orgId, clean2.externalId);
-      if (dup) return { item: dup, task: null, reply: null };
-      const sender = matchSender(orgId, clean2);
-      const canCreate = sender && sender.role !== "guest";
-      const item = {
-        id: newId("inbox"),
-        orgId,
-        channel: clean2.channel,
-        from: clean2.from,
-        fromName: clean2.fromName,
-        subject: clean2.subject,
-        text: clean2.text,
-        externalId: clean2.externalId,
-        memberId: sender?.id ?? null,
-        status: canCreate ? "converted" : "new",
-        suggestion: null,
-        taskId: null,
-        receivedAt: clean2.receivedAt,
-        createdAt: now2()
-      };
-      if (!db.inbox.insert(item)) return { item: db.inbox.findByExternal(orgId, clean2.externalId), task: null, reply: null };
-      if (canCreate) {
-        const reply2 = await memberCommand(sender, (subject?.trim() ? "" : text) || "");
-        if (reply2 !== null) {
-          item.status = "dismissed";
-          db.inbox.save(item);
-          return { item, task: null, reply: reply2 };
-        }
-        try {
-          const task = await createForMember(sender, clean2);
-          item.taskId = task.id;
-          db.inbox.save(item);
-          return { item, task, reply: taskReply(task, sender) };
-        } catch (err) {
-          ctx.log.warn("[intake] could not create task for member; moving to inbox", err);
-          item.status = "new";
-          db.inbox.save(item);
-        }
-      }
-      item.suggestion = await suggest(orgId, clean2, org.timezone);
-      db.inbox.save(item);
-      const managers = db.members.list(orgId, { kind: "human" }).filter((m) => rank(m.role) >= rank("manager"));
-      const who = clean2.fromName ? `${clean2.fromName} (${clean2.from})` : clean2.from;
-      const preview = (clean2.subject ? `${clean2.subject} \u2014 ` : "") + firstLine(clean2.text);
-      for (const m of managers.filter((x) => rank(x.role) >= rank("admin"))) {
-        try {
-          await ctx.services.notifications.notify(orgId, m.id, {
-            kind: "intake_new",
-            title: `New ${clean2.channel === "whatsapp" ? "WhatsApp" : "email"} from ${who}`,
-            body: preview.slice(0, 300),
-            taskId: null,
-            meetingId: null,
-            link: "/inbox",
-            urgent: false
-          });
-        } catch (err) {
-          ctx.log.warn("[intake] notify failed", err);
-        }
-      }
-      publish(ctx, orgId, { type: "inbox.new", item }, managers.map((m) => m.id));
-      ctx.internal.invalidateBriefings(orgId);
-      const reply = org.intakeAutoAck ? `Thanks${clean2.fromName ? `, ${clean2.fromName.split(/\s+/)[0]}` : ""} \u2014 we received your message and will get back to you shortly.` : null;
-      return { item, task: null, reply };
-    } catch (err) {
-      ctx.log.error("[intake] ingest failed", err);
-      return empty2;
-    }
-  }
-  return {
-    async list(actor, opts = {}) {
-      requireRole(actor, "manager", "Managers and above can see the inbox");
-      const status = opts.status !== void 0 ? oneOf(opts.status, "status", ["new", "converted", "dismissed"]) : void 0;
-      return db.inbox.list(actor.orgId, { status });
-    },
-    async convert(actor, id, draft = {}) {
-      requireWrite(actor);
-      requireRole(actor, "manager", "Managers and above can triage the inbox");
-      const item = load(actor, id);
-      if (item.status === "converted") throw new AppError("conflict", "Already converted to a task");
-      const base = item.suggestion ?? { title: (item.subject?.trim() || firstLine(item.text) || "Message").slice(0, 500) };
-      const d = isObj(draft) ? draft : {};
-      const task = await ctx.services.tasks.create(actor, {
-        ...base,
-        ...d,
-        title: d.title ?? base.title,
-        notes: d.notes ?? base.notes ?? `From ${item.fromName ?? item.from}:
-
-${item.text}`,
-        source: { channel: item.channel, ref: item.externalId, from: item.from }
-      });
-      const before = { ...item };
-      item.status = "converted";
-      item.taskId = task.id;
-      db.inbox.save(item);
-      await audit(ctx, actor, { type: "inbox.converted", entity: "inbox", entityId: item.id, summary: `Converted message from ${item.from} into "${task.title}"`, before, after: item });
-      return task;
-    },
-    async dismiss(actor, id) {
-      requireWrite(actor);
-      requireRole(actor, "manager", "Managers and above can triage the inbox");
-      const item = load(actor, id);
-      if (item.status === "dismissed") return;
-      if (item.status === "converted") forbidden("Converted items cannot be dismissed");
-      const before = { ...item };
-      item.status = "dismissed";
-      db.inbox.save(item);
-      await audit(ctx, actor, { type: "inbox.dismissed", entity: "inbox", entityId: item.id, summary: `Dismissed message from ${item.from}`, before, after: item, undoable: true });
-      ctx.internal.invalidateBriefings(actor.orgId);
-    },
-    ingest
-  };
-}
-
-// packages/core/src/services/meetings.ts
-var DAY = 864e5;
-var SYNC_PAST_MS = 7 * DAY;
-var SYNC_FUTURE_MS = 120 * DAY;
-function createMeetingService(ctx) {
-  const { db } = ctx;
-  const now2 = () => ctx.clock();
-  function audience(m) {
-    if (!m.ownerId && !m.attendeeIds.length) return void 0;
-    const ids2 = /* @__PURE__ */ new Set([...m.ownerId ? [m.ownerId] : [], ...m.attendeeIds]);
-    for (const x of db.members.list(m.orgId, { kind: "human" })) if (["owner", "admin", "manager"].includes(x.role)) ids2.add(x.id);
-    return [...ids2];
-  }
-  function canSee(actor, m) {
-    return isManager(actor) || !m.ownerId && !m.attendeeIds.length || m.ownerId === actor.memberId || m.attendeeIds.includes(actor.memberId);
-  }
-  function load(actor, id) {
-    const m = typeof id === "string" ? db.meetings.get(actor.orgId, id) : null;
-    if (!m || !canSee(actor, m)) notFound("Meeting not found");
-    return m;
-  }
-  function loadEditable(actor, id) {
-    requireWrite(actor);
-    const m = load(actor, id);
-    if (!isManager(actor) && m.ownerId !== actor.memberId) forbidden("Only the organizer or a manager can change this meeting");
-    return m;
-  }
-  function validAttendees(actor, ids2) {
-    const list = refs(ids2, "attendeeIds", 100);
-    if (db.members.getMany(actor.orgId, list).length !== list.length) bad("attendeeIds contains an unknown member");
-    return list;
-  }
-  function changed(m) {
-    ctx.internal.scheduleMeeting(m);
-    publish(ctx, m.orgId, { type: "meeting.upserted", meeting: m }, audience(m));
-    ctx.internal.invalidateBriefings(m.orgId);
-  }
-  async function syncFeed(orgId, feedId) {
-    const feed = db.feeds.get(orgId, feedId);
-    if (!feed) notFound("Calendar feed not found");
-    const url3 = db.feeds.getUrl(orgId, feedId);
-    const t0 = now2();
-    try {
-      const events = await ctx.calendar.fetch(url3);
-      const inWindow = events.filter((e) => e && typeof e.uid === "string" && e.endAt >= t0 - SYNC_PAST_MS && e.startAt <= t0 + SYNC_FUTURE_MS).slice(0, 2e3);
-      const existing = new Map(db.meetings.listByFeed(orgId, feedId).map((m) => [m.externalId, m]));
-      const seen = /* @__PURE__ */ new Set();
-      const touched = [];
-      db.tx(() => {
-        for (const e of inWindow) {
-          if (seen.has(e.uid)) continue;
-          seen.add(e.uid);
-          const prev = existing.get(e.uid);
-          const base = {
-            title: String(e.title || "Busy").slice(0, 300),
-            startAt: e.startAt,
-            endAt: Math.max(e.endAt, e.startAt),
-            allDay: !!e.allDay,
-            location: e.location ? String(e.location).slice(0, 500) : null,
-            url: e.url ? String(e.url).slice(0, 2048) : null,
-            notes: String(e.notes ?? "").slice(0, 5e3)
-          };
-          if (prev) {
-            const same = prev.title === base.title && prev.startAt === base.startAt && prev.endAt === base.endAt && prev.allDay === base.allDay && prev.location === base.location && prev.url === base.url && prev.notes === base.notes;
-            if (same) continue;
-            const next = { ...prev, ...base, updatedAt: t0 };
-            db.meetings.save(next);
-            touched.push(next);
-          } else {
-            const m = {
-              id: newId("mtg"),
-              orgId,
-              ownerId: feed.memberId,
-              ...base,
-              attendeeIds: [feed.memberId],
-              source: "ics",
-              externalId: e.uid,
-              feedId,
-              createdAt: t0,
-              updatedAt: t0
-            };
-            db.meetings.insert(m);
-            touched.push(m);
-          }
-        }
-        for (const [uid, m] of existing) {
-          if (!uid || !seen.has(uid)) {
-            db.meetings.delete(orgId, m.id);
-            ctx.internal.cancelMeeting(orgId, m.id);
-          }
-        }
-        db.feeds.setSync(orgId, feedId, t0, null);
-      });
-      for (const m of touched) changed(m);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      db.feeds.setSync(orgId, feedId, t0, msg.slice(0, 500));
-      throw new AppError("bad_request", `Calendar sync failed: ${msg}`);
-    }
-    return db.feeds.get(orgId, feedId);
-  }
-  const service = {
-    async list(actor, range) {
-      if (!isObj(range)) bad("range is required");
-      const from = time(range.from, "from");
-      const to = time(range.to, "to");
-      if (to <= from) bad("to must be after from");
-      if (to - from > 400 * DAY) bad("Range too large (max 400 days)");
-      let memberId;
-      if (range.memberId === "me") memberId = actor.memberId;
-      else if (range.memberId) {
-        memberId = ref(range.memberId, "memberId");
-        if (memberId !== actor.memberId && !isManager(actor)) forbidden("Only managers can view other people's calendars");
-      } else if (!isManager(actor)) memberId = actor.memberId;
-      return db.meetings.list(actor.orgId, { from, to, memberId });
-    },
-    async create(actor, input) {
-      requireWrite(actor);
-      if (!isObj(input)) bad("meeting input required");
-      const t0 = now2();
-      const startAt = time(input.startAt, "startAt");
-      const endAt = time(input.endAt, "endAt");
-      if (endAt < startAt) bad("endAt must not be before startAt");
-      const m = {
-        id: newId("mtg"),
-        orgId: actor.orgId,
-        ownerId: actor.via === "system" ? null : actor.memberId,
-        title: str(input.title, "title", { max: 300 }),
-        startAt,
-        endAt,
-        allDay: input.allDay === void 0 ? false : bool(input.allDay, "allDay"),
-        location: optStr(input.location, "location", 500),
-        url: input.url === void 0 || input.url === null || input.url === "" ? null : url(input.url, "url"),
-        attendeeIds: input.attendeeIds === void 0 ? [] : validAttendees(actor, input.attendeeIds),
-        notes: optStr(input.notes, "notes", 5e3) ?? "",
-        source: "manual",
-        externalId: null,
-        feedId: null,
-        createdAt: t0,
-        updatedAt: t0
-      };
-      db.meetings.insert(m);
-      await audit(ctx, actor, { type: "meeting.created", entity: "meeting", entityId: m.id, summary: `Scheduled "${m.title}"`, after: m, undoable: true });
-      changed(m);
-      return m;
-    },
-    async update(actor, id, patch) {
-      const cur = loadEditable(actor, id);
-      if (!isObj(patch)) bad("patch must be an object");
-      const next = { ...cur };
-      if (patch.title !== void 0) next.title = str(patch.title, "title", { max: 300 });
-      if (patch.startAt !== void 0) next.startAt = time(patch.startAt, "startAt");
-      if (patch.endAt !== void 0) next.endAt = time(patch.endAt, "endAt");
-      if (next.endAt < next.startAt) bad("endAt must not be before startAt");
-      if (patch.allDay !== void 0) next.allDay = bool(patch.allDay, "allDay");
-      if (patch.location !== void 0) next.location = optStr(patch.location, "location", 500);
-      if (patch.url !== void 0) next.url = patch.url === null || patch.url === "" ? null : url(patch.url, "url");
-      if (patch.attendeeIds !== void 0) next.attendeeIds = validAttendees(actor, patch.attendeeIds);
-      if (patch.notes !== void 0) next.notes = optStr(patch.notes, "notes", 5e3) ?? "";
-      next.updatedAt = now2();
-      db.meetings.save(next);
-      await audit(ctx, actor, { type: "meeting.updated", entity: "meeting", entityId: next.id, summary: `Updated "${next.title}"`, before: cur, after: next, undoable: true });
-      changed(next);
-      return next;
-    },
-    async remove(actor, id) {
-      const m = loadEditable(actor, id);
-      db.meetings.delete(actor.orgId, m.id);
-      ctx.internal.cancelMeeting(actor.orgId, m.id);
-      await audit(ctx, actor, { type: "meeting.deleted", entity: "meeting", entityId: m.id, summary: `Cancelled "${m.title}"`, before: m, undoable: true });
-      ctx.internal.invalidateBriefings(actor.orgId);
-    },
-    async listFeeds(actor) {
-      return db.feeds.list(actor.orgId, isAdmin(actor) ? void 0 : actor.memberId);
-    },
-    async addFeed(actor, input) {
-      requireWrite(actor);
-      if (actor.kind !== "human") forbidden("Only people can add calendar feeds");
-      if (!isObj(input)) bad("feed input required");
-      const name = str(input.name, "name", { max: 100 });
-      let raw = str(input.url, "url", { max: 2048 });
-      if (raw.startsWith("webcal://")) raw = "https://" + raw.slice("webcal://".length);
-      const url3 = url(raw, "url");
-      if (db.feeds.list(actor.orgId, actor.memberId).length >= 20) bad("Too many calendar feeds (max 20)");
-      const feed = { id: newId("feed"), orgId: actor.orgId, memberId: actor.memberId, name, urlMasked: maskUrl(url3), lastSyncAt: null, lastError: null, createdAt: now2() };
-      db.feeds.insert(feed, url3);
-      ctx.internal.scheduleFeedSync(actor.orgId, feed.id, now2());
-      return feed;
-    },
-    async removeFeed(actor, id) {
-      requireWrite(actor);
-      const f = typeof id === "string" ? db.feeds.get(actor.orgId, id) : null;
-      if (!f) notFound("Calendar feed not found");
-      if (f.memberId !== actor.memberId && !isAdmin(actor)) forbidden();
-      for (const m of db.meetings.listByFeed(actor.orgId, f.id)) ctx.internal.cancelMeeting(actor.orgId, m.id);
-      db.meetings.deleteByFeed(actor.orgId, f.id);
-      db.feeds.delete(actor.orgId, f.id);
-      db.jobs.cancel(actor.orgId, [`calendar.sync:${f.id}`], [], now2());
-      ctx.internal.invalidateBriefings(actor.orgId);
-    },
-    async syncFeed(actor, id) {
-      requireWrite(actor);
-      const f = typeof id === "string" ? db.feeds.get(actor.orgId, id) : null;
-      if (!f) notFound("Calendar feed not found");
-      if (f.memberId !== actor.memberId && !isAdmin(actor)) forbidden();
-      return syncFeed(actor.orgId, f.id);
-    }
-  };
-  return { service, syncFeed, audience };
-}
-
-// packages/core/src/services/notifications.ts
-var KINDS = /* @__PURE__ */ new Set(["task_assigned", "task_due_soon", "task_due_now", "task_overdue", "task_escalated", "task_comment", "task_mention", "task_completed", "agent_stale", "meeting_soon", "intake_new", "digest", "system"]);
-function createNotificationService(ctx) {
-  const { db } = ctx;
-  const now2 = () => ctx.clock();
-  function externalChannels(m) {
-    const st = safeStatus();
-    return {
-      push: st.push && m.prefs.notifyPush && db.push.list(m.orgId, m.id).length > 0,
-      whatsapp: st.whatsapp && m.prefs.notifyWhatsapp && !!m.phone,
-      email: st.email && m.prefs.notifyEmail && !!m.email
-    };
-  }
-  function safeStatus() {
-    try {
-      return ctx.outbound.status();
-    } catch {
-      return { whatsapp: false, email: false, push: false };
-    }
-  }
-  function linkUrl(link) {
-    return link ?? void 0;
-  }
-  async function deliver(orgId, notificationId) {
-    const n = db.notifications.get(orgId, notificationId);
-    if (!n) return;
-    const m = db.members.get(orgId, n.memberId);
-    if (!m || !m.active || m.kind !== "human") return;
-    const ch = externalChannels(m);
-    if (ch.push) {
-      for (const sub of db.push.list(orgId, m.id)) {
-        try {
-          const res = await ctx.outbound.push({ endpoint: sub.endpoint, keys: sub.keys }, { title: n.title, body: n.body, url: linkUrl(n.link), tag: n.taskId ?? n.meetingId ?? n.kind });
-          if (res === "gone") db.push.delete(orgId, m.id, sub.endpoint);
-        } catch (err) {
-          ctx.log.warn("[notify] push failed", err);
-        }
-      }
-    }
-    if (ch.whatsapp) {
-      try {
-        await ctx.outbound.whatsapp(m.phone, `*${n.title}*
-${n.body}`);
-      } catch (err) {
-        ctx.log.warn("[notify] whatsapp failed", err);
-      }
-    }
-    if (ch.email) {
-      try {
-        await ctx.outbound.email(m.email, n.title, `${n.body}${n.link ? `
-
-Open: ${n.link}` : ""}
-
-\u2014 Company Brain`);
-      } catch (err) {
-        ctx.log.warn("[notify] email failed", err);
-      }
-    }
-  }
-  const service = {
-    async list(actor, opts = {}) {
-      return db.notifications.list(actor.orgId, actor.memberId, {
-        unreadOnly: !!opts.unreadOnly,
-        limit: opts.limit !== void 0 ? int(opts.limit, "limit", 1, 500) : 50
-      });
-    },
-    async unreadCount(actor) {
-      return db.notifications.unreadCount(actor.orgId, actor.memberId);
-    },
-    async markRead(actor, ids2) {
-      if (ids2 !== "all") {
-        if (!Array.isArray(ids2)) bad("ids must be an array or 'all'");
-        if (ids2.length > 1e3) bad("Too many ids");
-        ids2 = ids2.filter((x) => typeof x === "string");
-      }
-      db.notifications.markRead(actor.orgId, actor.memberId, ids2, now2());
-      ctx.internal.invalidateBriefings(actor.orgId);
-    },
-    async subscribePush(actor, sub, userAgent) {
-      if (actor.kind !== "human") forbidden("Only people can subscribe to push notifications");
-      if (!isObj(sub) || !isObj(sub.keys)) bad("Invalid push subscription");
-      const endpoint = url(sub.endpoint, "endpoint", { httpsOnly: true });
-      const p256dh = str(sub.keys.p256dh, "keys.p256dh", { max: 200 });
-      const auth = str(sub.keys.auth, "keys.auth", { max: 100 });
-      db.push.upsert(actor.orgId, actor.memberId, { endpoint, keys: { p256dh, auth } }, typeof userAgent === "string" ? userAgent.slice(0, 300) : null, now2());
-    },
-    async unsubscribePush(actor, endpoint) {
-      if (typeof endpoint !== "string" || !endpoint) bad("endpoint is required");
-      db.push.delete(actor.orgId, actor.memberId, endpoint);
-    },
-    vapidPublicKey() {
-      return ctx.vapidPublicKey ?? null;
-    },
-    async notify(orgId, memberId, input) {
-      const m = db.members.get(orgId, memberId);
-      if (!m) notFound("Member not found");
-      if (!KINDS.has(input.kind)) throw new AppError("bad_request", `Unknown notification kind ${input.kind}`);
-      const t0 = now2();
-      const n = {
-        id: newId("ntf"),
-        orgId,
-        memberId,
-        kind: input.kind,
-        title: String(input.title ?? "").slice(0, 300),
-        body: String(input.body ?? "").slice(0, 4e3),
-        taskId: input.taskId ?? null,
-        meetingId: input.meetingId ?? null,
-        link: input.link ?? null,
-        urgent: !!input.urgent,
-        readAt: null,
-        createdAt: t0
-      };
-      db.notifications.insert(n);
-      publish(ctx, orgId, { type: "notification", notification: n }, [memberId]);
-      ctx.internal.invalidateBriefings(orgId);
-      if (!m.active || m.kind !== "human") return n;
-      const ch = externalChannels(m);
-      if (ch.push || ch.whatsapp || ch.email) {
-        const runAt = !n.urgent && inQuietHours(m, t0) ? quietEndsAt(m, t0) : t0;
-        db.jobs.schedule(orgId, "notification.deliver", `notification.deliver:${n.id}`, runAt, { notificationId: n.id }, t0);
-      }
-      return n;
-    },
-    async sendTest(actor, channel) {
-      const c = oneOf(channel, "channel", ["whatsapp", "email", "push"]);
-      const m = db.members.get(actor.orgId, actor.memberId);
-      if (!m || m.kind !== "human") return { ok: false, error: "Only people can test notification channels" };
-      const st = safeStatus();
-      const text = `This is a test message from Company Brain. If you can read this, ${c === "whatsapp" ? "WhatsApp" : c === "email" ? "email" : "push"} notifications work.`;
-      try {
-        if (c === "whatsapp") {
-          if (!st.whatsapp) return { ok: false, error: "WhatsApp is not configured on this server" };
-          if (!m.phone) return { ok: false, error: "Add your phone number in your profile first" };
-          return await ctx.outbound.whatsapp(m.phone, text) ? { ok: true } : { ok: false, error: "WhatsApp send failed \u2014 check the integration status" };
-        }
-        if (c === "email") {
-          if (!st.email) return { ok: false, error: "Outbound email (SMTP) is not configured on this server" };
-          if (!m.email) return { ok: false, error: "Add your email address in your profile first" };
-          return await ctx.outbound.email(m.email, "Company Brain test message", text) ? { ok: true } : { ok: false, error: "Email send failed \u2014 check the SMTP settings" };
-        }
-        if (!st.push) return { ok: false, error: "Web Push is not configured on this server" };
-        const subs = db.push.list(actor.orgId, m.id);
-        if (!subs.length) return { ok: false, error: "No push subscriptions \u2014 enable notifications in this browser first" };
-        let sent = 0;
-        for (const s2 of subs) {
-          const res = await ctx.outbound.push({ endpoint: s2.endpoint, keys: s2.keys }, { title: "Company Brain", body: text, url: "/", tag: "test" });
-          if (res === "gone") db.push.delete(actor.orgId, m.id, s2.endpoint);
-          if (res === "sent") sent++;
-        }
-        return sent ? { ok: true } : { ok: false, error: "Push delivery failed \u2014 try re-enabling notifications in this browser" };
-      } catch (err) {
-        ctx.log.warn("[notify] sendTest failed", err);
-        return { ok: false, error: err instanceof Error ? err.message : "Send failed" };
-      }
-    }
-  };
-  return { service, deliver };
-}
-
-// packages/core/src/services/projects.ts
-var STATUSES2 = ["active", "paused", "done", "archived"];
-function createProjectService(ctx) {
-  const { db } = ctx;
-  const now2 = () => ctx.clock();
-  function summaries(orgId, projects, tz) {
-    const t0 = now2();
-    const counts = db.projects.counts(orgId, projects.map((p) => p.id), t0, startOfLocalDay(t0, tz, 7));
-    return projects.map((p) => {
-      const c = counts.get(p.id) ?? { total: 0, open: 0, done: 0, cancelled: 0, overdue: 0, dueThisWeek: 0 };
-      const denom = c.total - c.cancelled;
-      return { ...p, counts: { total: c.total, open: c.open, done: c.done, overdue: c.overdue, dueThisWeek: c.dueThisWeek }, progress: denom > 0 ? Math.round(c.done / denom * 1e3) / 1e3 : 0 };
-    });
-  }
-  function audience(p) {
-    if (!p.memberIds.length) return void 0;
-    const ids2 = /* @__PURE__ */ new Set([...p.memberIds, p.createdBy, ...p.leadId ? [p.leadId] : []]);
-    for (const m of db.members.list(p.orgId)) if (m.kind === "agent" || ["owner", "admin", "manager"].includes(m.role)) ids2.add(m.id);
-    return [...ids2];
-  }
-  function load(actor, id) {
-    const p = typeof id === "string" ? db.projects.get(actor.orgId, id, visibility(actor)) : null;
-    if (!p) notFound("Project not found");
-    return p;
-  }
-  function validMember(actor, id, field) {
-    if (id === null || id === void 0) return null;
-    const mid = ref(id, field);
-    if (!db.members.get(actor.orgId, mid)) bad(`${field} refers to an unknown member`);
-    return mid;
-  }
-  function validMembers(actor, ids2) {
-    const list = refs(ids2, "memberIds", 200);
-    if (db.members.getMany(actor.orgId, list).length !== list.length) bad("memberIds contains an unknown member");
-    return list;
-  }
-  const summary = (actor, p) => summaries(actor.orgId, [p], actorTz(ctx, actor))[0];
-  function changed(p) {
-    publish(ctx, p.orgId, { type: "project.upserted", project: p }, audience(p));
-    ctx.internal.invalidateBriefings(p.orgId);
-  }
-  const service = {
-    async list(actor, opts = {}) {
-      const ps = db.projects.list(actor.orgId, { includeArchived: !!opts.includeArchived, visibility: visibility(actor) });
-      return summaries(actor.orgId, ps, actorTz(ctx, actor));
-    },
-    async get(actor, id) {
-      return summary(actor, load(actor, id));
-    },
-    async create(actor, input) {
-      requireWrite(actor);
-      requireRole(actor, "manager", "Managers and above can create projects");
-      if (!isObj(input)) bad("project input required");
-      const t0 = now2();
-      const id = newId("proj");
-      const p = {
-        id,
-        orgId: actor.orgId,
-        name: str(input.name, "name", { max: 100 }),
-        emoji: input.emoji === void 0 || input.emoji === null || input.emoji === "" ? "\u{1F4C1}" : str(input.emoji, "emoji", { max: 16 }),
-        color: input.color === void 0 ? colorFor(id) : color(input.color),
-        description: optStr(input.description, "description", 5e3) ?? "",
-        status: "active",
-        leadId: validMember(actor, input.leadId, "leadId"),
-        memberIds: input.memberIds === void 0 ? [] : validMembers(actor, input.memberIds),
-        dueAt: optTime(input.dueAt, "dueAt"),
-        createdBy: actor.memberId,
-        createdAt: t0,
-        updatedAt: t0
-      };
-      db.projects.insert(p);
-      await audit(ctx, actor, { type: "project.created", entity: "project", entityId: p.id, summary: `Created project ${p.name}`, after: p, undoable: true });
-      changed(p);
-      return summary(actor, p);
-    },
-    async update(actor, id, patch) {
-      requireWrite(actor);
-      const cur = load(actor, id);
-      if (!isManager(actor) && cur.leadId !== actor.memberId) forbidden("Only managers or the project lead can edit this project");
-      if (!isObj(patch)) bad("patch must be an object");
-      const next = { ...cur, memberIds: [...cur.memberIds] };
-      if (patch.name !== void 0) next.name = str(patch.name, "name", { max: 100 });
-      if (patch.emoji !== void 0) next.emoji = str(patch.emoji, "emoji", { max: 16 });
-      if (patch.color !== void 0) next.color = color(patch.color);
-      if (patch.description !== void 0) next.description = optStr(patch.description, "description", 5e3) ?? "";
-      if (patch.status !== void 0) next.status = oneOf(patch.status, "status", STATUSES2);
-      if (patch.leadId !== void 0) next.leadId = validMember(actor, patch.leadId, "leadId");
-      if (patch.memberIds !== void 0) next.memberIds = validMembers(actor, patch.memberIds);
-      if (patch.dueAt !== void 0) next.dueAt = optTime(patch.dueAt, "dueAt");
-      next.updatedAt = now2();
-      db.projects.save(next);
-      await audit(ctx, actor, { type: "project.updated", entity: "project", entityId: next.id, summary: `Updated project ${next.name}`, before: cur, after: next, undoable: true });
-      changed(next);
-      return summary(actor, next);
-    },
-    async remove(actor, id) {
-      requireWrite(actor);
-      requireRole(actor, "manager", "Managers and above can delete projects");
-      const p = load(actor, id);
-      const taskIds = db.projects.taskIds(actor.orgId, p.id);
-      db.projects.delete(actor.orgId, p.id);
-      await audit(ctx, actor, { type: "project.deleted", entity: "project", entityId: p.id, summary: `Deleted project ${p.name}`, before: { ...p, taskIds }, undoable: true });
-      for (const tid of taskIds) {
-        const t = db.tasks.get(actor.orgId, tid);
-        if (t) ctx.internal.publishTask(t);
-      }
-      ctx.internal.invalidateBriefings(actor.orgId);
-    }
-  };
-  return { service, summaries, audience };
-}
-var STAGES = ["new", "contacted", "meeting", "proposal", "won", "lost"];
-var CHANNELS = ["manual", "quick_add", "voice", "whatsapp", "email", "mcp", "api", "calendar", "recurring", "import"];
-function createLeadService(ctx) {
-  const { db } = ctx;
-  const deny = (a) => {
-    if (a.role === "guest") forbidden("Guests cannot access the sales pipeline");
-  };
-  function apply(actor, base, p) {
-    const l = { ...base };
-    if (p.name !== void 0) l.name = str(p.name, "name", { max: 200 });
-    if (p.company !== void 0) l.company = optStr(p.company, "company", 200) ?? "";
-    if (p.email !== void 0) l.email = p.email === "" || p.email === null ? "" : email(p.email);
-    if (p.phone !== void 0) l.phone = phone(p.phone) ?? "";
-    if (p.stage !== void 0) l.stage = oneOf(p.stage, "stage", STAGES);
-    if (p.value !== void 0) l.value = p.value === null ? null : num2(p.value, "value", 0, 1e12);
-    if (p.notes !== void 0) l.notes = optStr(p.notes, "notes", 2e4) ?? "";
-    if (p.source !== void 0) l.source = oneOf(p.source, "source", CHANNELS);
-    if (p.ownerId !== void 0) {
-      l.ownerId = p.ownerId === null ? null : ref(p.ownerId, "ownerId");
-      if (l.ownerId && !db.members.get(actor.orgId, l.ownerId)) bad("ownerId refers to an unknown member");
-    }
-    return l;
-  }
-  function load(actor, id) {
-    const l = typeof id === "string" ? db.leads.get(actor.orgId, id) : null;
-    if (!l) notFound("Lead not found");
-    return l;
-  }
-  return {
-    async list(actor) {
-      deny(actor);
-      return db.leads.list(actor.orgId);
-    },
-    async create(actor, input) {
-      requireWrite(actor);
-      deny(actor);
-      if (!isObj(input)) bad("lead input required");
-      const t0 = ctx.clock();
-      const blank = {
-        id: newId("lead"),
-        orgId: actor.orgId,
-        name: "",
-        company: "",
-        email: "",
-        phone: "",
-        stage: "new",
-        value: null,
-        notes: "",
-        ownerId: actor.kind === "human" && actor.via !== "system" ? actor.memberId : null,
-        source: actor.via === "api_key" ? "api" : "manual",
-        createdBy: actor.memberId,
-        createdAt: t0,
-        updatedAt: t0
-      };
-      const l = apply(actor, blank, { ...input, name: input.name });
-      db.leads.insert(l);
-      await audit(ctx, actor, { type: "lead.created", entity: "lead", entityId: l.id, summary: `Added lead ${l.name}`, after: l, undoable: true });
-      return l;
-    },
-    async update(actor, id, patch) {
-      requireWrite(actor);
-      deny(actor);
-      if (!isObj(patch)) bad("patch must be an object");
-      const cur = load(actor, id);
-      const next = { ...apply(actor, cur, patch), updatedAt: ctx.clock() };
-      db.leads.save(next);
-      await audit(ctx, actor, { type: "lead.updated", entity: "lead", entityId: next.id, summary: `Updated lead ${next.name}`, before: cur, after: next, undoable: true });
-      return next;
-    },
-    async remove(actor, id) {
-      requireWrite(actor);
-      deny(actor);
-      const l = load(actor, id);
-      db.leads.delete(actor.orgId, l.id);
-      await audit(ctx, actor, { type: "lead.deleted", entity: "lead", entityId: l.id, summary: `Deleted lead ${l.name}`, before: l, undoable: true });
-    }
-  };
-}
-
-// packages/core/src/services/reports.ts
-var round = (n, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
-function createReportService(ctx) {
-  const { db } = ctx;
-  return {
-    async get(actor, windowDays) {
-      const days = windowDays === void 0 || windowDays === null ? 30 : int(windowDays, "days", 1, 365);
-      const t0 = ctx.clock();
-      const org = db.orgs.get(actor.orgId);
-      const tz = safeTz(org?.timezone);
-      const start = startOfLocalDay(t0, tz, -(days - 1));
-      const vis = visibility(actor);
-      const created = db.tasks.query(actor.orgId, { visibility: vis, createdAfter: start, limit: 5e3 });
-      const completed = db.tasks.query(actor.orgId, { visibility: vis, statuses: ["done"], completedAfter: start, limit: 5e3 });
-      const openNow = db.tasks.query(actor.orgId, { visibility: vis, open: true, limit: 5e3 });
-      const overdueNow = openNow.filter((t) => t.dueAt !== null && t.dueAt < t0);
-      const onTime = (ts2) => {
-        const withDue = ts2.filter((t) => t.dueAt !== null && t.completedAt !== null);
-        return withDue.length ? round(withDue.filter((t) => t.completedAt <= t.dueAt).length / withDue.length, 3) : 1;
-      };
-      const cycles = completed.filter((t) => t.completedAt !== null).map((t) => (t.completedAt - t.createdAt) / 36e5);
-      const daily = [];
-      const idx = /* @__PURE__ */ new Map();
-      for (let i = 0; i < days; i++) {
-        const key = localDateKey(startOfLocalDay(start, tz, i), tz);
-        const row = { date: key, created: 0, completed: 0 };
-        daily.push(row);
-        idx.set(key, row);
-      }
-      for (const t of created) {
-        const r = idx.get(localDateKey(t.createdAt, tz));
-        if (r) r.created++;
-      }
-      for (const t of completed) {
-        const r = idx.get(localDateKey(t.completedAt, tz));
-        if (r) r.completed++;
-      }
-      const members = db.members.list(actor.orgId);
-      const byMember = members.map((m) => {
-        const done = completed.filter((t) => t.assigneeIds.includes(m.id));
-        return { memberId: m.id, completed: done.length, overdue: overdueNow.filter((t) => t.assigneeIds.includes(m.id)).length, onTimeRate: onTime(done) };
-      });
-      const projects = /* @__PURE__ */ new Map();
-      const bucket = (id) => {
-        if (!projects.has(id)) projects.set(id, { projectId: id, open: 0, completed: 0 });
-        return projects.get(id);
-      };
-      for (const t of openNow) bucket(t.projectId).open++;
-      for (const t of completed) bucket(t.projectId).completed++;
-      const kind = new Map(db.members.list(actor.orgId, { includeInactive: true }).map((m) => [m.id, m.kind]));
-      let humans = 0;
-      let agents = 0;
-      for (const t of completed) {
-        if (t.completedBy && kind.get(t.completedBy) === "agent") agents++;
-        else humans++;
-      }
-      return {
-        windowDays: days,
-        generatedAt: t0,
-        totals: {
-          created: created.length,
-          completed: completed.length,
-          overdueNow: overdueNow.length,
-          onTimeRate: onTime(completed),
-          avgCycleHours: cycles.length ? round(cycles.reduce((a, b) => a + b, 0) / cycles.length) : 0
-        },
-        daily,
-        byMember,
-        byProject: [...projects.values()],
-        humansVsAgents: { humans, agents }
-      };
-    }
-  };
-}
-function createSearchService(ctx) {
-  const { db } = ctx;
-  return {
-    async search(actor, q, limit) {
-      const query = typeof q === "string" ? q.trim().slice(0, 200) : "";
-      const n = limit === void 0 ? 10 : int(limit, "limit", 1, 50);
-      if (!query) return { tasks: [], projects: [], members: [] };
-      const lc = query.toLowerCase();
-      const tasks = ctx.internal.views(actor.orgId, db.tasks.query(actor.orgId, { visibility: visibility(actor), search: query, order: "updated", limit: n }), actorTz(ctx, actor));
-      const projects = db.projects.list(actor.orgId, { visibility: visibility(actor), includeArchived: true }).filter((p) => p.name.toLowerCase().includes(lc) || p.description.toLowerCase().includes(lc)).slice(0, n);
-      const members = db.members.list(actor.orgId).filter((m) => m.name.toLowerCase().includes(lc) || (m.email ?? "").toLowerCase().includes(lc) || (m.title ?? "").toLowerCase().includes(lc)).slice(0, n);
-      return { tasks, projects, members };
-    }
-  };
-}
-
-// packages/core/src/index.ts
-var consoleLog = {
-  info: (...a) => console.error("[info]", ...a),
-  warn: (...a) => console.error("[warn]", ...a),
-  error: (...a) => console.error("[error]", ...a)
-};
-function createCore(opts) {
-  if (!opts?.db) throw new Error("createCore: db is required");
-  const log2 = opts.log ?? consoleLog;
-  const ctx = {
-    db: opts.db,
-    clock: opts.clock ?? Date.now,
-    log: log2,
-    outbound: opts.outbound ?? noopOutbound,
-    llm: opts.llm ?? null,
-    calendar: opts.calendar ?? noCalendar,
-    tts: opts.tts ?? null,
-    vapidPublicKey: opts.vapidPublicKey ?? null,
-    live: createLiveBus(log2),
-    onAudit: opts.onAudit
-  };
-  const tasks = createTaskService(ctx);
-  const notifications = createNotificationService(ctx);
-  const meetings = createMeetingService(ctx);
-  const projects = createProjectService(ctx);
-  const briefing = createBriefingService(ctx);
-  const services = {
-    auth: createAuthService(ctx),
-    members: createMemberService(ctx),
-    apiKeys: createApiKeyService(ctx),
-    org: createOrgService(ctx),
-    tasks: tasks.service,
-    projects: projects.service,
-    meetings: meetings.service,
-    notifications: notifications.service,
-    inbox: createInboxService(ctx, tasks),
-    briefing: briefing.service,
-    reports: createReportService(ctx),
-    audit: createAuditService(ctx),
-    leads: createLeadService(ctx),
-    search: createSearchService(ctx),
-    live: ctx.live
-  };
-  ctx.services = services;
-  const reminders2 = createReminders(ctx, tasks);
-  const internal = {
-    scheduleTask: reminders2.scheduleTask,
-    cancelTask: reminders2.cancelTask,
-    scheduleMeeting: reminders2.scheduleMeeting,
-    cancelMeeting: reminders2.cancelMeeting,
-    scheduleDigest: (m) => reminders2.scheduleDigest(m),
-    ensurePeriodic: reminders2.ensurePeriodic,
-    scheduleFeedSync: reminders2.scheduleFeedSync,
-    views: tasks.views,
-    publishTask: tasks.publishTask,
-    publishTaskDeleted: tasks.publishTaskDeleted,
-    spawnNext: tasks.spawnNext,
-    syncFeed: meetings.syncFeed,
-    deliver: notifications.deliver,
-    composeBriefing: briefing.compose,
-    invalidateBriefings: briefing.invalidate
-  };
-  ctx.internal = internal;
-  const scheduler = createScheduler(ctx, reminders2.handlers);
-  for (const org of ctx.db.orgs.list()) {
-    try {
-      reminders2.ensurePeriodic(org.id);
-    } catch (err) {
-      log2.warn("[core] could not ensure periodic jobs for org", org.id, err);
-    }
-  }
-  return { services, scheduler, tts: ctx.tts };
-}
-
-// packages/game/src/rules.ts
-var BASE_XP = { none: 10, low: 15, medium: 25, high: 40, urgent: 60 };
-var ON_TIME_BONUS_PCT = 0.5;
-var RESCUE_BONUS_XP = 10;
-var SUBTASK_XP = 3;
-var SUBTASK_MAX_PER_TASK = 10;
-var SUBTASK_MAX_PER_DAY = 30;
-var INTEL_XP = 2;
-var INTEL_MAX_PER_DAY = 10;
-var QUICK_SELF_COMPLETE_MS = 2 * 60 * 1e3;
-var QUICK_SELF_COMPLETE_PCT = 0.2;
-var DAILY_MISSION_XP_CAP = 1e3;
-var REVOKE_WINDOW_MS = 24 * 60 * 60 * 1e3;
-var STREAK_XP_PER_DAY = 5;
-var STREAK_XP_MAX = 50;
-var SQUAD_BONUS_XP = 100;
-var SQUAD_BONUS_MIN_TASKS = 3;
-var XP_PER_COIN = 10;
-var BOOST_MULTIPLIER = 1.5;
-var CRATE_EVERY_MISSIONS = 5;
-var EPIC_CRATE_EVERY_STREAK_DAYS = 7;
-var MAX_LEVEL = 100;
-function xpForLevel(n) {
-  const k = Math.max(0, Math.min(MAX_LEVEL, Math.floor(n)) - 1);
-  return Math.round(50 * Math.pow(k, 1.6) + 50 * k);
-}
-function levelForXp(xp) {
-  let lvl = 1;
-  while (lvl < MAX_LEVEL && xpForLevel(lvl + 1) <= xp) lvl++;
-  return lvl;
-}
-var RANKS = [
-  { id: "recruit", name: "Recruit", minLevel: 1, insignia: { kind: "chevron", count: 0, color: "#9ca3af" } },
-  { id: "private", name: "Private", minLevel: 3, insignia: { kind: "chevron", count: 1, color: "#a8a29e" } },
-  { id: "corporal", name: "Corporal", minLevel: 6, insignia: { kind: "chevron", count: 2, color: "#84cc16" } },
-  { id: "sergeant", name: "Sergeant", minLevel: 10, insignia: { kind: "chevron", count: 3, color: "#22c55e" } },
-  { id: "staff_sergeant", name: "Staff Sergeant", minLevel: 15, insignia: { kind: "chevron", count: 4, color: "#14b8a6" } },
-  { id: "lieutenant", name: "Lieutenant", minLevel: 21, insignia: { kind: "bar", count: 1, color: "#3b82f6" } },
-  { id: "captain", name: "Captain", minLevel: 28, insignia: { kind: "bar", count: 2, color: "#6366f1" } },
-  { id: "major", name: "Major", minLevel: 36, insignia: { kind: "star", count: 1, color: "#a855f7" } },
-  { id: "colonel", name: "Colonel", minLevel: 45, insignia: { kind: "star", count: 2, color: "#ec4899" } },
-  { id: "general", name: "General", minLevel: 60, insignia: { kind: "star", count: 3, color: "#f59e0b" } },
-  { id: "legend", name: "Legend", minLevel: 80, insignia: { kind: "crown", count: 1, color: "#facc15" } }
-];
-function rankIndexForLevel(level) {
-  let idx = 0;
-  for (let i = 0; i < RANKS.length; i++) if (level >= RANKS[i].minLevel) idx = i;
-  return idx;
-}
-function rankForLevel(level) {
-  return RANKS[rankIndexForLevel(level)];
-}
-var LEGENDARY_RANK_INDEX = RANKS.findIndex((r) => r.id === "lieutenant");
-var A = (id, name, description, icon, tier, metric, target, secret = false) => ({ id, name, description, icon, tier, secret, target, metric });
-var ACHIEVEMENTS = [
-  A("first_blood", "First Blood", "Complete your first mission.", "\u{1F3AF}", "bronze", "missions", 1),
-  A("veteran_25", "Veteran", "Complete 25 missions.", "\u{1F396}\uFE0F", "silver", "missions", 25),
-  A("centurion", "Centurion", "Complete 100 missions.", "\u{1F4AF}", "gold", "missions", 100),
-  A("warlord_500", "Warlord", "Complete 500 missions.", "\u2694\uFE0F", "legendary", "missions", 500),
-  A("sharpshooter_10", "Sharpshooter", "Complete 10 missions with a deadline on time, in a row.", "\u{1F3AF}", "silver", "ontime_run_best", 10),
-  A("precision_50", "Precision Strike", "Complete 50 missions on time.", "\u23F1\uFE0F", "gold", "on_time", 50),
-  A("rescue_specialist", "Rescue Specialist", "Clear 10 overdue missions.", "\u{1F691}", "silver", "rescued", 10),
-  A("comeback_kid", "Comeback Kid", "Clear a mission that was overdue by a week or more.", "\u{1F525}", "silver", "comeback", 1, true),
-  A("early_bird", "Early Bird", "Complete a mission before 8 am.", "\u{1F305}", "bronze", "early_bird", 1),
-  A("night_owl", "Night Owl", "Complete a mission after 10 pm.", "\u{1F989}", "bronze", "night_owl", 1),
-  A("ghost_protocol", "Ghost Protocol", "Complete a mission between 3 am and 5 am.", "\u{1F47B}", "gold", "ghost", 1, true),
-  A("weekend_warrior", "Weekend Warrior", "Complete a mission on a Saturday or Sunday.", "\u{1F3D5}\uFE0F", "bronze", "weekend", 1, true),
-  A("clutch_play", "Clutch Play", "Complete a mission in the final 10 minutes before its deadline.", "\u26A1", "bronze", "clutch", 1, true),
-  A("clean_sweep", "Clean Sweep", "Clear every one of today's missions (at least 3).", "\u{1F9F9}", "silver", "clean_sweep", 1),
-  A("squad_player", "Squad Player", "Complete 10 missions shared with other operatives.", "\u{1F91D}", "silver", "squad_missions", 10),
-  A("operation_commander", "Operation Commander", "Lead an operation all the way to 100%.", "\u{1F5FA}\uFE0F", "gold", "ops_commanded", 1),
-  A("squad_goals", "Squad Goals", "Earn 5 squad bonuses.", "\u{1F6E1}\uFE0F", "gold", "squad_bonuses", 5),
-  A("intel_officer", "Intel Officer", "Create 50 missions.", "\u{1F4E1}", "silver", "created", 50),
-  A("ai_whisperer", "AI Whisperer", "Assign 10 missions to AI operatives that they complete.", "\u{1F916}", "silver", "ai_whisperer", 10),
-  A("high_value_target", "High-Value Target", "Complete 10 urgent missions.", "\u{1F6A8}", "silver", "urgent", 10),
-  A("objective_master", "Objective Master", "Check off 50 objectives.", "\u2705", "silver", "objectives", 50),
-  A("streak_3", "On a Roll", "Reach a 3-day streak.", "\u{1F525}", "bronze", "streak_best", 3),
-  A("streak_7", "Unstoppable", "Reach a 7-day streak.", "\u{1F525}", "silver", "streak_best", 7),
-  A("streak_30", "Iron Will", "Reach a 30-day streak.", "\u{1F3D4}\uFE0F", "gold", "streak_best", 30),
-  A("level_10", "Field Ready", "Reach level 10.", "\u2B50", "bronze", "level", 10),
-  A("level_25", "Seasoned", "Reach level 25.", "\u{1F31F}", "silver", "level", 25),
-  A("level_50", "Elite", "Reach level 50.", "\u{1F4AB}", "gold", "level", 50),
-  A("legend", "Legend", "Reach the rank of Legend.", "\u{1F451}", "legendary", "level", 80),
-  A("challenge_hunter", "Challenge Hunter", "Complete 10 daily challenges.", "\u{1F3F9}", "silver", "challenges", 10),
-  A("daily_triple", "Hat Trick", "Complete all 3 daily challenges in one day.", "\u{1F3A9}", "gold", "daily_triple", 1),
-  A("crate_collector", "Crate Collector", "Open 10 crates.", "\u{1F4E6}", "bronze", "crates_opened", 10)
-];
-var ACHIEVEMENT_XP = { bronze: 25, silver: 75, gold: 150, legendary: 500 };
-var ACHIEVEMENT_CRATE = {
-  bronze: null,
-  silver: "common",
-  gold: "rare",
-  legendary: "legendary"
-};
-var COSMETICS = [
-  { kind: "title", id: "rookie-operator", name: "Rookie Operator", rarity: "common" },
-  { kind: "title", id: "inbox-sniper", name: "Inbox Sniper", rarity: "common" },
-  { kind: "title", id: "night-raider", name: "Night Raider", rarity: "rare" },
-  { kind: "title", id: "field-medic", name: "Field Medic", rarity: "rare" },
-  { kind: "title", id: "deadline-slayer", name: "Deadline Slayer", rarity: "epic" },
-  { kind: "title", id: "shadow-ops", name: "Shadow Ops", rarity: "epic" },
-  { kind: "title", id: "ghost-protocol", name: "Ghost Protocol", rarity: "legendary" },
-  { kind: "frame", id: "olive-drab", name: "Olive Drab", rarity: "common" },
-  { kind: "frame", id: "desert-storm", name: "Desert Storm", rarity: "common" },
-  { kind: "frame", id: "arctic", name: "Arctic", rarity: "rare" },
-  { kind: "frame", id: "urban-grey", name: "Urban Grey", rarity: "rare" },
-  { kind: "frame", id: "neon-grid", name: "Neon Grid", rarity: "epic" },
-  { kind: "frame", id: "gold-camo", name: "Gold Camo", rarity: "legendary" },
-  { kind: "emote", id: "salute", name: "Salute", rarity: "common" },
-  { kind: "emote", id: "thumbs-up", name: "Thumbs Up", rarity: "common" },
-  { kind: "emote", id: "mic-drop", name: "Mic Drop", rarity: "rare" },
-  { kind: "emote", id: "victory-dance", name: "Victory Dance", rarity: "epic" },
-  { kind: "emote", id: "airstrike", name: "Airstrike", rarity: "legendary" }
-];
-var DUPLICATE_COINS = { common: 25, rare: 75, epic: 200, legendary: 500 };
-var LOOT_TABLES = {
-  common: [
-    { weight: 55, kind: "coins", min: 20, max: 50 },
-    { weight: 15, kind: "xp_boost", minutes: 30 },
-    { weight: 30, kind: "cosmetic", rarity: "common" }
-  ],
-  rare: [
-    { weight: 35, kind: "coins", min: 60, max: 120 },
-    { weight: 15, kind: "xp_boost", minutes: 30 },
-    { weight: 35, kind: "cosmetic", rarity: "rare" },
-    { weight: 15, kind: "cosmetic", rarity: "common" }
-  ],
-  epic: [
-    { weight: 25, kind: "coins", min: 150, max: 300 },
-    { weight: 15, kind: "xp_boost", minutes: 60 },
-    { weight: 40, kind: "cosmetic", rarity: "epic" },
-    { weight: 20, kind: "cosmetic", rarity: "rare" }
-  ],
-  legendary: [
-    { weight: 15, kind: "coins", min: 400, max: 800 },
-    { weight: 15, kind: "xp_boost", minutes: 60 },
-    { weight: 50, kind: "cosmetic", rarity: "legendary" },
-    { weight: 20, kind: "cosmetic", rarity: "epic" }
-  ]
-};
-function rollLoot(rarity, rand, owned) {
-  const table = LOOT_TABLES[rarity];
-  const total = table.reduce((s2, e) => s2 + e.weight, 0);
-  let r = rand() * total;
-  let entry = table[table.length - 1];
-  for (const e of table) {
-    if (r < e.weight) {
-      entry = e;
-      break;
-    }
-    r -= e.weight;
-  }
-  if (entry.kind === "coins") {
-    const amount = entry.min + Math.floor(rand() * (entry.max - entry.min + 1));
-    return { kind: "coins", id: "coins", name: `${amount} coins`, rarity, amount };
-  }
-  if (entry.kind === "xp_boost") {
-    return { kind: "xp_boost", id: `boost-${entry.minutes}`, name: `${entry.minutes}-min XP Boost \xD7${BOOST_MULTIPLIER}`, rarity, amount: entry.minutes };
-  }
-  const pool = COSMETICS.filter((c) => c.rarity === entry.rarity);
-  const pick3 = pool[Math.floor(rand() * pool.length)] ?? pool[0];
-  if (owned.has(pick3.id)) {
-    const amount = DUPLICATE_COINS[pick3.rarity];
-    return { kind: "coins", id: "coins", name: `${amount} coins (duplicate ${pick3.name})`, rarity, amount };
-  }
-  return { kind: pick3.kind, id: pick3.id, name: pick3.name, rarity: pick3.rarity };
-}
-var CHALLENGES = [
-  { id: "clear_1", title: "Boots on the ground", description: "Clear any mission.", target: 1, xp: 15, metric: "complete", achievable: (s2) => s2.open >= 1 },
-  { id: "clear_3", title: "Clear 3 missions", description: "Complete three missions today.", target: 3, xp: 30, metric: "complete", achievable: (s2) => s2.open >= 3 },
-  { id: "clear_5", title: "Clear 5 missions", description: "Complete five missions today.", target: 5, xp: 50, metric: "complete", achievable: (s2) => s2.open >= 5 },
-  { id: "high_value", title: "High-value target", description: "Complete a high-priority or urgent mission.", target: 1, xp: 25, metric: "complete_high", achievable: (s2) => s2.highOpen >= 1 },
-  { id: "rescue", title: "Rescue op", description: "Clear a critical (overdue) mission.", target: 1, xp: 30, metric: "complete_overdue", achievable: (s2) => s2.overdueOpen >= 1 },
-  { id: "on_time_2", title: "Right on schedule", description: "Complete 2 missions on time.", target: 2, xp: 30, metric: "complete_on_time", achievable: (s2) => s2.dueFutureOpen >= 2 },
-  { id: "all_objectives", title: "Full debrief", description: "Finish every objective of a mission.", target: 1, xp: 25, metric: "complete_all_objectives", achievable: (s2) => s2.withObjectives >= 1 },
-  { id: "objectives_5", title: "Checklist commando", description: "Check off 5 objectives.", target: 5, xp: 20, metric: "objective", achievable: (s2) => s2.openObjectives >= 5 },
-  { id: "squad_assist", title: "Squad assist", description: "Complete a mission shared with a squadmate.", target: 1, xp: 25, metric: "complete_shared", achievable: (s2) => s2.sharedOpen >= 1 },
-  { id: "before_noon", title: "Morning strike", description: "Clear a mission before noon.", target: 1, xp: 20, metric: "complete_before_noon", achievable: (s2) => s2.open >= 1 },
-  { id: "deploy_3", title: "Deploy 3 new missions", description: "Create three new missions.", target: 3, xp: 15, metric: "create", achievable: () => true }
-];
-var CHALLENGES_PER_DAY = 3;
-
-// packages/game/src/time.ts
-var fmtCache2 = /* @__PURE__ */ new Map();
-function safeTz2(tz) {
-  if (!tz) return "UTC";
-  if (fmtCache2.has(tz)) return tz;
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: tz });
-    return tz;
-  } catch {
-    return "UTC";
-  }
-}
-function fmt(tz) {
-  let f = fmtCache2.get(tz);
-  if (!f) {
-    f = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      hourCycle: "h23",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit"
-    });
-    fmtCache2.set(tz, f);
-  }
-  return f;
-}
-function localParts2(ts2, tz) {
-  const out = {};
-  for (const p of fmt(safeTz2(tz)).formatToParts(new Date(ts2))) {
-    if (p.type !== "literal") out[p.type] = Number(p.value);
-  }
-  return {
-    year: out.year ?? 1970,
-    month: out.month ?? 1,
-    day: out.day ?? 1,
-    hour: (out.hour ?? 0) % 24,
-    minute: out.minute ?? 0,
-    second: out.second ?? 0
-  };
-}
-var pad = (n) => String(n).padStart(2, "0");
-function dayKey(ts2, tz) {
-  const p = localParts2(ts2, tz);
-  return `${p.year}-${pad(p.month)}-${pad(p.day)}`;
-}
-function localHour(ts2, tz) {
-  return localParts2(ts2, tz).hour;
-}
-function parseDay(day) {
-  const [y, m, d] = day.split("-").map(Number);
-  return [y ?? 1970, m ?? 1, d ?? 1];
-}
-function weekdayOf(day) {
-  const [y, m, d] = parseDay(day);
-  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-}
-function addDays2(day, n) {
-  const [y, m, d] = parseDay(day);
-  const t = new Date(Date.UTC(y, m - 1, d + n));
-  return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`;
-}
-function tzOffset2(ts2, tz) {
-  const p = localParts2(ts2, tz);
-  const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
-  return asUtc - Math.floor(ts2 / 1e3) * 1e3;
-}
-function startOfDay(day, tz) {
-  const z2 = safeTz2(tz);
-  const [y, m, d] = parseDay(day);
-  const guess = Date.UTC(y, m - 1, d);
-  let t = guess - tzOffset2(guess, z2);
-  t = guess - tzOffset2(t, z2);
-  return t;
-}
-function isWeekend(day) {
-  const w = weekdayOf(day);
-  return w === 0 || w === 6;
-}
-function onlyWeekendsBetween(from, to) {
-  let d = addDays2(from, 1);
-  let guard = 0;
-  while (d < to && guard++ < 400) {
-    if (!isWeekend(d)) return false;
-    d = addDays2(d, 1);
-  }
-  return guard < 400;
-}
-function mondayOf(day) {
-  const w = weekdayOf(day);
-  return addDays2(day, -((w + 6) % 7));
-}
-function firstOfMonth(day) {
-  return `${day.slice(0, 8)}01`;
-}
-
-// packages/game/src/util.ts
-import { randomBytes as randomBytes5, randomInt } from "node:crypto";
-function newId2(prefix) {
-  return `${prefix}_${randomBytes5(12).toString("base64url")}`;
-}
-function cryptoRandom() {
-  return randomInt(0, 2 ** 32) / 2 ** 32;
-}
-function fnv1a(s2) {
-  let h = 2166136261;
-  for (let i = 0; i < s2.length; i++) {
-    h ^= s2.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-function seededRandom(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = a + 1831565813 >>> 0;
-    let t = a;
-    t = Math.imul(t ^ t >>> 15, t | 1);
-    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-function systemActor2(orgId) {
-  return { orgId, memberId: SYSTEM_MEMBER_ID, role: "owner", kind: "human", via: "system" };
-}
-function toInfo(m) {
-  return { id: m.id, name: m.name, kind: m.kind, role: m.role, tz: safeTz2(m.timezone), member: m };
-}
-var PRIORITIES2 = ["urgent", "high", "medium", "low", "none"];
-var str2 = (v) => typeof v === "string" && v.length > 0 ? v : null;
-var num3 = (v) => typeof v === "number" && Number.isFinite(v) ? v : null;
-function taskSnap(r, fallbackId2) {
-  if (!r || typeof r !== "object") return null;
-  const pr = str2(r.priority);
-  const subs = Array.isArray(r.subtasks) ? r.subtasks : [];
-  return {
-    id: str2(r.id) ?? fallbackId2,
-    projectId: str2(r.projectId),
-    title: str2(r.title) ?? "Untitled mission",
-    status: str2(r.status) ?? "todo",
-    priority: pr && PRIORITIES2.includes(pr) ? pr : "none",
-    assigneeIds: Array.isArray(r.assigneeIds) ? r.assigneeIds.filter((x) => typeof x === "string") : [],
-    creatorId: str2(r.creatorId),
-    dueAt: num3(r.dueAt),
-    subtasks: subs.filter((s2) => !!s2 && typeof s2 === "object").map((s2) => ({ id: str2(s2.id) ?? "", title: str2(s2.title) ?? "", done: s2.done === true, doneBy: str2(s2.doneBy) })).filter((s2) => s2.id),
-    createdAt: num3(r.createdAt),
-    completedAt: num3(r.completedAt),
-    completedBy: str2(r.completedBy)
-  };
-}
-function fmtXp(xp) {
-  return xp >= 0 ? `+${xp} XP` : `\u2212${Math.abs(xp)} XP`;
-}
-
-// packages/game/src/engine.ts
-function rewardFromRow(r) {
-  const ev = {
-    id: r.id,
-    orgId: r.org_id,
-    memberId: r.member_id,
-    kind: r.kind,
-    xp: r.xp,
-    coins: r.coins,
-    label: r.label,
-    taskId: r.task_id,
-    at: r.at
-  };
-  if (r.level != null) ev.level = r.level;
-  if (r.rank_id) ev.rank = RANKS.find((k) => k.id === r.rank_id);
-  if (r.crate_id) ev.crateId = r.crate_id;
-  if (r.rarity) ev.rarity = r.rarity;
-  if (r.achievement_id) ev.achievementId = r.achievement_id;
-  return ev;
-}
-var OPEN = (t) => t.status !== "done" && t.status !== "cancelled";
-function openStatsOf(tasks, memberId, now2) {
-  const mine = tasks.filter((t) => OPEN(t) && t.assigneeIds.includes(memberId));
-  return {
-    open: mine.length,
-    highOpen: mine.filter((t) => t.priority === "high" || t.priority === "urgent").length,
-    overdueOpen: mine.filter((t) => t.dueAt != null && t.dueAt < now2).length,
-    dueFutureOpen: mine.filter((t) => t.dueAt != null && t.dueAt >= now2).length,
-    withObjectives: mine.filter((t) => t.subtasks.length > 0).length,
-    openObjectives: mine.reduce((s2, t) => s2 + t.subtasks.filter((x) => !x.done).length, 0),
-    sharedOpen: mine.filter((t) => t.assigneeIds.length >= 2).length
-  };
-}
-function pickChallenges(orgId, memberId, day, stats) {
-  const rand = seededRandom(fnv1a(`${orgId}|${memberId}|${day}`));
-  const pool = [...CHALLENGES];
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  const ordered = [...pool.filter((c) => c.achievable(stats)), ...pool.filter((c) => !c.achievable(stats))];
-  const picked = [];
-  for (const c of ordered) {
-    if (picked.length >= CHALLENGES_PER_DAY) break;
-    if (!picked.some((p) => p.metric === c.metric)) picked.push(c);
-  }
-  for (const c of ordered) {
-    if (picked.length >= CHALLENGES_PER_DAY) break;
-    if (!picked.includes(c)) picked.push(c);
-  }
-  return picked;
-}
-var Engine = class {
-  db;
-  services;
-  clock;
-  random;
-  log;
-  stmts = /* @__PURE__ */ new Map();
-  queue = Promise.resolve();
-  /** Rewards created inside the current transaction; published after commit. */
-  pending = [];
-  names = /* @__PURE__ */ new Map();
-  constructor(deps) {
-    this.db = deps.db;
-    this.services = deps.services;
-    this.clock = deps.clock;
-    this.random = deps.random;
-    this.log = deps.log;
-  }
-  q(sql) {
-    let s2 = this.stmts.get(sql);
-    if (!s2) {
-      s2 = this.db.prepare(sql);
-      this.stmts.set(sql, s2);
-    }
-    return s2;
-  }
-  // ─── Entry point ───────────────────────────────────────────────────────────
-  /** Serialized, idempotent, never throws. */
-  onAudit(e) {
-    const run = this.queue.then(() => this.process(e)).catch((err) => {
-      this.log.error("[game] failed to process audit event", e?.id, err);
-    });
-    this.queue = run;
-    return run;
-  }
-  async process(e) {
-    if (!e || e.entity !== "task" || !e.orgId || !e.id) return;
-    if (this.q("SELECT 1 FROM game_processed WHERE org_id = ? AND audit_id = ?").get(e.orgId, e.id)) return;
-    const before = taskSnap(e.before, e.entityId);
-    const after = taskSnap(e.after, e.entityId);
-    const task = after ?? before;
-    if (!task) {
-      this.markProcessed(e);
-      return;
-    }
-    const prev = before?.status ?? null;
-    const next = after?.status ?? null;
-    const completed = next === "done" && prev !== "done";
-    const reopened = prev === "done" && next !== "done";
-    const created = !before && !!after;
-    const newlyDoneSubs = this.newlyDoneSubtasks(before, after);
-    if (!completed && !reopened && !created && newlyDoneSubs.length === 0) {
-      this.markProcessed(e);
-      return;
-    }
-    const at = typeof e.at === "number" ? e.at : this.clock();
-    const completer = completed ? after?.completedBy ?? e.actorId : null;
-    const earners = completed && after ? this.earnersOf(after, completer) : [];
-    const involved = new Set(earners);
-    if (created && after) involved.add(after.creatorId ?? e.actorId);
-    for (const s2 of newlyDoneSubs) involved.add(s2.doneBy ?? e.actorId);
-    if (completed && after?.creatorId) involved.add(after.creatorId);
-    involved.delete(SYSTEM_MEMBER_ID);
-    const g = await this.gather(e.orgId, at, involved, completed ? after : null, earners);
-    const tx = this.db.transaction(() => {
-      const ins = this.q("INSERT OR IGNORE INTO game_processed (org_id, audit_id, at) VALUES (?, ?, ?)").run(e.orgId, e.id, at);
-      if (ins.changes === 0) return;
-      const touched = /* @__PURE__ */ new Set();
-      if (created && after) this.applyCreate(e.orgId, after, after.creatorId ?? e.actorId, at, g, touched);
-      if (newlyDoneSubs.length && after) this.applySubtasks(e.orgId, after, newlyDoneSubs, e.actorId, at, g, touched);
-      if (reopened) this.applyRevoke(e.orgId, task, at, touched);
-      if (completed && after) this.applyCompletion(e.orgId, after, completer, earners, at, g, touched);
-      for (const id of touched) {
-        const m = g.members.get(id);
-        if (m) this.settle(e.orgId, m, at);
-      }
-    });
-    try {
-      tx();
-    } catch (err) {
-      this.discard();
-      throw err;
-    }
-    this.flush();
-  }
-  markProcessed(e) {
-    this.q("INSERT OR IGNORE INTO game_processed (org_id, audit_id, at) VALUES (?, ?, ?)").run(e.orgId, e.id, e.at ?? this.clock());
-  }
-  /** Publish rewards created by the last committed transaction. */
-  flush() {
-    const out = this.pending;
-    this.pending = [];
-    for (const r of out) {
-      try {
-        this.services.live.publish(r.orgId, { type: "game.reward", reward: r }, { memberIds: [r.memberId] });
-      } catch (err) {
-        this.log.warn("[game] live publish failed", err);
-      }
-    }
-  }
-  /** Discard rewards from a rolled-back transaction. */
-  discard() {
-    this.pending = [];
-  }
-  earnersOf(t, completer) {
-    const set2 = new Set(t.assigneeIds);
-    if (completer) set2.add(completer);
-    set2.delete(SYSTEM_MEMBER_ID);
-    return [...set2];
-  }
-  newlyDoneSubtasks(before, after) {
-    if (!after || !before) return [];
-    const wasDone = new Set(before.subtasks.filter((s2) => s2.done).map((s2) => s2.id));
-    return after.subtasks.filter((s2) => s2.done && !wasDone.has(s2.id));
-  }
-  // ─── Async gathering ───────────────────────────────────────────────────────
-  async members(orgId) {
-    const map2 = /* @__PURE__ */ new Map();
-    try {
-      const list = await this.services.members.list(systemActor2(orgId), { includeInactive: true });
-      for (const m of list) if (m.orgId === orgId) map2.set(m.id, toInfo(m));
-    } catch (err) {
-      this.log.warn("[game] members.list failed", err);
-    }
-    for (const m of map2.values()) this.names.set(`${orgId}:${m.id}`, m.name);
-    return map2;
-  }
-  async gather(orgId, at, involved, completedTask, earners) {
-    const members = await this.members(orgId);
-    const sys = systemActor2(orgId);
-    const openStats = /* @__PURE__ */ new Map();
-    const cleanSweep = /* @__PURE__ */ new Map();
-    for (const id of involved) {
-      const m = members.get(id);
-      if (!m) continue;
-      const day = dayKey(at, m.tz);
-      const needChallenges = !this.q("SELECT 1 FROM game_challenges WHERE org_id = ? AND member_id = ? AND day = ? LIMIT 1").get(orgId, id, day);
-      const needSweep = !!completedTask && earners.includes(id);
-      if (!needChallenges && !needSweep) continue;
-      try {
-        const tasks = await this.services.tasks.list(sys, { assigneeId: id, includeDone: true, limit: 1e3 });
-        if (needChallenges) openStats.set(id, openStatsOf(tasks, id, at));
-        if (needSweep) {
-          const from = startOfDay(day, m.tz);
-          const to = startOfDay(addDays2(day, 1), m.tz);
-          const today2 = tasks.filter((t) => t.assigneeIds.includes(id) && t.status !== "cancelled" && t.dueAt != null && t.dueAt >= from && t.dueAt < to);
-          cleanSweep.set(id, today2.length >= 3 && today2.every((t) => t.status === "done"));
-        }
-      } catch (err) {
-        this.log.warn("[game] tasks.list failed", err);
-      }
-    }
-    let project = null;
-    const pid = completedTask?.projectId;
-    if (pid && !this.q("SELECT 1 FROM game_squad_bonus WHERE org_id = ? AND project_id = ?").get(orgId, pid)) {
-      try {
-        const tasks = (await this.services.tasks.list(sys, { projectId: pid, includeDone: true, limit: 1e3 })).filter((t) => t.projectId === pid && t.status !== "cancelled");
-        if (tasks.length >= SQUAD_BONUS_MIN_TASKS && tasks.every((t) => t.status === "done")) {
-          const p = await this.services.projects.get(sys, pid);
-          const completers = tasks.map((t) => t.completedBy).filter((x) => !!x);
-          project = { id: pid, name: p.name, leadId: p.leadId, completers };
-        }
-      } catch (err) {
-        this.log.warn("[game] project lookup failed", err);
-      }
-    }
-    return { members, openStats, cleanSweep, project };
-  }
-  // ─── Ledger primitives (call inside a transaction) ─────────────────────────
-  player(orgId, memberId) {
-    this.q("INSERT OR IGNORE INTO game_players (org_id, member_id, updated_at) VALUES (?, ?, ?)").run(orgId, memberId, this.clock());
-    return this.q("SELECT * FROM game_players WHERE org_id = ? AND member_id = ?").get(orgId, memberId);
-  }
-  readPlayer(orgId, memberId) {
-    const row = this.q("SELECT * FROM game_players WHERE org_id = ? AND member_id = ?").get(orgId, memberId);
-    return row ?? {
-      org_id: orgId,
-      member_id: memberId,
-      xp: 0,
-      level: 1,
-      rank_id: "recruit",
-      max_level: 1,
-      max_rank: 0,
-      missions_hw: 0,
-      streak_current: 0,
-      streak_best: 0,
-      streak_last_day: null,
-      updated_at: 0
-    };
-  }
-  award(orgId, memberId, kind, xp, label, o) {
-    const p = this.player(orgId, memberId);
-    const newXp = p.xp + xp;
-    const coins = Math.floor(newXp / XP_PER_COIN) - Math.floor(p.xp / XP_PER_COIN);
-    this.q("UPDATE game_players SET xp = ?, updated_at = ? WHERE org_id = ? AND member_id = ?").run(newXp, o.at, orgId, memberId);
-    const row = {
-      id: newId2("rwd"),
-      org_id: orgId,
-      member_id: memberId,
-      kind,
-      xp,
-      coins,
-      label,
-      task_id: o.taskId ?? null,
-      completion_id: o.completionId ?? null,
-      cap_day: o.capDay ?? null,
-      level: o.level ?? null,
-      rank_id: o.rankId ?? null,
-      crate_id: o.crateId ?? null,
-      rarity: o.rarity ?? null,
-      achievement_id: o.achievementId ?? null,
-      at: o.at
-    };
-    this.q(`INSERT INTO game_rewards (id, org_id, member_id, kind, xp, coins, label, task_id, completion_id, cap_day, level,
-      rank_id, crate_id, rarity, achievement_id, at) VALUES (@id, @org_id, @member_id, @kind, @xp, @coins, @label, @task_id,
-      @completion_id, @cap_day, @level, @rank_id, @crate_id, @rarity, @achievement_id, @at)`).run(row);
-    const ev = rewardFromRow(row);
-    this.pending.push(ev);
-    return ev;
-  }
-  feed(orgId, memberId, kind, xp, text, at) {
-    this.q("INSERT INTO game_feed (id, org_id, member_id, text, kind, xp, at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(newId2("feed"), orgId, memberId, text, kind, xp, at);
-  }
-  name(orgId, memberId) {
-    return this.names.get(`${orgId}:${memberId}`) ?? "An operative";
-  }
-  counter(orgId, memberId, key) {
-    const r = this.q("SELECT value FROM game_counters WHERE org_id = ? AND member_id = ? AND key = ?").get(orgId, memberId, key);
-    return r?.value ?? 0;
-  }
-  setCounter(orgId, memberId, key, value) {
-    this.q(`INSERT INTO game_counters (org_id, member_id, key, value) VALUES (?, ?, ?, ?)
-      ON CONFLICT (org_id, member_id, key) DO UPDATE SET value = excluded.value`).run(orgId, memberId, key, value);
-  }
-  bump(orgId, memberId, key, by = 1) {
-    const v = this.counter(orgId, memberId, key) + by;
-    this.setCounter(orgId, memberId, key, v);
-    return v;
-  }
-  grantCrate(orgId, memberId, rarity, source, at) {
-    const id = newId2("crt");
-    this.q("INSERT INTO game_crates (id, org_id, member_id, rarity, source, earned_at) VALUES (?, ?, ?, ?, ?, ?)").run(id, orgId, memberId, rarity, source, at);
-    const label = `${rarity[0].toUpperCase()}${rarity.slice(1)} crate earned \xB7 ${source}`;
-    this.award(orgId, memberId, "crate_earned", 0, label, { at, crateId: id, rarity });
-    if (rarity === "legendary") this.feed(orgId, memberId, "crate_earned", 0, `${this.name(orgId, memberId)} earned a Legendary crate \u2014 ${source}`, at);
-    return id;
-  }
-  activeBoost(orgId, memberId, at) {
-    const r = this.q("SELECT MAX(multiplier) AS m, MAX(until) AS u FROM game_boosts WHERE org_id = ? AND member_id = ? AND starts_at <= ? AND until > ?").get(orgId, memberId, at, at);
-    return r.m ? { multiplier: r.m, until: r.u ?? at } : null;
-  }
-  capUsed(orgId, memberId, day) {
-    const r = this.q("SELECT COALESCE(SUM(xp), 0) AS s FROM game_rewards WHERE org_id = ? AND member_id = ? AND cap_day = ? AND xp > 0").get(orgId, memberId, day);
-    return r.s;
-  }
-  /** Award capped, boosted mission XP rows. */
-  awardMission(orgId, m, rows, o) {
-    const boost = this.activeBoost(orgId, m.id, o.at);
-    let remaining = Math.max(0, DAILY_MISSION_XP_CAP - this.capUsed(orgId, m.id, o.day));
-    for (const r of rows) {
-      const boosted = boost ? Math.round(r.xp * boost.multiplier) : r.xp;
-      const xp = Math.min(boosted, remaining);
-      remaining -= xp;
-      let label = `${fmtXp(xp)} \xB7 ${r.what}`;
-      if (boost && xp > 0) label += ` (\xD7${boost.multiplier} boost)`;
-      if (xp < boosted) label += " (daily cap reached)";
-      this.award(orgId, m.id, r.kind, xp, label, { ...o, capDay: o.day });
-    }
-  }
-  // ─── Daily challenges ──────────────────────────────────────────────────────
-  ensureChallenges(orgId, memberId, day, stats) {
-    const existing = this.q("SELECT * FROM game_challenges WHERE org_id = ? AND member_id = ? AND day = ? ORDER BY slot").all(orgId, memberId, day);
-    if (existing.length || !stats) return existing;
-    const picks = pickChallenges(orgId, memberId, day, stats);
-    picks.forEach((c, slot) => {
-      this.q(`INSERT OR IGNORE INTO game_challenges (id, org_id, member_id, day, slot, pool_id, title, description, metric, target, xp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(newId2("chl"), orgId, memberId, day, slot, c.id, c.title, c.description, c.metric, c.target, c.xp);
-    });
-    return this.q("SELECT * FROM game_challenges WHERE org_id = ? AND member_id = ? AND day = ? ORDER BY slot").all(orgId, memberId, day);
-  }
-  progressChallenges(orgId, m, day, metrics, at, g) {
-    const rows = this.ensureChallenges(orgId, m.id, day, g.openStats.get(m.id) ?? null);
-    for (const c of rows) {
-      const n = metrics[c.metric];
-      if (!n || c.completed_at != null) continue;
-      const progress = Math.min(c.target, c.progress + n);
-      const done = progress >= c.target;
-      this.q("UPDATE game_challenges SET progress = ?, completed_at = ? WHERE id = ?").run(progress, done ? at : null, c.id);
-      if (done) this.award(orgId, m.id, "challenge", c.xp, `${fmtXp(c.xp)} \xB7 Challenge complete: ${c.title}`, { at });
-    }
-    const after = this.q("SELECT COUNT(*) AS n, SUM(completed_at IS NOT NULL) AS d FROM game_challenges WHERE org_id = ? AND member_id = ? AND day = ?").get(orgId, m.id, day);
-    if (after.n >= CHALLENGES_PER_DAY && (after.d ?? 0) >= after.n) this.setCounter(orgId, m.id, "daily_triple", 1);
-  }
-  // ─── Event handlers (inside the transaction) ───────────────────────────────
-  applyCreate(orgId, t, creatorId, at, g, touched) {
-    const m = g.members.get(creatorId);
-    if (!m) return;
-    const day = dayKey(at, m.tz);
-    const used = this.q("SELECT COUNT(*) AS n FROM game_intel WHERE org_id = ? AND member_id = ? AND day = ? AND xp > 0").get(orgId, m.id, day).n;
-    const xp = used < INTEL_MAX_PER_DAY ? INTEL_XP : 0;
-    const ins = this.q("INSERT OR IGNORE INTO game_intel (org_id, member_id, task_id, day, xp, at) VALUES (?, ?, ?, ?, ?, ?)").run(orgId, m.id, t.id, day, xp, at);
-    if (ins.changes === 0) return;
-    if (xp > 0) this.award(orgId, m.id, "intel", xp, `${fmtXp(xp)} \xB7 Intel: ${t.title}`, { at, taskId: t.id });
-    this.progressChallenges(orgId, m, day, { create: 1 }, at, g);
-    touched.add(m.id);
-  }
-  applySubtasks(orgId, t, subs, actorId, at, g, touched) {
-    const allDone = t.subtasks.length > 0 && t.subtasks.every((s2) => s2.done);
-    const perMember = /* @__PURE__ */ new Map();
-    for (const s2 of subs) {
-      const m = g.members.get(s2.doneBy ?? actorId);
-      if (!m) continue;
-      const day = dayKey(at, m.tz);
-      const taskPaid = this.q("SELECT COUNT(*) AS n FROM game_subtasks WHERE org_id = ? AND task_id = ? AND xp > 0").get(orgId, t.id).n;
-      const dayPaid = this.q("SELECT COUNT(*) AS n FROM game_subtasks WHERE org_id = ? AND member_id = ? AND day = ? AND xp > 0").get(orgId, m.id, day).n;
-      const xp = taskPaid < SUBTASK_MAX_PER_TASK && dayPaid < SUBTASK_MAX_PER_DAY ? SUBTASK_XP : 0;
-      const ins = this.q("INSERT OR IGNORE INTO game_subtasks (org_id, task_id, subtask_id, member_id, day, xp, at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(orgId, t.id, s2.id, m.id, day, xp, at);
-      if (ins.changes === 0) continue;
-      if (xp > 0) this.awardMission(orgId, m, [{ kind: "subtask", xp, what: `Objective: ${s2.title || t.title}` }], { at, taskId: t.id, day });
-      perMember.set(m.id, (perMember.get(m.id) ?? 0) + 1);
-      touched.add(m.id);
-    }
-    for (const [id, n] of perMember) {
-      const m = g.members.get(id);
-      const metrics = { objective: n };
-      if (allDone) metrics.complete_all_objectives = 1;
-      this.progressChallenges(orgId, m, dayKey(at, m.tz), metrics, at, g);
-    }
-  }
-  applyRevoke(orgId, t, at, touched) {
-    const rows = this.q("SELECT id, member_id, at FROM game_completions WHERE org_id = ? AND task_id = ? AND revoked_at IS NULL").all(orgId, t.id);
-    for (const c of rows) {
-      if (at - c.at > REVOKE_WINDOW_MS || at < c.at) continue;
-      const sum = this.q("SELECT COALESCE(SUM(xp), 0) AS s FROM game_rewards WHERE org_id = ? AND completion_id = ? AND kind != ?").get(orgId, c.id, "revoked").s;
-      this.q("UPDATE game_completions SET revoked_at = ? WHERE id = ?").run(at, c.id);
-      if (sum > 0) {
-        this.award(orgId, c.member_id, "revoked", -sum, `${fmtXp(-sum)} \xB7 Mission reopened: ${t.title}`, { at, taskId: t.id, completionId: c.id });
-      }
-      touched.add(c.member_id);
-    }
-  }
-  applyCompletion(orgId, t, completer, earners, at, g, touched) {
-    const firstEver = !this.q("SELECT 1 FROM game_completions WHERE org_id = ? AND task_id = ? LIMIT 1").get(orgId, t.id);
-    const farm = !!t.creatorId && t.createdAt != null && at - t.createdAt < QUICK_SELF_COMPLETE_MS && (completer ?? "") === t.creatorId;
-    const base = BASE_XP[t.priority];
-    const hadDue = t.dueAt != null;
-    const onTime = hadDue && at <= t.dueAt;
-    const rescued = hadDue && at > t.dueAt;
-    let anyAwarded = false;
-    for (const id of earners) {
-      const m = g.members.get(id);
-      if (!m) continue;
-      const day = dayKey(at, m.tz);
-      if (this.q("SELECT 1 FROM game_completions WHERE org_id = ? AND member_id = ? AND task_id = ? AND day = ?").get(orgId, id, t.id, day)) continue;
-      const cid = newId2("cmp");
-      this.q(`INSERT INTO game_completions (id, org_id, member_id, task_id, project_id, day, at, priority, had_due, on_time, rescued, farm)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-        cid,
-        orgId,
-        id,
-        t.id,
-        t.projectId,
-        day,
-        at,
-        t.priority,
-        hadDue ? 1 : 0,
-        !farm && onTime ? 1 : 0,
-        !farm && rescued ? 1 : 0,
-        farm ? 1 : 0
-      );
-      touched.add(id);
-      anyAwarded = true;
-      if (farm) {
-        const xp = Math.round(base * QUICK_SELF_COMPLETE_PCT);
-        this.awardMission(orgId, m, [{ kind: "mission_complete", xp, what: `Mission complete: ${t.title} (quick self-complete)` }], { at, taskId: t.id, completionId: cid, day });
-        continue;
-      }
-      const rows = [{ kind: "mission_complete", xp: base, what: `Mission complete: ${t.title}` }];
-      if (onTime) rows.push({ kind: "on_time_bonus", xp: Math.round(base * ON_TIME_BONUS_PCT), what: "On-time bonus" });
-      if (rescued) rows.push({ kind: "rescue_bonus", xp: RESCUE_BONUS_XP, what: `Rescue bonus: ${t.title}` });
-      this.awardMission(orgId, m, rows, { at, taskId: t.id, completionId: cid, day });
-      this.updateStreak(orgId, m, day, at, t.id, cid);
-      const hour = localHour(at, m.tz);
-      if (hadDue) {
-        const run = onTime ? this.bump(orgId, id, "ontime_run") : 0;
-        if (!onTime) this.setCounter(orgId, id, "ontime_run", 0);
-        if (run > this.counter(orgId, id, "ontime_run_best")) this.setCounter(orgId, id, "ontime_run_best", run);
-      }
-      if (hour < 8) this.bump(orgId, id, "early_bird");
-      if (hour >= 22) this.bump(orgId, id, "night_owl");
-      if (hour >= 3 && hour < 5) this.bump(orgId, id, "ghost");
-      if (isWeekend(day)) this.bump(orgId, id, "weekend");
-      if (onTime && t.dueAt - at <= 10 * 60 * 1e3) this.bump(orgId, id, "clutch");
-      if (rescued && at - t.dueAt >= 7 * 24 * 60 * 60 * 1e3) this.bump(orgId, id, "comeback");
-      if (t.assigneeIds.length >= 2) this.bump(orgId, id, "squad_missions");
-      if (g.cleanSweep.get(id)) this.bump(orgId, id, "clean_sweep");
-      const missions = this.stat(orgId, id, "missions");
-      const p = this.player(orgId, id);
-      const milestones = Math.floor(missions / CRATE_EVERY_MISSIONS);
-      for (let k = p.missions_hw + 1; k <= milestones; k++) this.grantCrate(orgId, id, "common", `${k * CRATE_EVERY_MISSIONS} missions completed`, at);
-      if (milestones > p.missions_hw) this.q("UPDATE game_players SET missions_hw = ? WHERE org_id = ? AND member_id = ?").run(milestones, orgId, id);
-      const allObjectives = t.subtasks.length > 0 && t.subtasks.every((s2) => s2.done);
-      this.progressChallenges(orgId, m, day, {
-        complete: 1,
-        complete_high: t.priority === "high" || t.priority === "urgent" ? 1 : 0,
-        complete_overdue: rescued ? 1 : 0,
-        complete_on_time: onTime ? 1 : 0,
-        complete_all_objectives: allObjectives ? 1 : 0,
-        complete_shared: t.assigneeIds.length >= 2 ? 1 : 0,
-        complete_before_noon: hour < 12 ? 1 : 0
-      }, at, g);
-    }
-    if (!farm && firstEver && anyAwarded && t.creatorId) {
-      const creator = g.members.get(t.creatorId);
-      const hasAgent = t.assigneeIds.some((a) => g.members.get(a)?.kind === "agent");
-      if (creator && creator.kind === "human" && hasAgent) {
-        this.bump(orgId, creator.id, "ai_whisperer");
-        touched.add(creator.id);
-      }
-    }
-    if (g.project) this.applySquadBonus(orgId, g.project, at, g, touched);
-  }
-  updateStreak(orgId, m, day, at, taskId2, cid) {
-    const p = this.player(orgId, m.id);
-    const last = p.streak_last_day;
-    if (last === day || last && day < last) return;
-    const current = last && onlyWeekendsBetween(last, day) ? p.streak_current + 1 : 1;
-    const best = Math.max(p.streak_best, current);
-    this.q("UPDATE game_players SET streak_current = ?, streak_best = ?, streak_last_day = ? WHERE org_id = ? AND member_id = ?").run(current, best, day, orgId, m.id);
-    const bonus = Math.min(STREAK_XP_PER_DAY * current, STREAK_XP_MAX);
-    this.award(orgId, m.id, "streak_bonus", bonus, `${fmtXp(bonus)} \xB7 ${current}-day streak`, { at, taskId: taskId2, completionId: cid });
-    if (current % EPIC_CRATE_EVERY_STREAK_DAYS === 0) {
-      this.grantCrate(orgId, m.id, "epic", `${current}-day streak`, at);
-      this.feed(orgId, m.id, "streak_bonus", bonus, `${m.name} is on a ${current}-day streak \u{1F525}`, at);
-    }
-  }
-  applySquadBonus(orgId, proj, at, g, touched) {
-    const ins = this.q("INSERT OR IGNORE INTO game_squad_bonus (org_id, project_id, at) VALUES (?, ?, ?)").run(orgId, proj.id, at);
-    if (ins.changes === 0) return;
-    const fromLedger = this.q("SELECT DISTINCT member_id FROM game_completions WHERE org_id = ? AND project_id = ? AND revoked_at IS NULL").all(orgId, proj.id).map((r) => r.member_id);
-    const recipients = [.../* @__PURE__ */ new Set([...fromLedger, ...proj.completers])].filter((id) => g.members.has(id));
-    for (const id of recipients) {
-      this.award(orgId, id, "squad_bonus", SQUAD_BONUS_XP, `${fmtXp(SQUAD_BONUS_XP)} \xB7 Operation cleared: ${proj.name}`, { at });
-      touched.add(id);
-    }
-    const lead = proj.leadId ? g.members.get(proj.leadId) : void 0;
-    if (lead) {
-      this.bump(orgId, lead.id, "ops_commanded");
-      touched.add(lead.id);
-    }
-    const credit = lead?.id ?? recipients[0];
-    if (credit) {
-      this.feed(
-        orgId,
-        credit,
-        "squad_bonus",
-        SQUAD_BONUS_XP,
-        `Operation ${proj.name} cleared \u2014 ${fmtXp(SQUAD_BONUS_XP)} to ${recipients.length} operative${recipients.length === 1 ? "" : "s"}`,
-        at
-      );
-    }
-  }
-  // ─── Levels, ranks, achievements ───────────────────────────────────────────
-  stat(orgId, memberId, metric) {
-    const one = (sql, ...a) => this.q(sql).get(...a).n ?? 0;
-    const done = "FROM game_completions WHERE org_id = ? AND member_id = ? AND revoked_at IS NULL AND farm = 0";
-    switch (metric) {
-      case "missions":
-        return one(`SELECT COUNT(*) AS n ${done}`, orgId, memberId);
-      case "on_time":
-        return one(`SELECT COUNT(*) AS n ${done} AND on_time = 1`, orgId, memberId);
-      case "rescued":
-        return one(`SELECT COUNT(*) AS n ${done} AND rescued = 1`, orgId, memberId);
-      case "urgent":
-        return one(`SELECT COUNT(*) AS n ${done} AND priority = 'urgent'`, orgId, memberId);
-      case "created":
-        return one("SELECT COUNT(*) AS n FROM game_intel WHERE org_id = ? AND member_id = ?", orgId, memberId);
-      case "objectives":
-        return one("SELECT COUNT(*) AS n FROM game_subtasks WHERE org_id = ? AND member_id = ?", orgId, memberId);
-      case "crates_opened":
-        return one("SELECT COUNT(*) AS n FROM game_crates WHERE org_id = ? AND member_id = ? AND opened_at IS NOT NULL", orgId, memberId);
-      case "challenges":
-        return one("SELECT COUNT(*) AS n FROM game_challenges WHERE org_id = ? AND member_id = ? AND completed_at IS NOT NULL", orgId, memberId);
-      case "squad_bonuses":
-        return one("SELECT COUNT(*) AS n FROM game_rewards WHERE org_id = ? AND member_id = ? AND kind = 'squad_bonus'", orgId, memberId);
-      case "streak_best":
-        return this.readPlayer(orgId, memberId).streak_best;
-      case "level":
-        return this.readPlayer(orgId, memberId).max_level;
-      default:
-        return this.counter(orgId, memberId, metric);
-    }
-  }
-  /** Level-ups, rank-ups, achievement unlocks — repeated until stable. */
-  settle(orgId, m, at) {
-    for (let i = 0; i < 10; i++) {
-      this.applyLevel(orgId, m, at);
-      if (!this.checkAchievements(orgId, m, at)) return;
-    }
-  }
-  applyLevel(orgId, m, at) {
-    const p = this.player(orgId, m.id);
-    const lvl = levelForXp(p.xp);
-    let maxRank = p.max_rank;
-    for (let l = p.max_level + 1; l <= lvl; l++) {
-      const rIdx = rankIndexForLevel(l);
-      const rank2 = RANKS[rIdx];
-      const promoted = rIdx > maxRank;
-      const label = promoted ? `Promoted to ${rank2.name} \xB7 Level ${l}` : `Level ${l} reached`;
-      this.award(orgId, m.id, "level_up", 0, label, { at, level: l, rankId: rank2.id });
-      this.grantCrate(orgId, m.id, "rare", `Level ${l} reached`, at);
-      if (promoted) {
-        if (rIdx >= LEGENDARY_RANK_INDEX) this.grantCrate(orgId, m.id, "legendary", `Promoted to ${rank2.name}`, at);
-        this.feed(orgId, m.id, "level_up", 0, `${m.name} was promoted to ${rank2.name} (Level ${l})`, at);
-        maxRank = rIdx;
-      } else {
-        this.feed(orgId, m.id, "level_up", 0, `${m.name} reached Level ${l}`, at);
-      }
-    }
-    this.q("UPDATE game_players SET level = ?, rank_id = ?, max_level = ?, max_rank = ? WHERE org_id = ? AND member_id = ?").run(lvl, rankForLevel(lvl).id, Math.max(p.max_level, lvl), maxRank, orgId, m.id);
-  }
-  checkAchievements(orgId, m, at) {
-    const have = new Set(this.q("SELECT achievement_id FROM game_achievements WHERE org_id = ? AND member_id = ?").all(orgId, m.id).map((r) => r.achievement_id));
-    let unlocked = false;
-    const cache2 = /* @__PURE__ */ new Map();
-    for (const a of ACHIEVEMENTS) {
-      if (have.has(a.id)) continue;
-      if (!cache2.has(a.metric)) cache2.set(a.metric, this.stat(orgId, m.id, a.metric));
-      if ((cache2.get(a.metric) ?? 0) < a.target) continue;
-      this.q("INSERT OR IGNORE INTO game_achievements (org_id, member_id, achievement_id, unlocked_at) VALUES (?, ?, ?, ?)").run(orgId, m.id, a.id, at);
-      const xp = ACHIEVEMENT_XP[a.tier];
-      this.award(orgId, m.id, "achievement", xp, `${fmtXp(xp)} \xB7 Medal unlocked: ${a.name}`, { at, achievementId: a.id });
-      const crate = ACHIEVEMENT_CRATE[a.tier];
-      if (crate) this.grantCrate(orgId, m.id, crate, `Medal: ${a.name}`, at);
-      this.feed(orgId, m.id, "achievement", xp, `${m.name} unlocked ${a.name} ${a.icon}`, at);
-      unlocked = true;
-    }
-    return unlocked;
-  }
-  // ─── Crates (called by the service) ────────────────────────────────────────
-  openCrate(orgId, memberId, crateId, now2) {
-    const crate = this.q("SELECT * FROM game_crates WHERE id = ? AND org_id = ? AND member_id = ?").get(crateId, orgId, memberId);
-    if (!crate || crate.opened_at != null) return null;
-    const owned = new Set(this.q("SELECT item_id FROM game_inventory WHERE org_id = ? AND member_id = ?").all(orgId, memberId).map((r) => r.item_id));
-    const reward = rollLoot(crate.rarity, this.random, owned);
-    let coins = 0;
-    if (reward.kind === "coins") coins = reward.amount ?? 0;
-    else if (reward.kind === "xp_boost") {
-      const active = this.activeBoost(orgId, memberId, now2);
-      const start = active ? active.until : now2;
-      this.q("INSERT INTO game_boosts (id, org_id, member_id, multiplier, starts_at, until) VALUES (?, ?, ?, ?, ?, ?)").run(newId2("bst"), orgId, memberId, BOOST_MULTIPLIER, start, start + (reward.amount ?? 30) * 6e4);
-    } else {
-      const c = COSMETICS.find((x) => x.id === reward.id);
-      this.q("INSERT OR IGNORE INTO game_inventory (org_id, member_id, kind, item_id, name, rarity, acquired_at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(orgId, memberId, c.kind, c.id, c.name, c.rarity, now2);
-    }
-    this.q("UPDATE game_crates SET opened_at = ?, reward_json = ?, reward_coins = ? WHERE id = ?").run(now2, JSON.stringify(reward), coins, crateId);
-    return { reward, openedAt: now2 };
-  }
-  // ─── Rebuild (cache is derived from the ledger) ────────────────────────────
-  /** Recompute game_players for every member of an org from the ledger + completions. */
-  rebuildPlayers(orgId) {
-    const ids2 = this.q(`SELECT member_id FROM game_rewards WHERE org_id = ? UNION SELECT member_id FROM game_completions WHERE org_id = ?`).all(orgId, orgId).map((r) => r.member_id);
-    this.db.transaction(() => {
-      for (const id of ids2) {
-        const xp = this.q("SELECT COALESCE(SUM(xp), 0) AS s FROM game_rewards WHERE org_id = ? AND member_id = ?").get(orgId, id).s;
-        const lvl = levelForXp(xp);
-        const maxLevel = Math.max(lvl, this.q("SELECT MAX(level) AS l FROM game_rewards WHERE org_id = ? AND member_id = ? AND kind = 'level_up'").get(orgId, id).l ?? 1);
-        const days = this.q("SELECT DISTINCT day FROM game_completions WHERE org_id = ? AND member_id = ? AND farm = 0 ORDER BY day").all(orgId, id).map((r) => r.day);
-        let cur = 0, best = 0, last = null;
-        for (const d of days) {
-          cur = last && onlyWeekendsBetween(last, d) ? cur + 1 : 1;
-          best = Math.max(best, cur);
-          last = d;
-        }
-        const missionsHw = Math.floor(this.stat(orgId, id, "missions") / CRATE_EVERY_MISSIONS);
-        const prevHw = this.readPlayer(orgId, id).missions_hw;
-        this.q(`INSERT INTO game_players (org_id, member_id, xp, level, rank_id, max_level, max_rank, missions_hw, streak_current, streak_best, streak_last_day, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT (org_id, member_id) DO UPDATE SET xp = excluded.xp, level = excluded.level, rank_id = excluded.rank_id,
-            max_level = excluded.max_level, max_rank = excluded.max_rank, missions_hw = excluded.missions_hw,
-            streak_current = excluded.streak_current, streak_best = excluded.streak_best, streak_last_day = excluded.streak_last_day,
-            updated_at = excluded.updated_at`).run(orgId, id, xp, lvl, rankForLevel(lvl).id, maxLevel, rankIndexForLevel(maxLevel), Math.max(missionsHw, prevHw), cur, best, last, this.clock());
-      }
-    })();
-    return ids2.length;
-  }
-};
-
-// packages/game/src/schema.ts
-var MIGRATIONS2 = [
-  {
-    version: 1,
-    sql: `
-CREATE TABLE IF NOT EXISTS game_processed (
-  org_id TEXT NOT NULL, audit_id TEXT NOT NULL, at INTEGER NOT NULL,
-  PRIMARY KEY (org_id, audit_id)
-);
-CREATE TABLE IF NOT EXISTS game_rewards (
-  id TEXT PRIMARY KEY, org_id TEXT NOT NULL, member_id TEXT NOT NULL, kind TEXT NOT NULL,
-  xp INTEGER NOT NULL, coins INTEGER NOT NULL, label TEXT NOT NULL, task_id TEXT,
-  completion_id TEXT, cap_day TEXT, level INTEGER, rank_id TEXT, crate_id TEXT, rarity TEXT,
-  achievement_id TEXT, at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS game_rewards_member ON game_rewards (org_id, member_id, at);
-CREATE INDEX IF NOT EXISTS game_rewards_org ON game_rewards (org_id, at);
-CREATE INDEX IF NOT EXISTS game_rewards_completion ON game_rewards (completion_id);
-CREATE TABLE IF NOT EXISTS game_completions (
-  id TEXT PRIMARY KEY, org_id TEXT NOT NULL, member_id TEXT NOT NULL, task_id TEXT NOT NULL,
-  project_id TEXT, day TEXT NOT NULL, at INTEGER NOT NULL, priority TEXT NOT NULL,
-  had_due INTEGER NOT NULL, on_time INTEGER NOT NULL, rescued INTEGER NOT NULL, farm INTEGER NOT NULL,
-  revoked_at INTEGER
-);
-CREATE INDEX IF NOT EXISTS game_completions_member ON game_completions (org_id, member_id, at);
-CREATE INDEX IF NOT EXISTS game_completions_task ON game_completions (org_id, task_id);
-CREATE TABLE IF NOT EXISTS game_intel (
-  org_id TEXT NOT NULL, member_id TEXT NOT NULL, task_id TEXT NOT NULL, day TEXT NOT NULL,
-  xp INTEGER NOT NULL, at INTEGER NOT NULL,
-  PRIMARY KEY (org_id, task_id)
-);
-CREATE INDEX IF NOT EXISTS game_intel_member ON game_intel (org_id, member_id, day);
-CREATE TABLE IF NOT EXISTS game_subtasks (
-  org_id TEXT NOT NULL, task_id TEXT NOT NULL, subtask_id TEXT NOT NULL, member_id TEXT NOT NULL,
-  day TEXT NOT NULL, xp INTEGER NOT NULL, at INTEGER NOT NULL,
-  PRIMARY KEY (org_id, task_id, subtask_id)
-);
-CREATE INDEX IF NOT EXISTS game_subtasks_member ON game_subtasks (org_id, member_id, day);
-CREATE TABLE IF NOT EXISTS game_players (
-  org_id TEXT NOT NULL, member_id TEXT NOT NULL,
-  xp INTEGER NOT NULL DEFAULT 0, level INTEGER NOT NULL DEFAULT 1, rank_id TEXT NOT NULL DEFAULT 'recruit',
-  max_level INTEGER NOT NULL DEFAULT 1, max_rank INTEGER NOT NULL DEFAULT 0, missions_hw INTEGER NOT NULL DEFAULT 0,
-  streak_current INTEGER NOT NULL DEFAULT 0, streak_best INTEGER NOT NULL DEFAULT 0, streak_last_day TEXT,
-  updated_at INTEGER NOT NULL DEFAULT 0,
-  PRIMARY KEY (org_id, member_id)
-);
-CREATE TABLE IF NOT EXISTS game_loadout (
-  org_id TEXT NOT NULL, member_id TEXT NOT NULL, title TEXT, frame TEXT, emote TEXT,
-  PRIMARY KEY (org_id, member_id)
-);
-CREATE TABLE IF NOT EXISTS game_counters (
-  org_id TEXT NOT NULL, member_id TEXT NOT NULL, key TEXT NOT NULL, value INTEGER NOT NULL,
-  PRIMARY KEY (org_id, member_id, key)
-);
-CREATE TABLE IF NOT EXISTS game_achievements (
-  org_id TEXT NOT NULL, member_id TEXT NOT NULL, achievement_id TEXT NOT NULL, unlocked_at INTEGER NOT NULL,
-  PRIMARY KEY (org_id, member_id, achievement_id)
-);
-CREATE TABLE IF NOT EXISTS game_crates (
-  id TEXT PRIMARY KEY, org_id TEXT NOT NULL, member_id TEXT NOT NULL, rarity TEXT NOT NULL,
-  source TEXT NOT NULL, earned_at INTEGER NOT NULL, opened_at INTEGER, reward_json TEXT,
-  reward_coins INTEGER NOT NULL DEFAULT 0
-);
-CREATE INDEX IF NOT EXISTS game_crates_member ON game_crates (org_id, member_id, earned_at);
-CREATE TABLE IF NOT EXISTS game_inventory (
-  org_id TEXT NOT NULL, member_id TEXT NOT NULL, kind TEXT NOT NULL, item_id TEXT NOT NULL,
-  name TEXT NOT NULL, rarity TEXT NOT NULL, acquired_at INTEGER NOT NULL,
-  PRIMARY KEY (org_id, member_id, item_id)
-);
-CREATE TABLE IF NOT EXISTS game_boosts (
-  id TEXT PRIMARY KEY, org_id TEXT NOT NULL, member_id TEXT NOT NULL, multiplier REAL NOT NULL,
-  starts_at INTEGER NOT NULL, until INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS game_boosts_member ON game_boosts (org_id, member_id, until);
-CREATE TABLE IF NOT EXISTS game_challenges (
-  id TEXT PRIMARY KEY, org_id TEXT NOT NULL, member_id TEXT NOT NULL, day TEXT NOT NULL, slot INTEGER NOT NULL,
-  pool_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, metric TEXT NOT NULL,
-  target INTEGER NOT NULL, progress INTEGER NOT NULL DEFAULT 0, xp INTEGER NOT NULL, completed_at INTEGER,
-  UNIQUE (org_id, member_id, day, pool_id)
-);
-CREATE INDEX IF NOT EXISTS game_challenges_member ON game_challenges (org_id, member_id, day);
-CREATE TABLE IF NOT EXISTS game_squad_bonus (
-  org_id TEXT NOT NULL, project_id TEXT NOT NULL, at INTEGER NOT NULL,
-  PRIMARY KEY (org_id, project_id)
-);
-CREATE TABLE IF NOT EXISTS game_feed (
-  id TEXT PRIMARY KEY, org_id TEXT NOT NULL, member_id TEXT NOT NULL, text TEXT NOT NULL,
-  kind TEXT NOT NULL, xp INTEGER NOT NULL, at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS game_feed_org ON game_feed (org_id, at);
-`
-  }
-];
-function migrate(db) {
-  db.exec("CREATE TABLE IF NOT EXISTS game_migrations (version INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL)");
-  const row = db.prepare("SELECT MAX(version) AS v FROM game_migrations").get();
-  const current = row.v ?? 0;
-  for (const m of MIGRATIONS2) {
-    if (m.version <= current) continue;
-    db.transaction(() => {
-      db.exec(m.sql);
-      db.prepare("INSERT INTO game_migrations (version, applied_at) VALUES (?, ?)").run(m.version, Date.now());
-    })();
-  }
-}
-
-// packages/game/src/service.ts
-var clampLimit = (n, def, max) => Math.max(1, Math.min(max, Number.isFinite(n) ? Math.floor(n) : def));
-function progressOf(tasks, from, to, now2) {
-  const rel = tasks.filter((t) => t.status !== "cancelled" && (t.status === "done" ? t.completedAt != null && t.completedAt >= from && t.completedAt < to : t.dueAt != null && t.dueAt < to));
-  const done = rel.filter((t) => t.status === "done").length;
-  const overdue = rel.filter((t) => t.status !== "done" && t.dueAt != null && t.dueAt < now2).length;
-  const total = rel.length;
-  return { total, done, pending: total - done, overdue, pct: total ? Math.round(done / total * 100) : 0 };
-}
-var Service = class {
-  constructor(engine, services) {
-    this.engine = engine;
-    this.services = services;
-  }
-  get db() {
-    return this.engine.db;
-  }
-  // ─── Access helpers ──────────────────────────────────────────────────────
-  async member(orgId, id) {
-    try {
-      const m = await this.services.members.get(systemActor2(orgId), id);
-      if (!m || m.orgId !== orgId) throw new Error("wrong org");
-      return toInfo(m);
-    } catch {
-      throw new AppError("not_found", "Operative not found");
-    }
-  }
-  /** Resolve whose data the actor may view (any squad member; guests only themselves). */
-  async viewable(actor, memberId) {
-    const target = memberId && memberId !== "me" ? memberId : actor.memberId;
-    if (target !== actor.memberId && actor.role === "guest") throw new AppError("forbidden", "Guests can only view their own profile");
-    return this.member(actor.orgId, target);
-  }
-  requireWrite(actor) {
-    if (actor.via === "api_key" && !(actor.scopes ?? []).includes("write")) throw new AppError("forbidden", "API key lacks write scope");
-  }
-  // ─── Profile ─────────────────────────────────────────────────────────────
-  buildProfile(orgId, m, now2) {
-    const e = this.engine;
-    const p = e.readPlayer(orgId, m.id);
-    const level = levelForXp(p.xp);
-    const floor = xpForLevel(level);
-    const levelXp = level >= MAX_LEVEL ? 0 : xpForLevel(level + 1) - floor;
-    const rIdx = rankIndexForLevel(level);
-    const xpCoins = e.q("SELECT COALESCE(SUM(coins), 0) AS s FROM game_rewards WHERE org_id = ? AND member_id = ?").get(orgId, m.id).s;
-    const crateCoins = e.q("SELECT COALESCE(SUM(reward_coins), 0) AS s FROM game_crates WHERE org_id = ? AND member_id = ?").get(orgId, m.id).s;
-    const today2 = dayKey(now2, m.tz);
-    const last = p.streak_last_day;
-    const alive = !!last && (last === today2 || last < today2 && onlyWeekendsBetween(last, today2));
-    const loadout = e.q("SELECT title, frame, emote FROM game_loadout WHERE org_id = ? AND member_id = ?").get(orgId, m.id);
-    const count = (sql) => e.q(sql).get(orgId, m.id).n;
-    return {
-      memberId: m.id,
-      xp: p.xp,
-      level,
-      levelXp,
-      levelProgressXp: level >= MAX_LEVEL ? 0 : p.xp - floor,
-      rank: RANKS[rIdx],
-      nextRank: RANKS[rIdx + 1] ?? null,
-      coins: xpCoins + crateCoins,
-      streak: { current: alive ? p.streak_current : 0, best: p.streak_best, lastActiveDay: last },
-      stats: {
-        missionsCompleted: e.stat(orgId, m.id, "missions"),
-        onTime: e.stat(orgId, m.id, "on_time"),
-        rescued: e.stat(orgId, m.id, "rescued"),
-        created: e.stat(orgId, m.id, "created"),
-        cratesOpened: e.stat(orgId, m.id, "crates_opened"),
-        achievements: count("SELECT COUNT(*) AS n FROM game_achievements WHERE org_id = ? AND member_id = ?")
-      },
-      equipped: { title: loadout?.title ?? null, frame: loadout?.frame ?? null, emote: loadout?.emote ?? null },
-      unopenedCrates: count("SELECT COUNT(*) AS n FROM game_crates WHERE org_id = ? AND member_id = ? AND opened_at IS NULL")
-    };
-  }
-  async profile(actor, memberId) {
-    const m = await this.viewable(actor, memberId);
-    return this.buildProfile(actor.orgId, m, this.engine.clock());
-  }
-  // ─── HUD ─────────────────────────────────────────────────────────────────
-  async hud(actor) {
-    const m = await this.member(actor.orgId, actor.memberId);
-    const now2 = this.engine.clock();
-    const [mineRaw, squadRaw, projects] = await Promise.all([
-      this.services.tasks.list(actor, { assigneeId: m.id, includeDone: true, limit: 1e3 }),
-      this.services.tasks.list(actor, { includeDone: true, limit: 1e3 }).catch(() => []),
-      this.services.projects.list(actor).catch(() => [])
-    ]);
-    const mine = mineRaw.filter((t) => t.orgId === actor.orgId && t.assigneeIds.includes(m.id));
-    const squad = squadRaw.filter((t) => t.orgId === actor.orgId);
-    const today2 = dayKey(now2, m.tz);
-    const dayFrom = startOfDay(today2, m.tz);
-    const dayTo = startOfDay(addDays2(today2, 1), m.tz);
-    const monday = mondayOf(today2);
-    const weekFrom = startOfDay(monday, m.tz);
-    const weekTo = startOfDay(addDays2(monday, 7), m.tz);
-    const operations = projects.filter((p) => p.orgId === actor.orgId && p.status !== "archived" && (p.memberIds.includes(m.id) || p.leadId === m.id)).map((p) => {
-      const tasks = squad.filter((t) => t.projectId === p.id && t.status !== "cancelled");
-      const done = tasks.filter((t) => t.status === "done").length;
-      const overdue = tasks.filter((t) => t.status !== "done" && t.dueAt != null && t.dueAt < now2).length;
-      const total = tasks.length;
-      return {
-        projectId: p.id,
-        name: p.name,
-        emoji: p.emoji,
-        color: p.color,
-        progress: { total, done, pending: total - done, overdue, pct: total ? Math.round(done / total * 100) : 0 }
-      };
-    });
-    const challenges = this.ensureToday(actor.orgId, m, now2, mine);
-    return {
-      profile: this.buildProfile(actor.orgId, m, now2),
-      today: progressOf(mine, dayFrom, dayTo, now2),
-      week: progressOf(mine, weekFrom, weekTo, now2),
-      operations,
-      squadToday: progressOf(squad, dayFrom, dayTo, now2),
-      challenges,
-      boost: this.engine.activeBoost(actor.orgId, m.id, now2)
-    };
-  }
-  // ─── Challenges ──────────────────────────────────────────────────────────
-  toChallenge(r) {
-    return {
-      id: r.id,
-      memberId: r.member_id,
-      day: r.day,
-      title: r.title,
-      description: r.description,
-      target: r.target,
-      progress: r.progress,
-      xp: r.xp,
-      completedAt: r.completed_at
-    };
-  }
-  ensureToday(orgId, m, now2, tasks) {
-    const day = dayKey(now2, m.tz);
-    const rows = this.db.transaction(() => this.engine.ensureChallenges(orgId, m.id, day, openStatsOf(tasks, m.id, now2)))();
-    return rows.map((r) => this.toChallenge(r));
-  }
-  async challenges(actor) {
-    const m = await this.member(actor.orgId, actor.memberId);
-    const now2 = this.engine.clock();
-    const day = dayKey(now2, m.tz);
-    const existing = this.engine.ensureChallenges(actor.orgId, m.id, day, null);
-    if (existing.length) return existing.map((r) => this.toChallenge(r));
-    const tasks = await this.services.tasks.list(actor, { assigneeId: m.id, limit: 1e3 }).catch(() => []);
-    return this.ensureToday(actor.orgId, m, now2, tasks.filter((t) => t.orgId === actor.orgId));
-  }
-  // ─── Leaderboard ─────────────────────────────────────────────────────────
-  async leaderboard(actor, period) {
-    if (period !== "week" && period !== "month" && period !== "all") throw new AppError("bad_request", "period must be week, month or all");
-    const me = await this.member(actor.orgId, actor.memberId);
-    const now2 = this.engine.clock();
-    const today2 = dayKey(now2, me.tz);
-    const from = period === "all" ? 0 : startOfDay(period === "week" ? mondayOf(today2) : firstOfMonth(today2), me.tz);
-    let members = (await this.services.members.list(systemActor2(actor.orgId))).filter((m) => m.orgId === actor.orgId && m.active);
-    if (actor.role === "guest") members = members.filter((m) => m.id === actor.memberId);
-    const xpRows = this.engine.q("SELECT member_id, COALESCE(SUM(xp), 0) AS xp FROM game_rewards WHERE org_id = ? AND at >= ? GROUP BY member_id").all(actor.orgId, from);
-    const mRows = this.engine.q(`SELECT member_id, COUNT(*) AS missions, SUM(on_time) AS on_time, SUM(had_due) AS had_due
-      FROM game_completions WHERE org_id = ? AND at >= ? AND revoked_at IS NULL AND farm = 0 GROUP BY member_id`).all(actor.orgId, from);
-    const xpBy = new Map(xpRows.map((r) => [r.member_id, r.xp]));
-    const mBy = new Map(mRows.map((r) => [r.member_id, r]));
-    const entries = members.map((member) => {
-      const p = this.buildProfile(actor.orgId, toInfo(member), now2);
-      const s2 = mBy.get(member.id);
-      const entry = {
-        member,
-        position: 0,
-        xp: xpBy.get(member.id) ?? 0,
-        missions: s2?.missions ?? 0,
-        onTimeRate: s2 && s2.had_due > 0 ? s2.on_time / s2.had_due : 0,
-        rank: p.rank,
-        level: p.level,
-        streak: p.streak.current
-      };
-      return entry;
-    });
-    const sortRank = (list) => {
-      list.sort((a, b) => b.xp - a.xp || b.missions - a.missions || b.onTimeRate - a.onTimeRate || a.member.name.localeCompare(b.member.name));
-      list.forEach((e, i) => {
-        e.position = i + 1;
-      });
-      return list;
-    };
-    return {
-      period,
-      humans: sortRank(entries.filter((e) => e.member.kind === "human")),
-      agents: sortRank(entries.filter((e) => e.member.kind === "agent"))
-    };
-  }
-  // ─── Achievements ────────────────────────────────────────────────────────
-  async achievements(actor, memberId) {
-    const m = await this.viewable(actor, memberId);
-    const unlocked = new Map(this.engine.q("SELECT achievement_id, unlocked_at FROM game_achievements WHERE org_id = ? AND member_id = ?").all(actor.orgId, m.id).map((r) => [r.achievement_id, r.unlocked_at]));
-    const cache2 = /* @__PURE__ */ new Map();
-    return ACHIEVEMENTS.map(({ metric, ...a }) => {
-      const at = unlocked.get(a.id) ?? null;
-      if (!cache2.has(metric)) cache2.set(metric, this.engine.stat(actor.orgId, m.id, metric));
-      const progress = Math.min(a.target, cache2.get(metric) ?? 0);
-      if (a.secret && at == null) {
-        return {
-          achievement: { ...a, name: "Classified", description: "Secret medal \u2014 keep playing to reveal it.", icon: "\u{1F512}" },
-          progress: 0,
-          unlockedAt: null
-        };
-      }
-      return { achievement: a, progress: at != null ? a.target : progress, unlockedAt: at };
-    });
-  }
-  // ─── Crates & inventory ──────────────────────────────────────────────────
-  crateRow(r) {
-    let reward = null;
-    if (r.reward_json) {
-      try {
-        reward = JSON.parse(r.reward_json);
-      } catch {
-        reward = null;
-      }
-    }
-    return { id: r.id, memberId: r.member_id, rarity: r.rarity, source: r.source, earnedAt: r.earned_at, openedAt: r.opened_at, reward };
-  }
-  async crates(actor) {
-    const rows = this.engine.q("SELECT * FROM game_crates WHERE org_id = ? AND member_id = ? ORDER BY opened_at IS NOT NULL, earned_at DESC LIMIT 500").all(actor.orgId, actor.memberId);
-    return rows.map((r) => this.crateRow(r));
-  }
-  async openCrate(actor, crateId) {
-    this.requireWrite(actor);
-    const m = await this.member(actor.orgId, actor.memberId);
-    const now2 = this.engine.clock();
-    const get = () => this.engine.q("SELECT * FROM game_crates WHERE id = ? AND org_id = ? AND member_id = ?").get(crateId, actor.orgId, actor.memberId);
-    if (!get()) throw new AppError("not_found", "Crate not found");
-    try {
-      this.db.transaction(() => {
-        const opened = this.engine.openCrate(actor.orgId, actor.memberId, crateId, now2);
-        if (opened) this.engine.settle(actor.orgId, m, now2);
-      })();
-    } catch (err) {
-      this.engine.discard();
-      throw err;
-    }
-    this.engine.flush();
-    return this.crateRow(get());
-  }
-  async inventory(actor) {
-    const rows = this.engine.q("SELECT kind, item_id, name, rarity, acquired_at FROM game_inventory WHERE org_id = ? AND member_id = ? ORDER BY acquired_at DESC").all(actor.orgId, actor.memberId);
-    return rows.map((r) => ({ kind: r.kind, id: r.item_id, name: r.name, rarity: r.rarity, acquiredAt: r.acquired_at }));
-  }
-  async equip(actor, patch) {
-    this.requireWrite(actor);
-    const m = await this.member(actor.orgId, actor.memberId);
-    const owned = new Set((await this.inventory(actor)).map((i) => `${i.kind}:${i.id}`));
-    const cur = this.engine.q("SELECT title, frame, emote FROM game_loadout WHERE org_id = ? AND member_id = ?").get(actor.orgId, m.id);
-    const next = { title: cur?.title ?? null, frame: cur?.frame ?? null, emote: cur?.emote ?? null };
-    for (const kind of ["title", "frame", "emote"]) {
-      if (!(kind in patch)) continue;
-      const v = patch[kind];
-      if (v === void 0) continue;
-      if (v !== null) {
-        if (typeof v !== "string" || !COSMETICS.some((c) => c.kind === kind && c.id === v)) throw new AppError("bad_request", `Unknown ${kind}: ${String(v)}`);
-        if (!owned.has(`${kind}:${v}`)) throw new AppError("forbidden", `You don't own that ${kind} yet`);
-      }
-      next[kind] = v;
-    }
-    this.engine.q(`INSERT INTO game_loadout (org_id, member_id, title, frame, emote) VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT (org_id, member_id) DO UPDATE SET title = excluded.title, frame = excluded.frame, emote = excluded.emote`).run(actor.orgId, m.id, next.title, next.frame, next.emote);
-    return this.buildProfile(actor.orgId, m, this.engine.clock());
-  }
-  // ─── Feed & rewards ──────────────────────────────────────────────────────
-  async feed(actor, limit) {
-    const n = clampLimit(limit, 30, 200);
-    const rows = actor.role === "guest" ? this.engine.q("SELECT * FROM game_feed WHERE org_id = ? AND member_id = ? ORDER BY at DESC, rowid DESC LIMIT ?").all(actor.orgId, actor.memberId, n) : this.engine.q("SELECT * FROM game_feed WHERE org_id = ? ORDER BY at DESC, rowid DESC LIMIT ?").all(actor.orgId, n);
-    return rows.map((r) => ({ id: r.id, memberId: r.member_id, text: r.text, kind: r.kind, xp: r.xp, at: r.at }));
-  }
-  async rewards(actor, limit) {
-    const n = clampLimit(limit, 50, 500);
-    const rows = this.engine.q("SELECT * FROM game_rewards WHERE org_id = ? AND member_id = ? ORDER BY at DESC, rowid DESC LIMIT ?").all(actor.orgId, actor.memberId, n);
-    return rows.map(rewardFromRow);
-  }
-};
-
-// packages/game/src/index.ts
-function createGame(opts) {
-  migrate(opts.sqlite);
-  const engine = new Engine({
-    db: opts.sqlite,
-    services: opts.services,
-    clock: opts.clock ?? Date.now,
-    random: opts.random ?? cryptoRandom,
-    log: opts.log ?? console
-  });
-  const service = new Service(engine, opts.services);
-  return {
-    service,
-    onAudit: (e) => engine.onAudit(e),
-    rebuild: (orgId) => engine.rebuildPlayers(orgId)
-  };
-}
-
 // packages/integrations/src/config.ts
 import { homedir as homedir2 } from "node:os";
 import { dirname as dirname3, join as join3, resolve as resolve2 } from "node:path";
 var DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5-5";
 var DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
-function str3(env2, key) {
+function str(env2, key) {
   const v = env2[key];
   if (v === void 0) return null;
   const t = v.trim();
   return t === "" ? null : t;
 }
-function bool2(env2, key, dflt) {
-  const v = str3(env2, key);
+function bool(env2, key, dflt) {
+  const v = str(env2, key);
   if (v === null) return dflt;
   return /^(1|true|yes|on)$/i.test(v);
 }
-function int2(env2, key, dflt, min, max) {
-  const v = str3(env2, key);
+function int(env2, key, dflt, min, max) {
+  const v = str(env2, key);
   if (v === null) return dflt;
   const n = Number.parseInt(v, 10);
   if (!Number.isFinite(n)) return dflt;
@@ -150793,13 +142313,13 @@ function trimSlash(u) {
   return u.replace(/\/+$/, "");
 }
 function defaultDataDir(env2) {
-  const db = str3(env2, "COMPANYBRAIN_DB_PATH");
+  const db = str(env2, "COMPANYBRAIN_DB_PATH");
   if (db && db !== ":memory:") return dirname3(resolve2(db));
   return join3(homedir2(), ".companybrain");
 }
 function loadIntegrationsConfig(env2 = process.env, dataDir2) {
   const dir = resolve2(dataDir2 ?? defaultDataDir(env2));
-  const publicUrlRaw = str3(env2, "COMPANYBRAIN_PUBLIC_URL");
+  const publicUrlRaw = str(env2, "COMPANYBRAIN_PUBLIC_URL");
   let publicUrl = null;
   if (publicUrlRaw) {
     try {
@@ -150809,92 +142329,92 @@ function loadIntegrationsConfig(env2 = process.env, dataDir2) {
       publicUrl = null;
     }
   }
-  const phoneNumberId = str3(env2, "WHATSAPP_PHONE_NUMBER_ID");
-  const accessToken = str3(env2, "WHATSAPP_ACCESS_TOKEN");
+  const phoneNumberId = str(env2, "WHATSAPP_PHONE_NUMBER_ID");
+  const accessToken = str(env2, "WHATSAPP_ACCESS_TOKEN");
   const whatsapp = {
     phoneNumberId,
     accessToken,
-    verifyToken: str3(env2, "WHATSAPP_VERIFY_TOKEN"),
-    appSecret: str3(env2, "WHATSAPP_APP_SECRET"),
-    graphVersion: str3(env2, "WHATSAPP_GRAPH_VERSION") ?? "v23.0",
+    verifyToken: str(env2, "WHATSAPP_VERIFY_TOKEN"),
+    appSecret: str(env2, "WHATSAPP_APP_SECRET"),
+    graphVersion: str(env2, "WHATSAPP_GRAPH_VERSION") ?? "v23.0",
     cloudConfigured: Boolean(phoneNumberId && accessToken),
-    qrEnabled: bool2(env2, "WHATSAPP_QR", false),
+    qrEnabled: bool(env2, "WHATSAPP_QR", false),
     authDir: join3(dir, "whatsapp-auth")
   };
-  const imapHost = str3(env2, "EMAIL_IMAP_HOST");
-  const imapUser = str3(env2, "EMAIL_IMAP_USER");
-  const imapPass = str3(env2, "EMAIL_IMAP_PASS");
+  const imapHost = str(env2, "EMAIL_IMAP_HOST");
+  const imapUser = str(env2, "EMAIL_IMAP_USER");
+  const imapPass = str(env2, "EMAIL_IMAP_PASS");
   let imap = null;
   if (imapHost && imapUser && imapPass) {
-    const secure = bool2(env2, "EMAIL_IMAP_TLS", true);
+    const secure = bool(env2, "EMAIL_IMAP_TLS", true);
     imap = {
       host: imapHost,
-      port: int2(env2, "EMAIL_IMAP_PORT", secure ? 993 : 143, 1, 65535),
+      port: int(env2, "EMAIL_IMAP_PORT", secure ? 993 : 143, 1, 65535),
       secure,
       user: imapUser,
       pass: imapPass,
-      mailbox: str3(env2, "EMAIL_IMAP_MAILBOX") ?? "INBOX",
-      pollSeconds: int2(env2, "EMAIL_POLL_SECONDS", 60, 10, 86400)
+      mailbox: str(env2, "EMAIL_IMAP_MAILBOX") ?? "INBOX",
+      pollSeconds: int(env2, "EMAIL_POLL_SECONDS", 60, 10, 86400)
     };
   }
-  const smtpHost = str3(env2, "EMAIL_SMTP_HOST");
-  const smtpUser = str3(env2, "EMAIL_SMTP_USER");
-  const from = str3(env2, "EMAIL_FROM") ?? (smtpUser && smtpUser.includes("@") ? smtpUser : null);
+  const smtpHost = str(env2, "EMAIL_SMTP_HOST");
+  const smtpUser = str(env2, "EMAIL_SMTP_USER");
+  const from = str(env2, "EMAIL_FROM") ?? (smtpUser && smtpUser.includes("@") ? smtpUser : null);
   let smtp = null;
   if (smtpHost && from) {
-    const port = int2(env2, "EMAIL_SMTP_PORT", 587, 1, 65535);
+    const port = int(env2, "EMAIL_SMTP_PORT", 587, 1, 65535);
     smtp = {
       host: smtpHost,
       port,
-      secure: bool2(env2, "EMAIL_SMTP_SECURE", port === 465),
+      secure: bool(env2, "EMAIL_SMTP_SECURE", port === 465),
       user: smtpUser,
-      pass: str3(env2, "EMAIL_SMTP_PASS"),
+      pass: str(env2, "EMAIL_SMTP_PASS"),
       from
     };
   }
-  const subject = str3(env2, "VAPID_SUBJECT") ?? (publicUrl?.startsWith("https://") ? publicUrl : null) ?? (smtp ? `mailto:${extractAddress(smtp.from)}` : null) ?? "mailto:admin@example.com";
+  const subject = str(env2, "VAPID_SUBJECT") ?? (publicUrl?.startsWith("https://") ? publicUrl : null) ?? (smtp ? `mailto:${extractAddress(smtp.from)}` : null) ?? "mailto:admin@example.com";
   const vapid = {
-    publicKey: str3(env2, "VAPID_PUBLIC_KEY"),
-    privateKey: str3(env2, "VAPID_PRIVATE_KEY"),
+    publicKey: str(env2, "VAPID_PUBLIC_KEY"),
+    privateKey: str(env2, "VAPID_PRIVATE_KEY"),
     subject
   };
   let llm = null;
-  const anthropicKey = str3(env2, "ANTHROPIC_API_KEY");
-  const openaiKey = str3(env2, "OPENAI_API_KEY");
+  const anthropicKey = str(env2, "ANTHROPIC_API_KEY");
+  const openaiKey = str(env2, "OPENAI_API_KEY");
   if (anthropicKey) {
     llm = {
       provider: "anthropic",
       apiKey: anthropicKey,
-      model: str3(env2, "ANTHROPIC_MODEL") ?? DEFAULT_ANTHROPIC_MODEL,
-      baseUrl: trimSlash(str3(env2, "ANTHROPIC_BASE_URL") ?? "https://api.anthropic.com")
+      model: str(env2, "ANTHROPIC_MODEL") ?? DEFAULT_ANTHROPIC_MODEL,
+      baseUrl: trimSlash(str(env2, "ANTHROPIC_BASE_URL") ?? "https://api.anthropic.com")
     };
   } else if (openaiKey) {
     llm = {
       provider: "openai",
       apiKey: openaiKey,
-      model: str3(env2, "OPENAI_MODEL") ?? DEFAULT_OPENAI_MODEL,
-      baseUrl: trimSlash(str3(env2, "OPENAI_BASE_URL") ?? "https://api.openai.com/v1")
+      model: str(env2, "OPENAI_MODEL") ?? DEFAULT_OPENAI_MODEL,
+      baseUrl: trimSlash(str(env2, "OPENAI_BASE_URL") ?? "https://api.openai.com/v1")
     };
   }
   let tts = null;
-  const ttsProvider = (str3(env2, "TTS_PROVIDER") ?? "").toLowerCase();
+  const ttsProvider = (str(env2, "TTS_PROVIDER") ?? "").toLowerCase();
   if (ttsProvider === "openai" && openaiKey) {
     tts = {
       provider: "openai",
       apiKey: openaiKey,
-      baseUrl: trimSlash(str3(env2, "OPENAI_TTS_BASE_URL") ?? "https://api.openai.com/v1"),
-      model: str3(env2, "OPENAI_TTS_MODEL") ?? "gpt-4o-mini-tts",
-      voice: str3(env2, "OPENAI_TTS_VOICE") ?? "coral"
+      baseUrl: trimSlash(str(env2, "OPENAI_TTS_BASE_URL") ?? "https://api.openai.com/v1"),
+      model: str(env2, "OPENAI_TTS_MODEL") ?? "gpt-4o-mini-tts",
+      voice: str(env2, "OPENAI_TTS_VOICE") ?? "coral"
     };
   } else if (ttsProvider === "elevenlabs") {
-    const key = str3(env2, "ELEVENLABS_API_KEY");
-    const voiceId = str3(env2, "ELEVENLABS_VOICE_ID");
+    const key = str(env2, "ELEVENLABS_API_KEY");
+    const voiceId = str(env2, "ELEVENLABS_VOICE_ID");
     if (key && voiceId) {
       tts = {
         provider: "elevenlabs",
         apiKey: key,
         voiceId,
-        model: str3(env2, "ELEVENLABS_MODEL_ID") ?? "eleven_multilingual_v2"
+        model: str(env2, "ELEVENLABS_MODEL_ID") ?? "eleven_multilingual_v2"
       };
     }
   }
@@ -150904,7 +142424,11 @@ function loadIntegrationsConfig(env2 = process.env, dataDir2) {
     whatsapp,
     imap,
     smtp,
-    emailWebhookSecret: str3(env2, "EMAIL_WEBHOOK_SECRET"),
+    emailWebhookSecret: str(env2, "EMAIL_WEBHOOK_SECRET"),
+    emailAuth: {
+      authservId: str(env2, "EMAIL_AUTHSERV_ID")?.toLowerCase() ?? null,
+      trustUnverifiedSenders: bool(env2, "EMAIL_TRUST_UNVERIFIED_SENDERS", false)
+    },
     vapid,
     llm,
     tts
@@ -150963,7 +142487,7 @@ function errMsg(e) {
   if (e instanceof Error) return e.message;
   return String(e);
 }
-function withTimeout2(p, ms, label = "operation") {
+function withTimeout(p, ms, label = "operation") {
   let timer;
   const t = new Promise((_, rej) => {
     timer = setTimeout(() => rej(new Error(`${label} timed out after ${ms}ms`)), ms);
@@ -150974,7 +142498,7 @@ function withTimeout2(p, ms, label = "operation") {
 
 // packages/integrations/src/email/smtp.ts
 function createMailer(cfg, deps = {}) {
-  const log2 = deps.log ?? defaultLogger;
+  const log = deps.log ?? defaultLogger;
   const smtp = cfg.smtp;
   let transport = deps.transport ?? null;
   function getTransport() {
@@ -151000,11 +142524,11 @@ function createMailer(cfg, deps = {}) {
       const t = getTransport();
       if (!t || !smtp) return false;
       if (!msg.to || !/@/.test(msg.to)) {
-        log2.warn("email: invalid recipient", msg.to);
+        log.warn("email: invalid recipient", msg.to);
         return false;
       }
       try {
-        await withTimeout2(
+        await withTimeout(
           t.sendMail({
             from: smtp.from,
             to: msg.to,
@@ -151019,7 +142543,7 @@ function createMailer(cfg, deps = {}) {
         );
         return true;
       } catch (e) {
-        log2.warn("email: send failed:", errMsg(e));
+        log.warn("email: send failed:", errMsg(e));
         return false;
       }
     },
@@ -151037,6 +142561,52 @@ function createMailer(cfg, deps = {}) {
 var import_web_push = __toESM(require_src2(), 1);
 import { chmodSync as chmodSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, renameSync, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join4 } from "node:path";
+
+// packages/types/src/index.ts
+var SYSTEM_MEMBER_ID = "system";
+var ROLE_RANK = {
+  guest: 0,
+  agent: 1,
+  member: 2,
+  manager: 3,
+  admin: 4,
+  owner: 5
+};
+var AppError = class extends Error {
+  constructor(code, message, details) {
+    super(message);
+    this.code = code;
+    this.details = details;
+    this.name = "AppError";
+  }
+};
+var HTTP_STATUS = {
+  bad_request: 400,
+  unauthorized: 401,
+  forbidden: 403,
+  not_found: 404,
+  conflict: 409,
+  rate_limited: 429,
+  internal: 500
+};
+var PUSH_SERVICE_HOSTS = ["fcm.googleapis.com", "android.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com"];
+var PUSH_SERVICE_HOST_SUFFIXES = [".push.services.mozilla.com", ".notify.windows.com", ".push.apple.com"];
+function isAllowedPushEndpoint(endpoint) {
+  if (typeof endpoint !== "string" || endpoint.length > 2048) return false;
+  let u;
+  try {
+    u = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:" || u.username || u.password) return false;
+  if (u.port !== "" && u.port !== "443") return false;
+  const host = u.hostname.toLowerCase();
+  if (PUSH_SERVICE_HOSTS.includes(host)) return true;
+  return PUSH_SERVICE_HOST_SUFFIXES.some((s2) => host.endsWith(s2) && host.length > s2.length && /^[a-z0-9.-]+$/.test(host));
+}
+
+// packages/integrations/src/push.ts
 var cache = /* @__PURE__ */ new Map();
 var isB64Url = (s2) => typeof s2 === "string" && /^[A-Za-z0-9_-]{20,}$/.test(s2);
 function getVapidKeys(cfg) {
@@ -151070,10 +142640,10 @@ function getVapidKeys(cfg) {
   return keys;
 }
 async function sendPush(keys, subject, sub, payload, deps = {}) {
-  const log2 = deps.log ?? defaultLogger;
+  const log = deps.log ?? defaultLogger;
   const send = deps.send ?? ((s2, p, o) => import_web_push.default.sendNotification(s2, p, o));
   try {
-    if (!sub?.endpoint || !/^https:\/\//.test(sub.endpoint) || !sub.keys?.p256dh || !sub.keys?.auth) return "gone";
+    if (!sub?.endpoint || !isAllowedPushEndpoint(sub.endpoint) || !sub.keys?.p256dh || !sub.keys?.auth) return "gone";
     await send(sub, JSON.stringify(payload), {
       vapidDetails: { subject, publicKey: keys.publicKey, privateKey: keys.privateKey },
       TTL: 24 * 60 * 60,
@@ -151085,7 +142655,7 @@ async function sendPush(keys, subject, sub, payload, deps = {}) {
   } catch (e) {
     const status = e?.statusCode;
     if (status === 404 || status === 410) return "gone";
-    log2.warn(`push: send failed${status ? ` (HTTP ${status})` : ""}:`, errMsg(e));
+    log.warn(`push: send failed${status ? ` (HTTP ${status})` : ""}:`, errMsg(e));
     return "failed";
   }
 }
@@ -151095,15 +142665,15 @@ function topicFromTag(tag) {
 }
 
 // packages/integrations/src/whatsapp/cloud.ts
-import { createHmac, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 function safeEqual(a, b) {
   const ab = Buffer.from(a, "utf8");
   const bb = Buffer.from(b, "utf8");
   if (ab.length !== bb.length) {
-    timingSafeEqual2(ab, ab);
+    timingSafeEqual(ab, ab);
     return false;
   }
-  return timingSafeEqual2(ab, bb);
+  return timingSafeEqual(ab, bb);
 }
 function verifyChallenge(cfg, query) {
   const expected = cfg.whatsapp.verifyToken;
@@ -151123,37 +142693,37 @@ function verifySignature(cfg, rawBody, signatureHeader) {
   const expected = createHmac("sha256", secret).update(rawBody).digest();
   const given = Buffer.from(m[1].toLowerCase(), "hex");
   if (given.length !== expected.length) return false;
-  return timingSafeEqual2(given, expected);
+  return timingSafeEqual(given, expected);
 }
-var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var arr = (v) => Array.isArray(v) ? v : [];
 var s = (v) => typeof v === "string" && v.length > 0 ? v : null;
 function messageText(m) {
   const type = s(m.type);
-  if (type === "text" && isObj2(m.text)) return s(m.text.body);
-  if (type === "interactive" && isObj2(m.interactive)) {
+  if (type === "text" && isObj(m.text)) return s(m.text.body);
+  if (type === "interactive" && isObj(m.interactive)) {
     const i = m.interactive;
-    if (isObj2(i.button_reply)) return s(i.button_reply.title) ?? s(i.button_reply.id);
-    if (isObj2(i.list_reply)) return s(i.list_reply.title) ?? s(i.list_reply.id);
+    if (isObj(i.button_reply)) return s(i.button_reply.title) ?? s(i.button_reply.id);
+    if (isObj(i.list_reply)) return s(i.list_reply.title) ?? s(i.list_reply.id);
     return null;
   }
-  if (type === "button" && isObj2(m.button)) return s(m.button.text) ?? s(m.button.payload);
+  if (type === "button" && isObj(m.button)) return s(m.button.text) ?? s(m.button.payload);
   return null;
 }
 function parseWebhook(body) {
   const out = [];
-  if (!isObj2(body)) return out;
+  if (!isObj(body)) return out;
   for (const entry of arr(body.entry)) {
-    if (!isObj2(entry)) continue;
+    if (!isObj(entry)) continue;
     for (const change of arr(entry.changes)) {
-      if (!isObj2(change) || !isObj2(change.value)) continue;
+      if (!isObj(change) || !isObj(change.value)) continue;
       const value = change.value;
       const names = /* @__PURE__ */ new Map();
       for (const c of arr(value.contacts)) {
-        if (isObj2(c) && s(c.wa_id) && isObj2(c.profile) && s(c.profile.name)) names.set(c.wa_id, c.profile.name);
+        if (isObj(c) && s(c.wa_id) && isObj(c.profile) && s(c.profile.name)) names.set(c.wa_id, c.profile.name);
       }
       for (const m of arr(value.messages)) {
-        if (!isObj2(m)) continue;
+        if (!isObj(m)) continue;
         const text = messageText(m)?.trim();
         const id = s(m.id);
         const fromRaw = s(m.from);
@@ -151176,12 +142746,12 @@ function parseWebhook(body) {
 }
 var whatsappCloud = { verifyChallenge, verifySignature, parseWebhook };
 async function sendCloudText(cfg, to, text, deps = {}) {
-  const log2 = deps.log ?? defaultLogger;
+  const log = deps.log ?? defaultLogger;
   const w = cfg.whatsapp;
   if (!w.cloudConfigured || !w.phoneNumberId || !w.accessToken) return false;
   const digits = phoneDigits2(to);
   if (!digits) {
-    log2.warn("whatsapp: invalid phone number", to);
+    log.warn("whatsapp: invalid phone number", to);
     return false;
   }
   try {
@@ -151202,27 +142772,27 @@ async function sendCloudText(cfg, to, text, deps = {}) {
       1e4
     );
     if (!res.ok) {
-      log2.warn(`whatsapp cloud send failed: HTTP ${res.status} ${await safeText(res)}`);
+      log.warn(`whatsapp cloud send failed: HTTP ${res.status} ${await safeText(res)}`);
       return false;
     }
     return true;
   } catch (e) {
-    log2.warn("whatsapp cloud send error:", e instanceof Error ? e.message : e);
+    log.warn("whatsapp cloud send error:", e instanceof Error ? e.message : e);
     return false;
   }
 }
 
 // packages/integrations/src/outbound.ts
 function createOutbound(cfg, qr, deps = {}) {
-  const log2 = deps.log ?? defaultLogger;
-  const mailer = createMailer(cfg, { transport: deps.mailTransport, log: log2 });
+  const log = deps.log ?? defaultLogger;
+  const mailer = createMailer(cfg, { transport: deps.mailTransport, log });
   let vapid;
   function keys() {
     if (vapid === void 0) {
       try {
         vapid = getVapidKeys(cfg);
       } catch (e) {
-        log2.warn("push: VAPID keys unavailable:", errMsg(e));
+        log.warn("push: VAPID keys unavailable:", errMsg(e));
         vapid = null;
       }
     }
@@ -151242,10 +142812,10 @@ function createOutbound(cfg, qr, deps = {}) {
         if (qr && qrConnected()) {
           if (await qr.send(to, text)) return true;
         }
-        if (cfg.whatsapp.cloudConfigured) return await sendCloudText(cfg, to, text, { fetch: deps.fetch, log: log2 });
+        if (cfg.whatsapp.cloudConfigured) return await sendCloudText(cfg, to, text, { fetch: deps.fetch, log });
         return false;
       } catch (e) {
-        log2.warn("whatsapp: send error:", errMsg(e));
+        log.warn("whatsapp: send error:", errMsg(e));
         return false;
       }
     },
@@ -151253,7 +142823,7 @@ function createOutbound(cfg, qr, deps = {}) {
       try {
         return await mailer.send({ to, subject, text, ...html ? { html } : {} });
       } catch (e) {
-        log2.warn("email: send error:", errMsg(e));
+        log.warn("email: send error:", errMsg(e));
         return false;
       }
     },
@@ -151261,9 +142831,9 @@ function createOutbound(cfg, qr, deps = {}) {
       try {
         const k = keys();
         if (!k) return "failed";
-        return await sendPush(k, cfg.vapid.subject, sub, payload, { send: deps.pushSend, log: log2 });
+        return await sendPush(k, cfg.vapid.subject, sub, payload, { send: deps.pushSend, log });
       } catch (e) {
-        log2.warn("push: send error:", errMsg(e));
+        log.warn("push: send error:", errMsg(e));
         return "failed";
       }
     },
@@ -151318,7 +142888,7 @@ function baileysToInbound(m) {
   };
 }
 function createWhatsAppQr(cfg, onInbound, deps = {}) {
-  const log2 = deps.log ?? defaultLogger;
+  const log = deps.log ?? defaultLogger;
   const authDir = cfg.whatsapp.authDir;
   const load = deps.loadBaileys ?? (async () => {
     const spec = "@whiskeysockets/baileys";
@@ -151363,10 +142933,10 @@ function createWhatsAppQr(cfg, onInbound, deps = {}) {
     try {
       const { reply } = await onInbound(msg);
       if (reply && sock === s2 && state === "connected" && m.key.remoteJid) {
-        await withTimeout2(s2.sendMessage(m.key.remoteJid, { text: reply }), 1e4, "whatsapp reply");
+        await withTimeout(s2.sendMessage(m.key.remoteJid, { text: reply }), 1e4, "whatsapp reply");
       }
     } catch (e) {
-      log2.warn("whatsapp qr: inbound handling failed:", errMsg(e));
+      log.warn("whatsapp qr: inbound handling failed:", errMsg(e));
     }
   }
   async function connect() {
@@ -151378,7 +142948,7 @@ function createWhatsAppQr(cfg, onInbound, deps = {}) {
       try {
         mod = await load();
       } catch (e) {
-        log2.warn("whatsapp qr: @whiskeysockets/baileys is not installed \u2014 QR mode unavailable", errMsg(e));
+        log.warn("whatsapp qr: @whiskeysockets/baileys is not installed \u2014 QR mode unavailable", errMsg(e));
         running = false;
         state = "disconnected";
         return;
@@ -151390,7 +142960,7 @@ function createWhatsAppQr(cfg, onInbound, deps = {}) {
       let version2;
       try {
         if (mod.fetchLatestBaileysVersion) {
-          version2 = (await withTimeout2(mod.fetchLatestBaileysVersion({ signal: AbortSignal.timeout(1e4) }), 1e4, "baileys version")).version;
+          version2 = (await withTimeout(mod.fetchLatestBaileysVersion({ signal: AbortSignal.timeout(1e4) }), 1e4, "baileys version")).version;
         }
       } catch {
         version2 = void 0;
@@ -151409,7 +142979,7 @@ function createWhatsAppQr(cfg, onInbound, deps = {}) {
       const loggedOutCode = mod.DisconnectReason?.loggedOut ?? 401;
       const restartCode = mod.DisconnectReason?.restartRequired ?? 515;
       s2.ev.on("creds.update", () => {
-        saveCreds().catch((e) => log2.warn("whatsapp qr: saving creds failed:", errMsg(e)));
+        saveCreds().catch((e) => log.warn("whatsapp qr: saving creds failed:", errMsg(e)));
       });
       s2.ev.on("connection.update", (u) => {
         if (myGen !== generation) return;
@@ -151418,7 +142988,7 @@ function createWhatsAppQr(cfg, onInbound, deps = {}) {
             state = "pairing";
             import_qrcode.default.toDataURL(String(u.qr), { margin: 1, width: 320 }).then((url3) => {
               if (myGen === generation && state === "pairing") qr = url3;
-            }).catch((e) => log2.warn("whatsapp qr: QR render failed:", errMsg(e)));
+            }).catch((e) => log.warn("whatsapp qr: QR render failed:", errMsg(e)));
           }
           if (u?.connection === "open") {
             state = "connected";
@@ -151426,14 +142996,14 @@ function createWhatsAppQr(cfg, onInbound, deps = {}) {
             attempts = 0;
             const id = s2.user?.id ?? "";
             phone2 = normalizePhone(id.replace(/:\d+@/, "@")) ?? normalizePhone(id.split("@")[0]?.split(":")[0] ?? null);
-            log2.info("whatsapp qr: connected", phone2 ?? "");
+            log.info("whatsapp qr: connected", phone2 ?? "");
           }
           if (u?.connection === "close") {
             const code = u?.lastDisconnect?.error?.output?.statusCode ?? u?.lastDisconnect?.error?.statusCode;
             if (sock === s2) sock = null;
             qr = null;
             if (code === loggedOutCode) {
-              log2.warn("whatsapp qr: logged out from phone \u2014 clearing session; call start() to pair again");
+              log.warn("whatsapp qr: logged out from phone \u2014 clearing session; call start() to pair again");
               state = "disconnected";
               phone2 = null;
               running = false;
@@ -151444,12 +143014,12 @@ function createWhatsAppQr(cfg, onInbound, deps = {}) {
             }
             state = "disconnected";
             if (running) {
-              log2.warn(`whatsapp qr: connection closed (code=${code ?? "?"}), reconnecting`);
+              log.warn(`whatsapp qr: connection closed (code=${code ?? "?"}), reconnecting`);
               scheduleReconnect(code === restartCode);
             }
           }
         } catch (e) {
-          log2.warn("whatsapp qr: connection.update handler error:", errMsg(e));
+          log.warn("whatsapp qr: connection.update handler error:", errMsg(e));
         }
       });
       s2.ev.on("messages.upsert", (ev) => {
@@ -151458,11 +143028,11 @@ function createWhatsAppQr(cfg, onInbound, deps = {}) {
           if (ev?.type !== "notify" || !Array.isArray(ev.messages)) return;
           for (const m of ev.messages) void handleMessage(s2, m);
         } catch (e) {
-          log2.warn("whatsapp qr: messages.upsert handler error:", errMsg(e));
+          log.warn("whatsapp qr: messages.upsert handler error:", errMsg(e));
         }
       });
     } catch (e) {
-      log2.warn("whatsapp qr: connect failed:", errMsg(e));
+      log.warn("whatsapp qr: connect failed:", errMsg(e));
       state = "disconnected";
       scheduleReconnect(false);
     } finally {
@@ -151491,9 +143061,9 @@ function createWhatsAppQr(cfg, onInbound, deps = {}) {
       generation++;
       if (s2) {
         try {
-          await withTimeout2(s2.logout(), 1e4, "whatsapp logout");
+          await withTimeout(s2.logout(), 1e4, "whatsapp logout");
         } catch (e) {
-          log2.warn("whatsapp qr: logout error (clearing session anyway):", errMsg(e));
+          log.warn("whatsapp qr: logout error (clearing session anyway):", errMsg(e));
         }
       }
       closeSocket();
@@ -151503,7 +143073,7 @@ function createWhatsAppQr(cfg, onInbound, deps = {}) {
       try {
         await rm(authDir, { recursive: true, force: true });
       } catch (e) {
-        log2.warn("whatsapp qr: could not clear auth dir:", errMsg(e));
+        log.warn("whatsapp qr: could not clear auth dir:", errMsg(e));
       }
     },
     status() {
@@ -151514,14 +143084,14 @@ function createWhatsAppQr(cfg, onInbound, deps = {}) {
       if (!s2 || state !== "connected") return false;
       const p = normalizePhone(to);
       if (!p) {
-        log2.warn("whatsapp qr: invalid phone number", to);
+        log.warn("whatsapp qr: invalid phone number", to);
         return false;
       }
       try {
-        await withTimeout2(s2.sendMessage(`${p.slice(1)}@s.whatsapp.net`, { text }), 1e4, "whatsapp send");
+        await withTimeout(s2.sendMessage(`${p.slice(1)}@s.whatsapp.net`, { text }), 1e4, "whatsapp send");
         return true;
       } catch (e) {
-        log2.warn("whatsapp qr: send failed:", errMsg(e));
+        log.warn("whatsapp qr: send failed:", errMsg(e));
         return false;
       }
     }
@@ -151533,7 +143103,7 @@ var import_imapflow = __toESM(require_imap_flow(), 1);
 var import_mailparser = __toESM(require_mailparser(), 1);
 
 // packages/integrations/src/email/text.ts
-var ENTITIES2 = {
+var ENTITIES = {
   amp: "&",
   lt: "<",
   gt: ">",
@@ -151548,29 +143118,78 @@ var ENTITIES2 = {
   rdquo: "\u201D",
   ldquo: "\u201C"
 };
+var MAX_TEXT_BODY = 200 * 1024;
+var MAX_HTML_BODY = 300 * 1024;
+var MAX_HEURISTIC_LINE = 300;
 function decodeEntities(s2) {
-  return s2.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => {
+  return s2.replace(/&(#x[0-9a-f]{1,8}|#\d{1,8}|[a-z]{1,10});/gi, (m, e) => {
     if (e[0] === "#") {
       const code = e[1] === "x" || e[1] === "X" ? Number.parseInt(e.slice(2), 16) : Number.parseInt(e.slice(1), 10);
       return Number.isFinite(code) && code > 0 && code <= 1114111 ? String.fromCodePoint(code) : m;
     }
-    return ENTITIES2[e.toLowerCase()] ?? m;
+    return ENTITIES[e.toLowerCase()] ?? m;
   });
 }
-function htmlToText(html) {
-  let h = html;
-  h = h.replace(/<!--[\s\S]*?-->/g, "");
-  h = h.replace(/<(script|style|head|title)\b[\s\S]*?<\/\1\s*>/gi, "");
-  h = h.replace(/<blockquote\b[\s\S]*?<\/blockquote\s*>/gi, "");
-  h = h.replace(/<div[^>]*class=["'][^"']*(gmail_quote|moz-cite-prefix|yahoo_quoted)[^"']*["'][\s\S]*$/i, "");
-  h = h.replace(/<div[^>]*id=["'](divRplyFwdMsg|appendonsend)["'][\s\S]*$/i, "");
-  h = h.replace(/<br\s*\/?>/gi, "\n");
-  h = h.replace(/<li\b[^>]*>/gi, "\n\u2022 ");
-  h = h.replace(/<\/(p|div|h[1-6]|tr|table|ul|ol|section|article|header|footer)\s*>/gi, "\n");
-  h = h.replace(/<(p|div|h[1-6]|tr|table|ul|ol)\b[^>]*>/gi, "\n");
-  h = h.replace(/<[^>]+>/g, "");
-  h = decodeEntities(h);
-  return h.split("\n").map((l) => l.replace(/[ \t ]+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+var SKIP_CONTENT = /* @__PURE__ */ new Set(["script", "style", "head", "title"]);
+var BLOCK_CLOSE = /* @__PURE__ */ new Set(["p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "table", "ul", "ol", "section", "article", "header", "footer"]);
+var BLOCK_OPEN = /* @__PURE__ */ new Set(["p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "table", "ul", "ol"]);
+var QUOTE_MARKERS = ["gmail_quote", "moz-cite-prefix", "yahoo_quoted", "divrplyfwdmsg", "appendonsend"];
+var isNameChar = (c) => c >= 48 && c <= 57 || c >= 65 && c <= 90 || c >= 97 && c <= 122;
+function htmlToText(input) {
+  const html = input.length > MAX_HTML_BODY ? input.slice(0, MAX_HTML_BODY) : input;
+  const lower = html.toLowerCase();
+  const n = html.length;
+  const out = [];
+  const skipPastClose = (name, from) => {
+    const c = lower.indexOf(`</${name}`, from);
+    if (c < 0) return n;
+    const gt = lower.indexOf(">", c);
+    return gt < 0 ? n : gt + 1;
+  };
+  let i = 0;
+  while (i < n) {
+    const lt = html.indexOf("<", i);
+    if (lt < 0) {
+      out.push(html.slice(i));
+      break;
+    }
+    if (lt > i) out.push(html.slice(i, lt));
+    if (html.startsWith("<!--", lt)) {
+      const end = html.indexOf("-->", lt + 4);
+      if (end < 0) break;
+      i = end + 3;
+      continue;
+    }
+    const gt = html.indexOf(">", lt + 1);
+    if (gt < 0) {
+      out.push(html.slice(lt));
+      break;
+    }
+    let p = lt + 1;
+    const closing = html.charCodeAt(p) === 47;
+    if (closing) p++;
+    const nameStart = p;
+    while (p < gt && isNameChar(html.charCodeAt(p))) p++;
+    const name = lower.slice(nameStart, p);
+    i = gt + 1;
+    if (!name) continue;
+    if (closing) {
+      if (BLOCK_CLOSE.has(name)) out.push("\n");
+      continue;
+    }
+    if (SKIP_CONTENT.has(name) || name === "blockquote") {
+      i = skipPastClose(name, i);
+      continue;
+    }
+    if (name === "div") {
+      const attrs = lower.slice(p, Math.min(gt, p + 4096));
+      if (QUOTE_MARKERS.some((m) => attrs.includes(m))) break;
+    }
+    if (name === "br") out.push("\n");
+    else if (name === "li") out.push("\n\u2022 ");
+    else if (BLOCK_OPEN.has(name)) out.push("\n");
+  }
+  return decodeEntities(out.join("")).split("\n").map((l) => l.replace(/[ \t ]+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 var CUT_PATTERNS = [
   /^-{2,}\s*Original Message\s*-{2,}/i,
@@ -151583,31 +143202,132 @@ var CUT_PATTERNS = [
   /^Get Outlook for (iOS|Android)/i,
   /^Sent from (Mail|Outlook|Yahoo Mail|Gmail) for/i
 ];
-function stripQuotedReply(text) {
+function stripQuotedReply(input) {
+  const text = input.length > MAX_TEXT_BODY ? input.slice(0, MAX_TEXT_BODY) : input;
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
   const out = [];
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const line = raw.trim();
-    if (CUT_PATTERNS.some((re) => re.test(line))) break;
-    if (/^On\s.+\swrote:$/i.test(line)) break;
-    if (/^On\s.+/i.test(line) && !/wrote:/i.test(line) && /^\S*.*wrote:$/i.test((lines[i + 1] ?? "").trim()) && line.length < 200) {
-      const joined = `${line} ${(lines[i + 1] ?? "").trim()}`;
-      if (/^On\s.+\swrote:$/i.test(joined)) break;
-    }
-    if (/^(Am\s.+schrieb.+|Le\s.+a écrit\s?|El\s.+escribió)\s?:$/i.test(line)) break;
-    if (/^From:\s/i.test(line)) {
-      const next = lines.slice(i + 1, i + 5).map((l) => l.trim());
-      if (next.some((l) => /^(Sent|Date):\s/i.test(l))) break;
+    if (line.length <= MAX_HEURISTIC_LINE) {
+      if (CUT_PATTERNS.some((re) => re.test(line))) break;
+      if (/^On\s.+\swrote:$/i.test(line)) break;
+      const next = (lines[i + 1] ?? "").trim();
+      if (next.length <= MAX_HEURISTIC_LINE && /^On\s/i.test(line) && !/wrote:/i.test(line) && /wrote:$/i.test(next)) {
+        const joined = `${line} ${next}`;
+        if (/^On\s.+\swrote:$/i.test(joined)) break;
+      }
+      if (/^(Am\s.+schrieb.+|Le\s.+a écrit\s?|El\s.+escribió)\s?:$/i.test(line)) break;
+      if (/^From:\s/i.test(line)) {
+        const block = lines.slice(i + 1, i + 5).map((l) => l.trim());
+        if (block.some((l) => /^(Sent|Date):\s/i.test(l))) break;
+      }
     }
     if (line.startsWith(">")) continue;
-    out.push(raw.replace(/\s+$/, ""));
+    out.push(raw.trimEnd());
   }
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 function bestBody(text, html) {
-  const base = text && text.trim() ? text : html ? htmlToText(html) : "";
+  const t = text && text.trim() ? text.slice(0, MAX_TEXT_BODY) : "";
+  const base = t || (html ? htmlToText(html.slice(0, MAX_HTML_BODY)) : "");
   return stripQuotedReply(base);
+}
+
+// packages/integrations/src/email/auth.ts
+var MAX_AUTH_RESULTS = 4096;
+var MAX_HEADER_VALUE = 1024;
+function stripComments(s2) {
+  let depth = 0;
+  let out = "";
+  for (let i = 0; i < s2.length; i++) {
+    const c = s2[i];
+    if (c === "\\" && depth > 0) {
+      i++;
+      continue;
+    }
+    if (c === "(") depth++;
+    else if (c === ")" && depth > 0) depth--;
+    else if (depth === 0) out += c;
+  }
+  return out;
+}
+function parseAuthenticationResults(value) {
+  const v = stripComments(value.slice(0, MAX_AUTH_RESULTS).replace(/\r?\n[ \t]*/g, " "));
+  const parts = v.split(";");
+  const authservId = (parts[0] ?? "").trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+  const results = [];
+  for (const part of parts.slice(1)) {
+    const tokens = part.trim().split(/\s+/).filter(Boolean);
+    const first2 = tokens[0];
+    if (!first2) continue;
+    const eq2 = first2.indexOf("=");
+    if (eq2 <= 0) continue;
+    const method = first2.slice(0, eq2).split("/")[0].toLowerCase();
+    const result = first2.slice(eq2 + 1).toLowerCase();
+    const props = {};
+    for (const t of tokens.slice(1)) {
+      const e = t.indexOf("=");
+      if (e <= 0) continue;
+      const key = t.slice(0, e).toLowerCase();
+      if (!key.includes(".")) continue;
+      props[key] = t.slice(e + 1).replace(/^"|"$/g, "").toLowerCase();
+    }
+    results.push({ method, result, props });
+  }
+  return { authservId, results };
+}
+function domainOf(v) {
+  if (!v) return null;
+  const s2 = v.trim().toLowerCase().replace(/^<|>$/g, "");
+  const at = s2.lastIndexOf("@");
+  const d = (at >= 0 ? s2.slice(at + 1) : s2).replace(/\.$/, "");
+  return d && d.includes(".") ? d : null;
+}
+function aligned(authDomain, fromDomain) {
+  if (!authDomain || !fromDomain) return false;
+  return authDomain === fromDomain || fromDomain.endsWith(`.${authDomain}`);
+}
+function resultsVouchFor(results, from) {
+  const fd = domainOf(from);
+  if (!fd) return false;
+  for (const r of results) {
+    if (r.result !== "pass") continue;
+    if (r.method === "dmarc") {
+      const hf = r.props["header.from"];
+      if (!hf || domainOf(hf) === fd) return true;
+    } else if (r.method === "dkim") {
+      if (aligned(domainOf(r.props["header.d"]), fd) || aligned(domainOf(r.props["header.i"]), fd)) return true;
+    } else if (r.method === "spf") {
+      if (aligned(domainOf(r.props["smtp.mailfrom"]), fd)) return true;
+    }
+  }
+  return false;
+}
+function authenticatedByHeader(topmost, from, opts = {}) {
+  if (!topmost) return false;
+  const ar = parseAuthenticationResults(topmost);
+  const want = opts.authservId?.trim().toLowerCase();
+  if (want && ar.authservId !== want) return false;
+  return resultsVouchFor(ar.results, from);
+}
+function dkimSignatureDomain(sig) {
+  if (!sig) return null;
+  for (const tag of sig.slice(0, MAX_AUTH_RESULTS).split(";")) {
+    const eq2 = tag.indexOf("=");
+    if (eq2 > 0 && tag.slice(0, eq2).trim().toLowerCase() === "d") return domainOf(tag.slice(eq2 + 1).replace(/\s+/g, ""));
+  }
+  return null;
+}
+function receivedSpfPassDomain(v) {
+  if (!v) return null;
+  const s2 = v.slice(0, MAX_HEADER_VALUE).trim();
+  if (!/^pass\b/i.test(s2)) return null;
+  const at = s2.toLowerCase().indexOf("envelope-from=");
+  if (at < 0) return null;
+  const rest = s2.slice(at + "envelope-from=".length).replace(/^["<\s]+/, "");
+  const end = rest.search(/[\s;">]/);
+  return domainOf(end < 0 ? rest : rest.slice(0, end));
 }
 
 // packages/integrations/src/email/poller.ts
@@ -151636,10 +143356,21 @@ function isAutomated(mail) {
   if (/^(mailer-daemon|postmaster|no-?reply|do-?not-?reply)@/i.test(from)) return true;
   return false;
 }
-function mailToInbound(mail, fallbackId2) {
+function topmostAuthenticationResults(mail) {
+  for (const h of mail.headerLines ?? []) {
+    if (h.key !== "authentication-results") continue;
+    const line = h.line.slice(0, MAX_AUTH_RESULTS + 64);
+    const colon = line.indexOf(":");
+    return colon < 0 ? null : line.slice(colon + 1).trim();
+  }
+  return null;
+}
+function mailToInbound(mail, fallbackId2, auth = {}) {
   const from = firstAddress(mail.from);
   if (!from) return null;
-  const subject = mail.subject?.trim() || null;
+  const fromCount = (Array.isArray(mail.from) ? mail.from : mail.from ? [mail.from] : []).reduce((n, o) => n + (o.value?.length ?? 0), 0);
+  const authenticated = !!auth.trustUnverifiedSenders || fromCount === 1 && authenticatedByHeader(topmostAuthenticationResults(mail), from.address, auth);
+  const subject = mail.subject?.slice(0, 1024).trim() || null;
   const text = bestBody(mail.text ?? null, typeof mail.html === "string" ? mail.html : null) || subject || "";
   if (!text) return null;
   return {
@@ -151649,7 +143380,8 @@ function mailToInbound(mail, fallbackId2) {
     subject,
     text,
     externalId: mail.messageId?.trim() || fallbackId2,
-    receivedAt: mail.date instanceof Date && Number.isFinite(mail.date.getTime()) ? mail.date.getTime() : Date.now()
+    receivedAt: mail.date instanceof Date && Number.isFinite(mail.date.getTime()) ? mail.date.getTime() : Date.now(),
+    authenticated
   };
 }
 function replySubject(subject) {
@@ -151660,8 +143392,8 @@ function replySubject(subject) {
 function createEmailPoller(cfg, onInbound, deps = {}) {
   const imap = cfg.imap;
   if (!imap) return null;
-  const log2 = deps.log ?? defaultLogger;
-  const mailer = deps.mailer ?? createMailer(cfg, { log: log2 });
+  const log = deps.log ?? defaultLogger;
+  const mailer = deps.mailer ?? createMailer(cfg, { log });
   const batchSize = deps.batchSize ?? 50;
   const ownAddresses = new Set(
     [imap.user, cfg.smtp ? extractAddress(cfg.smtp.from) : null].filter((x) => !!x && x.includes("@")).map((x) => x.toLowerCase())
@@ -151685,7 +143417,7 @@ function createEmailPoller(cfg, onInbound, deps = {}) {
     const msg = await client.fetchOne(String(uid), { source: true, uid: true }, { uid: true });
     if (!msg || !msg.source) return false;
     const mail = await (0, import_mailparser.simpleParser)(msg.source);
-    const inbound = mailToInbound(mail, `imap:${imap.user}:${imap.mailbox}:${uid}`);
+    const inbound = mailToInbound(mail, `imap:${imap.user}:${imap.mailbox}:${uid}`, cfg.emailAuth);
     const sender = inbound?.from ?? "";
     if (!inbound || isAutomated(mail) || ownAddresses.has(sender)) {
       await client.messageFlagsAdd([uid], ["\\Seen"], { uid: true });
@@ -151697,7 +143429,7 @@ function createEmailPoller(cfg, onInbound, deps = {}) {
     } catch (e) {
       const n = (failedUids.get(uid) ?? 0) + 1;
       failedUids.set(uid, n);
-      log2.warn(`email: onInbound failed for uid ${uid} (attempt ${n}):`, errMsg(e));
+      log.warn(`email: onInbound failed for uid ${uid} (attempt ${n}):`, errMsg(e));
       if (n < 3) return false;
     }
     failedUids.delete(uid);
@@ -151717,11 +143449,11 @@ function createEmailPoller(cfg, onInbound, deps = {}) {
   }
   async function doPoll() {
     const client = createClient();
-    client.on?.("error", (e) => log2.warn("email: imap error:", errMsg(e)));
+    client.on?.("error", (e) => log.warn("email: imap error:", errMsg(e)));
     let count = 0;
     try {
-      await withTimeout2(client.connect(), 2e4, "imap connect");
-      const lock = await withTimeout2(client.getMailboxLock(imap.mailbox), 1e4, "imap select");
+      await withTimeout(client.connect(), 2e4, "imap connect");
+      const lock = await withTimeout(client.getMailboxLock(imap.mailbox), 1e4, "imap select");
       try {
         const found = await client.search({ seen: false }, { uid: true });
         const uids = (found || []).slice(0, batchSize);
@@ -151729,14 +143461,14 @@ function createEmailPoller(cfg, onInbound, deps = {}) {
           try {
             if (await processOne(client, uid)) count++;
           } catch (e) {
-            log2.warn(`email: failed to process uid ${uid}:`, errMsg(e));
+            log.warn(`email: failed to process uid ${uid}:`, errMsg(e));
           }
         }
       } finally {
         lock.release();
       }
       try {
-        await withTimeout2(client.logout(), 5e3, "imap logout");
+        await withTimeout(client.logout(), 5e3, "imap logout");
       } catch {
         client.close();
       }
@@ -151767,7 +143499,7 @@ function createEmailPoller(cfg, onInbound, deps = {}) {
       } catch (e) {
         failures++;
         const delay = backoffMs(failures, imap.pollSeconds * 1e3, 15 * 6e4);
-        log2.warn(`email: poll failed (${errMsg(e)}); retrying in ${Math.round(delay / 1e3)}s`);
+        log.warn(`email: poll failed (${errMsg(e)}); retrying in ${Math.round(delay / 1e3)}s`);
         schedule(delay);
       }
     }, delayMs);
@@ -151792,29 +143524,58 @@ function createEmailPoller(cfg, onInbound, deps = {}) {
 
 // packages/integrations/src/email/webhook.ts
 import { createHash as createHash2 } from "node:crypto";
-var isObj3 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var str4 = (v) => typeof v === "string" && v.trim() !== "" ? v : null;
+var MAX_FROM = 320;
+var MAX_HEADER_BLOCK = 64 * 1024;
+var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var str2 = (v) => typeof v === "string" && v.trim() !== "" ? v : null;
+var ADDR_STOP = /* @__PURE__ */ new Set([" ", "	", "\r", "\n", "<", ">", '"', "'", ",", ";", ":"]);
+function validAddress(a) {
+  if (a.length < 5 || a.length > 254) return false;
+  for (const ch of a) if (ADDR_STOP.has(ch)) return false;
+  const at = a.indexOf("@");
+  if (at <= 0 || at !== a.lastIndexOf("@")) return false;
+  const domain2 = a.slice(at + 1);
+  const dot = domain2.indexOf(".");
+  return dot > 0 && !domain2.endsWith(".");
+}
 function parseAddress(raw) {
   if (!raw) return null;
-  const s2 = raw.trim();
-  const angle = /^(.*?)<\s*([^<>\s]+@[^<>\s]+)\s*>\s*$/.exec(s2);
-  if (angle) {
-    const name = angle[1].trim().replace(/^"(.*)"$/, "$1").trim();
-    return { address: angle[2].toLowerCase(), name: name || null };
+  const s2 = raw.slice(0, MAX_FROM).trim();
+  if (s2.endsWith(">")) {
+    const lt = s2.lastIndexOf("<");
+    if (lt >= 0) {
+      const inner = s2.slice(lt + 1, -1).trim().toLowerCase();
+      if (validAddress(inner)) {
+        let name = s2.slice(0, lt).trim();
+        if (name.length >= 2 && name.startsWith('"') && name.endsWith('"')) name = name.slice(1, -1).trim();
+        return { address: inner, name: name || null };
+      }
+    }
   }
-  const bare = /([^\s<>"',;:]+@[^\s<>"',;:]+\.[^\s<>"',;:]+)/.exec(s2);
-  if (!bare) return null;
-  return { address: bare[1].toLowerCase(), name: null };
+  for (const tok of s2.split(/[\s<>"',;:]+/)) {
+    if (tok && validAddress(tok)) return { address: tok.toLowerCase(), name: null };
+  }
+  return null;
 }
-function headerFromRaw(raw, name) {
-  if (!raw) return null;
-  const unfolded = raw.replace(/\r?\n[ \t]+/g, " ");
-  const re = new RegExp(`^${name}:\\s*(.+)$`, "im");
-  return re.exec(unfolded)?.[1]?.trim() ?? null;
+function headersFromRaw(raw) {
+  if (!raw) return [];
+  const out = [];
+  for (const line of raw.slice(0, MAX_HEADER_BLOCK).split(/\r?\n/)) {
+    if ((line.startsWith(" ") || line.startsWith("	")) && out.length) {
+      const last = out[out.length - 1];
+      if (last[1].length < MAX_AUTH_RESULTS) last[1] += " " + line.trim();
+      continue;
+    }
+    const colon = line.indexOf(":");
+    if (colon <= 0) continue;
+    out.push([line.slice(0, colon).trim().toLowerCase(), line.slice(colon + 1).trim()]);
+  }
+  return out;
 }
-function parseDate2(v) {
+var cap = (v, n = MAX_HEADER_VALUE) => v && v.length > n ? v.slice(0, n) : v;
+function parseDate(v) {
   if (typeof v === "number" && Number.isFinite(v)) return v < 1e12 ? v * 1e3 : v;
-  const s2 = str4(v);
+  const s2 = str2(v)?.slice(0, 200);
   if (!s2) return null;
   if (/^\d+(\.\d+)?$/.test(s2)) {
     const n = Number(s2);
@@ -151833,71 +143594,96 @@ function fallbackId(from, subject, text) {
 ${subject ?? ""}
 ${text}`).digest("hex").slice(0, 32)}`;
 }
+var first = (hs, name) => hs.find(([k]) => k === name)?.[1] ?? null;
 function extract(b) {
   if ("From" in b || "FromFull" in b || "TextBody" in b || "HtmlBody" in b) {
-    const full = isObj3(b.FromFull) ? b.FromFull : null;
-    const headers2 = Array.isArray(b.Headers) ? b.Headers : [];
-    const midHeader = headers2.find((h) => isObj3(h) && typeof h.Name === "string" && h.Name.toLowerCase() === "message-id");
+    const full = isObj2(b.FromFull) ? b.FromFull : null;
+    const headers = Array.isArray(b.Headers) ? b.Headers : [];
+    const midHeader = headers.find((h) => isObj2(h) && typeof h.Name === "string" && h.Name.toLowerCase() === "message-id");
     return {
-      from: str4(full?.Email) ?? str4(b.From),
-      fromName: str4(full?.Name) ?? str4(b.FromName),
-      subject: str4(b.Subject),
-      text: str4(b.StrippedTextReply) ?? str4(b.TextBody),
-      html: str4(b.HtmlBody),
-      messageId: str4(midHeader?.Value) ?? str4(b.MessageID),
-      date: parseDate2(b.Date)
+      from: str2(full?.Email) ?? str2(b.From),
+      fromName: str2(full?.Name) ?? str2(b.FromName),
+      subject: str2(b.Subject),
+      text: str2(b.StrippedTextReply) ?? str2(b.TextBody),
+      html: str2(b.HtmlBody),
+      messageId: str2(midHeader?.Value) ?? str2(b.MessageID),
+      date: parseDate(b.Date),
+      verify(from2, opts) {
+        const hs2 = headers.filter((h) => isObj2(h) && typeof h.Name === "string" && typeof h.Value === "string").slice(0, 500).map((h) => [h.Name.toLowerCase(), h.Value.slice(0, MAX_AUTH_RESULTS)]);
+        if (authenticatedByHeader(first(hs2, "authentication-results"), from2, opts)) return true;
+        if ((first(hs2, "x-spam-tests") ?? "").split(/[\s,]+/).includes("DKIM_VALID_AU")) return true;
+        return aligned(receivedSpfPassDomain(first(hs2, "received-spf")), domainOf(from2));
+      }
     };
   }
   if ("body-plain" in b || "stripped-text" in b || "body-html" in b || "message-headers" in b) {
-    let mid = str4(b["Message-Id"]) ?? str4(b["message-id"]);
-    if (!mid) {
-      const mh = b["message-headers"];
-      let pairs = mh;
-      if (typeof mh === "string") {
-        try {
-          pairs = JSON.parse(mh);
-        } catch {
-          pairs = null;
-        }
-      }
-      if (Array.isArray(pairs)) {
-        const p = pairs.find((x) => Array.isArray(x) && typeof x[0] === "string" && x[0].toLowerCase() === "message-id");
-        mid = Array.isArray(p) ? str4(p[1]) : null;
+    const mh = b["message-headers"];
+    let pairs = mh;
+    if (typeof mh === "string") {
+      try {
+        pairs = JSON.parse(mh.slice(0, MAX_HEADER_BLOCK * 4));
+      } catch {
+        pairs = null;
       }
     }
+    const hs2 = Array.isArray(pairs) ? pairs.slice(0, 500).filter((x) => Array.isArray(x) && typeof x[0] === "string" && typeof x[1] === "string").map(([k, v]) => [k.toLowerCase(), v.slice(0, MAX_AUTH_RESULTS)]) : [];
+    const mid = str2(b["Message-Id"]) ?? str2(b["message-id"]) ?? str2(first(hs2, "message-id"));
+    const sender = str2(b.sender);
     return {
-      from: str4(b.from) ?? str4(b.From) ?? str4(b.sender),
-      subject: str4(b.subject) ?? str4(b.Subject),
-      text: str4(b["stripped-text"]) ?? str4(b["body-plain"]),
-      html: str4(b["stripped-html"]) ?? str4(b["body-html"]),
+      from: str2(b.from) ?? str2(b.From) ?? sender,
+      subject: str2(b.subject) ?? str2(b.Subject),
+      text: str2(b["stripped-text"]) ?? str2(b["body-plain"]),
+      html: str2(b["stripped-html"]) ?? str2(b["body-html"]),
       messageId: mid,
-      date: parseDate2(b.timestamp) ?? parseDate2(b.Date)
+      date: parseDate(b.timestamp) ?? parseDate(b.Date),
+      verify(from2, opts) {
+        if (authenticatedByHeader(first(hs2, "authentication-results"), from2, opts)) return true;
+        const fd = domainOf(from2);
+        const spf = (str2(b["X-Mailgun-Spf"]) ?? first(hs2, "x-mailgun-spf") ?? "").trim().toLowerCase();
+        if (spf === "pass" && aligned(domainOf(sender), fd)) return true;
+        const dkim = (str2(b["X-Mailgun-Dkim-Check-Result"]) ?? first(hs2, "x-mailgun-dkim-check-result") ?? "").trim().toLowerCase();
+        return dkim === "pass" && aligned(dkimSignatureDomain(first(hs2, "dkim-signature")), fd);
+      }
     };
   }
-  const headers = str4(b.headers);
-  let from = str4(b.from);
-  if (!from && isObj3(b.from)) from = str4(b.from.address) ?? str4(b.from.email);
-  if (!from && str4(b.envelope)) {
+  const hs = headersFromRaw(str2(b.headers));
+  let envelopeFrom = null;
+  if (str2(b.envelope)) {
     try {
-      const env2 = JSON.parse(b.envelope);
-      from = str4(env2.from);
+      const env2 = JSON.parse(b.envelope.slice(0, MAX_HEADER_VALUE * 8));
+      envelopeFrom = isObj2(env2) ? str2(env2.from) : null;
     } catch {
     }
-  } else if (!from && isObj3(b.envelope)) {
-    from = str4(b.envelope.from);
+  } else if (isObj2(b.envelope)) {
+    envelopeFrom = str2(b.envelope.from);
   }
-  const fromName = isObj3(b.from) ? str4(b.from.name) : null;
+  let from = str2(b.from);
+  if (!from && isObj2(b.from)) from = str2(b.from.address) ?? str2(b.from.email);
+  if (!from) from = envelopeFrom;
+  const fromName = isObj2(b.from) ? str2(b.from.name) : null;
   return {
     from,
     fromName,
-    subject: str4(b.subject),
-    text: str4(b.text) ?? str4(b.plain) ?? str4(b.body),
-    html: str4(b.html),
-    messageId: str4(b.messageId) ?? str4(b.message_id) ?? str4(b["Message-ID"]) ?? headerFromRaw(headers, "Message-ID"),
-    date: parseDate2(b.date) ?? parseDate2(headerFromRaw(headers, "Date"))
+    subject: str2(b.subject),
+    text: str2(b.text) ?? str2(b.plain) ?? str2(b.body),
+    html: str2(b.html),
+    messageId: str2(b.messageId) ?? str2(b.message_id) ?? str2(b["Message-ID"]) ?? str2(first(hs, "message-id")),
+    date: parseDate(b.date) ?? parseDate(first(hs, "date")),
+    verify(fromAddr, opts) {
+      if (b.authenticated === true) return true;
+      if (authenticatedByHeader(first(hs, "authentication-results"), fromAddr, opts)) return true;
+      const fd = domainOf(fromAddr);
+      if (str2(b.SPF)?.trim().toLowerCase() === "pass" && aligned(domainOf(envelopeFrom), fd)) return true;
+      const dkim = str2(b.dkim)?.slice(0, MAX_AUTH_RESULTS) ?? "";
+      for (const part of dkim.replace(/[{}]/g, "").split(",")) {
+        const [dom, res] = part.split(":").map((x) => x.trim().toLowerCase());
+        if (res === "pass" && aligned(domainOf(dom), fd)) return true;
+      }
+      return false;
+    }
   };
 }
-function parseInboundEmailWebhook(body) {
+function parseInboundEmailWebhook(body, opts = {}) {
   let b = body;
   if (Buffer.isBuffer(b)) b = b.toString("utf8");
   if (typeof b === "string") {
@@ -151907,22 +143693,31 @@ function parseInboundEmailWebhook(body) {
       return null;
     }
   }
-  if (!isObj3(b)) return null;
+  if (!isObj2(b)) return null;
   const e = extract(b);
   if (!e) return null;
   const addr = parseAddress(e.from);
   if (!addr) return null;
-  const subject = e.subject?.trim() || null;
-  const text = bestBody(e.text, e.html) || subject || "";
+  const subject = cap(e.subject)?.trim() || null;
+  const text = bestBody(cap(e.text, MAX_TEXT_BODY), cap(e.html, MAX_HTML_BODY)) || subject || "";
   if (!text) return null;
+  let authenticated = !!opts.trustUnverifiedSenders;
+  if (!authenticated) {
+    try {
+      authenticated = e.verify(addr.address, opts);
+    } catch {
+      authenticated = false;
+    }
+  }
   return {
     channel: "email",
     from: addr.address,
-    fromName: e.fromName?.trim() || addr.name,
+    fromName: cap(e.fromName ?? null, 200)?.trim() || addr.name,
     subject,
     text,
-    externalId: cleanMessageId(e.messageId) ?? fallbackId(addr.address, subject, text),
-    receivedAt: e.date ?? Date.now()
+    externalId: cleanMessageId(cap(e.messageId)) ?? fallbackId(addr.address, subject, text),
+    receivedAt: e.date ?? Date.now(),
+    authenticated
   };
 }
 
@@ -151930,7 +143725,7 @@ function parseInboundEmailWebhook(body) {
 import { createHash as createHash3 } from "node:crypto";
 
 // packages/integrations/src/calendar/tz.ts
-var fmtCache3 = /* @__PURE__ */ new Map();
+var fmtCache2 = /* @__PURE__ */ new Map();
 var validCache = /* @__PURE__ */ new Map();
 function isValidTimeZone(tz) {
   const hit = validCache.get(tz);
@@ -151945,8 +143740,8 @@ function isValidTimeZone(tz) {
   validCache.set(tz, ok);
   return ok;
 }
-function formatter3(tz) {
-  let f = fmtCache3.get(tz);
+function formatter2(tz) {
+  let f = fmtCache2.get(tz);
   if (!f) {
     f = new Intl.DateTimeFormat("en-US", {
       timeZone: tz,
@@ -151958,7 +143753,7 @@ function formatter3(tz) {
       minute: "2-digit",
       second: "2-digit"
     });
-    fmtCache3.set(tz, f);
+    fmtCache2.set(tz, f);
   }
   return f;
 }
@@ -151967,7 +143762,7 @@ function utcToWall(ts2, tz) {
     const d = new Date(ts2);
     return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes(), s: d.getUTCSeconds() };
   }
-  const parts = formatter3(tz).formatToParts(new Date(ts2));
+  const parts = formatter2(tz).formatToParts(new Date(ts2));
   const get = (t) => Number(parts.find((p) => p.type === t)?.value ?? "0");
   const h = get("hour");
   return { y: get("year"), m: get("month"), d: get("day"), h: h === 24 ? 0 : h, mi: get("minute"), s: get("second") };
@@ -152046,7 +143841,7 @@ var WINDOWS_TZ = {
 };
 function resolveTzid(tzid) {
   if (!tzid) return null;
-  const t = tzid.trim().replace(/^"(.*)"$/, "$1");
+  const t = tzid.trim().slice(0, 128).replace(/^"(.*)"$/, "$1");
   if (!t) return null;
   if (/^(utc|gmt|z|etc\/utc|etc\/gmt)$/i.test(t)) return "UTC";
   if (isValidTimeZone(t)) return t;
@@ -152064,7 +143859,7 @@ function resolveTzid(tzid) {
 }
 
 // packages/integrations/src/calendar/ics.ts
-var DAY2 = 864e5;
+var DAY = 864e5;
 var MAX_TITLE = 500;
 var MAX_NOTES = 1e4;
 var MAX_PERIODS = 5e4;
@@ -152137,7 +143932,7 @@ function parseDateValue(value, params, defaultTz) {
 function validWall(w) {
   return w.y >= 1900 && w.y <= 2200 && w.m >= 1 && w.m <= 12 && w.d >= 1 && w.d <= 31 && w.h <= 23 && w.mi <= 59 && w.s <= 60;
 }
-function parseDuration2(v) {
+function parseDuration(v) {
   const m = /^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/i.exec(v.trim());
   if (!m || v.trim().toUpperCase().endsWith("T") || /^[+-]?P$/i.test(v.trim())) return null;
   const ms = ((+(m[2] ?? 0) * 7 + +(m[3] ?? 0)) * 24 * 3600 + +(m[4] ?? 0) * 3600 + +(m[5] ?? 0) * 60 + +(m[6] ?? 0)) * 1e3;
@@ -152172,10 +143967,10 @@ function parseRRule(v) {
     wkst: WEEKDAYS2[(parts.WKST ?? "MO").toUpperCase()] ?? 1
   };
 }
-var daysInMonth2 = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+var daysInMonth = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 var weekday = (y, m, d) => new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 function monthDays(y, m, rule, dflt) {
-  const dim = daysInMonth2(y, m);
+  const dim = daysInMonth(y, m);
   let days = null;
   if (rule.byMonthDay.length) {
     days = rule.byMonthDay.map((n) => n > 0 ? n : dim + n + 1).filter((d) => d >= 1 && d <= dim);
@@ -152205,7 +144000,7 @@ function* candidateDates(rule, start, k0) {
   const base = Date.UTC(start.y, start.m - 1, start.d);
   for (let k = k0; k < k0 + MAX_PERIODS; k++) {
     if (rule.freq === "DAILY") {
-      const t = new Date(base + k * rule.interval * DAY2);
+      const t = new Date(base + k * rule.interval * DAY);
       const y = t.getUTCFullYear();
       const m = t.getUTCMonth() + 1;
       const d = t.getUTCDate();
@@ -152215,11 +144010,11 @@ function* candidateDates(rule, start, k0) {
       yield [y, m, d];
     } else if (rule.freq === "WEEKLY") {
       const startWd = new Date(base).getUTCDay();
-      const weekStart = base - (startWd - rule.wkst + 7) % 7 * DAY2 + k * rule.interval * 7 * DAY2;
+      const weekStart = base - (startWd - rule.wkst + 7) % 7 * DAY + k * rule.interval * 7 * DAY;
       const wds = rule.byDay.length ? [...new Set(rule.byDay.map((b) => b.wd))] : [startWd];
       const offsets2 = wds.map((wd) => (wd - rule.wkst + 7) % 7).sort((a, b) => a - b);
       for (const off of offsets2) {
-        const t = new Date(weekStart + off * DAY2);
+        const t = new Date(weekStart + off * DAY);
         const m = t.getUTCMonth() + 1;
         if (rule.byMonth.length && !rule.byMonth.includes(m)) continue;
         yield [t.getUTCFullYear(), m, t.getUTCDate()];
@@ -152235,14 +144030,14 @@ function* candidateDates(rule, start, k0) {
       const months = rule.byMonth.length ? [...rule.byMonth].sort((a, b) => a - b) : [start.m];
       const hasDaySel = rule.byMonthDay.length > 0 || rule.byDay.length > 0 && rule.byMonth.length > 0;
       for (const m of months) {
-        const days = hasDaySel ? monthDays(y, m, rule, start.d) : start.d <= daysInMonth2(y, m) ? [start.d] : [];
+        const days = hasDaySel ? monthDays(y, m, rule, start.d) : start.d <= daysInMonth(y, m) ? [start.d] : [];
         for (const d of days) yield [y, m, d];
       }
     }
   }
 }
 function approxPeriodMs(rule) {
-  const unit = rule.freq === "DAILY" ? DAY2 : rule.freq === "WEEKLY" ? 7 * DAY2 : rule.freq === "MONTHLY" ? 31 * DAY2 : 366 * DAY2;
+  const unit = rule.freq === "DAILY" ? DAY : rule.freq === "WEEKLY" ? 7 * DAY : rule.freq === "MONTHLY" ? 31 * DAY : 366 * DAY;
   return unit * rule.interval;
 }
 function single(ev, name) {
@@ -152271,8 +144066,8 @@ function dateList(props, defaultTz) {
 var dateKey = (w) => `${w.y}-${w.m}-${w.d}`;
 function parseIcs(text, opts = {}) {
   const now2 = opts.now ?? Date.now();
-  const winStart = opts.windowStart ?? now2 - DAY2;
-  const winEnd = opts.windowEnd ?? now2 + 30 * DAY2;
+  const winStart = opts.windowStart ?? now2 - DAY;
+  const winEnd = opts.windowEnd ?? now2 + 30 * DAY;
   const maxEvents = opts.maxEvents ?? 5e3;
   const lines = unfoldLines(text);
   let calTz = "UTC";
@@ -152347,9 +144142,9 @@ function parseIcs(text, opts = {}) {
       const end = parseDateValue(dtEndProp.value, dtEndProp.params, calTz);
       if (end) duration3 = Math.max(0, end.ms - start.ms);
     } else if (durProp) {
-      duration3 = Math.max(0, parseDuration2(durProp.value) ?? 0);
+      duration3 = Math.max(0, parseDuration(durProp.value) ?? 0);
     } else if (start.allDay) {
-      duration3 = DAY2;
+      duration3 = DAY;
     }
     const base = { title, notes, location, url: url3, allDay: start.allDay };
     const rid = single(ev, "RECURRENCE-ID");
@@ -152552,7 +144347,7 @@ function normalizeFeedUrl(raw) {
   return t.replace(/^webcals?:\/\//i, "https://");
 }
 var BLOCKED_HOSTNAMES = /(^|\.)(localhost|localdomain|internal|local|home\.arpa)$/i;
-async function vetUrl(raw, resolve5 = defaultResolver) {
+async function vetUrl(raw, resolve6 = defaultResolver) {
   let url3;
   try {
     url3 = new URL(normalizeFeedUrl(raw));
@@ -152572,7 +144367,7 @@ async function vetUrl(raw, resolve5 = defaultResolver) {
   if (BLOCKED_HOSTNAMES.test(host)) throw new SsrfError("Host is not allowed");
   let addrs;
   try {
-    addrs = await resolve5(host);
+    addrs = await resolve6(host);
   } catch {
     throw new SsrfError("Could not resolve host");
   }
@@ -152580,8 +144375,8 @@ async function vetUrl(raw, resolve5 = defaultResolver) {
   for (const a of addrs) {
     if (isBlockedAddress(a.address)) throw new SsrfError("Host resolves to a non-public address");
   }
-  const first = addrs[0];
-  return { url: url3, address: first.address, family: first.family };
+  const first2 = addrs[0];
+  return { url: url3, address: first2.address, family: first2.family };
 }
 var nodeTransport = (target, { maxBytes, signal }) => new Promise((resolvePromise, reject) => {
   const { url: url3, address, family } = target;
@@ -152656,14 +144451,14 @@ var nodeTransport = (target, { maxBytes, signal }) => new Promise((resolvePromis
   req.end();
 });
 async function safeFetchText(rawUrl, opts = {}) {
-  const resolve5 = opts.resolve ?? defaultResolver;
+  const resolve6 = opts.resolve ?? defaultResolver;
   const transport = opts.transport ?? nodeTransport;
   const maxRedirects = opts.maxRedirects ?? 3;
   const maxBytes = opts.maxBytes ?? 5 * 1024 * 1024;
   const signal = AbortSignal.timeout(opts.timeoutMs ?? 15e3);
   let current = rawUrl;
   for (let hop = 0; hop <= maxRedirects; hop++) {
-    const target = await vetUrl(current, resolve5);
+    const target = await vetUrl(current, resolve6);
     if (signal.aborted) throw new Error("Request timed out");
     let res;
     try {
@@ -152699,7 +144494,7 @@ function createCalendarFetcher(deps = {}) {
 }
 
 // packages/integrations/src/llm.ts
-var PRIORITIES3 = ["urgent", "high", "medium", "low", "none"];
+var PRIORITIES = ["urgent", "high", "medium", "low", "none"];
 var ALL_DAY_HOUR = 18;
 var EXTRACT_SCHEMA = {
   type: "object",
@@ -152709,7 +144504,7 @@ var EXTRACT_SCHEMA = {
     title: { type: "string" },
     notes: { type: "string" },
     due: { anyOf: [{ type: "string" }, { type: "null" }] },
-    priority: { type: "string", enum: PRIORITIES3 },
+    priority: { type: "string", enum: PRIORITIES },
     assigneeIds: { type: "array", items: { type: "string" } },
     projectId: { anyOf: [{ type: "string" }, { type: "null" }] },
     tags: { type: "array", items: { type: "string" } }
@@ -152749,7 +144544,7 @@ function localNowString(now2, tz) {
   }
 }
 function buildExtractPrompt(input) {
-  const tz = safeTz3(input.timezone);
+  const tz = safeTz2(input.timezone);
   return JSON.stringify(
     {
       currentLocalDateTime: localNowString(input.now, tz),
@@ -152767,7 +144562,7 @@ function buildExtractPrompt(input) {
     1
   );
 }
-function safeTz3(tz) {
+function safeTz2(tz) {
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: tz });
     return tz;
@@ -152819,13 +144614,13 @@ function validateExtraction(raw, ctx) {
   const draft = { title };
   if (typeof r.notes === "string" && r.notes.trim()) draft.notes = r.notes.trim().slice(0, 5e3);
   if (typeof r.due === "string" && r.due.trim()) {
-    const due = resolveLocalDue(r.due.trim(), safeTz3(ctx.timezone));
+    const due = resolveLocalDue(r.due.trim(), safeTz2(ctx.timezone));
     if (due && due.at > ctx.now - 365 * 864e5 && due.at < ctx.now + 5 * 365 * 864e5) {
       draft.dueAt = due.at;
       draft.dueAllDay = due.allDay;
     }
   }
-  if (typeof r.priority === "string" && PRIORITIES3.includes(r.priority)) draft.priority = r.priority;
+  if (typeof r.priority === "string" && PRIORITIES.includes(r.priority)) draft.priority = r.priority;
   const memberIds = new Set(ctx.members.map((m) => m.id));
   if (Array.isArray(r.assigneeIds)) {
     const ids2 = [...new Set(r.assigneeIds.filter((x) => typeof x === "string" && memberIds.has(x)))];
@@ -152875,7 +144670,7 @@ function supportsOutputConfig(model) {
   if (major >= 5) return true;
   return m[1] === "opus" && major === 4 && minor >= 7 && minor < 10;
 }
-function anthropicAsk(cfg, f, log2) {
+function anthropicAsk(cfg, f, log) {
   return async (system, user, { timeoutMs, maxTokens, json: json5 }) => {
     const modern = supportsOutputConfig(cfg.model);
     const body = {
@@ -152896,7 +144691,7 @@ function anthropicAsk(cfg, f, log2) {
       timeoutMs
     );
     if (!res.ok) {
-      log2.warn(`llm: anthropic HTTP ${res.status} ${await safeText(res)}`);
+      log.warn(`llm: anthropic HTTP ${res.status} ${await safeText(res)}`);
       return null;
     }
     const data = await res.json();
@@ -152905,7 +144700,7 @@ function anthropicAsk(cfg, f, log2) {
     return text || null;
   };
 }
-function openaiAsk(cfg, f, log2) {
+function openaiAsk(cfg, f, log) {
   return async (system, user, { timeoutMs, json: json5 }) => {
     const isOpenAi = /^https:\/\/api\.openai\.com\//.test(`${cfg.baseUrl}/`);
     const body = {
@@ -152927,7 +144722,7 @@ function openaiAsk(cfg, f, log2) {
       timeoutMs
     );
     if (!res.ok) {
-      log2.warn(`llm: openai-compatible HTTP ${res.status} ${await safeText(res)}`);
+      log.warn(`llm: openai-compatible HTTP ${res.status} ${await safeText(res)}`);
       return null;
     }
     const data = await res.json();
@@ -152940,9 +144735,9 @@ function openaiAsk(cfg, f, log2) {
 function createLlm(cfg, deps = {}) {
   const llm = cfg.llm;
   if (!llm) return null;
-  const log2 = deps.log ?? defaultLogger;
+  const log = deps.log ?? defaultLogger;
   const f = deps.fetch ?? fetch;
-  const ask = llm.provider === "anthropic" ? anthropicAsk(llm, f, log2) : openaiAsk(llm, f, log2);
+  const ask = llm.provider === "anthropic" ? anthropicAsk(llm, f, log) : openaiAsk(llm, f, log);
   return {
     async extractTask(input) {
       try {
@@ -152951,7 +144746,7 @@ function createLlm(cfg, deps = {}) {
         if (!reply) return null;
         return validateExtraction(extractJsonObject(reply), input);
       } catch (e) {
-        log2.warn("llm: extractTask failed:", errMsg(e));
+        log.warn("llm: extractTask failed:", errMsg(e));
         return null;
       }
     },
@@ -152972,7 +144767,7 @@ ${original}`;
         if (!out || words > Math.max(150, origWords * 1.3) || !numbersPreserved(original, out)) return original;
         return out;
       } catch (e) {
-        log2.warn("llm: polishBriefing failed:", errMsg(e));
+        log.warn("llm: polishBriefing failed:", errMsg(e));
         return original;
       }
     }
@@ -152984,7 +144779,7 @@ var MAX_CHARS = 4e3;
 function createTts(cfg, deps = {}) {
   const tts = cfg.tts;
   if (!tts) return null;
-  const log2 = deps.log ?? defaultLogger;
+  const log = deps.log ?? defaultLogger;
   const f = deps.fetch ?? fetch;
   return {
     async synthesize(text, opts) {
@@ -153017,14 +144812,14 @@ function createTts(cfg, deps = {}) {
           );
         }
         if (!res.ok) {
-          log2.warn(`tts: ${tts.provider} HTTP ${res.status} ${await safeText(res)}`);
+          log.warn(`tts: ${tts.provider} HTTP ${res.status} ${await safeText(res)}`);
           return null;
         }
         const audio = Buffer.from(await res.arrayBuffer());
         if (audio.length === 0) return null;
         return { audio, mime: "audio/mpeg" };
       } catch (e) {
-        log2.warn(`tts: ${tts.provider} failed:`, errMsg(e));
+        log.warn(`tts: ${tts.provider} failed:`, errMsg(e));
         return null;
       }
     }
@@ -153121,9 +144916,9 @@ var util;
 })(util || (util = {}));
 var objectUtil;
 (function(objectUtil2) {
-  objectUtil2.mergeShapes = (first, second) => {
+  objectUtil2.mergeShapes = (first2, second) => {
     return {
-      ...first,
+      ...first2,
       ...second
       // second overwrites first
     };
@@ -156037,10 +147832,10 @@ var ZodRecord = class _ZodRecord extends ZodType {
   get element() {
     return this._def.valueType;
   }
-  static create(first, second, third) {
+  static create(first2, second, third) {
     if (second instanceof ZodType) {
       return new _ZodRecord({
-        keyType: first,
+        keyType: first2,
         valueType: second,
         typeName: ZodFirstPartyTypeKind.ZodRecord,
         ...processCreateParams(third)
@@ -156048,7 +147843,7 @@ var ZodRecord = class _ZodRecord extends ZodType {
     }
     return new _ZodRecord({
       keyType: ZodString.create(),
-      valueType: first,
+      valueType: first2,
       typeName: ZodFirstPartyTypeKind.ZodRecord,
       ...processCreateParams(second)
     });
@@ -157196,7 +148991,7 @@ __export(core_exports2, {
   isValidJWT: () => isValidJWT2,
   locales: () => locales_exports,
   meta: () => meta,
-  parse: () => parse2,
+  parse: () => parse,
   parseAsync: () => parseAsync,
   prettifyError: () => prettifyError,
   process: () => process2,
@@ -158141,7 +149936,7 @@ var _parse = (_Err) => (schema, value, _ctx, _params) => {
   }
   return result.value;
 };
-var parse2 = /* @__PURE__ */ _parse($ZodRealError);
+var parse = /* @__PURE__ */ _parse($ZodRealError);
 var _parseAsync = (_Err) => async (schema, value, _ctx, params) => {
   const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
   let result = schema._zod.run({ value, issues: [] }, ctx);
@@ -158232,7 +150027,7 @@ __export(regexes_exports, {
   domain: () => domain,
   duration: () => duration,
   e164: () => e164,
-  email: () => email2,
+  email: () => email,
   emoji: () => emoji,
   extendedDuration: () => extendedDuration,
   guid: () => guid,
@@ -158267,7 +150062,7 @@ __export(regexes_exports, {
   sha512_base64url: () => sha512_base64url,
   sha512_hex: () => sha512_hex,
   string: () => string,
-  time: () => time2,
+  time: () => time,
   ulid: () => ulid,
   undefined: () => _undefined,
   unicodeEmail: () => unicodeEmail,
@@ -158295,7 +150090,7 @@ var uuid = (version2) => {
 var uuid4 = /* @__PURE__ */ uuid(4);
 var uuid6 = /* @__PURE__ */ uuid(6);
 var uuid7 = /* @__PURE__ */ uuid(7);
-var email2 = /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/;
+var email = /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/;
 var html5Email = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 var rfc5322Email = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 var unicodeEmail = /^[^\s@"]{1,64}@[^\s@]{1,255}$/u;
@@ -158326,7 +150121,7 @@ function timeSource(args) {
   const regex = typeof args.precision === "number" ? args.precision === -1 ? `${hhmm}` : args.precision === 0 ? `${hhmm}:[0-5]\\d` : `${hhmm}:[0-5]\\d\\.\\d{${args.precision}}` : `${hhmm}(?::[0-5]\\d(?:\\.\\d+)?)?`;
   return regex;
 }
-function time2(args) {
+function time(args) {
   return new RegExp(`^${timeSource(args)}$`);
 }
 function datetime(args) {
@@ -159126,7 +150921,7 @@ var $ZodUUID = /* @__PURE__ */ $constructor("$ZodUUID", (inst, def) => {
   $ZodStringFormat.init(inst, def);
 });
 var $ZodEmail = /* @__PURE__ */ $constructor("$ZodEmail", (inst, def) => {
-  def.pattern ?? (def.pattern = email2);
+  def.pattern ?? (def.pattern = email);
   $ZodStringFormat.init(inst, def);
 });
 var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
@@ -159230,7 +151025,7 @@ var $ZodISODate = /* @__PURE__ */ $constructor("$ZodISODate", (inst, def) => {
   $ZodStringFormat.init(inst, def);
 });
 var $ZodISOTime = /* @__PURE__ */ $constructor("$ZodISOTime", (inst, def) => {
-  def.pattern ?? (def.pattern = time2(def));
+  def.pattern ?? (def.pattern = time(def));
   $ZodStringFormat.init(inst, def);
 });
 var $ZodISODuration = /* @__PURE__ */ $constructor("$ZodISODuration", (inst, def) => {
@@ -159930,10 +151725,10 @@ var $ZodUnion = /* @__PURE__ */ $constructor("$ZodUnion", (inst, def) => {
     }
     return void 0;
   });
-  const first = def.options.length === 1 ? def.options[0]._zod.run : null;
+  const first2 = def.options.length === 1 ? def.options[0]._zod.run : null;
   inst._zod.parse = (payload, ctx) => {
-    if (first) {
-      return first(payload, ctx);
+    if (first2) {
+      return first2(payload, ctx);
     }
     let async = false;
     const results = [];
@@ -159985,10 +151780,10 @@ function handleExclusiveUnionResults(results, final, inst, ctx) {
 var $ZodXor = /* @__PURE__ */ $constructor("$ZodXor", (inst, def) => {
   $ZodUnion.init(inst, def);
   def.inclusive = false;
-  const first = def.options.length === 1 ? def.options[0]._zod.run : null;
+  const first2 = def.options.length === 1 ? def.options[0]._zod.run : null;
   inst._zod.parse = (payload, ctx) => {
-    if (first) {
-      return first(payload, ctx);
+    if (first2) {
+      return first2(payload, ctx);
     }
     let async = false;
     const results = [];
@@ -160933,10 +152728,10 @@ var $ZodFunction = /* @__PURE__ */ $constructor("$ZodFunction", (inst, def) => {
       throw new Error("implement() must be called with a function");
     }
     return function(...args) {
-      const parsedArgs = inst._def.input ? parse2(inst._def.input, args) : args;
+      const parsedArgs = inst._def.input ? parse(inst._def.input, args) : args;
       const result = Reflect.apply(func, this, parsedArgs);
       if (inst._def.output) {
-        return parse2(inst._def.output, result);
+        return parse(inst._def.output, result);
       }
       return result;
     };
@@ -169090,7 +160885,7 @@ var ZodMiniType = /* @__PURE__ */ $constructor("ZodMiniType", (inst, def) => {
   $ZodType.init(inst, def);
   inst.def = def;
   inst.type = def.type;
-  inst.parse = (data, params) => parse2(inst, data, params, { callee: inst.parse });
+  inst.parse = (data, params) => parse(inst, data, params, { callee: inst.parse });
   inst.safeParse = (data, params) => safeParse(inst, data, params);
   inst.parseAsync = async (data, params) => parseAsync(inst, data, params, { callee: inst.parseAsync });
   inst.safeParseAsync = async (data, params) => safeParseAsync(inst, data, params);
@@ -169401,7 +161196,7 @@ __export(external_exports, {
   describe: () => describe2,
   discriminatedUnion: () => discriminatedUnion,
   e164: () => e1642,
-  email: () => email3,
+  email: () => email2,
   emoji: () => emoji2,
   encode: () => encode2,
   encodeAsync: () => encodeAsync2,
@@ -169426,7 +161221,7 @@ __export(external_exports, {
   httpUrl: () => httpUrl,
   includes: () => _includes,
   instanceof: () => _instanceof,
-  int: () => int3,
+  int: () => int2,
   int32: () => int32,
   int64: () => int64,
   intersection: () => intersection,
@@ -169472,7 +161267,7 @@ __export(external_exports, {
   object: () => object2,
   optional: () => optional,
   overwrite: () => _overwrite,
-  parse: () => parse3,
+  parse: () => parse2,
   parseAsync: () => parseAsync2,
   partialRecord: () => partialRecord,
   pipe: () => pipe,
@@ -169521,7 +161316,7 @@ __export(external_exports, {
   union: () => union,
   unknown: () => unknown,
   uppercase: () => _uppercase,
-  url: () => url2,
+  url: () => url,
   util: () => util_exports,
   uuid: () => uuid2,
   uuidv4: () => uuidv4,
@@ -169625,7 +161420,7 @@ __export(schemas_exports2, {
   describe: () => describe2,
   discriminatedUnion: () => discriminatedUnion,
   e164: () => e1642,
-  email: () => email3,
+  email: () => email2,
   emoji: () => emoji2,
   enum: () => _enum2,
   exactOptional: () => exactOptional,
@@ -169639,7 +161434,7 @@ __export(schemas_exports2, {
   hostname: () => hostname2,
   httpUrl: () => httpUrl,
   instanceof: () => _instanceof,
-  int: () => int3,
+  int: () => int2,
   int32: () => int32,
   int64: () => int64,
   intersection: () => intersection,
@@ -169693,7 +161488,7 @@ __export(schemas_exports2, {
   undefined: () => _undefined3,
   union: () => union,
   unknown: () => unknown,
-  url: () => url2,
+  url: () => url,
   uuid: () => uuid2,
   uuidv4: () => uuidv4,
   uuidv6: () => uuidv6,
@@ -169747,7 +161542,7 @@ __export(iso_exports2, {
   date: () => date2,
   datetime: () => datetime2,
   duration: () => duration2,
-  time: () => time3
+  time: () => time2
 });
 var ZodISODateTime = /* @__PURE__ */ $constructor("ZodISODateTime", (inst, def) => {
   $ZodISODateTime.init(inst, def);
@@ -169767,7 +161562,7 @@ var ZodISOTime = /* @__PURE__ */ $constructor("ZodISOTime", (inst, def) => {
   $ZodISOTime.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
-function time3(params) {
+function time2(params) {
   return _isoTime(ZodISOTime, params);
 }
 var ZodISODuration = /* @__PURE__ */ $constructor("ZodISODuration", (inst, def) => {
@@ -169819,7 +161614,7 @@ var ZodRealError = /* @__PURE__ */ $constructor("ZodError", initializer2, {
 });
 
 // node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/parse.js
-var parse3 = /* @__PURE__ */ _parse(ZodRealError);
+var parse2 = /* @__PURE__ */ _parse(ZodRealError);
 var parseAsync2 = /* @__PURE__ */ _parseAsync(ZodRealError);
 var safeParse3 = /* @__PURE__ */ _safeParse(ZodRealError);
 var safeParseAsync3 = /* @__PURE__ */ _safeParseAsync(ZodRealError);
@@ -169882,7 +161677,7 @@ var ZodType2 = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
   inst.def = def;
   inst.type = def.type;
   Object.defineProperty(inst, "_def", { value: def });
-  inst.parse = (data, params) => parse3(inst, data, params, { callee: inst.parse });
+  inst.parse = (data, params) => parse2(inst, data, params, { callee: inst.parse });
   inst.safeParse = (data, params) => safeParse3(inst, data, params);
   inst.parseAsync = async (data, params) => parseAsync2(inst, data, params, { callee: inst.parseAsync });
   inst.safeParseAsync = async (data, params) => safeParseAsync3(inst, data, params);
@@ -170083,7 +161878,7 @@ var ZodString2 = /* @__PURE__ */ $constructor("ZodString", (inst, def) => {
   inst.e164 = (params) => inst.check(_e164(ZodE164, params));
   inst.datetime = (params) => inst.check(datetime2(params));
   inst.date = (params) => inst.check(date2(params));
-  inst.time = (params) => inst.check(time3(params));
+  inst.time = (params) => inst.check(time2(params));
   inst.duration = (params) => inst.check(duration2(params));
 });
 function string2(params) {
@@ -170097,7 +161892,7 @@ var ZodEmail = /* @__PURE__ */ $constructor("ZodEmail", (inst, def) => {
   $ZodEmail.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
-function email3(params) {
+function email2(params) {
   return _email(ZodEmail, params);
 }
 var ZodGUID = /* @__PURE__ */ $constructor("ZodGUID", (inst, def) => {
@@ -170127,7 +161922,7 @@ var ZodURL = /* @__PURE__ */ $constructor("ZodURL", (inst, def) => {
   $ZodURL.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
-function url2(params) {
+function url(params) {
   return _url(ZodURL, params);
 }
 function httpUrl(params) {
@@ -170294,10 +162089,10 @@ var ZodNumber2 = /* @__PURE__ */ $constructor("ZodNumber", (inst, def) => {
       return this.check(_lte(value, params));
     },
     int(params) {
-      return this.check(int3(params));
+      return this.check(int2(params));
     },
     safe(params) {
-      return this.check(int3(params));
+      return this.check(int2(params));
     },
     positive(params) {
       return this.check(_gt(0, params));
@@ -170335,7 +162130,7 @@ var ZodNumberFormat = /* @__PURE__ */ $constructor("ZodNumberFormat", (inst, def
   $ZodNumberFormat.init(inst, def);
   ZodNumber2.init(inst, def);
 });
-function int3(params) {
+function int2(params) {
   return _int(ZodNumberFormat, params);
 }
 function float32(params) {
@@ -175042,7 +166837,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve5) => setTimeout(resolve5, pollInterval));
+        await new Promise((resolve6) => setTimeout(resolve6, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error51) {
@@ -175059,7 +166854,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve5, reject) => {
+    return new Promise((resolve6, reject) => {
       const earlyReject = (error51) => {
         reject(error51);
       };
@@ -175137,7 +166932,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve5(parseResult.data);
+            resolve6(parseResult.data);
           }
         } catch (error51) {
           reject(error51);
@@ -175399,12 +167194,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve5, reject) => {
+    return new Promise((resolve6, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve5, interval);
+      const timeoutId = setTimeout(resolve6, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -176535,7 +168330,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve5) => setTimeout(resolve5, pollInterval));
+      await new Promise((resolve6) => setTimeout(resolve6, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId2);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId2} not found during polling`);
@@ -177521,7 +169316,7 @@ var readBodyDirect = (request) => {
     request[bodyBufferKey] = buffered;
     return Promise.resolve(buffered);
   }
-  const promise2 = new Promise((resolve5, reject) => {
+  const promise2 = new Promise((resolve6, reject) => {
     const chunks = [];
     let settled = false;
     const finish = (callback) => {
@@ -177539,7 +169334,7 @@ var readBodyDirect = (request) => {
         else if (recovered === void 0) reject(error51 ?? normalizeAbortError(request, incoming));
         else {
           request[bodyBufferKey] = recovered;
-          resolve5(recovered);
+          resolve6(recovered);
         }
       });
       return true;
@@ -177551,7 +169346,7 @@ var readBodyDirect = (request) => {
       finish(() => {
         const buffer = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
         request[bodyBufferKey] = buffer;
-        resolve5(buffer);
+        resolve6(buffer);
       });
     };
     const onError = (error51) => {
@@ -178098,7 +169893,7 @@ var responseViaResponseObject = async (res, outgoing, options = {}) => {
         });
         if (!chunk) {
           if (i === 1) {
-            await new Promise((resolve5) => setTimeout(resolve5));
+            await new Promise((resolve6) => setTimeout(resolve6));
             maxReadCount = 3;
             continue;
           }
@@ -178833,9 +170628,9 @@ data:
       const initRequest = messages.find((m) => isInitializeRequest(m));
       const clientProtocolVersion = initRequest ? initRequest.params.protocolVersion : req.headers.get("mcp-protocol-version") ?? DEFAULT_NEGOTIATED_PROTOCOL_VERSION;
       if (this._enableJsonResponse) {
-        return new Promise((resolve5) => {
+        return new Promise((resolve6) => {
           this._streamMapping.set(streamId, {
-            resolveJson: resolve5,
+            resolveJson: resolve6,
             cleanup: () => {
               this._streamMapping.delete(streamId);
             }
@@ -179319,12 +171114,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve5) => {
+    return new Promise((resolve6) => {
       const json5 = serializeMessage(message);
       if (this._stdout.write(json5)) {
-        resolve5();
+        resolve6();
       } else {
-        this._stdout.once("drain", resolve5);
+        this._stdout.once("drain", resolve6);
       }
     });
   }
@@ -179382,7 +171177,7 @@ function isAppError(err) {
   const code = err.code;
   return typeof code === "string" && ERROR_CODES.has(code);
 }
-function hasWriteScope2(actor) {
+function hasWriteScope(actor) {
   return actor.via !== "api_key" || (actor.scopes ?? []).includes("write");
 }
 var READ_ONLY_MESSAGE = "This API key is read-only (scope: read), so it can look at work but not change it. Ask a companybrain admin or manager to issue a key with the 'write' scope (Team \u2192 the agent \u2192 API keys), then reconnect with the new key. Read tools (get_my_work, list_tasks, get_task, search, \u2026) still work.";
@@ -179402,7 +171197,7 @@ function toToolError(err, actor) {
     let text;
     switch (code) {
       case "forbidden":
-        text = hasWriteScope2(actor) ? `Not allowed: ${message2}. Your role (${actor.role}) does not permit this action.` : READ_ONLY_MESSAGE;
+        text = hasWriteScope(actor) ? `Not allowed: ${message2}. Your role (${actor.role}) does not permit this action.` : READ_ONLY_MESSAGE;
         break;
       case "not_found":
         text = `Not found: ${message2}. Use list_tasks, search or get_my_work to find the right id.`;
@@ -179430,7 +171225,7 @@ function toToolError(err, actor) {
 }
 
 // packages/mcp/src/dates.ts
-var DAY3 = 864e5;
+var DAY2 = 864e5;
 var partsFmtCache = /* @__PURE__ */ new Map();
 function partsFormatter(tz) {
   let f = partsFmtCache.get(tz);
@@ -179478,7 +171273,7 @@ function tzOffsetMs2(ms, tz) {
   const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
   return asUtc - (ms - (ms % 1e3 + 1e3) % 1e3);
 }
-function zonedToUtc3(year, month, day, hour, minute, tz, second = 0) {
+function zonedToUtc2(year, month, day, hour, minute, tz, second = 0) {
   const guess = Date.UTC(year, month - 1, day, hour, minute, second);
   let result = guess - tzOffsetMs2(guess, tz);
   const off2 = tzOffsetMs2(result, tz);
@@ -179486,19 +171281,19 @@ function zonedToUtc3(year, month, day, hour, minute, tz, second = 0) {
   if (alt !== result) result = alt;
   return result;
 }
-function startOfDay2(ms, tz) {
+function startOfDay(ms, tz) {
   const p = zonedParts(ms, tz);
-  return zonedToUtc3(p.year, p.month, p.day, 0, 0, tz);
+  return zonedToUtc2(p.year, p.month, p.day, 0, 0, tz);
 }
-function addDays3(ms, days) {
-  return ms + days * DAY3;
+function addDays(ms, days) {
+  return ms + days * DAY2;
 }
-var pad2 = (n, w = 2) => String(Math.abs(n)).padStart(w, "0");
+var pad = (n, w = 2) => String(Math.abs(n)).padStart(w, "0");
 function isoLocal(ms, tz) {
   const p = zonedParts(ms, tz);
   const off = Math.round(tzOffsetMs2(ms, tz) / 6e4);
   const sign = off >= 0 ? "+" : "-";
-  return `${p.year}-${pad2(p.month)}-${pad2(p.day)}T${pad2(p.hour)}:${pad2(p.minute)}:${pad2(p.second)}${sign}${pad2(Math.floor(Math.abs(off) / 60))}:${pad2(Math.abs(off) % 60)}`;
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}:${pad(p.second)}${sign}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`;
 }
 var MONTHS2 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function humanDate(ms, tz, now2, dateOnly = false) {
@@ -179506,7 +171301,7 @@ function humanDate(ms, tz, now2, dateOnly = false) {
   const n = zonedParts(now2, tz);
   let s2 = `${WEEKDAYS3[p.weekday]} ${p.day} ${MONTHS2[p.month - 1]}`;
   if (p.year !== n.year) s2 += ` ${p.year}`;
-  if (!dateOnly) s2 += ` ${pad2(p.hour)}:${pad2(p.minute)}`;
+  if (!dateOnly) s2 += ` ${pad(p.hour)}:${pad(p.minute)}`;
   return s2;
 }
 function relativeAgo(ms, now2) {
@@ -179658,12 +171453,12 @@ var CallContext = class {
     const iso = parseIso(input);
     if (iso?.kind === "instant") return { dueAt: iso.ms, dueAllDay: false };
     if (iso?.kind === "local") {
-      return { dueAt: zonedToUtc3(iso.year, iso.month, iso.day, iso.hour, iso.minute, tz, iso.second), dueAllDay: false };
+      return { dueAt: zonedToUtc2(iso.year, iso.month, iso.day, iso.hour, iso.minute, tz, iso.second), dueAllDay: false };
     }
     if (iso?.kind === "date") {
       const org = await this.org();
       const hour = Math.min(23, Math.max(0, org?.workdayEnd ?? 18));
-      return { dueAt: zonedToUtc3(iso.year, iso.month, iso.day, hour, 0, tz), dueAllDay: true };
+      return { dueAt: zonedToUtc2(iso.year, iso.month, iso.day, hour, 0, tz), dueAllDay: true };
     }
     const preview = await this.services.tasks.preview(this.actor, `Task due ${input.trim()}`);
     const dueAt = preview.draft.dueAt ?? preview.parsed.dueAt;
@@ -179754,14 +171549,14 @@ function ambiguous(kind, q, candidates) {
 // packages/mcp/src/tools.ts
 var STATUS = ["todo", "in_progress", "blocked", "review", "done", "cancelled"];
 var PRIORITY = ["urgent", "high", "medium", "low", "none"];
-var OPEN2 = /* @__PURE__ */ new Set(["todo", "in_progress", "blocked", "review"]);
+var OPEN = /* @__PURE__ */ new Set(["todo", "in_progress", "blocked", "review"]);
 var HOUR = 36e5;
 var READ = { readOnlyHint: true, openWorldHint: false };
 var WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
 var taskId = external_exports.string().min(1).describe('Task id, e.g. "task_x7f3k2ab" (from get_my_work, list_tasks or search).');
 var assigneeRefs = external_exports.array(external_exports.string().min(1)).max(20);
 var reminders = external_exports.array(external_exports.number().int().min(0).max(60 * 24 * 60)).max(10).describe("Reminder offsets in minutes before due, e.g. [1440, 60, 0] = a day before, an hour before, at due time. Omit for the org default.");
-var tags2 = external_exports.array(external_exports.string().min(1).max(40)).max(20).describe('Tags without "#", e.g. ["sales", "q4"].');
+var tags = external_exports.array(external_exports.string().min(1).max(40)).max(20).describe('Tags without "#", e.g. ["sales", "q4"].');
 var dueSchema = external_exports.string().min(1).max(100);
 function registerTools(server, deps) {
   const { services } = deps;
@@ -179785,7 +171580,7 @@ function registerTools(server, deps) {
             { code: "unauthorized" }
           );
         }
-        if (cfg.write && !hasWriteScope2(actor)) return errorResult(READ_ONLY_MESSAGE, { code: "forbidden", reason: "read_only_key" });
+        if (cfg.write && !hasWriteScope(actor)) return errorResult(READ_ONLY_MESSAGE, { code: "forbidden", reason: "read_only_key" });
         try {
           const ctx = new CallContext(services, actor, deps.clock);
           const out = await run(args, ctx);
@@ -179808,9 +171603,9 @@ function registerTools(server, deps) {
     const tz = await ctx.timezone();
     const me = await ctx.me();
     const days = args.upcomingDays ?? 7;
-    const all = (await s2.tasks.list(actor, { assigneeId: "me", limit: 500 })).filter((t) => OPEN2.has(t.status));
+    const all = (await s2.tasks.list(actor, { assigneeId: "me", limit: 500 })).filter((t) => OPEN.has(t.status));
     const groups = { overdue: [], inProgress: [], today: [], upcoming: [], blocked: [], later: [] };
-    const horizon = addDays3(startOfDay2(now2, tz), days + 1);
+    const horizon = addDays(startOfDay(now2, tz), days + 1);
     for (const t of all) {
       if (t.isOverdue) groups.overdue.push(t);
       else if (t.status === "blocked") groups.blocked.push(t);
@@ -179968,7 +171763,7 @@ ${await ctx.taskLines(compact)}` : "No tasks match those filters.";
       project: external_exports.string().optional().describe('Project id or name (e.g. "Website").'),
       priority: external_exports.enum(PRIORITY).optional().describe("urgent | high | medium | low | none."),
       status: external_exports.enum(["todo", "in_progress", "blocked", "review"]).optional().describe("Initial status (default todo)."),
-      tags: tags2.optional(),
+      tags: tags.optional(),
       reminders: reminders.optional(),
       subtasks: external_exports.array(external_exports.string().min(1).max(300)).max(50).optional().describe("Checklist items.")
     },
@@ -180020,7 +171815,7 @@ ${await ctx.taskLine(c)}`, data: { task: c } };
       addAssignees: assigneeRefs.optional().describe("Add these assignees (ids or names)."),
       removeAssignees: assigneeRefs.optional().describe("Remove these assignees (ids or names)."),
       project: external_exports.string().optional().describe('Project id or name, or "none" to remove from its project.'),
-      tags: tags2.optional().describe("Replace tags."),
+      tags: tags.optional().describe("Replace tags."),
       reminders: reminders.nullable().optional().describe("Replace reminder offsets (minutes before due); null = org default.")
     },
     write: true
@@ -180117,8 +171912,8 @@ ${reward.line}` : ""}`,
       task = Object.keys(patch).length ? await ctx.services.tasks.update(ctx.actor, args.taskId, patch) : await ctx.services.tasks.get(ctx.actor, args.taskId);
     } catch (err) {
       const res = toToolError(err, ctx.actor);
-      const first = res.content[0];
-      const msg = first && first.type === "text" ? first.text : "update failed";
+      const first2 = res.content[0];
+      const msg = first2 && first2.type === "text" ? first2.text : "update failed";
       throw new ToolInputError(`Hand-off note was saved, but updating the task failed: ${msg}`);
     }
     const c = await ctx.compactTask(task);
@@ -180250,8 +172045,8 @@ ${reward.line}` : ""}`,
     write: false
   }, async (args, ctx) => {
     const tz = await ctx.timezone();
-    const from = args.from ? await ctx.parseInstant(args.from) : startOfDay2(ctx.now, tz);
-    const to = args.to ? await ctx.parseInstant(args.to) : addDays3(from, 7);
+    const from = args.from ? await ctx.parseInstant(args.from) : startOfDay(ctx.now, tz);
+    const to = args.to ? await ctx.parseInstant(args.to) : addDays(from, 7);
     if (to <= from) throw new ToolInputError('"to" must be after "from".');
     const memberId = !args.member || args.member.trim().toLowerCase() === "me" ? "me" : await ctx.resolveMember(args.member);
     const meetings = (await ctx.services.meetings.list(ctx.actor, { from, to, memberId })).sort((a, b) => a.startAt - b.startAt);
@@ -180290,7 +172085,7 @@ ${reward.line}` : ""}`,
     const tz = await ctx.timezone();
     let markedRead = 0;
     let note = "";
-    const canMark = hasWriteScope2(ctx.actor);
+    const canMark = hasWriteScope(ctx.actor);
     if (args.markRead && !canMark) note = "\nNot marked as read: this API key is read-only (scope: read).";
     if (args.markRead && canMark) {
       const ids2 = list.filter((n) => n.readAt == null).map((n) => n.id);
@@ -180399,7 +172194,7 @@ async function completionRewards(ctx, taskId2) {
     for (const r of recent) {
       if (r.kind === "level_up") parts.push(`LEVEL UP \u2192 ${r.level ?? "?"}${r.rank ? ` (${r.rank.name})` : ""}`);
       else if (r.kind === "crate_earned") parts.push(`${r.rarity ?? ""} crate earned`.trim());
-      else if (r.kind === "achievement") parts.push(`achievement: ${r.label}`);
+      else if (r.kind === "achievement") parts.push(`\u{1F3C5} ${r.label.replace(/^[+-]?\d+ XP · /, "")}`);
       else if (KIND_LABEL[r.kind] && r.xp) parts.push(`${KIND_LABEL[r.kind]} +${r.xp}`);
     }
     if (coins) parts.push(`+${coins} coins`);
@@ -180512,19 +172307,8564 @@ Set COMPANYBRAIN_MCP_KEY to an API key (cb_live_\u2026) created in companybrain 
     }
   });
   const transport = new StdioServerTransport();
-  await new Promise((resolve5, reject) => {
+  await new Promise((resolve6, reject) => {
     let done = false;
     const finish = () => {
       if (done) return;
       done = true;
       void server.close().catch(() => {
-      }).finally(resolve5);
+      }).finally(resolve6);
     };
     transport.onclose = finish;
     process.stdin.once("end", finish);
     process.stdin.once("close", finish);
     server.connect(transport).catch(reject);
   });
+}
+
+// cli/src/app.ts
+import { existsSync as existsSync3, readFileSync as readFileSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { randomBytes as randomBytes7 } from "node:crypto";
+import { join as join5 } from "node:path";
+
+// packages/core/src/context.ts
+var noopOutbound = {
+  async whatsapp() {
+    return false;
+  },
+  async email() {
+    return false;
+  },
+  async push() {
+    return "failed";
+  },
+  status() {
+    return { whatsapp: false, email: false, push: false };
+  }
+};
+var noCalendar = {
+  async fetch() {
+    throw new Error("calendar fetch not configured");
+  }
+};
+function getOrg(ctx, orgId) {
+  const org = ctx.db.orgs.get(orgId);
+  if (!org) throw new AppError("not_found", "Organization not found");
+  return org;
+}
+function actorMember(ctx, actor) {
+  return ctx.db.members.get(actor.orgId, actor.memberId);
+}
+function actorTz(ctx, actor) {
+  const m = actorMember(ctx, actor);
+  return safeTz(m?.timezone ?? ctx.db.orgs.get(actor.orgId)?.timezone);
+}
+var snap = (v) => v === null || v === void 0 ? null : JSON.parse(JSON.stringify(v));
+async function audit(ctx, actor, e) {
+  const ev = {
+    id: newId("aud"),
+    orgId: actor.orgId,
+    actorId: actor.memberId,
+    type: e.type,
+    entity: e.entity,
+    entityId: e.entityId,
+    summary: e.summary.slice(0, 500),
+    before: snap(e.before),
+    after: snap(e.after),
+    undoable: !!e.undoable,
+    undoneAt: null,
+    undoneBy: null,
+    at: ctx.clock()
+  };
+  ctx.db.audit.insert(ev);
+  await fireAudit(ctx, ev);
+  return ev;
+}
+async function fireAudit(ctx, ev) {
+  if (!ctx.onAudit) return;
+  try {
+    await ctx.onAudit(ev);
+  } catch (err) {
+    ctx.log.error("[core] onAudit hook failed", err);
+  }
+}
+function publicMember(m) {
+  return { ...m, email: null, phone: null, prefs: defaultPrefs(m.kind) };
+}
+function publish(ctx, orgId, event, memberIds) {
+  try {
+    if (event.type === "member.upserted" && !memberIds) {
+      const self = event.member.id;
+      ctx.live.publish(orgId, event, { memberIds: [self] });
+      const others = ctx.db.members.list(orgId).map((m) => m.id).filter((id) => id !== self);
+      if (others.length) ctx.live.publish(orgId, { type: "member.upserted", member: publicMember(event.member) }, { memberIds: others });
+      return;
+    }
+    ctx.live.publish(orgId, event, memberIds ? { memberIds } : void 0);
+  } catch (err) {
+    ctx.log.warn("[core] live publish failed", err);
+  }
+}
+function firstName(name) {
+  return name.trim().split(/\s+/)[0] ?? name;
+}
+function withTimeout2(p, ms, label = "operation") {
+  let t;
+  return Promise.race([
+    p.finally(() => clearTimeout(t)),
+    new Promise((_, reject) => {
+      t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+      t.unref?.();
+    })
+  ]);
+}
+
+// packages/core/src/live.ts
+function createLiveBus(log) {
+  const subs = /* @__PURE__ */ new Map();
+  return {
+    publish(orgId, event, opts) {
+      const set2 = subs.get(orgId);
+      if (!set2) return;
+      const only = opts?.memberIds ? new Set(opts.memberIds) : null;
+      for (const s2 of [...set2]) {
+        if (only && !only.has(s2.memberId)) continue;
+        try {
+          s2.fn(event);
+        } catch (err) {
+          log?.warn("[live] subscriber threw", err);
+        }
+      }
+    },
+    subscribe(orgId, memberId, fn) {
+      const sub = { memberId, fn };
+      if (!subs.has(orgId)) subs.set(orgId, /* @__PURE__ */ new Set());
+      subs.get(orgId).add(sub);
+      return () => {
+        const set2 = subs.get(orgId);
+        set2?.delete(sub);
+        if (set2 && !set2.size) subs.delete(orgId);
+      };
+    }
+  };
+}
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/index.js
+var en_exports = {};
+__export(en_exports, {
+  Chrono: () => Chrono,
+  GB: () => GB,
+  Meridiem: () => Meridiem,
+  ParsingComponents: () => ParsingComponents,
+  ParsingResult: () => ParsingResult,
+  ReferenceWithTimezone: () => ReferenceWithTimezone,
+  Weekday: () => Weekday,
+  casual: () => casual,
+  configuration: () => configuration,
+  parse: () => parse3,
+  parseDate: () => parseDate2,
+  strict: () => strict
+});
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/types.js
+var Meridiem;
+(function(Meridiem2) {
+  Meridiem2[Meridiem2["AM"] = 0] = "AM";
+  Meridiem2[Meridiem2["PM"] = 1] = "PM";
+})(Meridiem || (Meridiem = {}));
+var Weekday;
+(function(Weekday2) {
+  Weekday2[Weekday2["SUNDAY"] = 0] = "SUNDAY";
+  Weekday2[Weekday2["MONDAY"] = 1] = "MONDAY";
+  Weekday2[Weekday2["TUESDAY"] = 2] = "TUESDAY";
+  Weekday2[Weekday2["WEDNESDAY"] = 3] = "WEDNESDAY";
+  Weekday2[Weekday2["THURSDAY"] = 4] = "THURSDAY";
+  Weekday2[Weekday2["FRIDAY"] = 5] = "FRIDAY";
+  Weekday2[Weekday2["SATURDAY"] = 6] = "SATURDAY";
+})(Weekday || (Weekday = {}));
+var Month;
+(function(Month2) {
+  Month2[Month2["JANUARY"] = 1] = "JANUARY";
+  Month2[Month2["FEBRUARY"] = 2] = "FEBRUARY";
+  Month2[Month2["MARCH"] = 3] = "MARCH";
+  Month2[Month2["APRIL"] = 4] = "APRIL";
+  Month2[Month2["MAY"] = 5] = "MAY";
+  Month2[Month2["JUNE"] = 6] = "JUNE";
+  Month2[Month2["JULY"] = 7] = "JULY";
+  Month2[Month2["AUGUST"] = 8] = "AUGUST";
+  Month2[Month2["SEPTEMBER"] = 9] = "SEPTEMBER";
+  Month2[Month2["OCTOBER"] = 10] = "OCTOBER";
+  Month2[Month2["NOVEMBER"] = 11] = "NOVEMBER";
+  Month2[Month2["DECEMBER"] = 12] = "DECEMBER";
+})(Month || (Month = {}));
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/utils/dates.js
+function assignSimilarDate(component, target) {
+  component.assign("day", target.getDate());
+  component.assign("month", target.getMonth() + 1);
+  component.assign("year", target.getFullYear());
+}
+function assignSimilarTime(component, target) {
+  component.assign("hour", target.getHours());
+  component.assign("minute", target.getMinutes());
+  component.assign("second", target.getSeconds());
+  component.assign("millisecond", target.getMilliseconds());
+  component.assign("meridiem", target.getHours() < 12 ? Meridiem.AM : Meridiem.PM);
+}
+function implySimilarDate(component, target) {
+  component.imply("day", target.getDate());
+  component.imply("month", target.getMonth() + 1);
+  component.imply("year", target.getFullYear());
+}
+function implySimilarTime(component, target) {
+  component.imply("hour", target.getHours());
+  component.imply("minute", target.getMinutes());
+  component.imply("second", target.getSeconds());
+  component.imply("millisecond", target.getMilliseconds());
+  component.imply("meridiem", target.getHours() < 12 ? Meridiem.AM : Meridiem.PM);
+}
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/timezone.js
+var TIMEZONE_ABBR_MAP = {
+  ACDT: 630,
+  ACST: 570,
+  ADT: -180,
+  AEDT: 660,
+  AEST: 600,
+  AFT: 270,
+  AKDT: -480,
+  AKST: -540,
+  ALMT: 360,
+  AMST: -180,
+  AMT: -240,
+  ANAST: 720,
+  ANAT: 720,
+  AQTT: 300,
+  ART: -180,
+  AST: -240,
+  AWDT: 540,
+  AWST: 480,
+  AZOST: 0,
+  AZOT: -60,
+  AZST: 300,
+  AZT: 240,
+  BNT: 480,
+  BOT: -240,
+  BRST: -120,
+  BRT: -180,
+  BST: 60,
+  BTT: 360,
+  CAST: 480,
+  CAT: 120,
+  CCT: 390,
+  CDT: -300,
+  CEST: 120,
+  CET: {
+    timezoneOffsetDuringDst: 2 * 60,
+    timezoneOffsetNonDst: 60,
+    dstStart: (year) => getLastWeekdayOfMonth(year, Month.MARCH, Weekday.SUNDAY, 2),
+    dstEnd: (year) => getLastWeekdayOfMonth(year, Month.OCTOBER, Weekday.SUNDAY, 3)
+  },
+  CHADT: 825,
+  CHAST: 765,
+  CKT: -600,
+  CLST: -180,
+  CLT: -240,
+  COT: -300,
+  CST: -360,
+  CT: {
+    timezoneOffsetDuringDst: -5 * 60,
+    timezoneOffsetNonDst: -6 * 60,
+    dstStart: (year) => getNthWeekdayOfMonth(year, Month.MARCH, Weekday.SUNDAY, 2, 2),
+    dstEnd: (year) => getNthWeekdayOfMonth(year, Month.NOVEMBER, Weekday.SUNDAY, 1, 2)
+  },
+  CVT: -60,
+  CXT: 420,
+  ChST: 600,
+  DAVT: 420,
+  EASST: -300,
+  EAST: -360,
+  EAT: 180,
+  ECT: -300,
+  EDT: -240,
+  EEST: 180,
+  EET: 120,
+  EGST: 0,
+  EGT: -60,
+  EST: -300,
+  ET: {
+    timezoneOffsetDuringDst: -4 * 60,
+    timezoneOffsetNonDst: -5 * 60,
+    dstStart: (year) => getNthWeekdayOfMonth(year, Month.MARCH, Weekday.SUNDAY, 2, 2),
+    dstEnd: (year) => getNthWeekdayOfMonth(year, Month.NOVEMBER, Weekday.SUNDAY, 1, 2)
+  },
+  FJST: 780,
+  FJT: 720,
+  FKST: -180,
+  FKT: -240,
+  FNT: -120,
+  GALT: -360,
+  GAMT: -540,
+  GET: 240,
+  GFT: -180,
+  GILT: 720,
+  GMT: 0,
+  GST: 240,
+  GYT: -240,
+  HAA: -180,
+  HAC: -300,
+  HADT: -540,
+  HAE: -240,
+  HAP: -420,
+  HAR: -360,
+  HAST: -600,
+  HAT: -90,
+  HAY: -480,
+  HKT: 480,
+  HLV: -210,
+  HNA: -240,
+  HNC: -360,
+  HNE: -300,
+  HNP: -480,
+  HNR: -420,
+  HNT: -150,
+  HNY: -540,
+  HOVT: 420,
+  ICT: 420,
+  IDT: 180,
+  IOT: 360,
+  IRDT: 270,
+  IRKST: 540,
+  IRKT: 540,
+  IRST: 210,
+  IST: 330,
+  JST: 540,
+  KGT: 360,
+  KRAST: 480,
+  KRAT: 480,
+  KST: 540,
+  KUYT: 240,
+  LHDT: 660,
+  LHST: 630,
+  LINT: 840,
+  MAGST: 720,
+  MAGT: 720,
+  MART: -510,
+  MAWT: 300,
+  MDT: -360,
+  MESZ: 120,
+  MEZ: 60,
+  MHT: 720,
+  MMT: 390,
+  MSD: 240,
+  MSK: 180,
+  MST: -420,
+  MT: {
+    timezoneOffsetDuringDst: -6 * 60,
+    timezoneOffsetNonDst: -7 * 60,
+    dstStart: (year) => getNthWeekdayOfMonth(year, Month.MARCH, Weekday.SUNDAY, 2, 2),
+    dstEnd: (year) => getNthWeekdayOfMonth(year, Month.NOVEMBER, Weekday.SUNDAY, 1, 2)
+  },
+  MUT: 240,
+  MVT: 300,
+  MYT: 480,
+  NCT: 660,
+  NDT: -90,
+  NFT: 690,
+  NOVST: 420,
+  NOVT: 360,
+  NPT: 345,
+  NST: -150,
+  NUT: -660,
+  NZDT: 780,
+  NZST: 720,
+  OMSST: 420,
+  OMST: 420,
+  PDT: -420,
+  PET: -300,
+  PETST: 720,
+  PETT: 720,
+  PGT: 600,
+  PHOT: 780,
+  PHT: 480,
+  PKT: 300,
+  PMDT: -120,
+  PMST: -180,
+  PONT: 660,
+  PST: -480,
+  PT: {
+    timezoneOffsetDuringDst: -7 * 60,
+    timezoneOffsetNonDst: -8 * 60,
+    dstStart: (year) => getNthWeekdayOfMonth(year, Month.MARCH, Weekday.SUNDAY, 2, 2),
+    dstEnd: (year) => getNthWeekdayOfMonth(year, Month.NOVEMBER, Weekday.SUNDAY, 1, 2)
+  },
+  PWT: 540,
+  PYST: -180,
+  PYT: -240,
+  RET: 240,
+  SAMT: 240,
+  SAST: 120,
+  SBT: 660,
+  SCT: 240,
+  SGT: 480,
+  SRT: -180,
+  SST: -660,
+  TAHT: -600,
+  TFT: 300,
+  TJT: 300,
+  TKT: 780,
+  TLT: 540,
+  TMT: 300,
+  TVT: 720,
+  ULAT: 480,
+  UTC: 0,
+  UYST: -120,
+  UYT: -180,
+  UZT: 300,
+  VET: -210,
+  VLAST: 660,
+  VLAT: 660,
+  VUT: 660,
+  WAST: 120,
+  WAT: 60,
+  WEST: 60,
+  WESZ: 60,
+  WET: 0,
+  WEZ: 0,
+  WFT: 720,
+  WGST: -120,
+  WGT: -180,
+  WIB: 420,
+  WIT: 540,
+  WITA: 480,
+  WST: 780,
+  WT: 0,
+  YAKST: 600,
+  YAKT: 600,
+  YAPT: 600,
+  YEKST: 360,
+  YEKT: 360
+};
+function getNthWeekdayOfMonth(year, month, weekday2, n, hour = 0) {
+  let dayOfMonth = 0;
+  let i = 0;
+  while (i < n) {
+    dayOfMonth++;
+    const date5 = new Date(year, month - 1, dayOfMonth);
+    if (date5.getDay() === weekday2)
+      i++;
+  }
+  return new Date(year, month - 1, dayOfMonth, hour);
+}
+function getLastWeekdayOfMonth(year, month, weekday2, hour = 0) {
+  const oneIndexedWeekday = weekday2 === 0 ? 7 : weekday2;
+  const date5 = new Date(year, month - 1 + 1, 1, 12);
+  const firstWeekdayNextMonth = date5.getDay() === 0 ? 7 : date5.getDay();
+  let dayDiff;
+  if (firstWeekdayNextMonth === oneIndexedWeekday)
+    dayDiff = 7;
+  else if (firstWeekdayNextMonth < oneIndexedWeekday)
+    dayDiff = 7 + firstWeekdayNextMonth - oneIndexedWeekday;
+  else
+    dayDiff = firstWeekdayNextMonth - oneIndexedWeekday;
+  date5.setDate(date5.getDate() - dayDiff);
+  return new Date(year, month - 1, date5.getDate(), hour);
+}
+function toTimezoneOffset(timezoneInput, date5, timezoneOverrides = {}) {
+  if (timezoneInput == null) {
+    return null;
+  }
+  if (typeof timezoneInput === "number") {
+    return timezoneInput;
+  }
+  const matchedTimezone = timezoneOverrides[timezoneInput] ?? TIMEZONE_ABBR_MAP[timezoneInput];
+  if (matchedTimezone == null) {
+    return null;
+  }
+  if (typeof matchedTimezone == "number") {
+    return matchedTimezone;
+  }
+  if (date5 == null) {
+    return null;
+  }
+  if (date5 > matchedTimezone.dstStart(date5.getFullYear()) && !(date5 > matchedTimezone.dstEnd(date5.getFullYear()))) {
+    return matchedTimezone.timezoneOffsetDuringDst;
+  }
+  return matchedTimezone.timezoneOffsetNonDst;
+}
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/calculation/duration.js
+var EmptyDuration = {
+  day: 0,
+  second: 0,
+  millisecond: 0
+};
+function addDuration(ref2, duration3) {
+  let date5 = new Date(ref2);
+  if (duration3["y"]) {
+    duration3["year"] = duration3["y"];
+    delete duration3["y"];
+  }
+  if (duration3["mo"]) {
+    duration3["month"] = duration3["mo"];
+    delete duration3["mo"];
+  }
+  if (duration3["M"]) {
+    duration3["month"] = duration3["M"];
+    delete duration3["M"];
+  }
+  if (duration3["w"]) {
+    duration3["week"] = duration3["w"];
+    delete duration3["w"];
+  }
+  if (duration3["d"]) {
+    duration3["day"] = duration3["d"];
+    delete duration3["d"];
+  }
+  if (duration3["h"]) {
+    duration3["hour"] = duration3["h"];
+    delete duration3["h"];
+  }
+  if (duration3["m"]) {
+    duration3["minute"] = duration3["m"];
+    delete duration3["m"];
+  }
+  if (duration3["s"]) {
+    duration3["second"] = duration3["s"];
+    delete duration3["s"];
+  }
+  if (duration3["ms"]) {
+    duration3["millisecond"] = duration3["ms"];
+    delete duration3["ms"];
+  }
+  if ("year" in duration3) {
+    const floor = Math.floor(duration3["year"]);
+    date5.setFullYear(date5.getFullYear() + floor);
+    const remainingFraction = duration3["year"] - floor;
+    if (remainingFraction > 0) {
+      duration3.month = duration3?.month ?? 0;
+      duration3.month += remainingFraction * 12;
+    }
+  }
+  if ("quarter" in duration3) {
+    const floor = Math.floor(duration3["quarter"]);
+    date5.setMonth(date5.getMonth() + floor * 3);
+    const remainingFraction = duration3["quarter"] - floor;
+    if (remainingFraction > 0) {
+      duration3.month = duration3?.month ?? 0;
+      duration3.month += remainingFraction * 3;
+    }
+  }
+  if ("month" in duration3) {
+    const floor = Math.floor(duration3["month"]);
+    date5.setMonth(date5.getMonth() + floor);
+    const remainingFraction = duration3["month"] - floor;
+    if (remainingFraction > 0) {
+      duration3.week = duration3?.week ?? 0;
+      duration3.week += remainingFraction * 4;
+    }
+  }
+  if ("week" in duration3) {
+    const floor = Math.floor(duration3["week"]);
+    date5.setDate(date5.getDate() + floor * 7);
+    const remainingFraction = duration3["week"] - floor;
+    if (remainingFraction > 0) {
+      duration3.day = duration3?.day ?? 0;
+      duration3.day += Math.round(remainingFraction * 7);
+    }
+  }
+  if ("day" in duration3) {
+    const floor = Math.floor(duration3["day"]);
+    date5.setDate(date5.getDate() + floor);
+    const remainingFraction = duration3["day"] - floor;
+    if (remainingFraction > 0) {
+      duration3.hour = duration3?.hour ?? 0;
+      duration3.hour += Math.round(remainingFraction * 24);
+    }
+  }
+  if ("hour" in duration3) {
+    const floor = Math.floor(duration3["hour"]);
+    date5.setHours(date5.getHours() + floor);
+    const remainingFraction = duration3["hour"] - floor;
+    if (remainingFraction > 0) {
+      duration3.minute = duration3?.minute ?? 0;
+      duration3.minute += Math.round(remainingFraction * 60);
+    }
+  }
+  if ("minute" in duration3) {
+    const floor = Math.floor(duration3["minute"]);
+    date5.setMinutes(date5.getMinutes() + floor);
+    const remainingFraction = duration3["minute"] - floor;
+    if (remainingFraction > 0) {
+      duration3.second = duration3?.second ?? 0;
+      duration3.second += Math.round(remainingFraction * 60);
+    }
+  }
+  if ("second" in duration3) {
+    const floor = Math.floor(duration3["second"]);
+    date5.setSeconds(date5.getSeconds() + floor);
+    const remainingFraction = duration3["second"] - floor;
+    if (remainingFraction > 0) {
+      duration3.millisecond = duration3?.millisecond ?? 0;
+      duration3.millisecond += Math.round(remainingFraction * 1e3);
+    }
+  }
+  if ("millisecond" in duration3) {
+    const floor = Math.floor(duration3["millisecond"]);
+    date5.setMilliseconds(date5.getMilliseconds() + floor);
+  }
+  return date5;
+}
+function reverseDuration(duration3) {
+  const reversed = {};
+  for (const key in duration3) {
+    reversed[key] = -duration3[key];
+  }
+  return reversed;
+}
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/results.js
+var ReferenceWithTimezone = class _ReferenceWithTimezone {
+  instant;
+  timezoneOffset;
+  constructor(instant, timezoneOffset) {
+    this.instant = instant ?? /* @__PURE__ */ new Date();
+    this.timezoneOffset = timezoneOffset ?? null;
+  }
+  static fromDate(date5) {
+    return new _ReferenceWithTimezone(date5);
+  }
+  static fromInput(input, timezoneOverrides) {
+    if (input instanceof Date) {
+      return _ReferenceWithTimezone.fromDate(input);
+    }
+    const instant = input?.instant ?? /* @__PURE__ */ new Date();
+    const timezoneOffset = toTimezoneOffset(input?.timezone, instant, timezoneOverrides);
+    return new _ReferenceWithTimezone(instant, timezoneOffset);
+  }
+  getDateWithAdjustedTimezone() {
+    const date5 = new Date(this.instant);
+    if (this.timezoneOffset !== null) {
+      date5.setMinutes(date5.getMinutes() - this.getSystemTimezoneAdjustmentMinute(this.instant));
+    }
+    return date5;
+  }
+  getSystemTimezoneAdjustmentMinute(date5, overrideTimezoneOffset) {
+    if (!date5) {
+      date5 = /* @__PURE__ */ new Date();
+    }
+    const currentTimezoneOffset = -date5.getTimezoneOffset();
+    const targetTimezoneOffset = overrideTimezoneOffset ?? this.timezoneOffset ?? currentTimezoneOffset;
+    return currentTimezoneOffset - targetTimezoneOffset;
+  }
+  getTimezoneOffset() {
+    return this.timezoneOffset ?? -this.instant.getTimezoneOffset();
+  }
+};
+var ParsingComponents = class _ParsingComponents {
+  knownValues;
+  impliedValues;
+  reference;
+  _tags = /* @__PURE__ */ new Set();
+  constructor(reference, knownComponents) {
+    this.reference = reference;
+    this.knownValues = {};
+    this.impliedValues = {};
+    if (knownComponents) {
+      for (const key in knownComponents) {
+        this.knownValues[key] = knownComponents[key];
+      }
+    }
+    const date5 = reference.getDateWithAdjustedTimezone();
+    this.imply("day", date5.getDate());
+    this.imply("month", date5.getMonth() + 1);
+    this.imply("year", date5.getFullYear());
+    this.imply("hour", 12);
+    this.imply("minute", 0);
+    this.imply("second", 0);
+    this.imply("millisecond", 0);
+  }
+  static createRelativeFromReference(reference, duration3 = EmptyDuration) {
+    let date5 = addDuration(reference.getDateWithAdjustedTimezone(), duration3);
+    const components = new _ParsingComponents(reference);
+    components.addTag("result/relativeDate");
+    if ("hour" in duration3 || "minute" in duration3 || "second" in duration3 || "millisecond" in duration3) {
+      components.addTag("result/relativeDateAndTime");
+      assignSimilarTime(components, date5);
+      assignSimilarDate(components, date5);
+      components.assign("timezoneOffset", reference.getTimezoneOffset());
+    } else {
+      implySimilarTime(components, date5);
+      components.imply("timezoneOffset", reference.getTimezoneOffset());
+      if ("day" in duration3) {
+        components.assign("day", date5.getDate());
+        components.assign("month", date5.getMonth() + 1);
+        components.assign("year", date5.getFullYear());
+        components.assign("weekday", date5.getDay());
+      } else if ("week" in duration3) {
+        components.assign("day", date5.getDate());
+        components.assign("month", date5.getMonth() + 1);
+        components.assign("year", date5.getFullYear());
+        components.imply("weekday", date5.getDay());
+      } else {
+        components.imply("day", date5.getDate());
+        if ("month" in duration3) {
+          components.assign("month", date5.getMonth() + 1);
+          components.assign("year", date5.getFullYear());
+        } else {
+          components.imply("month", date5.getMonth() + 1);
+          if ("year" in duration3) {
+            components.assign("year", date5.getFullYear());
+          } else {
+            components.imply("year", date5.getFullYear());
+          }
+        }
+      }
+    }
+    return components;
+  }
+  get(component) {
+    if (component in this.knownValues) {
+      return this.knownValues[component];
+    }
+    if (component in this.impliedValues) {
+      return this.impliedValues[component];
+    }
+    return null;
+  }
+  isCertain(component) {
+    return component in this.knownValues;
+  }
+  getCertainComponents() {
+    return Object.keys(this.knownValues);
+  }
+  imply(component, value) {
+    if (component in this.knownValues) {
+      return this;
+    }
+    this.impliedValues[component] = value;
+    return this;
+  }
+  assign(component, value) {
+    this.knownValues[component] = value;
+    delete this.impliedValues[component];
+    return this;
+  }
+  addDurationAsImplied(duration3) {
+    const currentDate = this.dateWithoutTimezoneAdjustment();
+    const date5 = addDuration(currentDate, duration3);
+    if ("day" in duration3 || "week" in duration3 || "month" in duration3 || "year" in duration3) {
+      this.delete(["day", "weekday", "month", "year"]);
+      this.imply("day", date5.getDate());
+      this.imply("weekday", date5.getDay());
+      this.imply("month", date5.getMonth() + 1);
+      this.imply("year", date5.getFullYear());
+    }
+    if ("second" in duration3 || "minute" in duration3 || "hour" in duration3) {
+      this.delete(["second", "minute", "hour"]);
+      this.imply("second", date5.getSeconds());
+      this.imply("minute", date5.getMinutes());
+      this.imply("hour", date5.getHours());
+    }
+    return this;
+  }
+  delete(components) {
+    if (typeof components === "string") {
+      components = [components];
+    }
+    for (const component of components) {
+      delete this.knownValues[component];
+      delete this.impliedValues[component];
+    }
+  }
+  clone() {
+    const component = new _ParsingComponents(this.reference);
+    component.knownValues = {};
+    component.impliedValues = {};
+    for (const key in this.knownValues) {
+      component.knownValues[key] = this.knownValues[key];
+    }
+    for (const key in this.impliedValues) {
+      component.impliedValues[key] = this.impliedValues[key];
+    }
+    return component;
+  }
+  isOnlyDate() {
+    return !this.isCertain("hour") && !this.isCertain("minute") && !this.isCertain("second");
+  }
+  isOnlyTime() {
+    return !this.isCertain("weekday") && !this.isCertain("day") && !this.isCertain("month") && !this.isCertain("year");
+  }
+  isOnlyWeekdayComponent() {
+    return this.isCertain("weekday") && !this.isCertain("day") && !this.isCertain("month");
+  }
+  isDateWithUnknownYear() {
+    return this.isCertain("month") && !this.isCertain("year");
+  }
+  isValidDate() {
+    const date5 = new Date(Date.UTC(this.get("year"), this.get("month") - 1, this.get("day"), this.get("hour"), this.get("minute"), this.get("second"), this.get("millisecond")));
+    date5.setUTCFullYear(this.get("year"));
+    if (date5.getUTCFullYear() !== this.get("year"))
+      return false;
+    if (date5.getUTCMonth() !== this.get("month") - 1)
+      return false;
+    if (date5.getUTCDate() !== this.get("day"))
+      return false;
+    if (this.get("hour") != null && date5.getUTCHours() != this.get("hour"))
+      return false;
+    if (this.get("minute") != null && date5.getUTCMinutes() != this.get("minute"))
+      return false;
+    return true;
+  }
+  toString() {
+    return `[ParsingComponents {
+            tags: ${JSON.stringify(Array.from(this._tags).sort())}, 
+            knownValues: ${JSON.stringify(this.knownValues)}, 
+            impliedValues: ${JSON.stringify(this.impliedValues)}}, 
+            reference: ${JSON.stringify(this.reference)}]`;
+  }
+  date() {
+    const timezoneOffset = this.get("timezoneOffset") ?? this.reference.timezoneOffset;
+    if (timezoneOffset === null || timezoneOffset === void 0) {
+      return this.dateWithoutTimezoneAdjustment();
+    }
+    const date5 = new Date(Date.UTC(this.get("year"), this.get("month") - 1, this.get("day"), this.get("hour"), this.get("minute"), this.get("second"), this.get("millisecond")));
+    date5.setUTCFullYear(this.get("year"));
+    return new Date(date5.getTime() - timezoneOffset * 6e4);
+  }
+  addTag(tag) {
+    this._tags.add(tag);
+    return this;
+  }
+  addTags(tags3) {
+    for (const tag of tags3) {
+      this._tags.add(tag);
+    }
+    return this;
+  }
+  tags() {
+    return new Set(this._tags);
+  }
+  dateWithoutTimezoneAdjustment() {
+    const date5 = new Date(this.get("year"), this.get("month") - 1, this.get("day"), this.get("hour"), this.get("minute"), this.get("second"), this.get("millisecond"));
+    date5.setFullYear(this.get("year"));
+    return date5;
+  }
+};
+var ParsingResult = class _ParsingResult {
+  refDate;
+  index;
+  text;
+  reference;
+  start;
+  end;
+  constructor(reference, index, text, start, end) {
+    this.reference = reference;
+    this.refDate = reference.instant;
+    this.index = index;
+    this.text = text;
+    this.start = start || new ParsingComponents(reference);
+    this.end = end;
+  }
+  clone() {
+    const result = new _ParsingResult(this.reference, this.index, this.text);
+    result.start = this.start ? this.start.clone() : null;
+    result.end = this.end ? this.end.clone() : null;
+    return result;
+  }
+  date() {
+    return this.start.date();
+  }
+  addTag(tag) {
+    this.start.addTag(tag);
+    if (this.end) {
+      this.end.addTag(tag);
+    }
+    return this;
+  }
+  addTags(tags3) {
+    this.start.addTags(tags3);
+    if (this.end) {
+      this.end.addTags(tags3);
+    }
+    return this;
+  }
+  tags() {
+    const combinedTags = new Set(this.start.tags());
+    if (this.end) {
+      for (const tag of this.end.tags()) {
+        combinedTags.add(tag);
+      }
+    }
+    return combinedTags;
+  }
+  toString() {
+    const tags3 = Array.from(this.tags()).sort();
+    return `[ParsingResult {index: ${this.index}, text: '${this.text}', tags: ${JSON.stringify(tags3)} ...}]`;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/utils/pattern.js
+function repeatedTimeunitPattern(prefix, singleTimeunitPattern, connectorPattern = "\\s{0,5},?\\s{0,5}") {
+  const singleTimeunitPatternNoCapture = singleTimeunitPattern.replace(/\((?!\?)/g, "(?:");
+  return `${prefix}${singleTimeunitPatternNoCapture}(?:${connectorPattern}${singleTimeunitPatternNoCapture}){0,10}`;
+}
+function extractTerms(dictionary) {
+  let keys;
+  if (dictionary instanceof Array) {
+    keys = [...dictionary];
+  } else if (dictionary instanceof Map) {
+    keys = Array.from(dictionary.keys());
+  } else {
+    keys = Object.keys(dictionary);
+  }
+  return keys;
+}
+function matchAnyPattern(dictionary) {
+  const joinedTerms = extractTerms(dictionary).sort((a, b) => b.length - a.length).join("|").replace(/\./g, "\\.");
+  return `(?:${joinedTerms})`;
+}
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/calculation/years.js
+function findMostLikelyADYear(yearNumber) {
+  if (yearNumber < 100) {
+    if (yearNumber > 50) {
+      yearNumber = yearNumber + 1900;
+    } else {
+      yearNumber = yearNumber + 2e3;
+    }
+  }
+  return yearNumber;
+}
+function findYearClosestToRef(refDate, day, month) {
+  let date5 = new Date(refDate);
+  date5.setMonth(month - 1);
+  date5.setDate(day);
+  const nextYear = addDuration(date5, { "year": 1 });
+  const lastYear = addDuration(date5, { "year": -1 });
+  if (Math.abs(nextYear.getTime() - refDate.getTime()) < Math.abs(date5.getTime() - refDate.getTime())) {
+    date5 = nextYear;
+  } else if (Math.abs(lastYear.getTime() - refDate.getTime()) < Math.abs(date5.getTime() - refDate.getTime())) {
+    date5 = lastYear;
+  }
+  return date5.getFullYear();
+}
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/constants.js
+var WEEKDAY_DICTIONARY = {
+  sunday: 0,
+  sun: 0,
+  "sun.": 0,
+  monday: 1,
+  mon: 1,
+  "mon.": 1,
+  tuesday: 2,
+  tue: 2,
+  "tue.": 2,
+  wednesday: 3,
+  wed: 3,
+  "wed.": 3,
+  thursday: 4,
+  thurs: 4,
+  "thurs.": 4,
+  thur: 4,
+  "thur.": 4,
+  thu: 4,
+  "thu.": 4,
+  friday: 5,
+  fri: 5,
+  "fri.": 5,
+  saturday: 6,
+  sat: 6,
+  "sat.": 6
+};
+var FULL_MONTH_NAME_DICTIONARY = {
+  january: 1,
+  february: 2,
+  march: 3,
+  april: 4,
+  may: 5,
+  june: 6,
+  july: 7,
+  august: 8,
+  september: 9,
+  october: 10,
+  november: 11,
+  december: 12
+};
+var MONTH_DICTIONARY = {
+  ...FULL_MONTH_NAME_DICTIONARY,
+  jan: 1,
+  "jan.": 1,
+  feb: 2,
+  "feb.": 2,
+  mar: 3,
+  "mar.": 3,
+  apr: 4,
+  "apr.": 4,
+  jun: 6,
+  "jun.": 6,
+  jul: 7,
+  "jul.": 7,
+  aug: 8,
+  "aug.": 8,
+  sep: 9,
+  "sep.": 9,
+  sept: 9,
+  "sept.": 9,
+  oct: 10,
+  "oct.": 10,
+  nov: 11,
+  "nov.": 11,
+  dec: 12,
+  "dec.": 12
+};
+var INTEGER_WORD_DICTIONARY = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12
+};
+var ORDINAL_WORD_DICTIONARY = {
+  first: 1,
+  second: 2,
+  third: 3,
+  fourth: 4,
+  fifth: 5,
+  sixth: 6,
+  seventh: 7,
+  eighth: 8,
+  ninth: 9,
+  tenth: 10,
+  eleventh: 11,
+  twelfth: 12,
+  thirteenth: 13,
+  fourteenth: 14,
+  fifteenth: 15,
+  sixteenth: 16,
+  seventeenth: 17,
+  eighteenth: 18,
+  nineteenth: 19,
+  twentieth: 20,
+  "twenty first": 21,
+  "twenty-first": 21,
+  "twenty second": 22,
+  "twenty-second": 22,
+  "twenty third": 23,
+  "twenty-third": 23,
+  "twenty fourth": 24,
+  "twenty-fourth": 24,
+  "twenty fifth": 25,
+  "twenty-fifth": 25,
+  "twenty sixth": 26,
+  "twenty-sixth": 26,
+  "twenty seventh": 27,
+  "twenty-seventh": 27,
+  "twenty eighth": 28,
+  "twenty-eighth": 28,
+  "twenty ninth": 29,
+  "twenty-ninth": 29,
+  "thirtieth": 30,
+  "thirty first": 31,
+  "thirty-first": 31
+};
+var TIME_UNIT_DICTIONARY_NO_ABBR = {
+  second: "second",
+  seconds: "second",
+  minute: "minute",
+  minutes: "minute",
+  hour: "hour",
+  hours: "hour",
+  day: "day",
+  days: "day",
+  week: "week",
+  weeks: "week",
+  month: "month",
+  months: "month",
+  quarter: "quarter",
+  quarters: "quarter",
+  year: "year",
+  years: "year"
+};
+var TIME_UNIT_DICTIONARY = {
+  s: "second",
+  sec: "second",
+  second: "second",
+  seconds: "second",
+  m: "minute",
+  min: "minute",
+  mins: "minute",
+  minute: "minute",
+  minutes: "minute",
+  h: "hour",
+  hr: "hour",
+  hrs: "hour",
+  hour: "hour",
+  hours: "hour",
+  d: "day",
+  day: "day",
+  days: "day",
+  w: "week",
+  week: "week",
+  weeks: "week",
+  mo: "month",
+  mon: "month",
+  mos: "month",
+  month: "month",
+  months: "month",
+  qtr: "quarter",
+  quarter: "quarter",
+  quarters: "quarter",
+  y: "year",
+  yr: "year",
+  year: "year",
+  years: "year",
+  ...TIME_UNIT_DICTIONARY_NO_ABBR
+};
+var NUMBER_PATTERN = `(?:${matchAnyPattern(INTEGER_WORD_DICTIONARY)}|[0-9]+|[0-9]+\\.[0-9]+|half(?:\\s{0,2}an?)?|an?\\b(?:\\s{0,2}few)?|few|several|the|a?\\s{0,2}couple\\s{0,2}(?:of)?)`;
+function parseNumberPattern(match) {
+  const num4 = match.toLowerCase();
+  if (INTEGER_WORD_DICTIONARY[num4] !== void 0) {
+    return INTEGER_WORD_DICTIONARY[num4];
+  } else if (num4 === "a" || num4 === "an" || num4 == "the") {
+    return 1;
+  } else if (num4.match(/few/)) {
+    return 3;
+  } else if (num4.match(/half/)) {
+    return 0.5;
+  } else if (num4.match(/couple/)) {
+    return 2;
+  } else if (num4.match(/several/)) {
+    return 7;
+  }
+  return parseFloat(num4);
+}
+var ORDINAL_NUMBER_PATTERN = `(?:${matchAnyPattern(ORDINAL_WORD_DICTIONARY)}|[0-9]{1,2}(?:st|nd|rd|th)?)`;
+function parseOrdinalNumberPattern(match) {
+  let num4 = match.toLowerCase();
+  if (ORDINAL_WORD_DICTIONARY[num4] !== void 0) {
+    return ORDINAL_WORD_DICTIONARY[num4];
+  }
+  num4 = num4.replace(/(?:st|nd|rd|th)$/i, "");
+  return parseInt(num4);
+}
+var YEAR_PATTERN = `(?:[1-9][0-9]{0,3}\\s{0,2}(?:BE|AD|BC|BCE|CE)|[1-9][0-9]{3}|[0-9]{2}(?!\\w|:\\d|\\s+(?:am|pm|o\\s*clock|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)))`;
+function parseYear(match) {
+  if (/BE/i.test(match)) {
+    match = match.replace(/BE/i, "");
+    return parseInt(match) - 543;
+  }
+  if (/BCE?/i.test(match)) {
+    match = match.replace(/BCE?/i, "");
+    return -parseInt(match);
+  }
+  if (/(AD|CE)/i.test(match)) {
+    match = match.replace(/(AD|CE)/i, "");
+    return parseInt(match);
+  }
+  const rawYearNumber = parseInt(match);
+  return findMostLikelyADYear(rawYearNumber);
+}
+var SINGLE_TIME_UNIT_PATTERN = `(${NUMBER_PATTERN})\\s{0,3}(${matchAnyPattern(TIME_UNIT_DICTIONARY)})`;
+var SINGLE_TIME_UNIT_REGEX = new RegExp(SINGLE_TIME_UNIT_PATTERN, "i");
+var SINGLE_TIME_UNIT_NO_ABBR_PATTERN = `(${NUMBER_PATTERN})\\s{0,3}(${matchAnyPattern(TIME_UNIT_DICTIONARY_NO_ABBR)})`;
+var TIME_UNIT_CONNECTOR_PATTERN = `\\s{0,5},?(?:\\s*and)?\\s{0,5}`;
+var TIME_UNITS_PATTERN = repeatedTimeunitPattern(`(?:(?:about|around)\\s{0,3})?`, SINGLE_TIME_UNIT_PATTERN, TIME_UNIT_CONNECTOR_PATTERN);
+var TIME_UNITS_NO_ABBR_PATTERN = repeatedTimeunitPattern(`(?:(?:about|around)\\s{0,3})?`, SINGLE_TIME_UNIT_NO_ABBR_PATTERN, TIME_UNIT_CONNECTOR_PATTERN);
+function parseDuration2(timeunitText) {
+  const fragments = {};
+  let remainingText = timeunitText;
+  let match = SINGLE_TIME_UNIT_REGEX.exec(remainingText);
+  while (match) {
+    collectDateTimeFragment(fragments, match);
+    remainingText = remainingText.substring(match[0].length).trim();
+    match = SINGLE_TIME_UNIT_REGEX.exec(remainingText);
+  }
+  if (Object.keys(fragments).length == 0) {
+    return null;
+  }
+  return fragments;
+}
+function collectDateTimeFragment(fragments, match) {
+  if (match[0].match(/^[a-zA-Z]+$/)) {
+    return;
+  }
+  const num4 = parseNumberPattern(match[1]);
+  const unit = TIME_UNIT_DICTIONARY[match[2].toLowerCase()];
+  fragments[unit] = num4;
+}
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/parsers/AbstractParserWithWordBoundary.js
+var AbstractParserWithWordBoundaryChecking = class {
+  innerPatternHasChange(context, currentInnerPattern) {
+    return this.innerPattern(context) !== currentInnerPattern;
+  }
+  patternLeftBoundary() {
+    return `(\\W|^)`;
+  }
+  cachedInnerPattern = null;
+  cachedPattern = null;
+  pattern(context) {
+    if (this.cachedInnerPattern) {
+      if (!this.innerPatternHasChange(context, this.cachedInnerPattern)) {
+        return this.cachedPattern;
+      }
+    }
+    this.cachedInnerPattern = this.innerPattern(context);
+    this.cachedPattern = new RegExp(`${this.patternLeftBoundary()}${this.cachedInnerPattern.source}`, this.cachedInnerPattern.flags);
+    return this.cachedPattern;
+  }
+  extract(context, match) {
+    const header = match[1] ?? "";
+    match.index = match.index + header.length;
+    match[0] = match[0].substring(header.length);
+    for (let i = 2; i < match.length; i++) {
+      match[i - 1] = match[i];
+    }
+    return this.innerExtract(context, match);
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENTimeUnitWithinFormatParser.js
+var PATTERN_WITH_OPTIONAL_PREFIX = new RegExp(`(?:(?:within|in|for)\\s*)?(?:(?:about|around|roughly|approximately|just)\\s*(?:~\\s*)?)?(${TIME_UNITS_PATTERN})(?=\\W|$)`, "i");
+var PATTERN_WITH_PREFIX = new RegExp(`(?:within|in|for)\\s*(?:(?:about|around|roughly|approximately|just)\\s*(?:~\\s*)?)?(${TIME_UNITS_PATTERN})(?=\\W|$)`, "i");
+var PATTERN_WITH_PREFIX_STRICT = new RegExp(`(?:within|in|for)\\s*(?:(?:about|around|roughly|approximately|just)\\s*(?:~\\s*)?)?(${TIME_UNITS_NO_ABBR_PATTERN})(?=\\W|$)`, "i");
+var ENTimeUnitWithinFormatParser = class extends AbstractParserWithWordBoundaryChecking {
+  strictMode;
+  constructor(strictMode) {
+    super();
+    this.strictMode = strictMode;
+  }
+  innerPattern(context) {
+    if (this.strictMode) {
+      return PATTERN_WITH_PREFIX_STRICT;
+    }
+    return context.option.forwardDate ? PATTERN_WITH_OPTIONAL_PREFIX : PATTERN_WITH_PREFIX;
+  }
+  innerExtract(context, match) {
+    if (match[0].match(/^for\s*the\s*\w+/i)) {
+      return null;
+    }
+    const timeUnits = parseDuration2(match[1]);
+    if (!timeUnits) {
+      return null;
+    }
+    return ParsingComponents.createRelativeFromReference(context.reference, timeUnits);
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENMonthNameLittleEndianParser.js
+var PATTERN = new RegExp(`(?:on\\s{0,3})?(${ORDINAL_NUMBER_PATTERN})(?:\\s{0,3}(?:to|\\-|\\\u2013|until|through|till)\\s{0,3}(${ORDINAL_NUMBER_PATTERN}))?(?:-|/|\\s{0,3}(?:of)?\\s{0,3})(${matchAnyPattern(MONTH_DICTIONARY)})(?:(?:-|/|,?\\s{0,3})(${YEAR_PATTERN}(?!\\w)))?(?=\\W|$)`, "i");
+var DATE_GROUP = 1;
+var DATE_TO_GROUP = 2;
+var MONTH_NAME_GROUP = 3;
+var YEAR_GROUP = 4;
+var ENMonthNameLittleEndianParser = class extends AbstractParserWithWordBoundaryChecking {
+  innerPattern() {
+    return PATTERN;
+  }
+  innerExtract(context, match) {
+    const result = context.createParsingResult(match.index, match[0]);
+    const month = MONTH_DICTIONARY[match[MONTH_NAME_GROUP].toLowerCase()];
+    const day = parseOrdinalNumberPattern(match[DATE_GROUP]);
+    if (day > 31) {
+      match.index = match.index + match[DATE_GROUP].length;
+      return null;
+    }
+    result.start.assign("month", month);
+    result.start.assign("day", day);
+    if (match[YEAR_GROUP]) {
+      const yearNumber = parseYear(match[YEAR_GROUP]);
+      result.start.assign("year", yearNumber);
+    } else {
+      const year = findYearClosestToRef(context.refDate, day, month);
+      result.start.imply("year", year);
+    }
+    if (match[DATE_TO_GROUP]) {
+      const endDate = parseOrdinalNumberPattern(match[DATE_TO_GROUP]);
+      result.end = result.start.clone();
+      result.end.assign("day", endDate);
+    }
+    return result;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENMonthNameMiddleEndianParser.js
+var PATTERN2 = new RegExp(`(${matchAnyPattern(MONTH_DICTIONARY)})(?:-|/|\\s*,?\\s*)(${ORDINAL_NUMBER_PATTERN})(?!\\s*(?:am|pm))\\s*(?:(?:to|\\-)\\s*(${ORDINAL_NUMBER_PATTERN})\\s*)?(?:(?:-|/|\\s*,\\s*|\\s+)(${YEAR_PATTERN}))?(?=\\W|$)(?!\\:\\d)`, "i");
+var MONTH_NAME_GROUP2 = 1;
+var DATE_GROUP2 = 2;
+var DATE_TO_GROUP2 = 3;
+var YEAR_GROUP2 = 4;
+var ENMonthNameMiddleEndianParser = class extends AbstractParserWithWordBoundaryChecking {
+  shouldSkipYearLikeDate;
+  constructor(shouldSkipYearLikeDate) {
+    super();
+    this.shouldSkipYearLikeDate = shouldSkipYearLikeDate;
+  }
+  innerPattern() {
+    return PATTERN2;
+  }
+  innerExtract(context, match) {
+    const month = MONTH_DICTIONARY[match[MONTH_NAME_GROUP2].toLowerCase()];
+    const day = parseOrdinalNumberPattern(match[DATE_GROUP2]);
+    if (day > 31) {
+      return null;
+    }
+    if (this.shouldSkipYearLikeDate) {
+      if (!match[DATE_TO_GROUP2] && !match[YEAR_GROUP2] && match[DATE_GROUP2].match(/^\d{2}$/)) {
+        return null;
+      }
+    }
+    const components = context.createParsingComponents({
+      day,
+      month
+    }).addTag("parser/ENMonthNameMiddleEndianParser");
+    if (match[YEAR_GROUP2]) {
+      const year = parseYear(match[YEAR_GROUP2]);
+      components.assign("year", year);
+    } else {
+      const year = findYearClosestToRef(context.refDate, day, month);
+      components.imply("year", year);
+    }
+    if (!match[DATE_TO_GROUP2]) {
+      return components;
+    }
+    const endDate = parseOrdinalNumberPattern(match[DATE_TO_GROUP2]);
+    const result = context.createParsingResult(match.index, match[0]);
+    result.start = components;
+    result.end = components.clone();
+    result.end.assign("day", endDate);
+    return result;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENMonthNameParser.js
+var PATTERN3 = new RegExp(`((?:in)\\s*)?(${matchAnyPattern(MONTH_DICTIONARY)})\\s*(?:(?:,|-|of)?\\s*(${YEAR_PATTERN})?)?(?=[^\\s\\w]|\\s+[^0-9]|\\s+$|$)`, "i");
+var PREFIX_GROUP = 1;
+var MONTH_NAME_GROUP3 = 2;
+var YEAR_GROUP3 = 3;
+var ENMonthNameParser = class extends AbstractParserWithWordBoundaryChecking {
+  innerPattern() {
+    return PATTERN3;
+  }
+  innerExtract(context, match) {
+    const monthName = match[MONTH_NAME_GROUP3].toLowerCase();
+    if (match[0].length <= 3 && !FULL_MONTH_NAME_DICTIONARY[monthName]) {
+      return null;
+    }
+    const result = context.createParsingResult(match.index + (match[PREFIX_GROUP] || "").length, match.index + match[0].length);
+    result.start.imply("day", 1);
+    result.start.addTag("parser/ENMonthNameParser");
+    const month = MONTH_DICTIONARY[monthName];
+    result.start.assign("month", month);
+    if (match[YEAR_GROUP3]) {
+      const year = parseYear(match[YEAR_GROUP3]);
+      result.start.assign("year", year);
+    } else {
+      const year = findYearClosestToRef(context.refDate, 1, month);
+      result.start.imply("year", year);
+    }
+    return result;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENYearMonthDayParser.js
+var PATTERN4 = new RegExp(`([0-9]{4})[-\\.\\/\\s](?:(${matchAnyPattern(MONTH_DICTIONARY)})|([0-9]{1,2}))[-\\.\\/\\s]([0-9]{1,2})(?=\\W|$)`, "i");
+var YEAR_NUMBER_GROUP = 1;
+var MONTH_NAME_GROUP4 = 2;
+var MONTH_NUMBER_GROUP = 3;
+var DATE_NUMBER_GROUP = 4;
+var ENYearMonthDayParser = class extends AbstractParserWithWordBoundaryChecking {
+  strictMonthDateOrder;
+  constructor(strictMonthDateOrder) {
+    super();
+    this.strictMonthDateOrder = strictMonthDateOrder;
+  }
+  innerPattern() {
+    return PATTERN4;
+  }
+  innerExtract(context, match) {
+    const year = parseInt(match[YEAR_NUMBER_GROUP]);
+    let day = parseInt(match[DATE_NUMBER_GROUP]);
+    let month = match[MONTH_NUMBER_GROUP] ? parseInt(match[MONTH_NUMBER_GROUP]) : MONTH_DICTIONARY[match[MONTH_NAME_GROUP4].toLowerCase()];
+    if (month < 1 || month > 12) {
+      if (this.strictMonthDateOrder) {
+        return null;
+      }
+      if (day >= 1 && day <= 12) {
+        [month, day] = [day, month];
+      }
+    }
+    if (day < 1 || day > 31) {
+      return null;
+    }
+    return {
+      day,
+      month,
+      year
+    };
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENYearMonthNameParser.js
+var YEAR_PATTERN2 = `(?:[1-9][0-9]{0,3}\\s{0,2}(?:BE|AD|BC|BCE|CE)|[1-9][0-9]{3})`;
+var PATTERN5 = new RegExp(`(${YEAR_PATTERN2})(?:\\s*[-.\\/,]?\\s*|\\s+of\\s+)(${matchAnyPattern(MONTH_DICTIONARY)})(?=[^\\s\\w]|\\s+[^0-9]|\\s+$|$)`, "i");
+var YEAR_GROUP4 = 1;
+var MONTH_NAME_GROUP5 = 2;
+var ENYearMonthNameParser = class extends AbstractParserWithWordBoundaryChecking {
+  innerPattern() {
+    return PATTERN5;
+  }
+  innerExtract(context, match) {
+    const year = parseYear(match[YEAR_GROUP4]);
+    const monthName = match[MONTH_NAME_GROUP5].toLowerCase();
+    const month = MONTH_DICTIONARY[monthName];
+    const result = context.createParsingResult(match.index, match[0]);
+    result.start.imply("day", 1);
+    result.start.assign("month", month);
+    result.start.assign("year", year);
+    result.start.addTag("parser/ENYearMonthNameParser");
+    return result;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENSlashMonthFormatParser.js
+var PATTERN6 = new RegExp("([0-9]|0[1-9]|1[012])/([0-9]{4})", "i");
+var MONTH_GROUP = 1;
+var YEAR_GROUP5 = 2;
+var ENSlashMonthFormatParser = class extends AbstractParserWithWordBoundaryChecking {
+  innerPattern() {
+    return PATTERN6;
+  }
+  innerExtract(context, match) {
+    if (/\d\/?$/.test(context.text.substring(0, match.index))) {
+      return null;
+    }
+    const year = parseInt(match[YEAR_GROUP5]);
+    const month = parseInt(match[MONTH_GROUP]);
+    return context.createParsingComponents().imply("day", 1).assign("month", month).assign("year", year);
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/parsers/AbstractTimeExpressionParser.js
+function primaryTimePattern(leftBoundary, primaryPrefix, primarySuffix, flags) {
+  return new RegExp(`${leftBoundary}${primaryPrefix}(\\d{1,4})(?:(?:\\.|:|\uFF1A)(\\d{1,2})(?:(?::|\uFF1A)(\\d{2})(?:\\.(\\d{1,6}))?)?)?(?:\\s*(a\\.m\\.|p\\.m\\.|am?|pm?))?${primarySuffix}`, flags);
+}
+function followingTimePatten(followingPhase, followingSuffix) {
+  return new RegExp(`^(${followingPhase})(\\d{1,4})(?:(?:\\.|\\:|\\\uFF1A)(\\d{1,2})(?:(?:\\.|\\:|\\\uFF1A)(\\d{1,2})(?:\\.(\\d{1,6}))?)?)?(?:\\s*(a\\.m\\.|p\\.m\\.|am?|pm?))?${followingSuffix}`, "i");
+}
+var HOUR_GROUP = 2;
+var MINUTE_GROUP = 3;
+var SECOND_GROUP = 4;
+var MILLI_SECOND_GROUP = 5;
+var AM_PM_HOUR_GROUP = 6;
+var AbstractTimeExpressionParser = class {
+  strictMode;
+  constructor(strictMode = false) {
+    this.strictMode = strictMode;
+  }
+  patternFlags() {
+    return "i";
+  }
+  primaryPatternLeftBoundary() {
+    return `(^|\\s|T|\\b)`;
+  }
+  primarySuffix() {
+    return `(?!/)(?=\\W|$)`;
+  }
+  followingSuffix() {
+    return `(?!/)(?=\\W|$)`;
+  }
+  pattern(context) {
+    return this.getPrimaryTimePatternThroughCache();
+  }
+  extract(context, match) {
+    const startComponents = this.extractPrimaryTimeComponents(context, match);
+    if (!startComponents) {
+      if (match[0].match(/^\d{4}/)) {
+        match.index += 4;
+        return null;
+      }
+      match.index += match[0].length;
+      return null;
+    }
+    const index = match.index + match[1].length;
+    const text = match[0].substring(match[1].length);
+    const result = context.createParsingResult(index, text, startComponents);
+    match.index += match[0].length;
+    const remainingText = context.text.substring(match.index);
+    const followingPattern = this.getFollowingTimePatternThroughCache();
+    const followingMatch = followingPattern.exec(remainingText);
+    if (text.match(/^\d{3,4}/) && followingMatch) {
+      if (followingMatch[0].match(/^\s*([+-])\s*\d{2,4}$/)) {
+        return null;
+      }
+      if (followingMatch[0].match(/^\s*([+-])\s*\d{2}\W\d{2}/)) {
+        return null;
+      }
+    }
+    if (!followingMatch || followingMatch[0].match(/^\s*([+-])\s*\d{3,4}$/)) {
+      return this.checkAndReturnWithoutFollowingPattern(result);
+    }
+    result.end = this.extractFollowingTimeComponents(context, followingMatch, result);
+    if (result.end) {
+      result.text += followingMatch[0];
+    }
+    return this.checkAndReturnWithFollowingPattern(result);
+  }
+  extractPrimaryTimeComponents(context, match, strict2 = false) {
+    const components = context.createParsingComponents();
+    let minute = 0;
+    let meridiem = null;
+    let hour = parseInt(match[HOUR_GROUP]);
+    if (hour > 100) {
+      if (match[HOUR_GROUP].length == 4 && match[MINUTE_GROUP] == null && !match[AM_PM_HOUR_GROUP]) {
+        return null;
+      }
+      if (this.strictMode || match[MINUTE_GROUP] != null) {
+        return null;
+      }
+      minute = hour % 100;
+      hour = Math.floor(hour / 100);
+    }
+    if (hour > 24) {
+      return null;
+    }
+    if (match[MINUTE_GROUP] != null) {
+      if (match[MINUTE_GROUP].length == 1 && !match[AM_PM_HOUR_GROUP]) {
+        return null;
+      }
+      minute = parseInt(match[MINUTE_GROUP]);
+    }
+    if (minute >= 60) {
+      return null;
+    }
+    if (hour > 12) {
+      meridiem = Meridiem.PM;
+    }
+    if (match[AM_PM_HOUR_GROUP] != null) {
+      if (hour > 12)
+        return null;
+      const ampm = match[AM_PM_HOUR_GROUP][0].toLowerCase();
+      if (ampm == "a") {
+        meridiem = Meridiem.AM;
+        if (hour == 12) {
+          hour = 0;
+        }
+      }
+      if (ampm == "p") {
+        meridiem = Meridiem.PM;
+        if (hour != 12) {
+          hour += 12;
+        }
+      }
+    }
+    components.assign("hour", hour);
+    components.assign("minute", minute);
+    if (meridiem !== null) {
+      components.assign("meridiem", meridiem);
+    } else {
+      if (hour < 12) {
+        components.imply("meridiem", Meridiem.AM);
+      } else {
+        components.imply("meridiem", Meridiem.PM);
+      }
+    }
+    if (match[MILLI_SECOND_GROUP] != null) {
+      const millisecond = parseInt(match[MILLI_SECOND_GROUP].substring(0, 3));
+      if (millisecond >= 1e3)
+        return null;
+      components.assign("millisecond", millisecond);
+    }
+    if (match[SECOND_GROUP] != null) {
+      const second = parseInt(match[SECOND_GROUP]);
+      if (second >= 60)
+        return null;
+      components.assign("second", second);
+    }
+    return components;
+  }
+  extractFollowingTimeComponents(context, match, result) {
+    const components = context.createParsingComponents();
+    if (match[MILLI_SECOND_GROUP] != null) {
+      const millisecond = parseInt(match[MILLI_SECOND_GROUP].substring(0, 3));
+      if (millisecond >= 1e3)
+        return null;
+      components.assign("millisecond", millisecond);
+    }
+    if (match[SECOND_GROUP] != null) {
+      const second = parseInt(match[SECOND_GROUP]);
+      if (second >= 60)
+        return null;
+      components.assign("second", second);
+    }
+    let hour = parseInt(match[HOUR_GROUP]);
+    let minute = 0;
+    let meridiem = -1;
+    if (match[MINUTE_GROUP] != null) {
+      minute = parseInt(match[MINUTE_GROUP]);
+    } else if (hour > 100) {
+      minute = hour % 100;
+      hour = Math.floor(hour / 100);
+    }
+    if (minute >= 60 || hour > 24) {
+      return null;
+    }
+    if (hour >= 12) {
+      meridiem = Meridiem.PM;
+    }
+    if (match[AM_PM_HOUR_GROUP] != null) {
+      if (hour > 12) {
+        return null;
+      }
+      const ampm = match[AM_PM_HOUR_GROUP][0].toLowerCase();
+      if (ampm == "a") {
+        meridiem = Meridiem.AM;
+        if (hour == 12) {
+          hour = 0;
+          if (!components.isCertain("day")) {
+            components.imply("day", components.get("day") + 1);
+          }
+        }
+      }
+      if (ampm == "p") {
+        meridiem = Meridiem.PM;
+        if (hour != 12)
+          hour += 12;
+      }
+      if (!result.start.isCertain("meridiem")) {
+        if (meridiem == Meridiem.AM) {
+          result.start.imply("meridiem", Meridiem.AM);
+          if (result.start.get("hour") == 12) {
+            result.start.assign("hour", 0);
+          }
+        } else {
+          result.start.imply("meridiem", Meridiem.PM);
+          if (result.start.get("hour") != 12) {
+            result.start.assign("hour", result.start.get("hour") + 12);
+          }
+        }
+      }
+    }
+    components.assign("hour", hour);
+    components.assign("minute", minute);
+    if (meridiem >= 0) {
+      components.assign("meridiem", meridiem);
+    } else {
+      const startAtPM = result.start.isCertain("meridiem") && result.start.get("hour") > 12;
+      if (startAtPM) {
+        if (result.start.get("hour") - 12 > hour) {
+          components.imply("meridiem", Meridiem.AM);
+        } else if (hour <= 12) {
+          components.assign("hour", hour + 12);
+          components.assign("meridiem", Meridiem.PM);
+        }
+      } else if (hour > 12) {
+        components.imply("meridiem", Meridiem.PM);
+      } else if (hour <= 12) {
+        components.imply("meridiem", Meridiem.AM);
+      }
+    }
+    if (components.date().getTime() < result.start.date().getTime()) {
+      components.imply("day", components.get("day") + 1);
+    }
+    return components;
+  }
+  checkAndReturnWithoutFollowingPattern(result) {
+    if (result.text.match(/^\d$/)) {
+      return null;
+    }
+    if (result.text.match(/^\d\d\d+$/)) {
+      return null;
+    }
+    if (result.text.match(/\d[apAP]$/)) {
+      return null;
+    }
+    const endingWithNumbers = result.text.match(/[^\d:.](\d[\d.]+)$/);
+    if (endingWithNumbers) {
+      const endingNumbers = endingWithNumbers[1];
+      if (this.strictMode) {
+        return null;
+      }
+      if (endingNumbers.includes(".") && !endingNumbers.match(/\d(\.\d{2})+$/)) {
+        return null;
+      }
+      const endingNumberVal = parseInt(endingNumbers);
+      if (endingNumberVal > 24) {
+        return null;
+      }
+    }
+    return result;
+  }
+  checkAndReturnWithFollowingPattern(result) {
+    if (result.text.match(/^\d+-\d+$/)) {
+      return null;
+    }
+    const endingWithNumbers = result.text.match(/[^\d:.](\d[\d.]+)\s*-\s*(\d[\d.]+)$/);
+    if (endingWithNumbers) {
+      if (this.strictMode) {
+        return null;
+      }
+      const startingNumbers = endingWithNumbers[1];
+      const endingNumbers = endingWithNumbers[2];
+      if (endingNumbers.includes(".") && !endingNumbers.match(/\d(\.\d{2})+$/)) {
+        return null;
+      }
+      const endingNumberVal = parseInt(endingNumbers);
+      const startingNumberVal = parseInt(startingNumbers);
+      if (endingNumberVal > 24 || startingNumberVal > 24) {
+        return null;
+      }
+    }
+    return result;
+  }
+  cachedPrimaryPrefix = null;
+  cachedPrimarySuffix = null;
+  cachedPrimaryTimePattern = null;
+  getPrimaryTimePatternThroughCache() {
+    const primaryPrefix = this.primaryPrefix();
+    const primarySuffix = this.primarySuffix();
+    if (this.cachedPrimaryPrefix === primaryPrefix && this.cachedPrimarySuffix === primarySuffix) {
+      return this.cachedPrimaryTimePattern;
+    }
+    this.cachedPrimaryTimePattern = primaryTimePattern(this.primaryPatternLeftBoundary(), primaryPrefix, primarySuffix, this.patternFlags());
+    this.cachedPrimaryPrefix = primaryPrefix;
+    this.cachedPrimarySuffix = primarySuffix;
+    return this.cachedPrimaryTimePattern;
+  }
+  cachedFollowingPhase = null;
+  cachedFollowingSuffix = null;
+  cachedFollowingTimePatten = null;
+  getFollowingTimePatternThroughCache() {
+    const followingPhase = this.followingPhase();
+    const followingSuffix = this.followingSuffix();
+    if (this.cachedFollowingPhase === followingPhase && this.cachedFollowingSuffix === followingSuffix) {
+      return this.cachedFollowingTimePatten;
+    }
+    this.cachedFollowingTimePatten = followingTimePatten(followingPhase, followingSuffix);
+    this.cachedFollowingPhase = followingPhase;
+    this.cachedFollowingSuffix = followingSuffix;
+    return this.cachedFollowingTimePatten;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENTimeExpressionParser.js
+var ENTimeExpressionParser = class extends AbstractTimeExpressionParser {
+  constructor(strictMode) {
+    super(strictMode);
+  }
+  followingPhase() {
+    return "\\s*(?:\\-|\\\u2013|\\~|\\\u301C|to|until|through|till|\\?)\\s*";
+  }
+  primaryPrefix() {
+    return "(?:(?:at|from)\\s*)??";
+  }
+  primarySuffix() {
+    return "(?:\\s*(?:o\\W*clock|at\\s*night|in\\s*the\\s*(?:morning|afternoon)))?(?!/)(?=\\W|$)";
+  }
+  extractPrimaryTimeComponents(context, match) {
+    const components = super.extractPrimaryTimeComponents(context, match);
+    if (!components) {
+      return components;
+    }
+    if (match[0].endsWith("night")) {
+      const hour = components.get("hour");
+      if (hour >= 6 && hour < 12) {
+        components.assign("hour", components.get("hour") + 12);
+        components.assign("meridiem", Meridiem.PM);
+      } else if (hour < 6) {
+        components.assign("meridiem", Meridiem.AM);
+      }
+    }
+    if (match[0].endsWith("afternoon")) {
+      components.assign("meridiem", Meridiem.PM);
+      const hour = components.get("hour");
+      if (hour >= 0 && hour <= 6) {
+        components.assign("hour", components.get("hour") + 12);
+      }
+    }
+    if (match[0].endsWith("morning")) {
+      components.assign("meridiem", Meridiem.AM);
+      const hour = components.get("hour");
+      if (hour < 12) {
+        components.assign("hour", components.get("hour"));
+      }
+    }
+    return components.addTag("parser/ENTimeExpressionParser");
+  }
+  extractFollowingTimeComponents(context, match, result) {
+    const followingComponents = super.extractFollowingTimeComponents(context, match, result);
+    if (followingComponents) {
+      followingComponents.addTag("parser/ENTimeExpressionParser");
+    }
+    return followingComponents;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENTimeUnitAgoFormatParser.js
+var PATTERN7 = new RegExp(`(${TIME_UNITS_PATTERN})\\s{0,5}(?:ago|before|earlier)(?=\\W|$)`, "i");
+var STRICT_PATTERN = new RegExp(`(${TIME_UNITS_NO_ABBR_PATTERN})\\s{0,5}(?:ago|before|earlier)(?=\\W|$)`, "i");
+var ENTimeUnitAgoFormatParser = class extends AbstractParserWithWordBoundaryChecking {
+  strictMode;
+  constructor(strictMode) {
+    super();
+    this.strictMode = strictMode;
+  }
+  innerPattern() {
+    return this.strictMode ? STRICT_PATTERN : PATTERN7;
+  }
+  innerExtract(context, match) {
+    const duration3 = parseDuration2(match[1]);
+    if (!duration3) {
+      return null;
+    }
+    return ParsingComponents.createRelativeFromReference(context.reference, reverseDuration(duration3));
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENTimeUnitLaterFormatParser.js
+var PATTERN8 = new RegExp(`(${TIME_UNITS_PATTERN})\\s{0,5}(?:later|after|from now|henceforth|forward|out)(?=(?:\\W|$))`, "i");
+var STRICT_PATTERN2 = new RegExp(`(${TIME_UNITS_NO_ABBR_PATTERN})\\s{0,5}(later|after|from now)(?=\\W|$)`, "i");
+var GROUP_NUM_TIMEUNITS = 1;
+var ENTimeUnitLaterFormatParser = class extends AbstractParserWithWordBoundaryChecking {
+  strictMode;
+  constructor(strictMode) {
+    super();
+    this.strictMode = strictMode;
+  }
+  innerPattern() {
+    return this.strictMode ? STRICT_PATTERN2 : PATTERN8;
+  }
+  innerExtract(context, match) {
+    const timeUnits = parseDuration2(match[GROUP_NUM_TIMEUNITS]);
+    if (!timeUnits) {
+      return null;
+    }
+    return ParsingComponents.createRelativeFromReference(context.reference, timeUnits);
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/abstractRefiners.js
+var Filter = class {
+  refine(context, results) {
+    return results.filter((r) => this.isValid(context, r));
+  }
+};
+var MergingRefiner = class {
+  refine(context, results) {
+    if (results.length < 2) {
+      return results;
+    }
+    const mergedResults = [];
+    let curResult = results[0];
+    let nextResult = null;
+    for (let i = 1; i < results.length; i++) {
+      nextResult = results[i];
+      const textBetween = context.text.substring(curResult.index + curResult.text.length, nextResult.index);
+      if (!this.shouldMergeResults(textBetween, curResult, nextResult, context)) {
+        mergedResults.push(curResult);
+        curResult = nextResult;
+      } else {
+        const left = curResult;
+        const right = nextResult;
+        const mergedResult = this.mergeResults(textBetween, left, right, context);
+        context.debug(() => {
+          console.log(`${this.constructor.name} merged ${left} and ${right} into ${mergedResult}`);
+        });
+        curResult = mergedResult;
+      }
+    }
+    if (curResult != null) {
+      mergedResults.push(curResult);
+    }
+    return mergedResults;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/AbstractMergeDateRangeRefiner.js
+var AbstractMergeDateRangeRefiner = class extends MergingRefiner {
+  shouldMergeResults(textBetween, currentResult, nextResult) {
+    return !currentResult.end && !nextResult.end && textBetween.match(this.patternBetween()) != null;
+  }
+  mergeResults(textBetween, fromResult, toResult) {
+    if (!fromResult.start.isOnlyWeekdayComponent() && !toResult.start.isOnlyWeekdayComponent()) {
+      toResult.start.getCertainComponents().forEach((key) => {
+        if (!fromResult.start.isCertain(key)) {
+          fromResult.start.imply(key, toResult.start.get(key));
+        }
+      });
+      fromResult.start.getCertainComponents().forEach((key) => {
+        if (!toResult.start.isCertain(key)) {
+          toResult.start.imply(key, fromResult.start.get(key));
+        }
+      });
+    }
+    if (fromResult.start.date() > toResult.start.date()) {
+      let fromDate = fromResult.start.date();
+      let toDate = toResult.start.date();
+      if (toResult.start.isOnlyWeekdayComponent() && addDuration(toDate, { day: 7 }) > fromDate) {
+        toDate = addDuration(toDate, { day: 7 });
+        toResult.start.imply("day", toDate.getDate());
+        toResult.start.imply("month", toDate.getMonth() + 1);
+        toResult.start.imply("year", toDate.getFullYear());
+      } else if (fromResult.start.isOnlyWeekdayComponent() && addDuration(fromDate, { day: -7 }) < toDate) {
+        fromDate = addDuration(fromDate, { day: -7 });
+        fromResult.start.imply("day", fromDate.getDate());
+        fromResult.start.imply("month", fromDate.getMonth() + 1);
+        fromResult.start.imply("year", fromDate.getFullYear());
+      } else if (toResult.start.isDateWithUnknownYear() && addDuration(toDate, { year: 1 }) > fromDate) {
+        toDate = addDuration(toDate, { year: 1 });
+        toResult.start.imply("year", toDate.getFullYear());
+      } else if (fromResult.start.isDateWithUnknownYear() && addDuration(fromDate, { year: -1 }) < toDate) {
+        fromDate = addDuration(fromDate, { year: -1 });
+        fromResult.start.imply("year", fromDate.getFullYear());
+      } else {
+        [toResult, fromResult] = [fromResult, toResult];
+      }
+    }
+    const result = fromResult.clone();
+    result.start = fromResult.start;
+    result.end = toResult.start;
+    result.index = Math.min(fromResult.index, toResult.index);
+    if (fromResult.index < toResult.index) {
+      result.text = fromResult.text + textBetween + toResult.text;
+    } else {
+      result.text = toResult.text + textBetween + fromResult.text;
+    }
+    return result;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENMergeDateRangeRefiner.js
+var ENMergeDateRangeRefiner = class extends AbstractMergeDateRangeRefiner {
+  patternBetween() {
+    return /^\s*(to|-|–|until|through|till)\s*$/i;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/calculation/mergingCalculation.js
+function mergeDateTimeResult(dateResult, timeResult) {
+  const result = dateResult.clone();
+  const beginDate = dateResult.start;
+  const beginTime = timeResult.start;
+  result.start = mergeDateTimeComponent(beginDate, beginTime);
+  if (dateResult.end != null || timeResult.end != null) {
+    const endDate = dateResult.end == null ? dateResult.start : dateResult.end;
+    const endTime = timeResult.end == null ? timeResult.start : timeResult.end;
+    const endDateTime = mergeDateTimeComponent(endDate, endTime);
+    if (dateResult.end == null && endDateTime.date().getTime() < result.start.date().getTime()) {
+      const nextDay = new Date(endDateTime.date().getTime());
+      nextDay.setDate(nextDay.getDate() + 1);
+      if (endDateTime.isCertain("day")) {
+        assignSimilarDate(endDateTime, nextDay);
+      } else {
+        implySimilarDate(endDateTime, nextDay);
+      }
+    }
+    result.end = endDateTime;
+  }
+  return result;
+}
+function mergeDateTimeComponent(dateComponent, timeComponent) {
+  const dateTimeComponent = dateComponent.clone();
+  if (timeComponent.isCertain("hour")) {
+    dateTimeComponent.assign("hour", timeComponent.get("hour"));
+    dateTimeComponent.assign("minute", timeComponent.get("minute"));
+    if (timeComponent.isCertain("second")) {
+      dateTimeComponent.assign("second", timeComponent.get("second"));
+      if (timeComponent.isCertain("millisecond")) {
+        dateTimeComponent.assign("millisecond", timeComponent.get("millisecond"));
+      } else {
+        dateTimeComponent.imply("millisecond", timeComponent.get("millisecond"));
+      }
+    } else {
+      dateTimeComponent.imply("second", timeComponent.get("second"));
+      dateTimeComponent.imply("millisecond", timeComponent.get("millisecond"));
+    }
+  } else {
+    dateTimeComponent.imply("hour", timeComponent.get("hour"));
+    dateTimeComponent.imply("minute", timeComponent.get("minute"));
+    dateTimeComponent.imply("second", timeComponent.get("second"));
+    dateTimeComponent.imply("millisecond", timeComponent.get("millisecond"));
+  }
+  if (timeComponent.isCertain("timezoneOffset")) {
+    dateTimeComponent.assign("timezoneOffset", timeComponent.get("timezoneOffset"));
+  }
+  const dateHasMeaningfulMeridiem = dateComponent.get("meridiem") != null && (dateComponent.isCertain("meridiem") || Array.from(dateComponent.tags()).some((t) => t.startsWith("casualReference/")));
+  if (timeComponent.isCertain("meridiem")) {
+    dateTimeComponent.assign("meridiem", timeComponent.get("meridiem"));
+  } else if (timeComponent.get("meridiem") != null && !dateHasMeaningfulMeridiem) {
+    dateTimeComponent.imply("meridiem", timeComponent.get("meridiem"));
+  }
+  if (dateTimeComponent.get("meridiem") == Meridiem.PM && dateTimeComponent.get("hour") < 12) {
+    if (timeComponent.isCertain("hour")) {
+      dateTimeComponent.assign("hour", dateTimeComponent.get("hour") + 12);
+    } else {
+      dateTimeComponent.imply("hour", dateTimeComponent.get("hour") + 12);
+    }
+  }
+  dateTimeComponent.addTags(dateComponent.tags());
+  dateTimeComponent.addTags(timeComponent.tags());
+  return dateTimeComponent;
+}
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/AbstractMergeDateTimeRefiner.js
+var AbstractMergeDateTimeRefiner = class extends MergingRefiner {
+  shouldMergeResults(textBetween, currentResult, nextResult) {
+    const isDateThenTime = currentResult.start.isOnlyDate() && nextResult.start.isOnlyTime();
+    const isTimeThenDate = currentResult.start.isOnlyTime() && nextResult.start.isOnlyDate();
+    if (isTimeThenDate && textBetween.trim() === ":") {
+      return false;
+    }
+    return (isDateThenTime || isTimeThenDate) && textBetween.match(this.patternBetween()) != null;
+  }
+  mergeResults(textBetween, currentResult, nextResult) {
+    const result = currentResult.start.isOnlyDate() ? mergeDateTimeResult(currentResult, nextResult) : mergeDateTimeResult(nextResult, currentResult);
+    result.index = currentResult.index;
+    result.text = currentResult.text + textBetween + nextResult.text;
+    return result;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENMergeDateTimeRefiner.js
+var ENMergeDateTimeRefiner = class extends AbstractMergeDateTimeRefiner {
+  patternBetween() {
+    return new RegExp("^\\s*(T|at|after|before|on|of|,|-|\\.|\u2219|:)?\\s*$");
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/ExtractTimezoneAbbrRefiner.js
+var TIMEZONE_NAME_PATTERN = new RegExp("^\\s*,?\\s*\\(?([A-Z]{2,4})\\)?(?=\\W|$)", "i");
+var ExtractTimezoneAbbrRefiner = class {
+  timezoneOverrides;
+  constructor(timezoneOverrides) {
+    this.timezoneOverrides = timezoneOverrides;
+  }
+  refine(context, results) {
+    const timezoneOverrides = context.option.timezones ?? {};
+    results.forEach((result) => {
+      const suffix = context.text.substring(result.index + result.text.length);
+      const match = TIMEZONE_NAME_PATTERN.exec(suffix);
+      if (!match) {
+        return;
+      }
+      const timezoneAbbr = match[1].toUpperCase();
+      const refDate = result.start.date() ?? result.refDate ?? /* @__PURE__ */ new Date();
+      const tzOverrides = { ...this.timezoneOverrides, ...timezoneOverrides };
+      const extractedTimezoneOffset = toTimezoneOffset(timezoneAbbr, refDate, tzOverrides);
+      if (extractedTimezoneOffset == null) {
+        return;
+      }
+      context.debug(() => {
+        console.log(`Extracting timezone: '${timezoneAbbr}' into: ${extractedTimezoneOffset} for: ${result.start}`);
+      });
+      const currentTimezoneOffset = result.start.get("timezoneOffset");
+      if (currentTimezoneOffset !== null && extractedTimezoneOffset != currentTimezoneOffset) {
+        if (result.start.isCertain("timezoneOffset")) {
+          return;
+        }
+        if (timezoneAbbr != match[1]) {
+          return;
+        }
+      }
+      if (result.start.isOnlyDate()) {
+        if (timezoneAbbr != match[1]) {
+          return;
+        }
+      }
+      result.text += match[0];
+      if (!result.start.isCertain("timezoneOffset")) {
+        result.start.assign("timezoneOffset", extractedTimezoneOffset);
+      }
+      if (result.end != null && !result.end.isCertain("timezoneOffset")) {
+        result.end.assign("timezoneOffset", extractedTimezoneOffset);
+      }
+    });
+    return results;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/ExtractTimezoneOffsetRefiner.js
+var TIMEZONE_OFFSET_PATTERN = new RegExp("^\\s*(?:\\(?(?:GMT|UTC)\\s?)?([+-])(\\d{1,2})(?::?(\\d{2}))?\\)?", "i");
+var TIMEZONE_OFFSET_SIGN_GROUP = 1;
+var TIMEZONE_OFFSET_HOUR_OFFSET_GROUP = 2;
+var TIMEZONE_OFFSET_MINUTE_OFFSET_GROUP = 3;
+var ExtractTimezoneOffsetRefiner = class {
+  refine(context, results) {
+    results.forEach(function(result) {
+      if (result.start.isCertain("timezoneOffset")) {
+        return;
+      }
+      const suffix = context.text.substring(result.index + result.text.length);
+      const match = TIMEZONE_OFFSET_PATTERN.exec(suffix);
+      if (!match) {
+        return;
+      }
+      context.debug(() => {
+        console.log(`Extracting timezone: '${match[0]}' into : ${result}`);
+      });
+      const hourOffset = parseInt(match[TIMEZONE_OFFSET_HOUR_OFFSET_GROUP]);
+      const minuteOffset = parseInt(match[TIMEZONE_OFFSET_MINUTE_OFFSET_GROUP] || "0");
+      let timezoneOffset = hourOffset * 60 + minuteOffset;
+      if (timezoneOffset > 14 * 60) {
+        return;
+      }
+      if (match[TIMEZONE_OFFSET_SIGN_GROUP] === "-") {
+        timezoneOffset = -timezoneOffset;
+      }
+      if (result.end != null) {
+        result.end.assign("timezoneOffset", timezoneOffset);
+      }
+      result.start.assign("timezoneOffset", timezoneOffset);
+      result.text += match[0];
+    });
+    return results;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/OverlapRemovalRefiner.js
+var OverlapRemovalRefiner = class {
+  refine(context, results) {
+    if (results.length < 2) {
+      return results;
+    }
+    const filteredResults = [];
+    let prevResult = results[0];
+    for (let i = 1; i < results.length; i++) {
+      const result = results[i];
+      if (result.index >= prevResult.index + prevResult.text.length) {
+        filteredResults.push(prevResult);
+        prevResult = result;
+        continue;
+      }
+      let kept = null;
+      let removed = null;
+      if (result.text.length > prevResult.text.length) {
+        kept = result;
+        removed = prevResult;
+      } else {
+        kept = prevResult;
+        removed = result;
+      }
+      context.debug(() => {
+        console.log(`${this.constructor.name} remove ${removed} by ${kept}`);
+      });
+      prevResult = kept;
+    }
+    if (prevResult != null) {
+      filteredResults.push(prevResult);
+    }
+    return filteredResults;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/calculation/weekdays.js
+function createParsingComponentsAtWeekday(reference, weekday2, modifier) {
+  const refDate = reference.getDateWithAdjustedTimezone();
+  const daysToWeekday = getDaysToWeekday(refDate, weekday2, modifier);
+  let components = new ParsingComponents(reference);
+  components = components.addDurationAsImplied({ day: daysToWeekday });
+  components.assign("weekday", weekday2);
+  return components;
+}
+function getDaysToWeekday(refDate, weekday2, modifier) {
+  const refWeekday = refDate.getDay();
+  switch (modifier) {
+    case "this":
+      return getDaysForwardToWeekday(refDate, weekday2);
+    case "last":
+      return getBackwardDaysToWeekday(refDate, weekday2);
+    case "next":
+      if (refWeekday == Weekday.SUNDAY) {
+        return weekday2 == Weekday.SUNDAY ? 7 : weekday2;
+      }
+      if (refWeekday == Weekday.SATURDAY) {
+        if (weekday2 == Weekday.SATURDAY)
+          return 7;
+        if (weekday2 == Weekday.SUNDAY)
+          return 8;
+        return 1 + weekday2;
+      }
+      if (weekday2 < refWeekday && weekday2 != Weekday.SUNDAY) {
+        return getDaysForwardToWeekday(refDate, weekday2);
+      } else {
+        return getDaysForwardToWeekday(refDate, weekday2) + 7;
+      }
+  }
+  return getDaysToWeekdayClosest(refDate, weekday2);
+}
+function getDaysToWeekdayClosest(refDate, weekday2) {
+  const backward = getBackwardDaysToWeekday(refDate, weekday2);
+  const forward = getDaysForwardToWeekday(refDate, weekday2);
+  return forward < -backward ? forward : backward;
+}
+function getDaysForwardToWeekday(refDate, weekday2) {
+  const refWeekday = refDate.getDay();
+  let forwardCount = weekday2 - refWeekday;
+  if (forwardCount < 0) {
+    forwardCount += 7;
+  }
+  return forwardCount;
+}
+function getBackwardDaysToWeekday(refDate, weekday2) {
+  const refWeekday = refDate.getDay();
+  let backwardCount = weekday2 - refWeekday;
+  if (backwardCount >= 0) {
+    backwardCount -= 7;
+  }
+  return backwardCount;
+}
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/ForwardDateRefiner.js
+var ForwardDateRefiner = class {
+  refine(context, results) {
+    if (!context.option.forwardDate) {
+      return results;
+    }
+    results.forEach((result) => {
+      let refDate = context.reference.getDateWithAdjustedTimezone();
+      if (result.start.isOnlyTime() && context.reference.instant > result.start.date()) {
+        const refDate2 = context.reference.getDateWithAdjustedTimezone();
+        const refFollowingDay = new Date(refDate2);
+        refFollowingDay.setDate(refFollowingDay.getDate() + 1);
+        implySimilarDate(result.start, refFollowingDay);
+        context.debug(() => {
+          console.log(`${this.constructor.name} adjusted ${result} time from the ref date (${refDate2}) to the following day (${refFollowingDay})`);
+        });
+        if (result.end && result.end.isOnlyTime()) {
+          implySimilarDate(result.end, refFollowingDay);
+          if (result.start.date() > result.end.date()) {
+            refFollowingDay.setDate(refFollowingDay.getDate() + 1);
+            implySimilarDate(result.end, refFollowingDay);
+          }
+        }
+      }
+      if (result.start.isOnlyWeekdayComponent() && refDate > result.start.date()) {
+        let daysToAdd = getDaysForwardToWeekday(refDate, result.start.get("weekday")) || 7;
+        const forwardedWeekday = addDuration(refDate, { day: daysToAdd });
+        implySimilarDate(result.start, forwardedWeekday);
+        context.debug(() => {
+          console.log(`${this.constructor.name} adjusted ${result} weekday (${result.start})`);
+        });
+        if (result.end && result.start.date() > result.end.date()) {
+          let daysToAdd2 = getDaysForwardToWeekday(refDate, result.start.get("weekday")) || 7;
+          const forwardedWeekday2 = addDuration(refDate, { day: daysToAdd2 });
+          implySimilarDate(result.end, forwardedWeekday2);
+          context.debug(() => {
+            console.log(`${this.constructor.name} adjusted ${result} weekday (${result.end})`);
+          });
+        }
+      }
+      if (result.start.isDateWithUnknownYear() && refDate > result.start.date()) {
+        for (let i = 0; i < 3 && refDate > result.start.date(); i++) {
+          result.start.imply("year", result.start.get("year") + 1);
+          context.debug(() => {
+            console.log(`${this.constructor.name} adjusted ${result} year (${result.start})`);
+          });
+          if (result.end && !result.end.isCertain("year")) {
+            result.end.imply("year", result.end.get("year") + 1);
+            context.debug(() => {
+              console.log(`${this.constructor.name} adjusted ${result} month (${result.start})`);
+            });
+          }
+        }
+      }
+    });
+    return results;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/UnlikelyFormatFilter.js
+var UnlikelyFormatFilter = class extends Filter {
+  strictMode;
+  constructor(strictMode) {
+    super();
+    this.strictMode = strictMode;
+  }
+  isValid(context, result) {
+    if (result.text.replace(" ", "").match(/^\d*(\.\d*)?$/)) {
+      context.debug(() => {
+        console.log(`Removing unlikely result '${result.text}'`);
+      });
+      return false;
+    }
+    if (!result.start.isValidDate()) {
+      context.debug(() => {
+        console.log(`Removing invalid result: ${result} (${result.start})`);
+      });
+      return false;
+    }
+    if (result.end && !result.end.isValidDate()) {
+      context.debug(() => {
+        console.log(`Removing invalid result: ${result} (${result.end})`);
+      });
+      return false;
+    }
+    if (this.strictMode) {
+      return this.isStrictModeValid(context, result);
+    }
+    return true;
+  }
+  isStrictModeValid(context, result) {
+    if (result.start.isOnlyWeekdayComponent()) {
+      context.debug(() => {
+        console.log(`(Strict) Removing weekday only component: ${result} (${result.end})`);
+      });
+      return false;
+    }
+    return true;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/parsers/ISOFormatParser.js
+var PATTERN9 = new RegExp("([0-9]{4})\\-([0-9]{1,2})\\-([0-9]{1,2})(?:T([0-9]{1,2}):([0-9]{1,2})(?::([0-9]{1,2})(?:\\.(\\d{1,4}))?)?(Z|([+-]\\d{2}):?(\\d{2})?)?)?(?=\\W|$)", "i");
+var YEAR_NUMBER_GROUP2 = 1;
+var MONTH_NUMBER_GROUP2 = 2;
+var DATE_NUMBER_GROUP2 = 3;
+var HOUR_NUMBER_GROUP = 4;
+var MINUTE_NUMBER_GROUP = 5;
+var SECOND_NUMBER_GROUP = 6;
+var MILLISECOND_NUMBER_GROUP = 7;
+var TZD_GROUP = 8;
+var TZD_HOUR_OFFSET_GROUP = 9;
+var TZD_MINUTE_OFFSET_GROUP = 10;
+var ISOFormatParser = class extends AbstractParserWithWordBoundaryChecking {
+  innerPattern() {
+    return PATTERN9;
+  }
+  innerExtract(context, match) {
+    const components = context.createParsingComponents({
+      "year": parseInt(match[YEAR_NUMBER_GROUP2]),
+      "month": parseInt(match[MONTH_NUMBER_GROUP2]),
+      "day": parseInt(match[DATE_NUMBER_GROUP2])
+    });
+    if (match[HOUR_NUMBER_GROUP] != null) {
+      components.assign("hour", parseInt(match[HOUR_NUMBER_GROUP]));
+      components.assign("minute", parseInt(match[MINUTE_NUMBER_GROUP]));
+      if (match[SECOND_NUMBER_GROUP] != null) {
+        components.assign("second", parseInt(match[SECOND_NUMBER_GROUP]));
+      }
+      if (match[MILLISECOND_NUMBER_GROUP] != null) {
+        components.assign("millisecond", parseInt(match[MILLISECOND_NUMBER_GROUP]));
+      }
+      if (match[TZD_GROUP] != null) {
+        let offset = 0;
+        if (match[TZD_HOUR_OFFSET_GROUP]) {
+          const hourOffset = parseInt(match[TZD_HOUR_OFFSET_GROUP]);
+          let minuteOffset = 0;
+          if (match[TZD_MINUTE_OFFSET_GROUP] != null) {
+            minuteOffset = parseInt(match[TZD_MINUTE_OFFSET_GROUP]);
+          }
+          offset = hourOffset * 60;
+          if (offset < 0) {
+            offset -= minuteOffset;
+          } else {
+            offset += minuteOffset;
+          }
+        }
+        components.assign("timezoneOffset", offset);
+      }
+    }
+    return components.addTag("parser/ISOFormatParser");
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/refiners/MergeWeekdayComponentRefiner.js
+var MergeWeekdayComponentRefiner = class extends MergingRefiner {
+  mergeResults(textBetween, currentResult, nextResult) {
+    const newResult = nextResult.clone();
+    newResult.index = currentResult.index;
+    newResult.text = currentResult.text + textBetween + newResult.text;
+    newResult.start.assign("weekday", currentResult.start.get("weekday"));
+    if (newResult.end) {
+      newResult.end.assign("weekday", currentResult.start.get("weekday"));
+    }
+    return newResult;
+  }
+  shouldMergeResults(textBetween, currentResult, nextResult) {
+    const weekdayThenNormalDate = currentResult.start.isOnlyWeekdayComponent() && !currentResult.start.isCertain("hour") && nextResult.start.isCertain("day") && !nextResult.start.tags().has("result/relativeDate");
+    return weekdayThenNormalDate && textBetween.match(/^,?\s*$/) != null;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/configurations.js
+function includeCommonConfiguration(configuration2, strictMode = false) {
+  configuration2.parsers.unshift(new ISOFormatParser());
+  configuration2.refiners.unshift(new MergeWeekdayComponentRefiner());
+  configuration2.refiners.unshift(new ExtractTimezoneOffsetRefiner());
+  configuration2.refiners.unshift(new OverlapRemovalRefiner());
+  configuration2.refiners.push(new ExtractTimezoneAbbrRefiner());
+  configuration2.refiners.push(new OverlapRemovalRefiner());
+  configuration2.refiners.push(new ForwardDateRefiner());
+  configuration2.refiners.push(new UnlikelyFormatFilter(strictMode));
+  return configuration2;
+}
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/casualReferences.js
+function now(reference) {
+  const targetDate = reference.getDateWithAdjustedTimezone();
+  const component = new ParsingComponents(reference, {});
+  assignSimilarDate(component, targetDate);
+  assignSimilarTime(component, targetDate);
+  component.assign("timezoneOffset", reference.getTimezoneOffset());
+  component.addTag("casualReference/now");
+  return component;
+}
+function today(reference) {
+  const targetDate = reference.getDateWithAdjustedTimezone();
+  const component = new ParsingComponents(reference, {});
+  assignSimilarDate(component, targetDate);
+  implySimilarTime(component, targetDate);
+  component.delete("meridiem");
+  component.addTag("casualReference/today");
+  return component;
+}
+function yesterday(reference) {
+  return theDayBefore(reference, 1).addTag("casualReference/yesterday");
+}
+function tomorrow(reference) {
+  return theDayAfter(reference, 1).addTag("casualReference/tomorrow");
+}
+function theDayBefore(reference, numDay) {
+  return theDayAfter(reference, -numDay);
+}
+function theDayAfter(reference, nDays) {
+  const targetDate = reference.getDateWithAdjustedTimezone();
+  const component = new ParsingComponents(reference, {});
+  const newDate = new Date(targetDate.getTime());
+  newDate.setDate(newDate.getDate() + nDays);
+  assignSimilarDate(component, newDate);
+  implySimilarTime(component, newDate);
+  component.delete("meridiem");
+  return component;
+}
+function tonight(reference, implyHour = 22) {
+  const targetDate = reference.getDateWithAdjustedTimezone();
+  const component = new ParsingComponents(reference, {});
+  assignSimilarDate(component, targetDate);
+  component.imply("hour", implyHour);
+  component.imply("meridiem", Meridiem.PM);
+  component.addTag("casualReference/tonight");
+  return component;
+}
+function evening(reference, implyHour = 20) {
+  const component = new ParsingComponents(reference, {});
+  component.imply("meridiem", Meridiem.PM);
+  component.imply("hour", implyHour);
+  component.addTag("casualReference/evening");
+  return component;
+}
+function midnight(reference) {
+  const component = new ParsingComponents(reference, {});
+  if (reference.getDateWithAdjustedTimezone().getHours() > 2) {
+    component.addDurationAsImplied({ day: 1 });
+  }
+  component.assign("hour", 0);
+  component.imply("minute", 0);
+  component.imply("second", 0);
+  component.imply("millisecond", 0);
+  component.addTag("casualReference/midnight");
+  return component;
+}
+function morning(reference, implyHour = 6) {
+  const component = new ParsingComponents(reference, {});
+  component.imply("meridiem", Meridiem.AM);
+  component.imply("hour", implyHour);
+  component.imply("minute", 0);
+  component.imply("second", 0);
+  component.imply("millisecond", 0);
+  component.addTag("casualReference/morning");
+  return component;
+}
+function afternoon(reference, implyHour = 15) {
+  const component = new ParsingComponents(reference, {});
+  component.imply("meridiem", Meridiem.PM);
+  component.imply("hour", implyHour);
+  component.imply("minute", 0);
+  component.imply("second", 0);
+  component.imply("millisecond", 0);
+  component.addTag("casualReference/afternoon");
+  return component;
+}
+function noon(reference) {
+  const component = new ParsingComponents(reference, {});
+  component.imply("meridiem", Meridiem.AM);
+  component.assign("hour", 12);
+  component.imply("minute", 0);
+  component.imply("second", 0);
+  component.imply("millisecond", 0);
+  component.addTag("casualReference/noon");
+  return component;
+}
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENCasualDateParser.js
+var PATTERN10 = /(now|today|tonight|tomorrow|overmorrow|tmr|tmrw|yesterday|last\s*night)(?=\W|$)/i;
+var ENCasualDateParser = class extends AbstractParserWithWordBoundaryChecking {
+  innerPattern(context) {
+    return PATTERN10;
+  }
+  innerExtract(context, match) {
+    let targetDate = context.refDate;
+    const lowerText = match[0].toLowerCase();
+    let component = context.createParsingComponents();
+    switch (lowerText) {
+      case "now":
+        component = now(context.reference);
+        break;
+      case "today":
+        component = today(context.reference);
+        break;
+      case "yesterday":
+        component = yesterday(context.reference);
+        break;
+      case "tomorrow":
+      case "tmr":
+      case "tmrw":
+        component = tomorrow(context.reference);
+        break;
+      case "tonight":
+        component = tonight(context.reference);
+        break;
+      case "overmorrow":
+        component = theDayAfter(context.reference, 2);
+        break;
+      default:
+        if (lowerText.match(/last\s*night/)) {
+          if (targetDate.getHours() > 6) {
+            const previousDay = new Date(targetDate.getTime());
+            previousDay.setDate(previousDay.getDate() - 1);
+            targetDate = previousDay;
+          }
+          assignSimilarDate(component, targetDate);
+          component.imply("hour", 0);
+        }
+        break;
+    }
+    component.addTag("parser/ENCasualDateParser");
+    return component;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENCasualTimeParser.js
+var PATTERN11 = /(?:this)?\s{0,3}(morning|afternoon|evening|night|midnight|midday|noon)(?=\W|$)/i;
+var ENCasualTimeParser = class extends AbstractParserWithWordBoundaryChecking {
+  innerPattern() {
+    return PATTERN11;
+  }
+  innerExtract(context, match) {
+    let component = null;
+    switch (match[1].toLowerCase()) {
+      case "afternoon":
+        component = afternoon(context.reference);
+        break;
+      case "evening":
+      case "night":
+        component = evening(context.reference);
+        break;
+      case "midnight":
+        component = midnight(context.reference);
+        break;
+      case "morning":
+        component = morning(context.reference);
+        break;
+      case "noon":
+      case "midday":
+        component = noon(context.reference);
+        break;
+    }
+    if (component) {
+      component.addTag("parser/ENCasualTimeParser");
+    }
+    return component;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENWeekdayParser.js
+var PATTERN12 = new RegExp(`(?:(?:\\,|\\(|\\\uFF08)\\s*)?(?:on\\s*?)?(?:(this|last|past|next)\\s*)?(${matchAnyPattern(WEEKDAY_DICTIONARY)}|weekend|weekday)(?:\\s*(?:\\,|\\)|\\\uFF09))?(?:\\s*(?:of\\s*)?(this|last|past|next)\\s*week)?(?=\\W|$)`, "i");
+var PREFIX_GROUP2 = 1;
+var WEEKDAY_GROUP = 2;
+var POSTFIX_GROUP = 3;
+var ENWeekdayParser = class extends AbstractParserWithWordBoundaryChecking {
+  innerPattern() {
+    return PATTERN12;
+  }
+  innerExtract(context, match) {
+    const prefix = match[PREFIX_GROUP2];
+    const postfix = match[POSTFIX_GROUP];
+    let modifierWord = prefix || postfix;
+    modifierWord = modifierWord || "";
+    modifierWord = modifierWord.toLowerCase();
+    let modifier = null;
+    if (modifierWord == "last" || modifierWord == "past") {
+      modifier = "last";
+    } else if (modifierWord == "next") {
+      modifier = "next";
+    } else if (modifierWord == "this") {
+      modifier = "this";
+    }
+    const weekday_word = match[WEEKDAY_GROUP].toLowerCase();
+    let weekday2;
+    if (WEEKDAY_DICTIONARY[weekday_word] !== void 0) {
+      weekday2 = WEEKDAY_DICTIONARY[weekday_word];
+    } else if (weekday_word == "weekend") {
+      weekday2 = modifier == "last" ? Weekday.SUNDAY : Weekday.SATURDAY;
+    } else if (weekday_word == "weekday") {
+      const refWeekday = context.reference.getDateWithAdjustedTimezone().getDay();
+      if (refWeekday == Weekday.SUNDAY || refWeekday == Weekday.SATURDAY) {
+        weekday2 = modifier == "last" ? Weekday.FRIDAY : Weekday.MONDAY;
+      } else {
+        weekday2 = refWeekday - 1;
+        weekday2 = modifier == "last" ? weekday2 - 1 : weekday2 + 1;
+        weekday2 = weekday2 % 5 + 1;
+      }
+    } else {
+      return null;
+    }
+    return createParsingComponentsAtWeekday(context.reference, weekday2, modifier);
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENRelativeDateFormatParser.js
+var PATTERN13 = new RegExp(`(this|last|past|next|after\\s*this)\\s*(${matchAnyPattern(TIME_UNIT_DICTIONARY)})(?=\\s*)(?=\\W|$)`, "i");
+var MODIFIER_WORD_GROUP = 1;
+var RELATIVE_WORD_GROUP = 2;
+var ENRelativeDateFormatParser = class extends AbstractParserWithWordBoundaryChecking {
+  innerPattern() {
+    return PATTERN13;
+  }
+  innerExtract(context, match) {
+    const modifier = match[MODIFIER_WORD_GROUP].toLowerCase();
+    const unitWord = match[RELATIVE_WORD_GROUP].toLowerCase();
+    const timeunit = TIME_UNIT_DICTIONARY[unitWord];
+    if (modifier == "next" || modifier.startsWith("after")) {
+      const timeUnits = {};
+      timeUnits[timeunit] = 1;
+      return ParsingComponents.createRelativeFromReference(context.reference, timeUnits);
+    }
+    if (modifier == "last" || modifier == "past") {
+      const timeUnits = {};
+      timeUnits[timeunit] = -1;
+      return ParsingComponents.createRelativeFromReference(context.reference, timeUnits);
+    }
+    const components = context.createParsingComponents();
+    let date5 = new Date(context.reference.instant.getTime());
+    if (unitWord.match(/week/i)) {
+      date5.setDate(date5.getDate() - date5.getDay());
+      components.imply("day", date5.getDate());
+      components.imply("month", date5.getMonth() + 1);
+      components.imply("year", date5.getFullYear());
+    } else if (unitWord.match(/month/i)) {
+      date5.setDate(1);
+      components.imply("day", date5.getDate());
+      components.assign("year", date5.getFullYear());
+      components.assign("month", date5.getMonth() + 1);
+    } else if (unitWord.match(/year/i)) {
+      date5.setDate(1);
+      date5.setMonth(0);
+      components.imply("day", date5.getDate());
+      components.imply("month", date5.getMonth() + 1);
+      components.assign("year", date5.getFullYear());
+    }
+    return components;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/common/parsers/SlashDateFormatParser.js
+var PATTERN14 = new RegExp("([^\\d]|^)([0-3]{0,1}[0-9]{1})[\\/\\.\\-]([0-3]{0,1}[0-9]{1})(?:[\\/\\.\\-]([0-9]{4}|[0-9]{2}))?(\\W|$)", "i");
+var OPENING_GROUP = 1;
+var ENDING_GROUP = 5;
+var FIRST_NUMBERS_GROUP = 2;
+var SECOND_NUMBERS_GROUP = 3;
+var YEAR_GROUP6 = 4;
+var SlashDateFormatParser = class {
+  groupNumberMonth;
+  groupNumberDay;
+  constructor(littleEndian) {
+    this.groupNumberMonth = littleEndian ? SECOND_NUMBERS_GROUP : FIRST_NUMBERS_GROUP;
+    this.groupNumberDay = littleEndian ? FIRST_NUMBERS_GROUP : SECOND_NUMBERS_GROUP;
+  }
+  pattern() {
+    return PATTERN14;
+  }
+  extract(context, match) {
+    const index = match.index + match[OPENING_GROUP].length;
+    const indexEnd = match.index + match[0].length - match[ENDING_GROUP].length;
+    if (index > 0) {
+      const textBefore = context.text.substring(0, index);
+      if (textBefore.match("\\d/?$")) {
+        return;
+      }
+    }
+    if (indexEnd < context.text.length) {
+      const textAfter = context.text.substring(indexEnd);
+      if (textAfter.match("^/?\\d")) {
+        return;
+      }
+    }
+    const text = context.text.substring(index, indexEnd);
+    if (text.match(/^\d\.\d$/) || text.match(/^\d\.\d{1,2}\.\d{1,2}\s*$/)) {
+      return;
+    }
+    if (!match[YEAR_GROUP6] && text.indexOf("/") < 0) {
+      return;
+    }
+    const result = context.createParsingResult(index, text);
+    let month = parseInt(match[this.groupNumberMonth]);
+    let day = parseInt(match[this.groupNumberDay]);
+    if (month < 1 || month > 12) {
+      if (month > 12) {
+        if (day >= 1 && day <= 12 && month <= 31) {
+          [day, month] = [month, day];
+        } else {
+          return null;
+        }
+      }
+    }
+    if (day < 1 || day > 31) {
+      return null;
+    }
+    result.start.assign("day", day);
+    result.start.assign("month", month);
+    if (match[YEAR_GROUP6]) {
+      const rawYearNumber = parseInt(match[YEAR_GROUP6]);
+      const year = findMostLikelyADYear(rawYearNumber);
+      result.start.assign("year", year);
+    } else {
+      const year = findYearClosestToRef(context.refDate, day, month);
+      result.start.imply("year", year);
+    }
+    return result.addTag("parser/SlashDateFormatParser");
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENTimeUnitCasualRelativeFormatParser.js
+var PATTERN15 = new RegExp(`(this|last|past|next|after|\\+|-)\\s*(${TIME_UNITS_PATTERN})(?=\\W|$)`, "i");
+var PATTERN_NO_ABBR = new RegExp(`(this|last|past|next|after|\\+|-)\\s*(${TIME_UNITS_NO_ABBR_PATTERN})(?=\\W|$)`, "i");
+var ENTimeUnitCasualRelativeFormatParser = class extends AbstractParserWithWordBoundaryChecking {
+  allowAbbreviations;
+  constructor(allowAbbreviations = true) {
+    super();
+    this.allowAbbreviations = allowAbbreviations;
+  }
+  innerPattern() {
+    return this.allowAbbreviations ? PATTERN15 : PATTERN_NO_ABBR;
+  }
+  innerExtract(context, match) {
+    const prefix = match[1].toLowerCase();
+    let duration3 = parseDuration2(match[2]);
+    if (!duration3) {
+      return null;
+    }
+    switch (prefix) {
+      case "last":
+      case "past":
+      case "-":
+        duration3 = reverseDuration(duration3);
+        break;
+    }
+    return ParsingComponents.createRelativeFromReference(context.reference, duration3);
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENMergeRelativeAfterDateRefiner.js
+function IsPositiveFollowingReference(result) {
+  return result.text.match(/^[+-]/i) != null;
+}
+function IsNegativeFollowingReference(result) {
+  return result.text.match(/^-/i) != null;
+}
+var ENMergeRelativeAfterDateRefiner = class extends MergingRefiner {
+  shouldMergeResults(textBetween, currentResult, nextResult) {
+    if (!textBetween.match(/^\s*$/i)) {
+      return false;
+    }
+    return IsPositiveFollowingReference(nextResult) || IsNegativeFollowingReference(nextResult);
+  }
+  mergeResults(textBetween, currentResult, nextResult, context) {
+    let timeUnits = parseDuration2(nextResult.text);
+    if (IsNegativeFollowingReference(nextResult)) {
+      timeUnits = reverseDuration(timeUnits);
+    }
+    const components = ParsingComponents.createRelativeFromReference(ReferenceWithTimezone.fromDate(currentResult.start.date()), timeUnits);
+    return new ParsingResult(currentResult.reference, currentResult.index, `${currentResult.text}${textBetween}${nextResult.text}`, components);
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENMergeRelativeFollowByDateRefiner.js
+function hasImpliedEarlierReferenceDate(result) {
+  return result.text.match(/\s+(before|from)$/i) != null;
+}
+function hasImpliedLaterReferenceDate(result) {
+  return result.text.match(/\s+(after|since)$/i) != null;
+}
+var ENMergeRelativeFollowByDateRefiner = class extends MergingRefiner {
+  patternBetween() {
+    return /^\s*$/i;
+  }
+  shouldMergeResults(textBetween, currentResult, nextResult) {
+    if (!textBetween.match(this.patternBetween())) {
+      return false;
+    }
+    if (!hasImpliedEarlierReferenceDate(currentResult) && !hasImpliedLaterReferenceDate(currentResult)) {
+      return false;
+    }
+    return !!nextResult.start.get("day") && !!nextResult.start.get("month") && !!nextResult.start.get("year");
+  }
+  mergeResults(textBetween, currentResult, nextResult) {
+    let duration3 = parseDuration2(currentResult.text);
+    if (hasImpliedEarlierReferenceDate(currentResult)) {
+      duration3 = reverseDuration(duration3);
+    }
+    const components = ParsingComponents.createRelativeFromReference(ReferenceWithTimezone.fromDate(nextResult.start.date()), duration3);
+    return new ParsingResult(nextResult.reference, currentResult.index, `${currentResult.text}${textBetween}${nextResult.text}`, components);
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENExtractYearSuffixRefiner.js
+var YEAR_SUFFIX_PATTERN = new RegExp(`^\\s*(${YEAR_PATTERN})`, "i");
+var YEAR_GROUP7 = 1;
+var ENExtractYearSuffixRefiner = class {
+  refine(context, results) {
+    results.forEach(function(result) {
+      if (!result.start.isDateWithUnknownYear()) {
+        return;
+      }
+      const suffix = context.text.substring(result.index + result.text.length);
+      const match = YEAR_SUFFIX_PATTERN.exec(suffix);
+      if (!match) {
+        return;
+      }
+      if (match[0].trim().length <= 3) {
+        return;
+      }
+      context.debug(() => {
+        console.log(`Extracting year: '${match[0]}' into : ${result}`);
+      });
+      const year = parseYear(match[YEAR_GROUP7]);
+      if (result.end != null) {
+        result.end.assign("year", year);
+      }
+      result.start.assign("year", year);
+      result.text += match[0];
+    });
+    return results;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENUnlikelyFormatFilter.js
+var ENUnlikelyFormatFilter = class extends Filter {
+  constructor() {
+    super();
+  }
+  isValid(context, result) {
+    const text = result.text.trim();
+    if (text === context.text.trim()) {
+      return true;
+    }
+    if (text.toLowerCase() === "may") {
+      const textBefore = context.text.substring(0, result.index).trim();
+      if (!textBefore.match(/\b(in)$/i)) {
+        context.debug(() => {
+          console.log(`Removing unlikely result: ${result}`);
+        });
+        return false;
+      }
+    }
+    if (text.toLowerCase().endsWith("the second")) {
+      const textAfter = context.text.substring(result.index + result.text.length).trim();
+      if (textAfter.length > 0) {
+        context.debug(() => {
+          console.log(`Removing unlikely result: ${result}`);
+        });
+      }
+      return false;
+    }
+    return true;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/refiners/ENEndOfPeriodRefiner.js
+var PREFIX_PATTERN = /\b(?:last\s+day|end)\s+of\s+(?:the\s+)?$/i;
+var RELATIVE_PERIOD_PATTERN = /^(this|last|past|next)\s*(week|month|year)$/i;
+var RELATIVE_YEAR_SUFFIX_PATTERN = /^\s+(this|last|past|next)\s+year(?=\W|$)/i;
+function modifierOffset(modifier) {
+  return modifier === "next" ? 1 : modifier === "last" || modifier === "past" ? -1 : 0;
+}
+var ENEndOfPeriodRefiner = class {
+  refine(context, results) {
+    results.forEach((result) => {
+      const prefix = context.text.substring(0, result.index).match(PREFIX_PATTERN);
+      if (!prefix) {
+        return;
+      }
+      const relativePeriod = result.text.match(RELATIVE_PERIOD_PATTERN);
+      if (relativePeriod) {
+        const modifier = relativePeriod[1].toLowerCase();
+        this.moveToEndOfRelativePeriod(context, result, modifier, relativePeriod[2].toLowerCase());
+      } else if (result.start.isCertain("month") && !result.start.isCertain("day")) {
+        this.moveToEndOfMonth(context, result);
+      } else {
+        return;
+      }
+      result.start.imply("hour", 12);
+      result.start.imply("minute", 0);
+      result.start.imply("second", 0);
+      result.start.imply("millisecond", 0);
+      if (!result.start.isCertain("timezoneOffset")) {
+        result.start.delete("timezoneOffset");
+      }
+      result.index -= prefix[0].length;
+      result.text = prefix[0] + result.text;
+      result.addTag("refiner/ENEndOfPeriodRefiner");
+    });
+    return results;
+  }
+  moveToEndOfRelativePeriod(context, result, modifier, period) {
+    const offset = modifierOffset(modifier);
+    const referenceDate = context.reference.getDateWithAdjustedTimezone();
+    let lastDay;
+    if (period === "week") {
+      lastDay = new Date(referenceDate.getTime());
+      lastDay.setDate(referenceDate.getDate() + (6 - referenceDate.getDay()) + offset * 7);
+    } else if (period === "month") {
+      lastDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + offset + 1, 0);
+    } else {
+      lastDay = new Date(referenceDate.getFullYear() + offset, 11, 31);
+    }
+    result.start.assign("day", lastDay.getDate());
+    result.start.assign("month", lastDay.getMonth() + 1);
+    result.start.assign("year", lastDay.getFullYear());
+    result.start.delete("weekday");
+    result.start.imply("weekday", lastDay.getDay());
+  }
+  moveToEndOfMonth(context, result) {
+    let year = result.start.get("year");
+    const month = result.start.get("month");
+    const suffix = context.text.substring(result.index + result.text.length).match(RELATIVE_YEAR_SUFFIX_PATTERN);
+    if (suffix) {
+      const modifier = suffix[1].toLowerCase();
+      const referenceYear = context.reference.getDateWithAdjustedTimezone().getFullYear();
+      year = referenceYear + modifierOffset(modifier);
+      result.start.assign("year", year);
+      result.text += suffix[0];
+    }
+    if (!result.start.isCertain("year")) {
+      const lastDayInReferenceYear = new Date(year, month, 0).getDate();
+      year = findYearClosestToRef(context.reference.getDateWithAdjustedTimezone(), lastDayInReferenceYear, month);
+      result.start.imply("year", year);
+    }
+    result.start.assign("day", new Date(year, month, 0).getDate());
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/parsers/ENEndOfCurrentMonthParser.js
+var PATTERN16 = /(?:last\s+day|end)\s+of\s+(?:the\s+)?month(?=\W|$)/i;
+var ENEndOfCurrentMonthParser = class extends AbstractParserWithWordBoundaryChecking {
+  innerPattern() {
+    return PATTERN16;
+  }
+  innerExtract(context) {
+    const targetDate = context.reference.getDateWithAdjustedTimezone();
+    const year = targetDate.getFullYear();
+    const month = targetDate.getMonth() + 1;
+    const lastDay = new Date(year, month, 0).getDate();
+    const components = context.createParsingComponents();
+    components.assign("day", lastDay);
+    components.assign("month", month);
+    components.assign("year", year);
+    components.addTag("parser/ENEndOfCurrentMonthParser");
+    return components;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/configuration.js
+var ENDefaultConfiguration = class {
+  createCasualConfiguration(littleEndian = false) {
+    const option = this.createConfiguration(false, littleEndian);
+    option.parsers.push(new ENCasualDateParser());
+    option.parsers.push(new ENCasualTimeParser());
+    option.parsers.push(new ENEndOfCurrentMonthParser());
+    option.parsers.push(new ENMonthNameParser());
+    option.parsers.push(new ENRelativeDateFormatParser());
+    option.parsers.push(new ENTimeUnitCasualRelativeFormatParser());
+    option.refiners.unshift(new ENEndOfPeriodRefiner());
+    option.refiners.push(new ENUnlikelyFormatFilter());
+    return option;
+  }
+  createConfiguration(strictMode = true, littleEndian = false) {
+    const options = includeCommonConfiguration({
+      parsers: [
+        new SlashDateFormatParser(littleEndian),
+        new ENTimeUnitWithinFormatParser(strictMode),
+        new ENMonthNameLittleEndianParser(),
+        new ENMonthNameMiddleEndianParser(littleEndian),
+        new ENWeekdayParser(),
+        new ENSlashMonthFormatParser(),
+        new ENTimeExpressionParser(strictMode),
+        new ENTimeUnitAgoFormatParser(strictMode),
+        new ENTimeUnitLaterFormatParser(strictMode),
+        new ENYearMonthNameParser()
+      ],
+      refiners: [new ENMergeDateTimeRefiner()]
+    }, strictMode);
+    options.parsers.unshift(new ENYearMonthDayParser(strictMode));
+    options.refiners.unshift(new ENMergeRelativeFollowByDateRefiner());
+    options.refiners.unshift(new ENMergeRelativeAfterDateRefiner());
+    options.refiners.unshift(new OverlapRemovalRefiner());
+    options.refiners.push(new ENMergeDateTimeRefiner());
+    options.refiners.push(new ENExtractYearSuffixRefiner());
+    options.refiners.push(new ENMergeDateRangeRefiner());
+    return options;
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/chrono.js
+var Chrono = class _Chrono {
+  parsers;
+  refiners;
+  defaultConfig = new ENDefaultConfiguration();
+  constructor(configuration2) {
+    configuration2 = configuration2 || this.defaultConfig.createCasualConfiguration();
+    this.parsers = [...configuration2.parsers];
+    this.refiners = [...configuration2.refiners];
+  }
+  clone() {
+    return new _Chrono({
+      parsers: [...this.parsers],
+      refiners: [...this.refiners]
+    });
+  }
+  parseDate(text, referenceDate, option) {
+    const results = this.parse(text, referenceDate, option);
+    return results.length > 0 ? results[0].start.date() : null;
+  }
+  parse(text, referenceDate, option) {
+    const context = new ParsingContext(text, referenceDate, option);
+    let results = [];
+    this.parsers.forEach((parser) => {
+      const parsedResults = _Chrono.executeParser(context, parser);
+      results = results.concat(parsedResults);
+    });
+    results.sort((a, b) => {
+      return a.index - b.index;
+    });
+    this.refiners.forEach(function(refiner) {
+      results = refiner.refine(context, results);
+    });
+    return results;
+  }
+  static executeParser(context, parser) {
+    const results = [];
+    const pattern = parser.pattern(context);
+    const originalText = context.text;
+    let remainingText = context.text;
+    let match = pattern.exec(remainingText);
+    while (match) {
+      const index = match.index + originalText.length - remainingText.length;
+      match.index = index;
+      const result = parser.extract(context, match);
+      if (!result) {
+        remainingText = originalText.substring(match.index + 1);
+        match = pattern.exec(remainingText);
+        continue;
+      }
+      let parsedResult = null;
+      if (result instanceof ParsingResult) {
+        parsedResult = result;
+      } else if (result instanceof ParsingComponents) {
+        parsedResult = context.createParsingResult(match.index, match[0]);
+        parsedResult.start = result;
+      } else {
+        parsedResult = context.createParsingResult(match.index, match[0], result);
+      }
+      const parsedIndex = parsedResult.index;
+      const parsedText = parsedResult.text;
+      context.debug(() => console.log(`${parser.constructor.name} extracted (at index=${parsedIndex}) '${parsedText}'`));
+      results.push(parsedResult);
+      remainingText = originalText.substring(parsedIndex + parsedText.length);
+      match = pattern.exec(remainingText);
+    }
+    return results;
+  }
+};
+var ParsingContext = class {
+  text;
+  option;
+  reference;
+  refDate;
+  constructor(text, refDate, option) {
+    this.text = text;
+    this.option = option ?? {};
+    this.reference = ReferenceWithTimezone.fromInput(refDate, this.option.timezones);
+    this.refDate = this.reference.instant;
+  }
+  createParsingComponents(components) {
+    if (components instanceof ParsingComponents) {
+      return components;
+    }
+    return new ParsingComponents(this.reference, components);
+  }
+  createParsingResult(index, textOrEndIndex, startComponents, endComponents) {
+    const text = typeof textOrEndIndex === "string" ? textOrEndIndex : this.text.substring(index, textOrEndIndex);
+    const start = startComponents ? this.createParsingComponents(startComponents) : null;
+    const end = endComponents ? this.createParsingComponents(endComponents) : null;
+    return new ParsingResult(this.reference, index, text, start, end);
+  }
+  debug(block) {
+    if (this.option.debug) {
+      if (this.option.debug instanceof Function) {
+        this.option.debug(block);
+      } else {
+        const handler = this.option.debug;
+        handler.debug(block);
+      }
+    }
+  }
+};
+
+// node_modules/.pnpm/chrono-node@2.10.2/node_modules/chrono-node/dist/esm/locales/en/index.js
+var configuration = new ENDefaultConfiguration();
+var casual = new Chrono(configuration.createCasualConfiguration(false));
+var strict = new Chrono(configuration.createConfiguration(true, false));
+var GB = new Chrono(configuration.createCasualConfiguration(true));
+function parse3(text, ref2, option) {
+  return casual.parse(text, ref2, option);
+}
+function parseDate2(text, ref2, option) {
+  return casual.parseDate(text, ref2, option);
+}
+
+// packages/nlp/src/time.ts
+var DAY_MS = 864e5;
+function fromUtcDay(ms) {
+  const dt = new Date(ms);
+  return { y: dt.getUTCFullYear(), m: dt.getUTCMonth() + 1, d: dt.getUTCDate() };
+}
+function utcDay(cd) {
+  return Date.UTC(cd.y, cd.m - 1, cd.d);
+}
+function addDays2(cd, n) {
+  return fromUtcDay(utcDay(cd) + n * DAY_MS);
+}
+function daysInMonth2(y, m) {
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+function addMonths(cd, n) {
+  const idx = cd.y * 12 + (cd.m - 1) + n;
+  const y = Math.floor(idx / 12);
+  const m = idx % 12 + 1;
+  return { y, m, d: Math.min(cd.d, daysInMonth2(y, m)) };
+}
+function dow(cd) {
+  return new Date(utcDay(cd)).getUTCDay();
+}
+function cmpCD(a, b) {
+  return utcDay(a) - utcDay(b);
+}
+function isValidCD(y, m, d) {
+  return Number.isInteger(y) && m >= 1 && m <= 12 && d >= 1 && d <= daysInMonth2(y, m);
+}
+var formatters = /* @__PURE__ */ new Map();
+function formatter3(tz) {
+  let f = formatters.get(tz);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric"
+    });
+    formatters.set(tz, f);
+  }
+  return f;
+}
+function resolveTimeZone(tz) {
+  if (typeof tz !== "string" || !tz.trim()) return "UTC";
+  try {
+    formatter3(tz.trim());
+    return tz.trim();
+  } catch {
+    return "UTC";
+  }
+}
+function wallClock(ms, tz) {
+  const out = {};
+  for (const p of formatter3(tz).formatToParts(new Date(ms))) {
+    if (p.type !== "literal") out[p.type] = Number(p.value);
+  }
+  return {
+    y: out.year ?? 1970,
+    m: out.month ?? 1,
+    d: out.day ?? 1,
+    h: (out.hour ?? 0) % 24,
+    // some engines report midnight as 24
+    mi: out.minute ?? 0,
+    s: out.second ?? 0
+  };
+}
+function offsetMinutes(ms, tz) {
+  const base = Math.floor(ms / 1e3) * 1e3;
+  const w = wallClock(base, tz);
+  return Math.round((Date.UTC(w.y, w.m - 1, w.d, w.h, w.mi, w.s) - base) / 6e4);
+}
+function zonedToUtc3(cd, h, mi, tz) {
+  const guess = Date.UTC(cd.y, cd.m - 1, cd.d, h, mi);
+  const before = offsetMinutes(guess - DAY_MS / 2, tz);
+  const after = offsetMinutes(guess + DAY_MS / 2, tz);
+  const candidates = [];
+  for (const off of before === after ? [before] : [before, after]) {
+    const t = guess - off * 6e4;
+    const w = wallClock(t, tz);
+    if (w.y === cd.y && w.m === cd.m && w.d === cd.d && w.h === h && w.mi === mi) candidates.push(t);
+  }
+  if (candidates.length) return Math.min(...candidates);
+  return guess - before * 6e4;
+}
+
+// packages/nlp/src/index.ts
+function prefersMonthFirst(timezone2) {
+  return /^(America|US)\//i.test(timezone2);
+}
+var S = String.raw;
+var rx = (src) => new RegExp(src, "giu");
+var B = S`(?<![\p{L}\p{N}_])`;
+var E = S`(?![\p{L}\p{N}_])`;
+var EP = S`(?![\p{L}\p{N}_'’])`;
+var TE = S`(?![\p{L}\p{N}_:])`;
+var NUM_WORDS = {
+  a: 1,
+  an: 1,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12
+};
+var NUM_SP = S`(?:\d{1,3}\s*|(?:an?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+)`;
+function num(s2) {
+  if (!s2) return NaN;
+  const t = s2.trim().toLowerCase();
+  if (/^\d+$/.test(t)) return parseInt(t, 10);
+  return NUM_WORDS[t] ?? NaN;
+}
+var U_MIN = "minutes|minute|mins|min|m";
+var U_H = "hours|hour|hrs|hr|h";
+var U_D = "days|day|d";
+var U_W = "weeks|week|wks|wk|w";
+var U_MO = "months|month|mos|mo";
+var U_Y = "years|year|yrs|yr|y";
+function unitOf(u) {
+  const t = u.toLowerCase();
+  if (/^(minutes?|mins?|m)$/.test(t)) return "min";
+  if (/^(hours?|hrs?|h)$/.test(t)) return "h";
+  if (/^(days?|d)$/.test(t)) return "d";
+  if (/^(weeks?|wks?|w)$/.test(t)) return "w";
+  if (/^(months?|mos?)$/.test(t)) return "mo";
+  return "y";
+}
+var UNIT_MINUTES = { min: 1, h: 60, d: 1440, w: 10080, mo: 43200, y: 525600 };
+var WD_FULL = "monday|tuesday|wednesday|thursday|friday|saturday|sunday";
+var WD_ABBR = "mon|tues|tue|weds|wed|thurs|thur|thu|fri|sat|sun";
+var WD = S`(?:${WD_FULL}|${WD_ABBR})`;
+var WD_PLURAL = "mondays|tuesdays|wednesdays|thursdays|fridays|saturdays|sundays";
+var LIST_SEP = S`(?:\s*,\s*and\s+|\s*,\s*|\s+and\s+|\s*&\s*|\s*\/\s*)`;
+var WD_LIST = S`${WD}s?${E}(?:${LIST_SEP}${WD}s?${E})*`;
+var WD_INDEX = { su: 0, mo: 1, tu: 2, we: 3, th: 4, fr: 5, sa: 6 };
+function weekdayNum(s2) {
+  return WD_INDEX[s2.toLowerCase().slice(0, 2)] ?? -1;
+}
+function weekdayList(s2) {
+  const out = /* @__PURE__ */ new Set();
+  for (const m of s2.matchAll(rx(WD))) {
+    const n = weekdayNum(m[0]);
+    if (n >= 0) out.add(n);
+  }
+  return [...out].sort((a, b) => a - b);
+}
+var MONTH = S`(?:january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)`;
+var MONTH_INDEX = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+function monthNum(s2) {
+  return MONTH_INDEX.indexOf(s2.toLowerCase().slice(0, 3)) + 1;
+}
+var PREP_WORDS = S`(?:due\s+(?:by|on|before)|due|by|before|on|until|till|til)`;
+var PREP_D = S`(?:${PREP_WORDS}\s+)?`;
+var TPREP = S`(?:(?:due\s+)?(?:(?:at|by|before|around|until|till)\s+|@\s*)|due\s+)`;
+var TIME_CORE = S`(?:\d{1,2}(?:[:.]\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)|\d{1,2}:\d{2}|noon|midday|midnight)`;
+var DUR = S`(?:half\s+an?\s+hour|${NUM_SP}(?:${U_MIN}|${U_H}|${U_D}|${U_W})${E})`;
+var RE_REM_DUR = rx(S`${B}remind(?:\s+me)?(?:\s+about\s+(?:it|this))?\s+(${DUR}(?:${LIST_SEP}${DUR})*)\s+(?:before(?:hand)?|prior|ahead|earlier|in\s+advance)${E}`);
+var RE_DUR_ITEM = rx(S`(half\s+an?\s+hour)|(${NUM_SP})(${U_MIN}|${U_H}|${U_D}|${U_W})${E}`);
+var RE_REM_DAY_BEFORE = rx(S`${B}remind(?:\s+me)?\s+(?:on\s+)?the\s+(day|week)\s+before${E}`);
+var RE_REM_AT = rx(S`${B}remind(?:\s+me)?\s+(?:at|@)\s*(${TIME_CORE}|\d{1,2}(?![\p{N}:.]))(?:\s+(the\s+day\s+before|on\s+the\s+day|(${NUM_SP})days?\s+before))?${TE}`);
+var EVERY = S`(?:every|each)`;
+var REC_UNIT = S`(days?|weekdays?|workdays?|business\s+days?|weeks?|fortnight|months?|years?|weekends?)`;
+var RE_REC_EVERY_UNIT = rx(S`${B}${EVERY}\s+(?:(other)\s+|(${NUM_SP}))?${REC_UNIT}(?:\s+on\s+(${WD_LIST}))?${E}`);
+var RE_REC_EVERY_WD = rx(S`${B}${EVERY}\s+(?:(other)\s+)?(${WD_LIST})`);
+var RE_REC_EVERY_NTH = rx(S`${B}${EVERY}\s+(\d{1,2})(?:st|nd|rd|th)(?:\s+(?:day\s+)?of\s+(?:the|each|every)\s+month)?${E}`);
+var RE_REC_PLURAL = rx(S`${B}(?:on\s+)?((?:${WD_PLURAL})(?:${LIST_SEP}(?:${WD_PLURAL}))*)${E}`);
+var RE_REC_WEEKDAYS = rx(S`${B}(?:on\s+)?(?:weekdays|workdays|business\s+days)${E}`);
+var RE_REC_WEEKENDS = rx(S`${B}(?:on\s+)?weekends${E}`);
+var RE_REC_ADVERB = rx(S`${B}(daily|everyday|nightly|weekly|bi-?weekly|fortnightly|monthly|bi-?monthly|quarterly|yearly|annually)(?:\s+on\s+(${WD_LIST}))?${E}`);
+var RE_AT_NAME = rx(S`(?:${B}for\s+)?(?<![\p{L}\p{N}_.@])@([\p{L}\p{N}_][\p{L}\p{N}_.\-]*)`);
+var RE_ASSIGN = rx(S`${B}assign(?:ed)?(?:\s+(?:it|this))?\s+to\s+@?([\p{L}][\p{L}\p{N}_.\-]*)`);
+var RE_HASH = rx(S`(?<![\p{L}\p{N}_&#/\\])#([\p{L}\p{N}_][\p{L}\p{N}_\-/.]*)`);
+var RE_PLUS = rx(S`(?<![\p{L}\p{N}_+])\+([\p{L}][\p{L}\p{N}_\-]*)`);
+var KEEP_NAME_AFTER = /(?:^|[^\p{L}])(to|with|from|cc|ask|ping|call|email|tell|message|text|remind|meet|thank)\s*$/iu;
+var RE_PRI_BANG = rx(S`(?<!\S)!(urgent|high|hi|medium|med|normal|low|lo)${E}`);
+var RE_PRI_EXCL = rx(S`(?<!\S)(!{2,})(?!\S)`);
+var RE_PRI_P = rx(S`(?<![\p{L}\p{N}_\-])[pP]([0-3])(?![\p{L}\p{N}_\-])`);
+var RE_PRI_PHRASE = rx(S`${B}(?:(urgent|high|medium|med|normal|low)[\s\-]+priority|prio(?:rity)?\s*[:=]?\s*(urgent|high|medium|med|normal|low|p[0-3]))${E}`);
+var RE_PRI_BARE = rx(S`${B}(urgent(?:ly)?|asap|a\.s\.a\.p\.?|important)${E}!*`);
+var RE_ISO = rx(S`${B}${PREP_D}(\d{4})-(\d{1,2})-(\d{1,2})(?:T(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+\-]\d{2}:?\d{2})?)?(?![\p{L}\p{N}_\-:])`);
+var RE_NUMERIC_Y = rx(S`${B}${PREP_D}(\d{1,2})([\/.\-])(\d{1,2})\2(\d{4}|\d{2})(?![\p{N}\/.\-])`);
+var RE_MONTH_DAY = rx(S`${B}${PREP_D}(?:(?:${WD}),?\s+)?(${MONTH})\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?${EP}(?!:)`);
+var RE_DAY_MONTH = rx(S`${B}${PREP_D}(?:(?:${WD}),?\s+)?(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(${MONTH})\.?(?:,?\s+(\d{4}))?${EP}`);
+var RE_DAY_AFTER_TOMORROW = rx(S`${B}${PREP_D}(?:(?:the\s+)?day\s+after\s+(?:tomorrow|tmrw)|overmorrow)${EP}`);
+var RE_TODAY_TOMORROW = rx(S`${B}${PREP_D}(today|tdy|tomorrow|tmrw|tmr|tmw|tomorow|2moro|2mrw)${EP}`);
+var RE_TONIGHT = rx(S`${B}${PREP_D}(?:tonight|tonite|this\s+(morning|afternoon|evening|night))${EP}`);
+var RE_IN_N = rx(S`${B}(?:due\s+)?in\s+(${NUM_SP}|half\s+an?\s+)(${U_MIN}|${U_H}|${U_D}|${U_W}|${U_MO}|${U_Y})${E}`);
+var RE_N_FROM_NOW = rx(S`${B}(${NUM_SP})(days?|weeks?|months?)\s+from\s+(?:now|today)${E}`);
+var RE_PERIOD = rx(S`${B}${PREP_D}(?:the\s+)?(?:end\s+of\s+(?:the\s+)?(?:(this|next)\s+)?(week|month|year)|(eow|eom|eoy)|(this|next)\s+(week|month|year))${EP}`);
+var RE_WEEKEND = rx(S`${B}(?:(?:${PREP_WORDS}|over|during)\s+)?(?:the\s+)?(?:(this|next)\s+)?weekend${EP}`);
+var RE_WD_FULL = rx(S`${B}${PREP_D}(?:(this|next|coming|the\s+coming)\s+)?(${WD_FULL})(?:\s+(next|this)\s+week)?${EP}`);
+var RE_WD_ABBR_PREP = rx(S`${B}(?:${PREP_WORDS}\s+(?:(this|next|coming)\s+)?|(this|next|coming)\s+)(${WD_ABBR})\.?${EP}`);
+var RE_WD_TIME_PAIR = rx(S`${B}(${WD_ABBR})\.?\s+(\d{1,2}(?:[:.]\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)|\d{1,2}:\d{2})${TE}`);
+var RE_ORDINAL_PREP = rx(S`${B}${PREP_WORDS}\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)${EP}`);
+var RE_NUMERIC_PREP = rx(S`${B}${PREP_WORDS}\s+(\d{1,2})\/(\d{1,2})(?![\p{N}\/])`);
+var RE_EOD = rx(S`${B}(?:(?:due\s+)?(?:at|by|before|until|till)\s+)?(?:the\s+)?(?:eod|cob|end\s+of\s+(?:the\s+)?(?:business\s+)?day|close\s+of\s+(?:business|play))${EP}`);
+var RE_TIME_PREP = rx(S`${B}${TPREP}(${TIME_CORE})${TE}`);
+var RE_HOUR_PREP = rx(S`${B}${TPREP}(\d{1,2})(?![\p{L}\p{N}_:.\/%])`);
+var RE_DAYPART_PREP = rx(S`${B}(?:in\s+the|by(?:\s+the)?|during\s+the)\s+(morning|afternoon|evening|night)${EP}`);
+var RE_A_WD = rx(S`${B}(${WD_ABBR})\.?${EP}`);
+var RE_A_ORDINAL = rx(S`${B}the\s+(\d{1,2})(?:st|nd|rd|th)${EP}`);
+var RE_A_NUMERIC = rx(S`(?<![\p{L}\p{N}_\/.\-])(\d{1,2})\/(\d{1,2})(?![\p{N}\/])`);
+var RE_A_TIME = rx(S`(?<![\p{L}\p{N}_:.\/])(${TIME_CORE})${TE}`);
+var RE_A_DAYPART = rx(S`${B}(morning|afternoon|evening|night)${EP}`);
+var RE_A_WEEKEND = rx(S`${B}weekend${EP}`);
+var DAYPART = {
+  morning: { h: 9, pm: false },
+  afternoon: { h: 14, pm: true },
+  evening: { h: 18, pm: true },
+  night: { h: 20, pm: true }
+};
+var MASK = "\0";
+var FILLER = /[\s\u0000,.;:!?()[\]{}"'“”‘’\-–—]/u;
+var PRIORITY_WORD = {
+  urgent: "urgent",
+  high: "high",
+  hi: "high",
+  medium: "medium",
+  med: "medium",
+  normal: "medium",
+  low: "low",
+  lo: "low",
+  p0: "urgent",
+  p1: "high",
+  p2: "medium",
+  p3: "low"
+};
+function parseTimeOfDay(s2) {
+  const t = s2.toLowerCase().replace(/\s+/g, "");
+  if (t === "noon" || t === "midday") return { h: 12, mi: 0, explicit: true, guessedPm: false };
+  if (t === "midnight") return { h: 0, mi: 0, explicit: true, guessedPm: false };
+  const m = /^(\d{1,2})(?:[:.](\d{2}))?(a\.?m\.?|p\.?m\.?)?$/.exec(t);
+  if (!m || !m[1]) return null;
+  let h = parseInt(m[1], 10);
+  const mi = m[2] ? parseInt(m[2], 10) : 0;
+  if (mi > 59) return null;
+  if (m[3]) {
+    if (h < 1 || h > 12) return null;
+    h = h % 12 + (m[3].startsWith("p") ? 12 : 0);
+    return { h, mi, explicit: true, guessedPm: false };
+  }
+  if (h > 23) return null;
+  if (h === 0 || h >= 13 || m[1].length === 2 && m[1].startsWith("0")) return { h, mi, explicit: true, guessedPm: false };
+  if (h <= 6) return { h: h + 12, mi, explicit: false, guessedPm: true };
+  return { h, mi, explicit: false, guessedPm: false };
+}
+function emptyResult(title) {
+  return {
+    title: title.trim().replace(/\s+/g, " "),
+    dueAt: null,
+    dueAllDay: false,
+    priority: null,
+    assigneeHints: [],
+    projectHint: null,
+    tags: [],
+    recurrence: null,
+    reminderOffsets: null,
+    tokens: []
+  };
+}
+var Ctx = class {
+  constructor(raw, now2, tz, today2, monthFirst) {
+    this.raw = raw;
+    this.now = now2;
+    this.tz = tz;
+    this.today = today2;
+    this.monthFirst = monthFirst;
+    this.mask = raw;
+  }
+  mask;
+  tokens = [];
+  /** token start → text to keep in the title instead of removing the token */
+  keep = /* @__PURE__ */ new Map();
+  date = null;
+  instant = null;
+  time = null;
+  softTime = null;
+  pmHint = false;
+  amHint = false;
+  priority = null;
+  assignees = [];
+  project = null;
+  tags = [];
+  recurrence = null;
+  recDay = null;
+  reminderOffsets = [];
+  reminderAt = [];
+  get haveDate() {
+    return this.date !== null || this.instant !== null;
+  }
+  get haveTime() {
+    return this.time !== null || this.instant !== null;
+  }
+  isFree(start, end) {
+    return end > start && !this.mask.slice(start, end).includes(MASK);
+  }
+  claim(start, end, kind) {
+    this.tokens.push({ start, end, kind });
+    this.mask = this.mask.slice(0, start) + MASK.repeat(end - start) + this.mask.slice(end);
+  }
+  /**
+   * Run `re` over the current mask. `fn` returns the token kind to claim the whole match,
+   * `[kind, start, end]` to claim a sub-span, or null to leave the match alone.
+   */
+  each(re, fn) {
+    let any2 = false;
+    re.lastIndex = 0;
+    for (const m of [...this.mask.matchAll(re)]) {
+      const start = m.index ?? 0;
+      const end = start + m[0].length;
+      if (!this.isFree(start, end)) continue;
+      const r = fn(m, start, end);
+      if (!r) continue;
+      const [kind, s2, e] = typeof r === "string" ? [r, start, end] : r;
+      if (!this.isFree(s2, e)) continue;
+      this.claim(s2, e, kind);
+      any2 = true;
+    }
+    return any2;
+  }
+  leading(start) {
+    for (let i = 0; i < start; i++) if (!FILLER.test(this.mask[i])) return false;
+    return true;
+  }
+  trailing(end) {
+    for (let i = end; i < this.mask.length; i++) if (!FILLER.test(this.mask[i])) return false;
+    return true;
+  }
+  /** Directly next to an accepted date/time/recurrence token (only spaces, commas or other tokens between). */
+  adjacent(start, end) {
+    for (const t of this.tokens) {
+      if (t.kind !== "date" && t.kind !== "recurrence") continue;
+      if (t.end <= start && /^[\s,\u0000]*$/u.test(this.mask.slice(t.end, start))) return true;
+      if (t.start >= end && /^[\s,\u0000]*$/u.test(this.mask.slice(end, t.start))) return true;
+    }
+    return false;
+  }
+  anchored(start, end) {
+    return this.leading(start) || this.trailing(end) || this.adjacent(start, end);
+  }
+  at(cd, t) {
+    return zonedToUtc3(cd, t.h, t.mi, this.tz);
+  }
+  /** First civil date ≥ today matching `pred`; with a time, today only counts if still ahead. */
+  firstOn(pred, time4) {
+    let cd = this.today;
+    if (time4 && this.at(cd, time4) <= this.now) cd = addDays2(cd, 1);
+    for (let i = 0; i < 800; i++) {
+      if (pred(cd)) return cd;
+      cd = addDays2(cd, 1);
+    }
+    return cd;
+  }
+  setDate(cd) {
+    if (!cd || this.haveDate) return false;
+    this.date = cd;
+    return true;
+  }
+  setTime(t) {
+    if (!t || this.haveTime) return false;
+    this.time = t;
+    return true;
+  }
+  setPriority(p) {
+    if (p && !this.priority) this.priority = p;
+  }
+  setRecurrence(r) {
+    if (this.recurrence) return false;
+    this.recurrence = r;
+    return true;
+  }
+};
+function daysToNextMonday(today2) {
+  return (8 - dow(today2)) % 7 || 7;
+}
+function weekdayDate(today2, wd, mod) {
+  const m = (mod ?? "").toLowerCase().replace(/\s+/g, " ");
+  if (m === "next") return addDays2(addDays2(today2, daysToNextMonday(today2)), (wd + 6) % 7);
+  let diff = (wd - dow(today2) + 7) % 7;
+  if (diff === 0 && m !== "this") diff = 7;
+  return addDays2(today2, diff);
+}
+function endOfWeek(today2) {
+  const t = dow(today2);
+  return addDays2(today2, t === 6 ? 6 : t === 0 ? 5 : 5 - t);
+}
+function thisWeekendSaturday(today2) {
+  const t = dow(today2);
+  return t === 0 ? addDays2(today2, -1) : addDays2(today2, 6 - t);
+}
+function nextDayOfMonth(today2, d) {
+  if (d < 1 || d > 31) return null;
+  for (let i = 0; i < 14; i++) {
+    const base = addMonths({ y: today2.y, m: today2.m, d: 1 }, i);
+    if (d <= daysInMonth2(base.y, base.m)) {
+      const cd = { y: base.y, m: base.m, d };
+      if (cmpCD(cd, today2) >= 0) return cd;
+    }
+  }
+  return null;
+}
+function monthDay(today2, m, d, y) {
+  if (y !== void 0) return isValidCD(y, m, d) ? { y, m, d } : null;
+  for (let yy = today2.y; yy < today2.y + 9; yy++) {
+    if (isValidCD(yy, m, d) && cmpCD({ y: yy, m, d }, today2) >= 0) return { y: yy, m, d };
+  }
+  return null;
+}
+function fullYear(s2) {
+  const y = parseInt(s2, 10);
+  return s2.length <= 2 ? 2e3 + y : y;
+}
+function numericDate(ctx, a, b, y) {
+  const [m1, d1] = ctx.monthFirst ? [a, b] : [b, a];
+  return monthDay(ctx.today, m1, d1, y) ?? monthDay(ctx.today, d1, m1, y);
+}
+function durMinutes(text) {
+  const out = [];
+  RE_DUR_ITEM.lastIndex = 0;
+  for (const m of text.matchAll(RE_DUR_ITEM)) {
+    if (m[1]) out.push(30);
+    else {
+      const n = num(m[2]);
+      if (Number.isFinite(n) && m[3]) out.push(n * UNIT_MINUTES[unitOf(m[3])]);
+    }
+  }
+  return out;
+}
+function recognizeReminders(ctx) {
+  ctx.each(RE_REM_DUR, (m) => {
+    const mins = durMinutes(m[1] ?? "");
+    if (!mins.length) return null;
+    ctx.reminderOffsets.push(...mins);
+    return "reminder";
+  });
+  ctx.each(RE_REM_DAY_BEFORE, (m) => {
+    ctx.reminderOffsets.push((m[1] ?? "").toLowerCase() === "week" ? 10080 : 1440);
+    return "reminder";
+  });
+  ctx.each(RE_REM_AT, (m) => {
+    const time4 = parseTimeOfDay(m[1] ?? "");
+    if (!time4) return null;
+    const q = (m[2] ?? "").toLowerCase();
+    const daysBefore = !q ? null : q.startsWith("the day") ? 1 : q.startsWith("on the day") ? 0 : num(m[3]);
+    ctx.reminderAt.push({ time: time4, daysBefore: Number.isFinite(daysBefore) || daysBefore === null ? daysBefore : null });
+    return "reminder";
+  });
+}
+function recognizeRecurrence(ctx) {
+  ctx.each(RE_REC_EVERY_NTH, (m) => {
+    const d = num(m[1]);
+    if (!(d >= 1 && d <= 31) || ctx.recurrence) return null;
+    ctx.setRecurrence({ freq: "monthly", interval: 1 });
+    ctx.recDay = d;
+    return "recurrence";
+  });
+  ctx.each(RE_REC_EVERY_UNIT, (m) => {
+    if (ctx.recurrence) return null;
+    const interval = m[1] ? 2 : m[2] ? num(m[2]) : 1;
+    if (!(interval >= 1)) return null;
+    const unit = (m[3] ?? "").toLowerCase().replace(/\s+/g, " ");
+    const byWeekday = m[4] ? weekdayList(m[4]) : void 0;
+    let r;
+    if (/^(weekdays?|workdays?|business days?)$/.test(unit)) r = { freq: "weekdays", interval: 1, byWeekday: [1, 2, 3, 4, 5] };
+    else if (/^weekends?$/.test(unit)) r = { freq: "weekly", interval, byWeekday: [0, 6] };
+    else if (unit.startsWith("day")) r = { freq: "daily", interval };
+    else if (unit.startsWith("week")) r = { freq: "weekly", interval, ...byWeekday ? { byWeekday } : {} };
+    else if (unit === "fortnight") r = { freq: "weekly", interval: 2 * interval, ...byWeekday ? { byWeekday } : {} };
+    else if (unit.startsWith("month")) r = { freq: "monthly", interval };
+    else r = { freq: "yearly", interval };
+    ctx.setRecurrence(r);
+    return "recurrence";
+  });
+  ctx.each(RE_REC_EVERY_WD, (m) => {
+    if (ctx.recurrence) return null;
+    const days = weekdayList(m[2] ?? "");
+    if (!days.length) return null;
+    ctx.setRecurrence({ freq: "weekly", interval: m[1] ? 2 : 1, byWeekday: days });
+    return "recurrence";
+  });
+  ctx.each(RE_REC_WEEKDAYS, () => ctx.setRecurrence({ freq: "weekdays", interval: 1, byWeekday: [1, 2, 3, 4, 5] }) ? "recurrence" : null);
+  ctx.each(RE_REC_WEEKENDS, () => ctx.setRecurrence({ freq: "weekly", interval: 1, byWeekday: [0, 6] }) ? "recurrence" : null);
+  ctx.each(RE_REC_PLURAL, (m) => {
+    const days = weekdayList(m[1] ?? "");
+    return days.length && ctx.setRecurrence({ freq: "weekly", interval: 1, byWeekday: days }) ? "recurrence" : null;
+  });
+  ctx.each(RE_REC_ADVERB, (m) => {
+    const w = (m[1] ?? "").toLowerCase().replace("-", "");
+    const byWeekday = m[2] ? weekdayList(m[2]) : void 0;
+    const wk = (interval) => ({ freq: "weekly", interval, ...byWeekday ? { byWeekday } : {} });
+    const table = {
+      daily: { freq: "daily", interval: 1 },
+      everyday: { freq: "daily", interval: 1 },
+      nightly: { freq: "daily", interval: 1 },
+      weekly: wk(1),
+      biweekly: wk(2),
+      fortnightly: wk(2),
+      monthly: { freq: "monthly", interval: 1 },
+      bimonthly: { freq: "monthly", interval: 2 },
+      quarterly: { freq: "monthly", interval: 3 },
+      yearly: { freq: "yearly", interval: 1 },
+      annually: { freq: "yearly", interval: 1 }
+    };
+    const r = table[w];
+    return r && ctx.setRecurrence(r) ? "recurrence" : null;
+  });
+}
+function trimName(name) {
+  return name.replace(/[.\-]+$/u, "");
+}
+function addUnique(list, v) {
+  if (v && !list.some((x) => x.toLowerCase() === v.toLowerCase())) list.push(v);
+}
+function recognizePeople(ctx) {
+  ctx.each(RE_ASSIGN, (m, start) => {
+    const name = trimName(m[1] ?? "");
+    if (!name) return null;
+    addUnique(ctx.assignees, name);
+    return ["assignee", start, start + m[0].length - ((m[1] ?? "").length - name.length)];
+  });
+  ctx.each(RE_AT_NAME, (m, start, end) => {
+    const rawName = m[1] ?? "";
+    const name = trimName(rawName);
+    if (!name || /^\d{1,2}(?::\d{2})?(?:am|pm)?$/i.test(name) || /^\d+$/.test(name)) return null;
+    addUnique(ctx.assignees, name);
+    const tokEnd = end - (rawName.length - name.length);
+    const hasFor = /^for\s/i.test(m[0]);
+    if (!hasFor && KEEP_NAME_AFTER.test(ctx.mask.slice(0, start))) ctx.keep.set(start, name);
+    return ["assignee", start, tokEnd];
+  });
+}
+function recognizeProjectsAndTags(ctx) {
+  ctx.each(RE_HASH, (m, start, end) => {
+    const rawName = m[1] ?? "";
+    const name = rawName.replace(/[.\-/]+$/u, "");
+    if (!name || /^\d+$/.test(name)) return null;
+    const tokEnd = end - (rawName.length - name.length);
+    if (ctx.project === null) {
+      ctx.project = name;
+      return ["project", start, tokEnd];
+    }
+    if (ctx.project.toLowerCase() !== name.toLowerCase()) addUnique(ctx.tags, name);
+    return ["tag", start, tokEnd];
+  });
+  ctx.each(RE_PLUS, (m, start, end) => {
+    const rawName = m[1] ?? "";
+    const name = rawName.replace(/[\-]+$/u, "");
+    if (!name) return null;
+    addUnique(ctx.tags, name);
+    return ["tag", start, end - (rawName.length - name.length)];
+  });
+}
+function recognizePriority(ctx) {
+  ctx.each(RE_PRI_BANG, (m) => {
+    ctx.setPriority(PRIORITY_WORD[(m[1] ?? "").toLowerCase()]);
+    return "priority";
+  });
+  ctx.each(RE_PRI_EXCL, (m) => {
+    ctx.setPriority((m[1] ?? "").length >= 3 ? "urgent" : "high");
+    return "priority";
+  });
+  ctx.each(RE_PRI_P, (m) => {
+    ctx.setPriority(PRIORITY_WORD[`p${m[1]}`]);
+    return "priority";
+  });
+  ctx.each(RE_PRI_PHRASE, (m) => {
+    ctx.setPriority(PRIORITY_WORD[(m[1] ?? m[2] ?? "").toLowerCase()]);
+    return "priority";
+  });
+}
+function recognizeDates(ctx) {
+  const { today: today2 } = ctx;
+  ctx.each(RE_ISO, (m) => {
+    const y = num(m[1]), mo = num(m[2]), d = num(m[3]);
+    if (ctx.haveDate || !isValidCD(y, mo, d)) return null;
+    if (m[4] !== void 0) {
+      const h = num(m[4]), mi = num(m[5]);
+      if (h > 23 || mi > 59) return null;
+      if (m[6]) {
+        const z2 = m[6].toUpperCase();
+        let off = 0;
+        if (z2 !== "Z") {
+          const zm = /^([+-])(\d{2}):?(\d{2})$/.exec(z2);
+          if (!zm) return null;
+          off = (zm[1] === "-" ? -1 : 1) * (num(zm[2]) * 60 + num(zm[3]));
+        }
+        ctx.instant = Date.UTC(y, mo - 1, d, h, mi) - off * 6e4;
+        return "date";
+      }
+      ctx.date = { y, m: mo, d };
+      ctx.time = { h, mi, explicit: true, guessedPm: false };
+      return "date";
+    }
+    return ctx.setDate({ y, m: mo, d }) ? "date" : null;
+  });
+  ctx.each(RE_NUMERIC_Y, (m) => ctx.setDate(numericDate(ctx, num(m[1]), num(m[3]), fullYear(m[4] ?? ""))) ? "date" : null);
+  ctx.each(
+    RE_MONTH_DAY,
+    (m) => ctx.setDate(monthDay(today2, monthNum(m[1] ?? ""), num(m[2]), m[3] ? num(m[3]) : void 0)) ? "date" : null
+  );
+  ctx.each(
+    RE_DAY_MONTH,
+    (m) => ctx.setDate(monthDay(today2, monthNum(m[2] ?? ""), num(m[1]), m[3] ? num(m[3]) : void 0)) ? "date" : null
+  );
+  ctx.each(RE_DAY_AFTER_TOMORROW, () => ctx.setDate(addDays2(today2, 2)) ? "date" : null);
+  ctx.each(RE_TODAY_TOMORROW, (m) => {
+    const w = (m[1] ?? "").toLowerCase();
+    return ctx.setDate(w === "today" || w === "tdy" ? today2 : addDays2(today2, 1)) ? "date" : null;
+  });
+  ctx.each(RE_TONIGHT, (m) => {
+    if (!ctx.setDate(today2)) return null;
+    const part = DAYPART[(m[1] ?? "night").toLowerCase()] ?? { h: 20, pm: true };
+    ctx.softTime = { h: part.h, mi: 0, explicit: true, guessedPm: false };
+    if (part.pm) ctx.pmHint = true;
+    else ctx.amHint = true;
+    return "date";
+  });
+  ctx.each(RE_IN_N, (m) => {
+    if (ctx.haveDate) return null;
+    const n = /^half/i.test(m[1] ?? "") ? 0.5 : num(m[1]);
+    if (!(n > 0)) return null;
+    const unit = unitOf(m[2] ?? "");
+    if (unit === "min" || unit === "h" || !Number.isInteger(n)) {
+      if (ctx.haveTime) return null;
+      ctx.instant = ctx.now + Math.round(n * UNIT_MINUTES[unit] * 6e4);
+      return "date";
+    }
+    const cd = unit === "d" ? addDays2(today2, n) : unit === "w" ? addDays2(today2, 7 * n) : addMonths(today2, unit === "mo" ? n : 12 * n);
+    return ctx.setDate(cd) ? "date" : null;
+  });
+  ctx.each(RE_N_FROM_NOW, (m) => {
+    const n = num(m[1]);
+    if (!(n > 0)) return null;
+    const u = (m[2] ?? "").toLowerCase();
+    const cd = u.startsWith("day") ? addDays2(today2, n) : u.startsWith("week") ? addDays2(today2, 7 * n) : addMonths(today2, n);
+    return ctx.setDate(cd) ? "date" : null;
+  });
+  ctx.each(RE_WD_FULL, (m) => {
+    const wd = weekdayNum(m[2] ?? "");
+    const mod = m[3] ? m[3].toLowerCase() === "next" ? "next" : "this" : m[1];
+    return ctx.setDate(weekdayDate(today2, wd, mod)) ? "date" : null;
+  });
+  ctx.each(RE_WD_ABBR_PREP, (m) => ctx.setDate(weekdayDate(today2, weekdayNum(m[3] ?? ""), m[1] ?? m[2])) ? "date" : null);
+  ctx.each(RE_WD_TIME_PAIR, (m) => {
+    const t = parseTimeOfDay(m[2] ?? "");
+    if (!t || ctx.haveDate || ctx.haveTime) return null;
+    ctx.setDate(weekdayDate(today2, weekdayNum(m[1] ?? ""), void 0));
+    ctx.setTime(t);
+    return "date";
+  });
+  ctx.each(RE_PERIOD, (m) => {
+    let cd;
+    if (m[2] || m[3]) {
+      const what = m[3] ? { eow: "week", eom: "month", eoy: "year" }[(m[3] ?? "").toLowerCase()] : (m[2] ?? "").toLowerCase();
+      const next = (m[1] ?? "").toLowerCase() === "next";
+      if (what === "week") cd = next ? addDays2(addDays2(today2, daysToNextMonday(today2)), 4) : endOfWeek(today2);
+      else if (what === "month") {
+        const base = next ? addMonths({ ...today2, d: 1 }, 1) : today2;
+        cd = { y: base.y, m: base.m, d: daysInMonth2(base.y, base.m) };
+      } else cd = { y: today2.y + (next ? 1 : 0), m: 12, d: 31 };
+    } else {
+      const mod = (m[4] ?? "").toLowerCase();
+      const what = (m[5] ?? "").toLowerCase();
+      if (what === "week") cd = mod === "next" ? addDays2(today2, daysToNextMonday(today2)) : endOfWeek(today2);
+      else if (what === "month") cd = mod === "next" ? addMonths({ ...today2, d: 1 }, 1) : { ...today2, d: daysInMonth2(today2.y, today2.m) };
+      else cd = mod === "next" ? { y: today2.y + 1, m: 1, d: 1 } : { y: today2.y, m: 12, d: 31 };
+    }
+    return ctx.setDate(cd) ? "date" : null;
+  });
+  ctx.each(RE_WEEKEND, (m) => {
+    if (/^weekend$/i.test(m[0])) return null;
+    const sat = thisWeekendSaturday(today2);
+    const cd = (m[1] ?? "").toLowerCase() === "next" ? addDays2(sat, 7) : cmpCD(sat, today2) < 0 ? today2 : sat;
+    return ctx.setDate(cd) ? "date" : null;
+  });
+  ctx.each(RE_ORDINAL_PREP, (m) => ctx.setDate(nextDayOfMonth(today2, num(m[1]))) ? "date" : null);
+  ctx.each(RE_NUMERIC_PREP, (m) => ctx.setDate(numericDate(ctx, num(m[1]), num(m[2]))) ? "date" : null);
+}
+function recognizeTimes(ctx, defaultHour) {
+  ctx.each(RE_EOD, () => ctx.setTime({ h: defaultHour, mi: 0, explicit: true, guessedPm: false, eod: true }) ? "date" : null);
+  ctx.each(RE_TIME_PREP, (m) => ctx.setTime(parseTimeOfDay(m[1] ?? "")) ? "date" : null);
+  ctx.each(RE_HOUR_PREP, (m) => ctx.setTime(parseTimeOfDay(m[1] ?? "")) ? "date" : null);
+  ctx.each(RE_DAYPART_PREP, (m) => applyDaypart(ctx, m[1] ?? "") ? "date" : null);
+}
+function applyDaypart(ctx, word) {
+  const part = DAYPART[word.toLowerCase()];
+  if (!part) return false;
+  if (ctx.instant !== null) return false;
+  if (ctx.time) {
+    if (part.pm) ctx.pmHint = true;
+    else ctx.amHint = true;
+    return true;
+  }
+  ctx.time = { h: part.h, mi: 0, explicit: true, guessedPm: false };
+  return true;
+}
+function bareModifierOk(ctx, start, end) {
+  if (ctx.trailing(end)) return true;
+  if (!ctx.leading(start)) return false;
+  const rest = ctx.mask.slice(end).replace(/^[\s\u0000]+/u, "");
+  return /^[:,\-–—!|]/u.test(rest) || rest === "";
+}
+function recognizeAmbiguous(ctx) {
+  for (let pass = 0; pass < 8; pass++) {
+    let changed = false;
+    changed = ctx.each(
+      RE_A_WD,
+      (m, s2, e) => !ctx.haveDate && (ctx.trailing(e) || ctx.adjacent(s2, e)) && ctx.setDate(weekdayDate(ctx.today, weekdayNum(m[1] ?? ""), void 0)) ? "date" : null
+    ) || changed;
+    changed = ctx.each(
+      RE_A_ORDINAL,
+      (m, s2, e) => !ctx.haveDate && ctx.anchored(s2, e) && ctx.setDate(nextDayOfMonth(ctx.today, num(m[1]))) ? "date" : null
+    ) || changed;
+    changed = ctx.each(
+      RE_A_NUMERIC,
+      (m, s2, e) => !ctx.haveDate && ctx.anchored(s2, e) && ctx.setDate(numericDate(ctx, num(m[1]), num(m[2]))) ? "date" : null
+    ) || changed;
+    changed = ctx.each(RE_A_WEEKEND, (_m, s2, e) => {
+      if (ctx.haveDate || !ctx.anchored(s2, e)) return null;
+      const sat = thisWeekendSaturday(ctx.today);
+      return ctx.setDate(cmpCD(sat, ctx.today) < 0 ? ctx.today : sat) ? "date" : null;
+    }) || changed;
+    changed = ctx.each(RE_A_TIME, (m, s2, e) => {
+      if (ctx.haveTime) return null;
+      const isWord = /^[a-z]/i.test(m[1] ?? "");
+      const ok = isWord ? ctx.trailing(e) || ctx.adjacent(s2, e) : ctx.anchored(s2, e);
+      return ok && ctx.setTime(parseTimeOfDay(m[1] ?? "")) ? "date" : null;
+    }) || changed;
+    changed = ctx.each(RE_A_DAYPART, (m, s2, e) => {
+      const word = (m[1] ?? "").toLowerCase();
+      const ok = ctx.adjacent(s2, e) || word !== "night" && !ctx.haveTime && ctx.trailing(e);
+      return ok && applyDaypart(ctx, word) ? "date" : null;
+    }) || changed;
+    changed = ctx.each(RE_PRI_BARE, (m, s2, e) => {
+      if (!bareModifierOk(ctx, s2, e)) return null;
+      const w = (m[1] ?? "").toLowerCase();
+      ctx.setPriority(w === "important" ? "high" : "urgent");
+      return "priority";
+    }) || changed;
+    if (!changed) break;
+  }
+}
+function chronoFallback(ctx) {
+  if (ctx.haveDate || ctx.haveTime) return;
+  const text = ctx.mask.replace(/\u0000/g, " ");
+  if (!/[a-z]{3}/i.test(text)) return;
+  const w = wallClock(ctx.now, ctx.tz);
+  const ref2 = new Date(w.y, w.m - 1, w.d, w.h, w.mi);
+  const parser = ctx.monthFirst ? en_exports.casual : en_exports.GB;
+  let results;
+  try {
+    results = parser.parse(text, ref2, { forwardDate: true });
+  } catch {
+    return;
+  }
+  for (const r of results) {
+    const st = r.start;
+    if (!st.isCertain("day") || !st.isCertain("month")) continue;
+    if (!/[a-z]{2}/i.test(r.text)) continue;
+    let start = r.index;
+    const end = r.index + r.text.length;
+    if (!ctx.isFree(start, end)) continue;
+    const prep = /(?:^|\s)((?:due\s+)?(?:by|on|before|until|due)\s+)$/i.exec(ctx.mask.slice(0, start));
+    if (!prep && !ctx.leading(start) && !ctx.trailing(end)) continue;
+    if (prep?.[1]) start -= prep[1].length;
+    const y = st.get("year") ?? ctx.today.y;
+    const m = st.get("month") ?? 0;
+    const d = st.get("day") ?? 0;
+    let cd = isValidCD(y, m, d) ? { y, m, d } : null;
+    if (cd && !st.isCertain("year") && cmpCD(cd, ctx.today) < 0) cd = monthDay(ctx.today, m, d);
+    if (!cd) continue;
+    ctx.date = cd;
+    if (st.isCertain("hour")) ctx.time = { h: st.get("hour") ?? 0, mi: st.get("minute") ?? 0, explicit: true, guessedPm: false };
+    ctx.claim(start, end, "date");
+    return;
+  }
+}
+function recurrencePredicate(ctx) {
+  const r = ctx.recurrence;
+  if (!r) return () => true;
+  if (r.freq === "weekdays") return (cd) => dow(cd) >= 1 && dow(cd) <= 5;
+  if (r.freq === "weekly" && r.byWeekday?.length) {
+    const set2 = new Set(r.byWeekday);
+    return (cd) => set2.has(dow(cd));
+  }
+  if (r.freq === "monthly" && ctx.recDay !== null) {
+    const day = ctx.recDay;
+    return (cd) => cd.d === day;
+  }
+  return () => true;
+}
+function resolveDue(ctx, defaultHour) {
+  let time4 = ctx.time;
+  if (time4 && !time4.eod) {
+    if (ctx.amHint && time4.guessedPm) time4 = { ...time4, h: time4.h - 12 };
+    else if (ctx.pmHint && !time4.explicit && time4.h < 12) time4 = { ...time4, h: time4.h + 12 };
+  }
+  const dflt = { h: defaultHour, mi: 0 };
+  if (ctx.instant !== null) return { dueAt: ctx.instant, allDay: false };
+  if (ctx.date) {
+    if (time4) return { dueAt: ctx.at(ctx.date, time4.eod ? dflt : time4), allDay: false };
+    if (ctx.softTime) {
+      let t = ctx.at(ctx.date, ctx.softTime);
+      if (t <= ctx.now && cmpCD(ctx.date, ctx.today) === 0) t = Math.max(t, ctx.at(ctx.date, { h: 23, mi: 59 }));
+      return { dueAt: t, allDay: false };
+    }
+    return { dueAt: ctx.at(ctx.date, dflt), allDay: true };
+  }
+  const pred = recurrencePredicate(ctx);
+  if (time4) {
+    if (time4.eod && !ctx.recurrence) {
+      const t2 = ctx.at(ctx.today, dflt);
+      return { dueAt: t2 > ctx.now ? t2 : ctx.at(ctx.today, { h: 23, mi: 59 }), allDay: false };
+    }
+    const t = time4.eod ? dflt : time4;
+    return { dueAt: ctx.at(ctx.firstOn(pred, t), t), allDay: false };
+  }
+  if (ctx.recurrence) return { dueAt: ctx.at(ctx.firstOn(pred, null), dflt), allDay: true };
+  return { dueAt: null, allDay: false };
+}
+var SENT = "";
+var DANGLING = new RegExp(
+  S`(^|[\s(])(?:by|at|on|due|before|until|till|for|to|from|every|each|and|&|@)\s*\u0001(?=[\s\u0001]*(?:$|[,.;:!?)\]]))`,
+  "giu"
+);
+function buildTitle(ctx) {
+  const toks = [...ctx.tokens].sort((a, b) => a.start - b.start);
+  let out = "";
+  let i = 0;
+  for (const t2 of toks) {
+    out += ctx.raw.slice(i, t2.start);
+    const kept = ctx.keep.get(t2.start);
+    out += kept !== void 0 ? kept : SENT;
+    i = t2.end;
+  }
+  out += ctx.raw.slice(i);
+  for (let guard = 0; guard < 10; guard++) {
+    const next = out.replace(DANGLING, `$1${SENT}`);
+    if (next === out) break;
+    out = next;
+  }
+  let t = out.replace(/\u0001/g, " ").replace(/\s+/g, " ").replace(/\s+([,.;:!?)\]])/g, "$1").replace(/([(\[])\s+/g, "$1").replace(/\(\s*\)|\[\s*\]/g, "").replace(/([,;:])(?:\s*[,;:])+/g, "$1").replace(/\s+/g, " ").trim().replace(/^[\s,;:.\-–—&|/]+/u, "").replace(/[\s,;:\-–—&|/]+$/u, "").trim();
+  if (!t) return "";
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+function parseImpl(raw, opts) {
+  const tz = resolveTimeZone(opts?.timezone);
+  const now2 = typeof opts?.now === "number" && Number.isFinite(opts.now) ? opts.now : Date.now();
+  const dh = opts?.defaultHour;
+  const defaultHour = typeof dh === "number" && Number.isInteger(dh) && dh >= 0 && dh <= 23 ? dh : 18;
+  const w = wallClock(now2, tz);
+  const ctx = new Ctx(raw, now2, tz, { y: w.y, m: w.m, d: w.d }, prefersMonthFirst(tz));
+  recognizeReminders(ctx);
+  recognizeRecurrence(ctx);
+  recognizePeople(ctx);
+  recognizeProjectsAndTags(ctx);
+  recognizePriority(ctx);
+  recognizeDates(ctx);
+  recognizeTimes(ctx, defaultHour);
+  recognizeAmbiguous(ctx);
+  chronoFallback(ctx);
+  let { dueAt, allDay } = resolveDue(ctx, defaultHour);
+  const offsets2 = [...ctx.reminderOffsets];
+  for (const r of ctx.reminderAt) {
+    if (dueAt === null) {
+      dueAt = ctx.at(ctx.firstOn(recurrencePredicate(ctx), r.time), r.time);
+      allDay = false;
+      offsets2.push(0);
+      continue;
+    }
+    const due = wallClock(dueAt, tz);
+    const dueCd = { y: due.y, m: due.m, d: due.d };
+    let at = ctx.at(addDays2(dueCd, -(r.daysBefore ?? 0)), r.time);
+    if (r.daysBefore === null && at > dueAt) at = ctx.at(addDays2(dueCd, -1), r.time);
+    const off = Math.round((dueAt - at) / 6e4);
+    if (off >= 0) offsets2.push(off);
+  }
+  const reminderOffsets = offsets2.length ? [...new Set(offsets2)].sort((a, b) => a - b) : null;
+  let title = buildTitle(ctx);
+  if (!title) title = raw.trim().replace(/\s+/g, " ");
+  return {
+    title,
+    dueAt,
+    dueAllDay: dueAt !== null && allDay,
+    priority: ctx.priority,
+    assigneeHints: ctx.assignees,
+    projectHint: ctx.project,
+    tags: ctx.tags,
+    recurrence: ctx.recurrence,
+    reminderOffsets,
+    tokens: [...ctx.tokens].sort((a, b) => a.start - b.start)
+  };
+}
+function parseQuickAdd(text, opts) {
+  const raw = typeof text === "string" ? text : text == null ? "" : String(text);
+  try {
+    return parseImpl(raw, opts);
+  } catch {
+    return emptyResult(raw);
+  }
+}
+
+// packages/core/src/perms.ts
+var forbidden = (msg = "You do not have permission to do that") => {
+  throw new AppError("forbidden", msg);
+};
+var notFound = (what = "Not found") => {
+  throw new AppError("not_found", what);
+};
+var isSystem = (a) => a.via === "system" && a.memberId === SYSTEM_MEMBER_ID;
+var rank = (r) => ROLE_RANK[r] ?? 0;
+var atLeast = (a, r) => isSystem(a) || a.kind === "human" && rank(a.role) >= rank(r);
+var isManager = (a) => atLeast(a, "manager");
+var isAdmin = (a) => atLeast(a, "admin");
+function systemActor(orgId) {
+  return { orgId, memberId: SYSTEM_MEMBER_ID, role: "owner", kind: "human", via: "system" };
+}
+function hasWriteScope2(a) {
+  return a.via !== "api_key" || (a.scopes ?? []).includes("write");
+}
+function requireWrite(a) {
+  if (!hasWriteScope2(a)) forbidden("This API key is read-only (missing 'write' scope)");
+  if (a.role === "guest" && !isSystem(a)) forbidden("Guests have read-only access");
+}
+function requireRole(a, r, msg) {
+  if (!atLeast(a, r)) forbidden(msg ?? `Requires ${r} role or higher`);
+}
+function visibility(a) {
+  if (isManager(a)) return { mode: "all" };
+  if (a.kind === "agent") return { mode: "agent", memberId: a.memberId };
+  if (a.role === "guest") return { mode: "guest", memberId: a.memberId };
+  return { mode: "member", memberId: a.memberId };
+}
+function canEditTask(a, t) {
+  if (!hasWriteScope2(a) || a.role === "guest") return false;
+  if (isManager(a)) return true;
+  const involved = t.creatorId === a.memberId || t.assigneeIds.includes(a.memberId);
+  if (a.kind === "agent") return involved;
+  return true;
+}
+function canDeleteTask(a, t, projectLeadId) {
+  if (!hasWriteScope2(a) || a.role === "guest") return false;
+  if (isManager(a)) return true;
+  return t.creatorId === a.memberId || projectLeadId !== null && projectLeadId === a.memberId;
+}
+
+// packages/core/src/validate.ts
+function bad(message, details) {
+  throw new AppError("bad_request", message, details);
+}
+function isObj3(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+function str3(v, field, opts = {}) {
+  if (typeof v !== "string") bad(`${field} must be a string`);
+  const s2 = opts.trim === false ? v : v.trim();
+  const min = opts.min ?? 1;
+  const max = opts.max ?? 1e3;
+  if (s2.length < min) bad(min <= 1 ? `${field} is required` : `${field} must be at least ${min} characters`);
+  if (s2.length > max) bad(`${field} must be at most ${max} characters`);
+  return s2;
+}
+function optStr(v, field, max = 1e3) {
+  if (v === null || v === void 0) return null;
+  if (typeof v !== "string") bad(`${field} must be a string`);
+  const s2 = v.trim();
+  if (s2.length > max) bad(`${field} must be at most ${max} characters`);
+  return s2 || null;
+}
+function bool2(v, field) {
+  if (typeof v !== "boolean") bad(`${field} must be a boolean`);
+  return v;
+}
+function int3(v, field, min, max) {
+  if (typeof v !== "number" || !Number.isInteger(v)) bad(`${field} must be an integer`);
+  if (v < min || v > max) bad(`${field} must be between ${min} and ${max}`);
+  return v;
+}
+function num2(v, field, min = -Infinity, max = Infinity) {
+  if (typeof v !== "number" || !Number.isFinite(v)) bad(`${field} must be a number`);
+  if (v < min || v > max) bad(`${field} is out of range`);
+  return v;
+}
+function optTime(v, field) {
+  if (v === null || v === void 0) return null;
+  return time3(v, field);
+}
+function time3(v, field) {
+  if (typeof v !== "number" || !Number.isFinite(v)) bad(`${field} must be a timestamp (epoch ms)`);
+  if (v < 9466848e5 || v > 72581184e5) bad(`${field} is out of range`);
+  return Math.round(v);
+}
+function oneOf(v, field, allowed) {
+  if (typeof v !== "string" || !allowed.includes(v)) bad(`${field} must be one of: ${allowed.join(", ")}`);
+  return v;
+}
+function ref(v, field) {
+  if (typeof v !== "string" || !v || v.length > 64 || !/^[A-Za-z0-9_-]+$/.test(v)) bad(`${field} is not a valid id`);
+  return v;
+}
+function refs(v, field, max = 50) {
+  if (!Array.isArray(v)) bad(`${field} must be an array`);
+  if (v.length > max) bad(`${field} has too many entries (max ${max})`);
+  return [...new Set(v.map((x, i) => ref(x, `${field}[${i}]`)))];
+}
+function timezone(v, field = "timezone") {
+  if (!isValidTimezone(v)) bad(`${field} must be a valid IANA time zone`);
+  return v;
+}
+var EMAIL = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
+function email3(v, field = "email") {
+  const s2 = str3(v, field, { max: 254 }).toLowerCase();
+  if (!EMAIL.test(s2)) bad(`${field} is not a valid email address`);
+  return s2;
+}
+function phone(v, field = "phone") {
+  const s2 = optStr(v, field, 32);
+  if (s2 === null) return null;
+  if (!/^(\+|00)[0-9 ().-]{6,28}$/.test(s2)) bad(`${field} must be an international number with country code, e.g. +919876543210`);
+  const digits = s2.replace(/\D/g, "").replace(/^00/, "");
+  if (digits.length < 8 || digits.length > 15 || digits.startsWith("0")) bad(`${field} must be an international number with country code, e.g. +919876543210`);
+  return `+${digits}`;
+}
+function color(v, field = "color") {
+  if (typeof v !== "string" || !/^#[0-9a-fA-F]{6}$/.test(v)) bad(`${field} must be a hex color like #6366f1`);
+  return v.toLowerCase();
+}
+function url2(v, field, opts = {}) {
+  const s2 = str3(v, field, { max: 2048 });
+  let u;
+  try {
+    u = new URL(s2);
+  } catch {
+    bad(`${field} must be a valid URL`);
+  }
+  const ok = opts.httpsOnly ? ["https:"] : ["https:", "http:"];
+  if (!ok.includes(u.protocol)) bad(`${field} must use ${ok.join(" or ")}`);
+  return u.toString();
+}
+function password(v, field = "password") {
+  if (typeof v !== "string") bad(`${field} must be a string`);
+  if (v.length < 8) bad(`${field} must be at least 8 characters`);
+  if (v.length > 256) bad(`${field} must be at most 256 characters`);
+  return v;
+}
+function tags2(v) {
+  if (!Array.isArray(v)) bad("tags must be an array");
+  if (v.length > 30) bad("too many tags (max 30)");
+  const out = [];
+  for (const t of v) {
+    const s2 = str3(t, "tag", { max: 40 }).replace(/^#/, "");
+    if (s2 && !out.some((o) => o.toLowerCase() === s2.toLowerCase())) out.push(s2);
+  }
+  return out;
+}
+function offsets(v, field = "reminderOffsets") {
+  if (!Array.isArray(v)) bad(`${field} must be an array of minutes`);
+  if (v.length > 10) bad(`${field}: at most 10 reminders`);
+  const out = [...new Set(v.map((x) => int3(x, field, 0, 60 * 24 * 60)))];
+  return out.sort((a, b) => b - a);
+}
+
+// packages/core/src/recurrence.ts
+function validateRecurrence(v) {
+  if (v === null || v === void 0) return null;
+  if (!isObj3(v)) bad("recurrence must be an object");
+  const freq = oneOf(v.freq, "recurrence.freq", ["daily", "weekdays", "weekly", "monthly", "yearly"]);
+  const interval = v.interval === void 0 ? 1 : int3(v.interval, "recurrence.interval", 1, 365);
+  const out = { freq, interval };
+  if (v.byWeekday !== void 0 && v.byWeekday !== null) {
+    if (!Array.isArray(v.byWeekday) || v.byWeekday.length > 7) bad("recurrence.byWeekday must be an array of 0-6");
+    const days = [...new Set(v.byWeekday.map((d) => int3(d, "recurrence.byWeekday", 0, 6)))].sort();
+    if (days.length) out.byWeekday = days;
+  }
+  if (v.until !== void 0) out.until = optTime(v.until, "recurrence.until");
+  return out;
+}
+function step(t, r, tz) {
+  const n = Math.max(1, r.interval || 1);
+  switch (r.freq) {
+    case "daily":
+      return addLocalDays(t, n, tz);
+    case "weekdays": {
+      let c = t;
+      for (let i = 0; i < 7; i++) {
+        c = addLocalDays(c, 1, tz);
+        const wd = localParts(c, tz).weekday;
+        if (wd >= 1 && wd <= 5) return c;
+      }
+      return c;
+    }
+    case "weekly": {
+      const days = r.byWeekday?.length ? r.byWeekday : null;
+      if (!days) return addLocalDays(t, 7 * n, tz);
+      const cur = localParts(t, tz).weekday;
+      for (let i = 1; i <= 7; i++) {
+        const c = addLocalDays(t, i, tz);
+        const wd = localParts(c, tz).weekday;
+        if (days.includes(wd)) return wd <= cur ? addLocalDays(c, 7 * (n - 1), tz) : c;
+      }
+      return addLocalDays(t, 7 * n, tz);
+    }
+    case "monthly":
+      return addLocalMonths(t, n, tz);
+    case "yearly":
+      return addLocalMonths(t, 12 * n, tz);
+  }
+}
+function nextOccurrence(base, r, tz, now2) {
+  let next = step(base, r, tz);
+  for (let i = 0; i < 5e3 && next <= now2; i++) next = step(next, r, tz);
+  if (r.until && next > r.until) return null;
+  return next;
+}
+
+// packages/core/src/services/tasks.ts
+var STATUSES = ["todo", "in_progress", "blocked", "review", "done", "cancelled"];
+var PRIORITIES2 = ["urgent", "high", "medium", "low", "none"];
+var CLOSED = /* @__PURE__ */ new Set(["done", "cancelled"]);
+var isOpen = (t) => !CLOSED.has(t.status);
+var STATUS_LABEL = { todo: "To do", in_progress: "In progress", blocked: "Blocked", review: "Review", done: "Done", cancelled: "Cancelled" };
+var normName = (s2) => s2.toLowerCase().replace(/[\s._-]+/g, "");
+function resolveMemberHint(hint, members, selfId) {
+  const h = hint.replace(/^@/, "").trim().toLowerCase();
+  if (!h) return null;
+  if ((h === "me" || h === "myself") && selfId) return members.find((m) => m.id === selfId) ?? null;
+  const nh = normName(h);
+  const keys = (m) => {
+    const email4 = (m.email ?? "").toLowerCase();
+    return [m.name.toLowerCase(), normName(m.name), firstName(m.name).toLowerCase(), email4, email4.split("@")[0] ?? ""].filter(Boolean);
+  };
+  const exact = members.filter((m) => keys(m).some((k) => k === h || k === nh));
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) return null;
+  const prefix = members.filter((m) => keys(m).some((k) => k.startsWith(h) || k.startsWith(nh)));
+  return prefix.length === 1 ? prefix[0] : null;
+}
+function resolveProjectHint(hint, projects) {
+  const h = normName(hint.replace(/^#/, ""));
+  if (!h) return null;
+  const exact = projects.filter((p) => normName(p.name) === h);
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) return null;
+  const prefix = projects.filter((p) => normName(p.name).startsWith(h));
+  if (prefix.length === 1) return prefix[0];
+  const sub = projects.filter((p) => normName(p.name).includes(h));
+  return sub.length === 1 ? sub[0] : null;
+}
+function extractMentions(text) {
+  const out = /* @__PURE__ */ new Set();
+  for (const m of text.matchAll(/(^|[^\w@])@([A-Za-z0-9][\w.-]{0,63})/g)) out.add(m[2].replace(/[.-]+$/, ""));
+  return [...out];
+}
+var NUDGE_MIN_HOURS = 4;
+var NUDGE_MEMBER_DAILY_CAP = 20;
+var NUDGE_ORG_DAILY_CAP = 200;
+var NUDGE_TITLE_MAX = 120;
+var H = 36e5;
+var nudgeIntervalMs = (w) => Math.max(NUDGE_MIN_HOURS, w.nudgeEveryHours ?? NUDGE_MIN_HOURS) * H;
+var URLISH = /^(?:[a-z][a-z0-9+.-]*:\/\/|www\.)|^[^\s@/]+\.[a-z]{2,24}(?:[/:?#]|$)/i;
+function sanitizeNudgeText(s2, max) {
+  const words = s2.replace(/[\u0000-\u001f\u007f]/g, " ").split(/\s+/).filter((w) => w && !URLISH.test(w.replace(/^[("'<[]+|[)"'>\].,;:!?]+$/g, "")));
+  const out = words.join(" ").trim();
+  return out.length > max ? `${out.slice(0, max - 1).trimEnd()}\u2026` : out;
+}
+function nudgeMessage(name, org, title) {
+  const who = sanitizeNudgeText(firstName(name), 40) || "there";
+  return `Hi ${who}, a friendly follow-up from ${org} about: "${sanitizeNudgeText(title, NUDGE_TITLE_MAX) || "your task"}" \u2014 reply here if you have an update.`;
+}
+function createTaskService(ctx) {
+  const { db } = ctx;
+  const now2 = () => ctx.clock();
+  function views(orgId, tasks, tz) {
+    if (!tasks.length) return [];
+    const org = db.orgs.get(orgId);
+    const staleMs = (org?.agentStaleAfterMin ?? 240) * 6e4;
+    const agents = new Set(db.members.list(orgId, { includeInactive: true, kind: "agent" }).map((m) => m.id));
+    const counts = db.tasks.commentCounts(orgId, tasks.map((t) => t.id));
+    const t0 = now2();
+    const dayStart = startOfLocalDay(t0, tz);
+    const dayEnd = startOfLocalDay(t0, tz, 1);
+    return tasks.map((t) => {
+      const open = isOpen(t);
+      return {
+        ...t,
+        isOverdue: open && t.dueAt !== null && t.dueAt < t0,
+        isDueToday: t.dueAt !== null && t.dueAt >= dayStart && t.dueAt < dayEnd,
+        isStale: open && t.assigneeIds.some((a) => agents.has(a)) && t0 - t.lastActivityAt > staleMs,
+        commentCount: counts.get(t.id) ?? 0
+      };
+    });
+  }
+  const view = (actor, t) => views(actor.orgId, [t], actorTz(ctx, actor))[0];
+  const orgView = (t) => views(t.orgId, [t], safeTz(db.orgs.get(t.orgId)?.timezone))[0];
+  function audience(t) {
+    const members = db.members.list(t.orgId);
+    const project = t.projectId ? db.projects.get(t.orgId, t.projectId) : null;
+    const out = /* @__PURE__ */ new Set([t.creatorId, ...t.assigneeIds]);
+    for (const m of members) {
+      if (m.kind === "human" && rank(m.role) >= rank("manager")) out.add(m.id);
+      else if (project) {
+        if (m.kind === "agent") out.add(m.id);
+        else if (project.leadId === m.id || project.createdBy === m.id || project.memberIds.includes(m.id)) out.add(m.id);
+        else if (!project.memberIds.length && m.role !== "guest") out.add(m.id);
+      }
+    }
+    out.delete(SYSTEM_MEMBER_ID);
+    return [...out];
+  }
+  function publishTask(t) {
+    publish(ctx, t.orgId, { type: "task.upserted", task: orgView(t) }, audience(t));
+    ctx.internal.invalidateBriefings(t.orgId);
+  }
+  function publishTaskDeleted(t) {
+    publish(ctx, t.orgId, { type: "task.deleted", taskId: t.id }, audience(t));
+    ctx.internal.invalidateBriefings(t.orgId);
+  }
+  function loadVisible(actor, id) {
+    const t = typeof id === "string" && id ? db.tasks.get(actor.orgId, id, visibility(actor)) : null;
+    if (!t) notFound("Task not found");
+    return t;
+  }
+  function loadEditable(actor, id) {
+    requireWrite(actor);
+    const t = loadVisible(actor, id);
+    if (!canEditTask(actor, t)) forbidden(actor.kind === "agent" ? "AI agents can only update tasks assigned to them" : "You cannot edit this task");
+    return t;
+  }
+  function addActivity(t, actorId, kind, text, data = null, bump = true) {
+    const a = { id: newId("act"), orgId: t.orgId, taskId: t.id, actorId, kind, text: text.slice(0, 1e4), data, at: now2() };
+    db.activity.insert(a);
+    if (bump) t.lastActivityAt = a.at;
+    return a;
+  }
+  function publishActivity(t, acts) {
+    if (!acts.length) return;
+    const aud = audience(t);
+    for (const a of acts) publish(ctx, t.orgId, { type: "activity", activity: a }, aud);
+  }
+  const memberName = (orgId, id) => id === SYSTEM_MEMBER_ID ? "System" : db.members.get(orgId, id)?.name ?? "Someone";
+  function validAssignees(actor, ids2) {
+    const list2 = refs(ids2, "assigneeIds", 20);
+    if (!list2.length) return [];
+    const found = db.members.getMany(actor.orgId, list2).filter((m) => m.active);
+    if (found.length !== list2.length) bad("assigneeIds contains an unknown or inactive member");
+    return list2;
+  }
+  function validProject(actor, pid) {
+    if (pid === null || pid === void 0) return null;
+    const id = ref(pid, "projectId");
+    const p = db.projects.get(actor.orgId, id, visibility(actor));
+    if (!p) bad("projectId refers to an unknown project");
+    return id;
+  }
+  function validWaiting(actor, w, prev) {
+    if (w === null || w === void 0) return null;
+    if (!isObj3(w)) bad("waitingOn must be an object");
+    const name = str3(w.name, "waitingOn.name", { max: 100 });
+    const channel = oneOf(w.channel ?? "other", "waitingOn.channel", ["whatsapp", "email", "other"]);
+    let contact = optStr(w.contact, "waitingOn.contact", 254);
+    if (contact && channel === "email") contact = email3(contact, "waitingOn.contact");
+    if (contact && channel === "whatsapp") contact = phone(contact, "waitingOn.contact");
+    const contactChanged = !!contact && (!prev || prev.contact !== contact || prev.channel !== channel);
+    if (contactChanged && !isSystem(actor) && !(actor.kind === "human" && rank(actor.role) >= rank("member") && hasWriteScope2(actor))) {
+      forbidden("Only team members can set a waiting-on contact");
+    }
+    const nudgeEveryHours = w.nudgeEveryHours === null || w.nudgeEveryHours === void 0 ? null : Math.max(NUDGE_MIN_HOURS, int3(w.nudgeEveryHours, "waitingOn.nudgeEveryHours", 1, 24 * 30));
+    const same = prev && prev.name === name && prev.contact === contact;
+    return { name, contact, channel, nudgeEveryHours, lastNudgedAt: same ? prev.lastNudgedAt : null, since: same ? prev.since : now2() };
+  }
+  function normalizeDue(actor, dueAt, allDay) {
+    if (dueAt === null || !allDay) return dueAt;
+    const org = getOrg(ctx, actor.orgId);
+    const tz = actorTz(ctx, actor);
+    const p = localParts(dueAt, tz);
+    return zonedToUtc(p.year, p.month, p.day, Math.min(org.workdayEnd, 23), org.workdayEnd >= 24 ? 59 : 0, tz);
+  }
+  async function create(actor, input) {
+    requireWrite(actor);
+    if (!isObj3(input)) bad("task input required");
+    const t0 = now2();
+    const status = input.status === void 0 ? "todo" : oneOf(input.status, "status", STATUSES);
+    const allDay = input.dueAllDay === void 0 ? false : bool2(input.dueAllDay, "dueAllDay");
+    const dueAt = normalizeDue(actor, optTime(input.dueAt, "dueAt"), allDay);
+    const real = !isSystem(actor) && !!actorMember(ctx, actor);
+    const assigneeIds = input.assigneeIds === void 0 || input.assigneeIds === null ? real ? [actor.memberId] : [] : validAssignees(actor, input.assigneeIds);
+    const src = isObj3(input.source) ? input.source : {};
+    const subtasks = Array.isArray(input.subtasks) ? input.subtasks.slice(0, 100).map((s2, i) => ({ id: newId("sub"), title: str3(isObj3(s2) ? s2.title : s2, `subtasks[${i}].title`, { max: 300 }), done: false, doneAt: null, doneBy: null })) : [];
+    const task = {
+      id: newId("task"),
+      orgId: actor.orgId,
+      projectId: validProject(actor, input.projectId),
+      title: str3(input.title, "title", { max: 500 }),
+      notes: optStr(input.notes, "notes", 2e4) ?? "",
+      status,
+      priority: input.priority === void 0 ? "none" : oneOf(input.priority, "priority", PRIORITIES2),
+      assigneeIds,
+      creatorId: actor.memberId,
+      dueAt,
+      dueAllDay: dueAt !== null && allDay,
+      reminderOffsets: input.reminderOffsets === void 0 || input.reminderOffsets === null ? null : offsets(input.reminderOffsets),
+      recurrence: validateRecurrence(input.recurrence),
+      recurrenceParentId: null,
+      waitingOn: validWaiting(actor, input.waitingOn, null),
+      tags: input.tags === void 0 ? [] : tags2(input.tags),
+      subtasks,
+      source: {
+        channel: src.channel !== void 0 ? oneOf(src.channel, "source.channel", ["manual", "quick_add", "voice", "whatsapp", "email", "mcp", "api", "calendar", "recurring", "import"]) : actor.via === "api_key" ? "api" : "manual",
+        ref: optStr(src.ref, "source.ref", 300),
+        from: optStr(src.from, "source.from", 300)
+      },
+      order: t0,
+      startedAt: status === "in_progress" ? t0 : null,
+      completedAt: status === "done" ? t0 : null,
+      completedBy: status === "done" ? actor.memberId : null,
+      lastActivityAt: t0,
+      createdAt: t0,
+      updatedAt: t0
+    };
+    const act = db.tx(() => {
+      db.tasks.insert(task);
+      return addActivity(task, actor.memberId, "created", `${memberName(actor.orgId, actor.memberId)} created this task`, { source: task.source.channel });
+    });
+    await afterCreate(actor, task, [act]);
+    return view(actor, task);
+  }
+  async function afterCreate(actor, task, acts) {
+    await audit(ctx, actor, { type: "task.created", entity: "task", entityId: task.id, summary: `Created "${task.title}"`, after: task, undoable: true });
+    ctx.internal.scheduleTask(task);
+    publishTask(task);
+    publishActivity(task, acts);
+    await notifyAssigned(actor, task, task.assigneeIds);
+  }
+  async function notifyAssigned(actor, task, ids2) {
+    const by = memberName(task.orgId, actor.memberId);
+    for (const id of ids2) {
+      if (id === actor.memberId) continue;
+      await safeNotify(task.orgId, id, {
+        kind: "task_assigned",
+        title: `New task: ${task.title}`,
+        body: `${by} assigned you "${task.title}"`,
+        taskId: task.id,
+        meetingId: null,
+        link: `/tasks/${task.id}`,
+        urgent: task.priority === "urgent"
+      });
+    }
+  }
+  async function safeNotify(orgId, memberId, n) {
+    try {
+      await ctx.services.notifications.notify(orgId, memberId, n);
+    } catch (err) {
+      ctx.log.warn("[tasks] notify failed", err);
+    }
+  }
+  function draftFromText(actor, text) {
+    const raw = str3(text, "text", { max: 2e3 });
+    const org = getOrg(ctx, actor.orgId);
+    const tz = actorTz(ctx, actor);
+    let parsed;
+    try {
+      parsed = parseQuickAdd(raw, { now: now2(), timezone: tz, defaultHour: Math.min(org.workdayEnd, 23) });
+    } catch (err) {
+      ctx.log.warn("[tasks] parseQuickAdd failed, using raw text", err);
+      parsed = { title: raw, dueAt: null, dueAllDay: false, priority: null, assigneeHints: [], projectHint: null, tags: [], recurrence: null, reminderOffsets: null, tokens: [] };
+    }
+    const unresolved = [];
+    const members = db.members.list(actor.orgId);
+    const assigneeIds = [];
+    for (const h of parsed.assigneeHints ?? []) {
+      const m = resolveMemberHint(h, members, isSystem(actor) ? null : actor.memberId);
+      if (m) {
+        if (!assigneeIds.includes(m.id)) assigneeIds.push(m.id);
+      } else unresolved.push(`@${h.replace(/^@/, "")}`);
+    }
+    let projectId = null;
+    if (parsed.projectHint) {
+      const projects = db.projects.list(actor.orgId, { visibility: visibility(actor) });
+      const p = resolveProjectHint(parsed.projectHint, projects);
+      if (p) projectId = p.id;
+      else unresolved.push(`#${parsed.projectHint.replace(/^#/, "")}`);
+    }
+    const draft = {
+      title: (parsed.title || raw).trim().slice(0, 500) || raw.slice(0, 500),
+      dueAt: parsed.dueAt,
+      dueAllDay: parsed.dueAllDay,
+      priority: parsed.priority ?? "none",
+      assigneeIds,
+      projectId,
+      tags: parsed.tags ?? [],
+      recurrence: parsed.recurrence,
+      reminderOffsets: parsed.reminderOffsets
+    };
+    return { parsed, draft, unresolved };
+  }
+  async function quickAdd(actor, text, defaults = {}) {
+    requireWrite(actor);
+    const { draft } = draftFromText(actor, text);
+    const d = isObj3(defaults) ? defaults : {};
+    const input = {
+      ...d,
+      title: draft.title,
+      dueAt: draft.dueAt ?? d.dueAt ?? null,
+      dueAllDay: draft.dueAt !== null && draft.dueAt !== void 0 ? draft.dueAllDay : d.dueAllDay,
+      priority: draft.priority && draft.priority !== "none" ? draft.priority : d.priority ?? "none",
+      assigneeIds: draft.assigneeIds?.length ? draft.assigneeIds : d.assigneeIds,
+      projectId: draft.projectId ?? d.projectId ?? null,
+      tags: [.../* @__PURE__ */ new Set([...d.tags ?? [], ...draft.tags ?? []])],
+      recurrence: draft.recurrence ?? d.recurrence ?? null,
+      reminderOffsets: draft.reminderOffsets ?? d.reminderOffsets ?? null,
+      source: { channel: "quick_add", ...isObj3(d.source) ? d.source : {} }
+    };
+    return create(actor, input);
+  }
+  function applyPatch(actor, cur, patch) {
+    if (!isObj3(patch)) bad("patch must be an object");
+    const next = { ...cur, assigneeIds: [...cur.assigneeIds], tags: [...cur.tags], subtasks: cur.subtasks.map((s2) => ({ ...s2 })) };
+    const changes = [];
+    const who = memberName(cur.orgId, actor.memberId);
+    if (patch.title !== void 0) next.title = str3(patch.title, "title", { max: 500 });
+    if (patch.notes !== void 0) next.notes = optStr(patch.notes, "notes", 2e4) ?? "";
+    if (patch.tags !== void 0) next.tags = tags2(patch.tags);
+    if (patch.order !== void 0) next.order = num2(patch.order, "order");
+    if (patch.reminderOffsets !== void 0) next.reminderOffsets = patch.reminderOffsets === null ? null : offsets(patch.reminderOffsets);
+    if (patch.recurrence !== void 0) next.recurrence = validateRecurrence(patch.recurrence);
+    if (patch.waitingOn !== void 0) next.waitingOn = validWaiting(actor, patch.waitingOn, cur.waitingOn);
+    if (next.title !== cur.title || next.notes !== cur.notes || JSON.stringify(next.tags) !== JSON.stringify(cur.tags) || JSON.stringify(next.recurrence) !== JSON.stringify(cur.recurrence) || JSON.stringify(next.waitingOn) !== JSON.stringify(cur.waitingOn) || JSON.stringify(next.reminderOffsets) !== JSON.stringify(cur.reminderOffsets)) {
+      changes.push({ kind: "edited", text: `${who} edited the task` });
+    }
+    if (patch.priority !== void 0) {
+      next.priority = oneOf(patch.priority, "priority", PRIORITIES2);
+      if (next.priority !== cur.priority) changes.push({ kind: "priority", text: `${who} set priority to ${next.priority}`, data: { from: cur.priority, to: next.priority } });
+    }
+    if (patch.projectId !== void 0) {
+      next.projectId = validProject(actor, patch.projectId);
+      if (next.projectId !== cur.projectId) {
+        const pname = next.projectId ? db.projects.get(cur.orgId, next.projectId)?.name ?? "a project" : "no project";
+        changes.push({ kind: "moved_project", text: `${who} moved this to ${pname}`, data: { from: cur.projectId, to: next.projectId } });
+      }
+    }
+    if (patch.dueAt !== void 0 || patch.dueAllDay !== void 0) {
+      const allDay = patch.dueAllDay !== void 0 ? bool2(patch.dueAllDay, "dueAllDay") : cur.dueAllDay;
+      const raw = patch.dueAt !== void 0 ? optTime(patch.dueAt, "dueAt") : cur.dueAt;
+      next.dueAt = normalizeDue(actor, raw, allDay);
+      next.dueAllDay = next.dueAt !== null && allDay;
+      if (next.dueAt !== cur.dueAt) changes.push({ kind: "due_changed", text: next.dueAt ? `${who} changed the due date` : `${who} removed the due date`, data: { from: cur.dueAt, to: next.dueAt } });
+    }
+    if (patch.assigneeIds !== void 0) {
+      next.assigneeIds = validAssignees(actor, patch.assigneeIds);
+      const added = next.assigneeIds.filter((a) => !cur.assigneeIds.includes(a));
+      const removed = cur.assigneeIds.filter((a) => !next.assigneeIds.includes(a));
+      for (const a of added) changes.push({ kind: "assigned", text: `${who} assigned ${memberName(cur.orgId, a)}`, data: { memberId: a } });
+      for (const a of removed) changes.push({ kind: "unassigned", text: `${who} unassigned ${memberName(cur.orgId, a)}`, data: { memberId: a } });
+    }
+    if (patch.status !== void 0) {
+      const s2 = oneOf(patch.status, "status", STATUSES);
+      if (s2 !== cur.status) {
+        next.status = s2;
+        const t0 = now2();
+        if (s2 === "in_progress" && next.startedAt === null) next.startedAt = t0;
+        if (s2 === "done") {
+          next.completedAt = t0;
+          next.completedBy = actor.memberId;
+        } else if (cur.status === "done") {
+          next.completedAt = null;
+          next.completedBy = null;
+        }
+        changes.push({ kind: "status", text: `${who} moved this to ${STATUS_LABEL[s2]}`, data: { from: cur.status, to: s2 } });
+      }
+    }
+    return { next, changes };
+  }
+  async function commit(actor, cur, next, changes, opts = {}) {
+    if (!changes.length && JSON.stringify(cur) === JSON.stringify(next)) return cur;
+    next.updatedAt = now2();
+    const acts = db.tx(() => {
+      const list2 = changes.map((c) => addActivity(next, actor.memberId, c.kind, c.text, c.data ?? null));
+      if (!list2.length) next.lastActivityAt = next.updatedAt;
+      db.tasks.save(next);
+      return list2;
+    });
+    const completed = next.status === "done" && cur.status !== "done";
+    const reopened = cur.status === "done" && next.status !== "done";
+    const type = opts.auditType ?? (completed ? "task.completed" : reopened ? "task.reopened" : "task.updated");
+    const summary = opts.summary ?? (completed ? `Completed "${next.title}"` : reopened ? `Reopened "${next.title}"` : `Updated "${next.title}"`);
+    await audit(ctx, actor, { type, entity: "task", entityId: next.id, summary, before: cur, after: next, undoable: true });
+    ctx.internal.scheduleTask(next);
+    publishTask(next);
+    publishActivity(next, acts);
+    const added = next.assigneeIds.filter((a) => !cur.assigneeIds.includes(a));
+    if (added.length && isOpen(next)) await notifyAssigned(actor, next, added);
+    if (completed) {
+      if (next.creatorId !== actor.memberId && next.creatorId !== SYSTEM_MEMBER_ID && !next.assigneeIds.includes(next.creatorId)) {
+        await safeNotify(next.orgId, next.creatorId, {
+          kind: "task_completed",
+          title: `Done: ${next.title}`,
+          body: `${memberName(next.orgId, actor.memberId)} completed "${next.title}"`,
+          taskId: next.id,
+          meetingId: null,
+          link: `/tasks/${next.id}`,
+          urgent: false
+        });
+      }
+      if (next.recurrence) {
+        try {
+          await spawnNext(next.orgId, next.id);
+        } catch (err) {
+          ctx.log.warn("[tasks] recurrence spawn failed; retrying via job", err);
+          db.jobs.schedule(next.orgId, "task.recur", `task.recur:${next.id}`, now2(), { taskId: next.id }, now2());
+        }
+      }
+    }
+    return next;
+  }
+  async function update(actor, id, patch) {
+    const cur = loadEditable(actor, id);
+    const { next, changes } = applyPatch(actor, cur, patch);
+    const saved = await commit(actor, cur, next, changes);
+    return view(actor, saved);
+  }
+  async function spawnNext(orgId, taskId2) {
+    const src = db.tasks.get(orgId, taskId2);
+    if (!src || !src.recurrence || src.status !== "done") return null;
+    const existingNext = db.tasks.getRecurrenceNext(orgId, src.id);
+    if (existingNext) return db.tasks.get(orgId, existingNext);
+    const rootId = src.recurrenceParentId ?? src.id;
+    const assigneeTz = src.assigneeIds.map((a) => db.members.get(orgId, a)).find((m) => m?.active)?.timezone;
+    const tz = safeTz(assigneeTz ?? db.orgs.get(orgId)?.timezone);
+    const t0 = now2();
+    const org = getOrg(ctx, orgId);
+    const base = src.dueAt ?? atLocalHour(src.completedAt ?? t0, tz, Math.min(org.workdayEnd, 23));
+    const due = nextOccurrence(base, src.recurrence, tz, t0);
+    if (due === null) return null;
+    const activeAssignees = db.members.getMany(orgId, src.assigneeIds).filter((m) => m.active).map((m) => m.id);
+    const next = {
+      ...src,
+      id: newId("task"),
+      status: "todo",
+      assigneeIds: activeAssignees,
+      dueAt: due,
+      recurrenceParentId: rootId,
+      waitingOn: null,
+      subtasks: src.subtasks.map((s2) => ({ ...s2, id: newId("sub"), done: false, doneAt: null, doneBy: null })),
+      source: { channel: "recurring", ref: src.id, from: null },
+      order: t0,
+      startedAt: null,
+      completedAt: null,
+      completedBy: null,
+      lastActivityAt: t0,
+      createdAt: t0,
+      updatedAt: t0
+    };
+    const created = db.tx(() => {
+      if (!db.tasks.claimRecurrenceNext(orgId, src.id, next.id)) return null;
+      const dup = db.tasks.findOccurrence(orgId, rootId, due);
+      if (dup) {
+        db.tasks.setRecurrenceNext(orgId, src.id, dup.id);
+        return null;
+      }
+      db.tasks.insert(next);
+      addActivity(next, SYSTEM_MEMBER_ID, "created", "Next occurrence of a recurring task", { from: src.id });
+      return next;
+    });
+    if (!created) {
+      const id = db.tasks.getRecurrenceNext(orgId, src.id);
+      return id ? db.tasks.get(orgId, id) : null;
+    }
+    await audit(ctx, systemActor(orgId), { type: "task.created", entity: "task", entityId: next.id, summary: `Recurring: "${next.title}"`, after: next, undoable: true });
+    ctx.internal.scheduleTask(next);
+    publishTask(next);
+    return next;
+  }
+  async function subtaskChange(actor, id, mutate) {
+    const cur = loadEditable(actor, id);
+    const next = { ...cur, subtasks: cur.subtasks.map((s2) => ({ ...s2 })) };
+    const text = mutate(next);
+    const saved = await commit(actor, cur, next, [{ kind: "subtask", text }], { auditType: "task.updated", summary: `Updated subtasks of "${cur.title}"` });
+    return view(actor, saved);
+  }
+  async function list(actor, q = {}) {
+    const query = isObj3(q) ? q : {};
+    const tz = actorTz(ctx, actor);
+    const f = { visibility: visibility(actor) };
+    if (query.assigneeId === "me") f.assigneeId = actor.memberId;
+    else if (query.assigneeId === "unassigned") f.unassigned = true;
+    else if (query.assigneeId) f.assigneeId = ref(query.assigneeId, "assigneeId");
+    if (query.projectId === "none") f.noProject = true;
+    else if (query.projectId) f.projectId = ref(query.projectId, "projectId");
+    if (query.status !== void 0) {
+      const arr2 = Array.isArray(query.status) ? query.status : String(query.status).split(",").filter(Boolean);
+      if (arr2.length) f.statuses = arr2.map((s2) => oneOf(s2, "status", STATUSES));
+    }
+    if (query.search) f.search = str3(query.search, "search", { max: 200 });
+    if (query.tag) f.tag = str3(query.tag, "tag", { max: 40 }).replace(/^#/, "");
+    if (query.dueBefore !== void 0) f.dueBefore = time3(query.dueBefore, "dueBefore");
+    if (query.dueAfter !== void 0) f.dueAfter = time3(query.dueAfter, "dueAfter");
+    let includeClosed = !!query.includeDone || !!f.statuses;
+    const t0 = now2();
+    switch (query.view) {
+      case void 0:
+      case "all":
+        if (query.view === "all") includeClosed = true;
+        break;
+      case "today":
+        f.dueBefore = Math.min(f.dueBefore ?? Infinity, startOfLocalDay(t0, tz, 1));
+        f.order = "due";
+        break;
+      case "upcoming":
+        f.dueAfter = Math.max(f.dueAfter ?? -Infinity, startOfLocalDay(t0, tz, 1));
+        f.order = "due";
+        break;
+      case "overdue":
+        f.dueBefore = Math.min(f.dueBefore ?? Infinity, t0);
+        f.order = "due";
+        break;
+      case "waiting":
+        f.waiting = true;
+        break;
+      case "done":
+        f.statuses = ["done"];
+        f.order = "completed";
+        includeClosed = true;
+        break;
+      case "agents":
+        f.assigneeKind = "agent";
+        break;
+      default:
+        bad("view must be one of: today, upcoming, overdue, waiting, done, all, agents");
+    }
+    if (!includeClosed) f.open = true;
+    f.limit = query.limit !== void 0 ? int3(query.limit, "limit", 1, 1e3) : 200;
+    f.offset = query.offset !== void 0 ? int3(query.offset, "offset", 0, 1e6) : 0;
+    return views(actor.orgId, db.tasks.query(actor.orgId, f), tz);
+  }
+  async function comment(actor, id, text, kind = "comment") {
+    requireWrite(actor);
+    const t = loadVisible(actor, id);
+    const body = str3(text, "text", { max: 1e4 });
+    const k = oneOf(kind ?? "comment", "kind", ["comment", "handoff"]);
+    const a = db.tx(() => {
+      const act = addActivity(t, actor.memberId, k, body, null);
+      db.tasks.touchActivity(t.orgId, t.id, t.lastActivityAt);
+      return act;
+    });
+    publishActivity(t, [a]);
+    publishTask(t);
+    const members = db.members.list(actor.orgId);
+    const mentioned = /* @__PURE__ */ new Set();
+    for (const h of extractMentions(body)) {
+      const m = resolveMemberHint(h, members, null);
+      if (m && m.id !== actor.memberId) mentioned.add(m.id);
+    }
+    const who = memberName(actor.orgId, actor.memberId);
+    const snippet = body.length > 140 ? body.slice(0, 137) + "\u2026" : body;
+    for (const mid of mentioned) {
+      await safeNotify(t.orgId, mid, { kind: "task_mention", title: `${who} mentioned you`, body: `On "${t.title}": ${snippet}`, taskId: t.id, meetingId: null, link: `/tasks/${t.id}`, urgent: false });
+    }
+    const involved = /* @__PURE__ */ new Set([...t.assigneeIds, t.creatorId]);
+    for (const mid of involved) {
+      if (mid === actor.memberId || mentioned.has(mid) || mid === SYSTEM_MEMBER_ID) continue;
+      await safeNotify(t.orgId, mid, {
+        kind: "task_comment",
+        title: k === "handoff" ? `Hand-off from ${who}` : `${who} commented`,
+        body: `On "${t.title}": ${snippet}`,
+        taskId: t.id,
+        meetingId: null,
+        link: `/tasks/${t.id}`,
+        urgent: false
+      });
+    }
+    return a;
+  }
+  async function nudge(actor, id) {
+    const cur = loadEditable(actor, id);
+    const sent = await sendNudge(cur, actor.memberId);
+    if (!sent.ok) throw new AppError(sent.retryAt !== void 0 ? "rate_limited" : "bad_request", sent.error);
+    return view(actor, db.tasks.get(actor.orgId, cur.id));
+  }
+  async function remove(actor, id) {
+    requireWrite(actor);
+    const t = loadVisible(actor, id);
+    const lead = t.projectId ? db.projects.get(t.orgId, t.projectId)?.leadId ?? null : null;
+    if (!canDeleteTask(actor, t, lead)) forbidden("Only the creator, the project lead or a manager can delete this task");
+    const aud = audience(t);
+    db.tasks.delete(actor.orgId, t.id);
+    ctx.internal.cancelTask(actor.orgId, t.id);
+    await audit(ctx, actor, { type: "task.deleted", entity: "task", entityId: t.id, summary: `Deleted "${t.title}"`, before: t, undoable: true });
+    publish(ctx, t.orgId, { type: "task.deleted", taskId: t.id }, aud);
+    ctx.internal.invalidateBriefings(t.orgId);
+  }
+  const service = {
+    list,
+    async get(actor, id) {
+      return view(actor, loadVisible(actor, id));
+    },
+    create,
+    quickAdd,
+    async preview(actor, text) {
+      return draftFromText(actor, text);
+    },
+    update,
+    async complete(actor, id) {
+      const cur = loadEditable(actor, id);
+      if (cur.status === "done") return view(actor, cur);
+      return update(actor, id, { status: "done" });
+    },
+    async reopen(actor, id) {
+      const cur = loadEditable(actor, id);
+      if (isOpen(cur)) return view(actor, cur);
+      return update(actor, id, { status: "todo" });
+    },
+    remove,
+    async addSubtask(actor, id, title) {
+      const tt = str3(title, "title", { max: 300 });
+      return subtaskChange(actor, id, (t) => {
+        if (t.subtasks.length >= 100) bad("Too many subtasks (max 100)");
+        t.subtasks.push({ id: newId("sub"), title: tt, done: false, doneAt: null, doneBy: null });
+        return `Added subtask "${tt}"`;
+      });
+    },
+    async updateSubtask(actor, id, subtaskId, patch) {
+      if (!isObj3(patch)) bad("patch must be an object");
+      return subtaskChange(actor, id, (t) => {
+        const s2 = t.subtasks.find((x) => x.id === subtaskId);
+        if (!s2) notFound("Subtask not found");
+        if (patch.title !== void 0) s2.title = str3(patch.title, "title", { max: 300 });
+        if (patch.done !== void 0) {
+          const d = bool2(patch.done, "done");
+          if (d !== s2.done) {
+            s2.done = d;
+            s2.doneAt = d ? now2() : null;
+            s2.doneBy = d ? actor.memberId : null;
+          }
+        }
+        return patch.done === true ? `Completed subtask "${s2.title}"` : patch.done === false ? `Reopened subtask "${s2.title}"` : `Renamed subtask to "${s2.title}"`;
+      });
+    },
+    async removeSubtask(actor, id, subtaskId) {
+      return subtaskChange(actor, id, (t) => {
+        const s2 = t.subtasks.find((x) => x.id === subtaskId);
+        if (!s2) notFound("Subtask not found");
+        t.subtasks = t.subtasks.filter((x) => x.id !== subtaskId);
+        return `Removed subtask "${s2.title}"`;
+      });
+    },
+    comment,
+    async activity(actor, id) {
+      const t = loadVisible(actor, id);
+      return db.activity.list(actor.orgId, t.id);
+    },
+    nudge,
+    async bulk(actor, ids2, op) {
+      requireWrite(actor);
+      if (!Array.isArray(ids2) || !ids2.length) bad("ids must be a non-empty array");
+      if (ids2.length > 200) bad("At most 200 tasks per bulk operation");
+      if (!isObj3(op)) bad("op is required");
+      const kind = oneOf(op.kind, "op.kind", ["complete", "delete", "assign", "move", "status"]);
+      const ok = [];
+      const failed = [];
+      for (const raw of [...new Set(ids2)]) {
+        const id = String(raw);
+        try {
+          if (kind === "complete") await service.complete(actor, id);
+          else if (kind === "delete") await remove(actor, id);
+          else if (kind === "assign") await update(actor, id, { assigneeIds: Array.isArray(op.value) ? op.value : op.value === null || op.value === void 0 ? [] : [op.value] });
+          else if (kind === "move") await update(actor, id, { projectId: op.value ?? null });
+          else await update(actor, id, { status: op.value });
+          ok.push(id);
+        } catch (err) {
+          failed.push({ id, error: err instanceof AppError ? err.message : "Failed" });
+        }
+      }
+      return { ok, failed };
+    }
+  };
+  const dayOf = (t) => Math.floor(t / 864e5);
+  function quotaUsed(orgId, key, t) {
+    const q = db.kv.get(orgId, key);
+    return q && q.day === dayOf(t) ? q.n : 0;
+  }
+  function quotaBump(orgId, key, t) {
+    db.kv.set(orgId, key, { day: dayOf(t), n: quotaUsed(orgId, key, t) + 1 }, t);
+  }
+  async function sendNudge(cur, actorId) {
+    const w = cur.waitingOn;
+    if (!w) return { ok: false, error: "This task is not waiting on anyone" };
+    if (!w.contact) return { ok: false, error: `No contact saved for ${w.name}` };
+    if (w.channel === "other") return { ok: false, error: "Set the waiting-on channel to WhatsApp or email to send nudges" };
+    const t0 = now2();
+    const scheduled = actorId === SYSTEM_MEMBER_ID;
+    const gap = scheduled ? nudgeIntervalMs(w) : NUDGE_MIN_HOURS * H;
+    if (w.lastNudgedAt !== null && t0 - w.lastNudgedAt < gap) {
+      const retryAt = w.lastNudgedAt + gap;
+      return { ok: false, error: `${w.name} was already nudged recently \u2014 try again in ${Math.ceil((retryAt - t0) / 6e4)} min`, retryAt };
+    }
+    const memberKey = `nudge:quota:${scheduled ? cur.creatorId : actorId}`;
+    const nextDay = (dayOf(t0) + 1) * 864e5;
+    if (quotaUsed(cur.orgId, memberKey, t0) >= NUDGE_MEMBER_DAILY_CAP) {
+      return { ok: false, error: `Daily nudge limit reached (${NUDGE_MEMBER_DAILY_CAP} per person) \u2014 try again tomorrow`, retryAt: nextDay };
+    }
+    if (quotaUsed(cur.orgId, "nudge:quota:org", t0) >= NUDGE_ORG_DAILY_CAP) {
+      return { ok: false, error: `Daily nudge limit reached for the organization (${NUDGE_ORG_DAILY_CAP}) \u2014 try again tomorrow`, retryAt: nextDay };
+    }
+    const org = getOrg(ctx, cur.orgId);
+    const text = nudgeMessage(w.name, org.name, cur.title);
+    let sent = false;
+    try {
+      sent = w.channel === "whatsapp" ? await ctx.outbound.whatsapp(w.contact, text) : await ctx.outbound.email(w.contact, `Following up: ${sanitizeNudgeText(cur.title, NUDGE_TITLE_MAX) || "your task"}`, text);
+    } catch (err) {
+      ctx.log.warn("[tasks] nudge send failed", err);
+    }
+    if (!sent) return { ok: false, error: `Could not send the nudge \u2014 ${w.channel === "whatsapp" ? "WhatsApp" : "email"} is not configured or the send failed` };
+    quotaBump(cur.orgId, memberKey, t0);
+    quotaBump(cur.orgId, "nudge:quota:org", t0);
+    const fresh = db.tasks.get(cur.orgId, cur.id);
+    if (!fresh || !fresh.waitingOn) return { ok: true };
+    fresh.waitingOn = { ...fresh.waitingOn, lastNudgedAt: t0 };
+    fresh.updatedAt = t0;
+    const act = db.tx(() => {
+      const a = addActivity(fresh, actorId, "nudge_sent", `Nudged ${w.name} via ${w.channel}`, { channel: w.channel, to: w.contact }, actorId !== SYSTEM_MEMBER_ID);
+      db.tasks.save(fresh);
+      return a;
+    });
+    ctx.internal.scheduleTask(fresh);
+    publishTask(fresh);
+    publishActivity(fresh, [act]);
+    return { ok: true };
+  }
+  return {
+    service,
+    views,
+    publishTask,
+    publishTaskDeleted,
+    spawnNext,
+    audience,
+    draftFromText,
+    sendNudge,
+    addActivity
+  };
+}
+
+// packages/core/src/reminders.ts
+var OVERDUE_AFTER_MS = 60 * 6e4;
+var OVERDUE_REPEAT_MS = 24 * 36e5;
+var STALE_SCAN_EVERY_MS = 15 * 6e4;
+var CALENDAR_SYNC_EVERY_MS = 15 * 6e4;
+var MEETING_REMINDER_MS = 10 * 6e4;
+var K = {
+  reminderPrefix: (id) => `task.reminder:${id}:`,
+  reminder: (id, off) => `task.reminder:${id}:${off}`,
+  overdue: (id) => `task.overdue:${id}`,
+  escalate: (id) => `task.escalate:${id}`,
+  nudge: (id) => `task.nudge:${id}`,
+  recur: (id) => `task.recur:${id}`,
+  meeting: (id) => `meeting.reminder:${id}`,
+  digest: (id) => `member.digest:${id}`,
+  stale: (orgId) => `agent.staleScan:${orgId}`,
+  feed: (id) => `calendar.sync:${id}`
+};
+function formatOffset(min) {
+  if (min < 60) return `${min} minute${min === 1 ? "" : "s"}`;
+  if (min < 2880 && min % 60 === 0) return min === 60 ? "1 hour" : `${min / 60} hours`;
+  if (min < 2880) return `${Math.round(min / 60)} hours`;
+  const d = Math.round(min / 1440);
+  return `${d} days`;
+}
+function inQuietHours(m, at) {
+  const { quietStart: s2, quietEnd: e } = m.prefs;
+  if (s2 === null || e === null || s2 === e) return false;
+  const h = Number(new Intl.DateTimeFormat("en-US", { timeZone: safeTz(m.timezone), hour: "numeric", hourCycle: "h23" }).format(at)) % 24;
+  return s2 < e ? h >= s2 && h < e : h >= s2 || h < e;
+}
+function quietEndsAt(m, at) {
+  const tz = safeTz(m.timezone);
+  const end = m.prefs.quietEnd ?? 7;
+  let t = atLocalHour(at, tz, end);
+  if (t <= at) t = atLocalHour(at, tz, end, 0, 1);
+  return t;
+}
+function nextDigestAt(m, at) {
+  if (m.prefs.digestHour === null || m.prefs.digestHour === void 0) return null;
+  const tz = safeTz(m.timezone);
+  let t = atLocalHour(at, tz, m.prefs.digestHour);
+  if (t <= at + 6e4) t = atLocalHour(at, tz, m.prefs.digestHour, 0, 1);
+  return t;
+}
+function createReminders(ctx, tasks) {
+  const { db } = ctx;
+  const now2 = () => ctx.clock();
+  const notify = (orgId, memberId, n) => ctx.services.notifications.notify(orgId, memberId, n);
+  function scheduleTask(t) {
+    const t0 = now2();
+    const org = db.orgs.get(t.orgId);
+    if (!org) return;
+    const want = /* @__PURE__ */ new Map();
+    if (isOpen(t)) {
+      if (t.dueAt !== null) {
+        for (const off of t.reminderOffsets ?? org.defaultReminderOffsets) {
+          const runAt = t.dueAt - off * 6e4;
+          if (runAt > t0) want.set(K.reminder(t.id, off), { kind: "task.reminder", runAt, payload: { taskId: t.id, offsetMin: off, dueAt: t.dueAt } });
+        }
+        const od = db.jobs.getPending(t.orgId, K.overdue(t.id));
+        if (od && od.payload.dueAt === t.dueAt) want.set(K.overdue(t.id), "keep");
+        else want.set(K.overdue(t.id), { kind: "task.overdue", runAt: Math.max(t.dueAt + OVERDUE_AFTER_MS, t0), payload: { taskId: t.id, dueAt: t.dueAt } });
+        if (org.escalateAfterMin !== null && db.kv.get(t.orgId, `escalated:${t.id}`) !== t.dueAt) {
+          const es = db.jobs.getPending(t.orgId, K.escalate(t.id));
+          if (es && es.payload.dueAt === t.dueAt) want.set(K.escalate(t.id), "keep");
+          else want.set(K.escalate(t.id), { kind: "task.escalate", runAt: Math.max(t.dueAt + org.escalateAfterMin * 6e4, t0), payload: { taskId: t.id, dueAt: t.dueAt } });
+        }
+      }
+      const w = t.waitingOn;
+      if (w && w.nudgeEveryHours && w.contact && w.channel !== "other") {
+        const runAt = Math.max((w.lastNudgedAt ?? w.since) + nudgeIntervalMs(w), t0);
+        want.set(K.nudge(t.id), { kind: "task.nudge", runAt, payload: { taskId: t.id } });
+      }
+    }
+    const existing = db.jobs.list(t.orgId, { status: "pending", keyPrefix: K.reminderPrefix(t.id) }).map((j) => j.key);
+    const stale = [...existing, K.overdue(t.id), K.escalate(t.id), K.nudge(t.id)].filter((k) => !want.has(k));
+    db.jobs.cancel(t.orgId, stale, [], t0);
+    for (const [key, w] of want) if (w !== "keep") db.jobs.schedule(t.orgId, w.kind, key, w.runAt, w.payload, t0);
+  }
+  function cancelTask(orgId, taskId2) {
+    db.jobs.cancel(orgId, [K.overdue(taskId2), K.escalate(taskId2), K.nudge(taskId2), K.recur(taskId2)], [K.reminderPrefix(taskId2)], now2());
+  }
+  function scheduleMeeting(m) {
+    const runAt = m.startAt - MEETING_REMINDER_MS;
+    if (runAt > now2() && !m.allDay) db.jobs.schedule(m.orgId, "meeting.reminder", K.meeting(m.id), runAt, { meetingId: m.id, startAt: m.startAt }, now2());
+    else db.jobs.cancel(m.orgId, [K.meeting(m.id)], [], now2());
+  }
+  function cancelMeeting(orgId, id) {
+    db.jobs.cancel(orgId, [K.meeting(id)], [], now2());
+  }
+  function scheduleDigest(m, opts = {}) {
+    const at = m.active && m.kind === "human" ? nextDigestAt(m, now2()) : null;
+    if (at === null) {
+      db.jobs.cancel(m.orgId, [K.digest(m.id)], [], now2());
+      return;
+    }
+    db.jobs.schedule(m.orgId, "member.digest", K.digest(m.id), at, { memberId: m.id }, now2(), opts);
+  }
+  function scheduleFeedSync(orgId, feedId, runAt) {
+    db.jobs.schedule(orgId, "calendar.sync", K.feed(feedId), runAt, { feedId }, now2());
+  }
+  function ensurePeriodic(orgId) {
+    const t0 = now2();
+    db.jobs.schedule(orgId, "agent.staleScan", K.stale(orgId), t0 + STALE_SCAN_EVERY_MS, {}, t0, { ifAbsent: true });
+    for (const m of db.members.list(orgId, { kind: "human" })) scheduleDigest(m, { ifAbsent: true });
+    for (const f of db.feeds.list(orgId)) db.jobs.schedule(orgId, "calendar.sync", K.feed(f.id), t0, { feedId: f.id }, t0, { ifAbsent: true });
+  }
+  const activeMembers = (orgId, ids2) => db.members.getMany(orgId, ids2).filter((m) => m.active);
+  function reminderRecipients(t) {
+    const a = activeMembers(t.orgId, t.assigneeIds);
+    if (a.length) return a;
+    return t.creatorId !== SYSTEM_MEMBER_ID ? activeMembers(t.orgId, [t.creatorId]) : [];
+  }
+  function loadDueTask(job) {
+    const t = db.tasks.get(job.orgId, String(job.payload.taskId ?? ""));
+    if (!t || !isOpen(t) || t.dueAt === null) return null;
+    if (job.payload.dueAt !== void 0 && job.payload.dueAt !== t.dueAt) return null;
+    return t;
+  }
+  function logReminder(t, text, data) {
+    const act = tasks.addActivity(t, SYSTEM_MEMBER_ID, "reminder_sent", text, data, false);
+    ctx.live.publish(t.orgId, { type: "activity", activity: act }, { memberIds: tasks.audience(t) });
+  }
+  const tzOf = (m) => safeTz(m.timezone);
+  const handlers = {
+    async "task.reminder"(job) {
+      const t = loadDueTask(job);
+      if (!t) return;
+      const off = Number(job.payload.offsetMin ?? 0);
+      const recipients = reminderRecipients(t);
+      for (const m of recipients) {
+        await notify(t.orgId, m.id, {
+          kind: off === 0 ? "task_due_now" : "task_due_soon",
+          title: off === 0 ? `Due now: ${t.title}` : `Due in ${formatOffset(off)}: ${t.title}`,
+          body: `"${t.title}" is due ${dueLabel(t.dueAt, now2(), tzOf(m), t.dueAllDay)}.`,
+          taskId: t.id,
+          meetingId: null,
+          link: `/tasks/${t.id}`,
+          urgent: t.priority === "urgent"
+        });
+      }
+      if (recipients.length) logReminder(t, off === 0 ? "Reminder sent: due now" : `Reminder sent: due in ${formatOffset(off)}`, { offsetMin: off, to: recipients.map((m) => m.id) });
+    },
+    async "task.overdue"(job) {
+      const t = loadDueTask(job);
+      if (!t) return;
+      const recipients = reminderRecipients(t);
+      for (const m of recipients) {
+        await notify(t.orgId, m.id, {
+          kind: "task_overdue",
+          title: `Overdue: ${t.title}`,
+          body: `"${t.title}" was due ${dueLabel(t.dueAt, now2(), tzOf(m), t.dueAllDay)}. Finish it or move the date.`,
+          taskId: t.id,
+          meetingId: null,
+          link: `/tasks/${t.id}`,
+          urgent: true
+        });
+      }
+      if (recipients.length) logReminder(t, "Overdue reminder sent", { overdue: true, to: recipients.map((m) => m.id) });
+      db.jobs.schedule(t.orgId, "task.overdue", K.overdue(t.id), now2() + OVERDUE_REPEAT_MS, { taskId: t.id, dueAt: t.dueAt }, now2());
+    },
+    async "task.escalate"(job) {
+      const t = loadDueTask(job);
+      if (!t) return;
+      const flag = `escalated:${t.id}`;
+      if (db.kv.get(t.orgId, flag) === t.dueAt) return;
+      const assignees = activeMembers(t.orgId, t.assigneeIds);
+      const ids2 = /* @__PURE__ */ new Set();
+      if (t.creatorId !== SYSTEM_MEMBER_ID) ids2.add(t.creatorId);
+      for (const a of assignees) if (a.kind === "agent" && a.agent?.supervisorId) ids2.add(a.agent.supervisorId);
+      if (t.projectId) {
+        const lead = db.projects.get(t.orgId, t.projectId)?.leadId;
+        if (lead) ids2.add(lead);
+      }
+      for (const a of t.assigneeIds) ids2.delete(a);
+      let recipients = activeMembers(t.orgId, [...ids2]).filter((m) => m.kind === "human");
+      if (!recipients.length) {
+        recipients = db.members.list(t.orgId, { kind: "human" }).filter((m) => rank(m.role) >= rank("admin") && !t.assigneeIds.includes(m.id));
+      }
+      const names = assignees.map((a) => a.name).join(", ") || "nobody";
+      for (const m of recipients) {
+        await notify(t.orgId, m.id, {
+          kind: "task_escalated",
+          title: `Escalation: "${t.title}" is overdue`,
+          body: `Assigned to ${names}; it was due ${dueLabel(t.dueAt, now2(), tzOf(m), t.dueAllDay)} and is still open.`,
+          taskId: t.id,
+          meetingId: null,
+          link: `/tasks/${t.id}`,
+          urgent: true
+        });
+      }
+      db.kv.set(t.orgId, flag, t.dueAt, now2());
+      if (recipients.length) logReminder(t, `Escalated to ${recipients.map((m) => m.name).join(", ")}`, { escalated: true, to: recipients.map((m) => m.id) });
+    },
+    async "task.nudge"(job) {
+      const t = db.tasks.get(job.orgId, String(job.payload.taskId ?? ""));
+      if (!t || !isOpen(t) || !t.waitingOn?.nudgeEveryHours) return;
+      const res = await tasks.sendNudge(t, SYSTEM_MEMBER_ID);
+      if (!res.ok && res.retryAt !== void 0) {
+        db.jobs.schedule(t.orgId, "task.nudge", K.nudge(t.id), res.retryAt, { taskId: t.id }, now2());
+        return;
+      }
+      if (!res.ok) throw new Error(res.error);
+    },
+    async "task.recur"(job) {
+      await tasks.spawnNext(job.orgId, String(job.payload.taskId ?? ""));
+    },
+    async "meeting.reminder"(job) {
+      const m = db.meetings.get(job.orgId, String(job.payload.meetingId ?? ""));
+      if (!m || m.startAt !== job.payload.startAt) return;
+      let recipients = activeMembers(m.orgId, [.../* @__PURE__ */ new Set([...m.ownerId ? [m.ownerId] : [], ...m.attendeeIds])]);
+      if (!m.ownerId && !m.attendeeIds.length) recipients = db.members.list(m.orgId, { kind: "human" });
+      for (const r of recipients) {
+        await notify(m.orgId, r.id, {
+          kind: "meeting_soon",
+          title: `Meeting at ${spokenTime(m.startAt, tzOf(r))}: ${m.title}`,
+          body: `Starts in 10 minutes${m.location ? ` \xB7 ${m.location}` : ""}${m.url ? ` \xB7 ${m.url}` : ""}`,
+          taskId: null,
+          meetingId: m.id,
+          link: `/meetings`,
+          urgent: false
+        });
+      }
+    },
+    async "member.digest"(job) {
+      const m = db.members.get(job.orgId, String(job.payload.memberId ?? ""));
+      if (!m || !m.active || m.kind !== "human" || m.prefs.digestHour === null) return;
+      try {
+        const b = await ctx.internal.composeBriefing(m, { polish: false });
+        await notify(m.orgId, m.id, { kind: "digest", title: b.greeting, body: b.spoken, taskId: null, meetingId: null, link: "/", urgent: false });
+      } finally {
+        scheduleDigest(m);
+      }
+    },
+    async "agent.staleScan"(job) {
+      const orgId = job.orgId;
+      const org = db.orgs.get(orgId);
+      if (!org) return;
+      try {
+        const cutoff = now2() - org.agentStaleAfterMin * 6e4;
+        const stale = db.tasks.query(orgId, { statuses: ["todo", "in_progress"], assigneeKind: "agent", lastActivityBefore: cutoff, limit: 1e3 });
+        for (const t of stale) {
+          const flag = `stale:${t.id}`;
+          if (db.kv.get(orgId, flag) === t.lastActivityAt) continue;
+          const agents = activeMembers(orgId, t.assigneeIds).filter((a) => a.kind === "agent");
+          const ids2 = /* @__PURE__ */ new Set();
+          for (const a of agents) if (a.agent?.supervisorId) ids2.add(a.agent.supervisorId);
+          if (t.creatorId !== SYSTEM_MEMBER_ID) ids2.add(t.creatorId);
+          const recipients = activeMembers(orgId, [...ids2]).filter((m) => m.kind === "human");
+          const names = agents.map((a) => a.name).join(", ") || "The agent";
+          const hours = Math.max(1, Math.round((now2() - t.lastActivityAt) / 36e5));
+          for (const r of recipients) {
+            await notify(orgId, r.id, {
+              kind: "agent_stale",
+              title: `${names} went quiet on "${t.title}"`,
+              body: `No activity for ${hours} hour${hours === 1 ? "" : "s"}. Check in or reassign.`,
+              taskId: t.id,
+              meetingId: null,
+              link: `/tasks/${t.id}`,
+              urgent: false
+            });
+          }
+          db.kv.set(orgId, flag, t.lastActivityAt, now2());
+          tasks.publishTask(t);
+        }
+      } finally {
+        db.jobs.schedule(orgId, "agent.staleScan", K.stale(orgId), now2() + STALE_SCAN_EVERY_MS, {}, now2());
+      }
+    },
+    async "calendar.sync"(job) {
+      const feedId = String(job.payload.feedId ?? "");
+      if (!db.feeds.get(job.orgId, feedId)) return;
+      try {
+        await ctx.internal.syncFeed(job.orgId, feedId);
+      } catch (err) {
+        ctx.log.warn("[calendar] sync failed", err);
+      } finally {
+        if (db.feeds.get(job.orgId, feedId)) scheduleFeedSync(job.orgId, feedId, now2() + CALENDAR_SYNC_EVERY_MS);
+      }
+    },
+    async "notification.deliver"(job) {
+      await ctx.internal.deliver(job.orgId, String(job.payload.notificationId ?? ""));
+    },
+    async "email.poll"() {
+    }
+  };
+  return { scheduleTask, cancelTask, scheduleMeeting, cancelMeeting, scheduleDigest, scheduleFeedSync, ensurePeriodic, handlers };
+}
+
+// packages/core/src/scheduler.ts
+var MAX_ATTEMPTS = 5;
+var BACKOFF_BASE_MS = 3e4;
+var MAX_ROUNDS = 20;
+function createScheduler(ctx, handlers) {
+  let timer = null;
+  let running = null;
+  const recovered = ctx.db.jobs.recoverRunning(ctx.clock());
+  if (recovered) ctx.log.info(`[scheduler] recovered ${recovered} interrupted job(s)`);
+  async function runOne(job) {
+    const handler = handlers[job.kind];
+    try {
+      if (!handler) throw new Error(`no handler for job kind ${job.kind}`);
+      await handler(job);
+      ctx.db.jobs.complete(job.orgId, job.id, ctx.clock());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const now2 = ctx.clock();
+      const retryAt = job.attempts < MAX_ATTEMPTS ? now2 + BACKOFF_BASE_MS * 2 ** (job.attempts - 1) : null;
+      const status = ctx.db.jobs.fail(job.orgId, job.id, msg.slice(0, 1e3), retryAt, now2);
+      ctx.log.warn(`[scheduler] job ${job.kind} (${job.key}) failed (attempt ${job.attempts}/${MAX_ATTEMPTS}) \u2192 ${status}: ${msg}`);
+    }
+  }
+  async function doTick() {
+    let total = 0;
+    for (let round2 = 0; round2 < MAX_ROUNDS; round2++) {
+      const jobs = ctx.db.jobs.claimDue(ctx.clock(), 100);
+      if (!jobs.length) break;
+      for (const job of jobs) await runOne(job);
+      total += jobs.length;
+    }
+    return total;
+  }
+  const scheduler = {
+    tick() {
+      if (running) return running.then(() => scheduler.tick());
+      running = doTick().finally(() => {
+        running = null;
+      });
+      return running;
+    },
+    start(intervalMs = 1e4) {
+      if (timer) return;
+      const fire = () => {
+        scheduler.tick().catch((err) => ctx.log.error("[scheduler] tick failed", err));
+      };
+      timer = setInterval(fire, Math.max(250, intervalMs));
+      timer.unref?.();
+      fire();
+    },
+    async stop() {
+      if (timer) clearInterval(timer);
+      timer = null;
+      if (running) await running.catch(() => 0);
+    }
+  };
+  return scheduler;
+}
+
+// packages/core/src/services/audit.ts
+var ENTITIES2 = ["task", "project", "member", "meeting", "inbox", "org", "api_key", "lead"];
+var IMMUTABLE = /* @__PURE__ */ new Set(["id", "orgId", "createdAt", "createdBy", "creatorId", "updatedAt"]);
+function restoreFields(cur, before, after) {
+  const next = { ...cur };
+  for (const k of Object.keys(before)) {
+    if (IMMUTABLE.has(k) || !(k in cur)) continue;
+    if (after && JSON.stringify(before[k]) === JSON.stringify(after[k])) continue;
+    next[k] = before[k];
+  }
+  return next;
+}
+var conflict = (msg) => {
+  throw new AppError("conflict", msg);
+};
+function createAuditService(ctx) {
+  const { db } = ctx;
+  const now2 = () => ctx.clock();
+  function canUndo(actor, e) {
+    if (e.entity === "member" || e.entity === "org") return isAdmin(actor);
+    return e.actorId === actor.memberId || isManager(actor);
+  }
+  function apply(actor, e) {
+    const org = actor.orgId;
+    const before = e.before;
+    const created = e.before === null;
+    const deleted = e.after === null;
+    const t0 = now2();
+    switch (e.entity) {
+      case "task": {
+        const cur = db.tasks.get(org, e.entityId);
+        if (created) {
+          if (!cur) conflict("The task no longer exists");
+          db.tasks.delete(org, cur.id);
+          return {
+            snapshot: { type: "task.deleted", before: cur, after: null },
+            after: () => {
+              ctx.internal.cancelTask(org, cur.id);
+              ctx.internal.publishTaskDeleted(cur);
+            }
+          };
+        }
+        const b = before;
+        if (deleted) {
+          if (cur || db.tasks.exists(org, e.entityId)) conflict("The task already exists");
+          const projectOk = b.projectId ? !!db.projects.get(org, b.projectId) : true;
+          const assignees = db.members.getMany(org, b.assigneeIds ?? []).map((m) => m.id);
+          const restored = { ...b, orgId: org, projectId: projectOk ? b.projectId : null, assigneeIds: assignees, updatedAt: t0 };
+          db.tasks.insert(restored);
+          return {
+            snapshot: { type: "task.created", before: null, after: restored },
+            after: () => {
+              ctx.internal.scheduleTask(restored);
+              ctx.internal.publishTask(restored);
+            }
+          };
+        }
+        if (!cur) conflict("The task no longer exists");
+        const next = restoreFields(cur, before, e.after);
+        next.assigneeIds = db.members.getMany(org, next.assigneeIds).map((m) => m.id);
+        if (next.projectId && !db.projects.get(org, next.projectId)) next.projectId = null;
+        next.updatedAt = t0;
+        next.lastActivityAt = t0;
+        db.tasks.save(next);
+        const type = cur.status !== "done" && next.status === "done" ? "task.completed" : cur.status === "done" && next.status !== "done" ? "task.reopened" : "task.updated";
+        return {
+          snapshot: { type, before: cur, after: next },
+          after: () => {
+            ctx.internal.scheduleTask(next);
+            ctx.internal.publishTask(next);
+          }
+        };
+      }
+      case "project": {
+        const cur = db.projects.get(org, e.entityId);
+        if (created) {
+          if (!cur) conflict("The project no longer exists");
+          db.projects.delete(org, cur.id);
+          return { snapshot: { type: "project.deleted", before: cur, after: null }, after: () => ctx.internal.invalidateBriefings(org) };
+        }
+        if (deleted) {
+          if (cur) conflict("The project already exists");
+          const { taskIds, ...rest } = before;
+          const p = { ...rest, orgId: org, memberIds: db.members.getMany(org, rest.memberIds ?? []).map((m) => m.id), updatedAt: t0 };
+          if (p.leadId && !db.members.get(org, p.leadId)) p.leadId = null;
+          db.projects.insert(p);
+          db.projects.relinkTasks(org, p.id, taskIds ?? []);
+          return {
+            snapshot: { type: "project.created", before: null, after: p },
+            after: () => {
+              publish(ctx, org, { type: "project.upserted", project: p });
+              for (const id of taskIds ?? []) {
+                const t = db.tasks.get(org, id);
+                if (t) ctx.internal.publishTask(t);
+              }
+            }
+          };
+        }
+        if (!cur) conflict("The project no longer exists");
+        const next = restoreFields(cur, before, e.after);
+        next.memberIds = db.members.getMany(org, next.memberIds).map((m) => m.id);
+        next.updatedAt = t0;
+        db.projects.save(next);
+        return { snapshot: { type: "project.updated", before: cur, after: next }, after: () => publish(ctx, org, { type: "project.upserted", project: next }) };
+      }
+      case "member": {
+        const cur = db.members.get(org, e.entityId);
+        if (!cur || created) conflict("This change cannot be undone");
+        if (rank(cur.role) > rank(actor.role) && actor.via !== "system") forbidden("You cannot modify a higher role");
+        if (actor.via !== "system" && cur.id !== actor.memberId && rank(cur.role) >= rank("admin") && actor.role !== "owner") forbidden("Only owners can modify an admin or owner");
+        const next = restoreFields(cur, before, e.after);
+        if (rank(next.role) > rank(actor.role) && actor.via !== "system") forbidden("You cannot grant a role higher than your own");
+        if (cur.role === "owner" && cur.active && (next.role !== "owner" || !next.active) && db.members.countActive(org, "owner") <= 1) conflict("This is the last owner");
+        next.updatedAt = t0;
+        db.members.save(next);
+        if (next.role !== cur.role || cur.active && !next.active) db.sessions.deleteForMember(org, next.id);
+        if (cur.active && !next.active) db.apiKeys.revokeForMember(org, next.id, t0);
+        return {
+          snapshot: { type: "member.updated", before: cur, after: next },
+          after: () => {
+            ctx.internal.scheduleDigest(next);
+            publish(ctx, org, { type: "member.upserted", member: next });
+          }
+        };
+      }
+      case "org": {
+        const cur = db.orgs.get(org);
+        if (!cur || created || deleted) conflict("This change cannot be undone");
+        const next = { ...restoreFields(cur, before, e.after), id: org, updatedAt: t0 };
+        db.orgs.save(next);
+        return { snapshot: { type: "org.updated", before: cur, after: next }, after: () => ctx.internal.invalidateBriefings(org) };
+      }
+      case "meeting": {
+        const cur = db.meetings.get(org, e.entityId);
+        if (created) {
+          if (!cur) conflict("The meeting no longer exists");
+          db.meetings.delete(org, cur.id);
+          return { snapshot: { type: "meeting.deleted", before: cur, after: null }, after: () => ctx.internal.cancelMeeting(org, cur.id) };
+        }
+        if (deleted) {
+          if (cur) conflict("The meeting already exists");
+          const b = before;
+          const m = { ...b, orgId: org, attendeeIds: db.members.getMany(org, b.attendeeIds ?? []).map((x) => x.id), feedId: b.feedId && db.feeds.get(org, b.feedId) ? b.feedId : null, updatedAt: t0 };
+          db.meetings.insert(m);
+          return { snapshot: { type: "meeting.created", before: null, after: m }, after: () => ctx.internal.scheduleMeeting(m) };
+        }
+        if (!cur) conflict("The meeting no longer exists");
+        const next = { ...restoreFields(cur, before, e.after), updatedAt: t0 };
+        next.attendeeIds = db.members.getMany(org, next.attendeeIds).map((x) => x.id);
+        db.meetings.save(next);
+        return { snapshot: { type: "meeting.updated", before: cur, after: next }, after: () => ctx.internal.scheduleMeeting(next) };
+      }
+      case "lead": {
+        const cur = db.leads.get(org, e.entityId);
+        if (created) {
+          if (!cur) conflict("The lead no longer exists");
+          db.leads.delete(org, cur.id);
+          return { snapshot: { type: "lead.deleted", before: cur, after: null }, after: () => {
+          } };
+        }
+        if (deleted) {
+          if (cur) conflict("The lead already exists");
+          const l = { ...before, orgId: org, updatedAt: t0 };
+          db.leads.insert(l);
+          return { snapshot: { type: "lead.created", before: null, after: l }, after: () => {
+          } };
+        }
+        if (!cur) conflict("The lead no longer exists");
+        const next = { ...restoreFields(cur, before, e.after), updatedAt: t0 };
+        db.leads.save(next);
+        return { snapshot: { type: "lead.updated", before: cur, after: next }, after: () => {
+        } };
+      }
+      case "inbox": {
+        const cur = db.inbox.get(org, e.entityId);
+        if (!cur || created || deleted) conflict("This change cannot be undone");
+        const next = restoreFields(cur, before, e.after);
+        db.inbox.save(next);
+        return { snapshot: { type: "inbox.updated", before: cur, after: next }, after: () => {
+        } };
+      }
+      default:
+        throw new AppError("bad_request", "This change cannot be undone");
+    }
+  }
+  return {
+    async list(actor, opts = {}) {
+      const entity = opts.entity !== void 0 ? oneOf(opts.entity, "entity", ENTITIES2) : void 0;
+      const entityId = opts.entityId !== void 0 ? str3(opts.entityId, "entityId", { max: 64 }) : void 0;
+      const limit = opts.limit !== void 0 ? int3(opts.limit, "limit", 1, 1e3) : 100;
+      return db.audit.list(actor.orgId, { entity, entityId, limit, actorId: isManager(actor) ? void 0 : actor.memberId });
+    },
+    async undo(actor, eventId) {
+      requireWrite(actor);
+      const e = typeof eventId === "string" ? db.audit.get(actor.orgId, eventId) : null;
+      if (!e) notFound("Audit event not found");
+      if (!e.undoable) throw new AppError("bad_request", "This change cannot be undone");
+      if (e.undoneAt !== null) conflict("This change was already undone");
+      if (!canUndo(actor, e)) forbidden("You can only undo your own changes");
+      const t0 = now2();
+      const result = db.tx(() => {
+        if (!db.audit.markUndone(actor.orgId, e.id, actor.memberId, t0)) conflict("This change was already undone");
+        return apply(actor, e);
+      });
+      try {
+        result.after();
+      } catch (err) {
+        ctx.log.warn("[audit] undo side effects failed", err);
+      }
+      await audit(ctx, actor, {
+        type: result.snapshot.type,
+        entity: e.entity,
+        entityId: e.entityId,
+        summary: `Undid: ${e.summary}`,
+        before: result.snapshot.before,
+        after: result.snapshot.after
+      });
+      return db.audit.get(actor.orgId, e.id);
+    }
+  };
+}
+
+// packages/core/src/services/briefing.ts
+var CACHE_MS = 6e4;
+var POLISH_TIMEOUT_MS = 4e3;
+var MAX_WORDS = 120;
+var CLASSIC = { task: "task", tasks: "tasks", greeting: (p, n) => `Good ${p}, ${n}`, opener: null, team: "the team" };
+var TACTICAL = { task: "mission", tasks: "missions", greeting: (p, n) => `Good ${p}, Commander ${n}`, opener: "Mission briefing for today:", team: "the squad" };
+var plural = (n, one, many) => `${n === 1 ? "one" : n} ${n === 1 ? one : many}`;
+var quote = (t) => `"${t.length > 60 ? t.slice(0, 57) + "\u2026" : t}"`;
+function listJoin(items) {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+function partOfDay(hour) {
+  if (hour >= 5 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 17) return "afternoon";
+  return "evening";
+}
+var byPriorityThenDue = (a, b) => (PRIORITY_RANK2[a.priority] ?? 4) - (PRIORITY_RANK2[b.priority] ?? 4) || (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity);
+function createBriefingService(ctx) {
+  const { db } = ctx;
+  const cache2 = /* @__PURE__ */ new Map();
+  const now2 = () => ctx.clock();
+  function actorOf(m) {
+    return { orgId: m.orgId, memberId: m.id, role: m.role, kind: m.kind, via: "session" };
+  }
+  async function compose(m, opts = {}) {
+    const t0 = now2();
+    const tz = safeTz(m.timezone);
+    const actor = actorOf(m);
+    const vis = visibility(actor);
+    const voice = m.prefs.theme === "classic" ? CLASSIC : TACTICAL;
+    const views = (ts2) => ctx.internal.views(m.orgId, ts2, tz);
+    const dayStart = startOfLocalDay(t0, tz);
+    const dayEnd = startOfLocalDay(t0, tz, 1);
+    const weekEnd = startOfLocalDay(t0, tz, 8);
+    const overdue = views(db.tasks.query(m.orgId, { assigneeId: m.id, open: true, dueBefore: t0, order: "due", limit: 50 }));
+    const today2 = views(db.tasks.query(m.orgId, { assigneeId: m.id, open: true, dueAfter: t0, dueBefore: dayEnd, limit: 50 })).sort(byPriorityThenDue);
+    const upcoming = views(db.tasks.query(m.orgId, { assigneeId: m.id, open: true, dueAfter: dayEnd, dueBefore: weekEnd, order: "due", limit: 10 }));
+    const meetings = db.meetings.list(m.orgId, { from: Math.max(t0 - 30 * 6e4, dayStart), to: dayEnd, memberId: m.id });
+    const waitingOn = views(db.tasks.query(m.orgId, { involvedId: m.id, open: true, waiting: true, limit: 20 }));
+    const isMgr = m.kind === "human" && rank(m.role) >= ROLE_RANK.manager;
+    const team = [];
+    if (isMgr) {
+      for (const p of db.members.list(m.orgId, { kind: "human" })) {
+        if (p.role === "guest") continue;
+        team.push({
+          member: p,
+          open: db.tasks.count(m.orgId, { assigneeId: p.id, open: true }),
+          overdue: db.tasks.count(m.orgId, { assigneeId: p.id, open: true, dueBefore: t0 }),
+          dueToday: db.tasks.count(m.orgId, { assigneeId: p.id, open: true, dueAfter: dayStart, dueBefore: dayEnd }),
+          doneToday: db.tasks.count(m.orgId, { assigneeId: p.id, statuses: ["done"], completedAfter: dayStart }),
+          doneThisWeek: db.tasks.count(m.orgId, { assigneeId: p.id, statuses: ["done"], completedAfter: t0 - 7 * 864e5 }),
+          inProgress: views(db.tasks.query(m.orgId, { assigneeId: p.id, statuses: ["in_progress"], limit: 3 }))
+        });
+      }
+    }
+    const agents = [];
+    for (const a of db.members.list(m.orgId, { kind: "agent" })) {
+      const open = views(db.tasks.query(m.orgId, { visibility: vis, assigneeId: a.id, open: true, limit: 50 }));
+      const inProgress = open.filter((t) => t.status === "in_progress");
+      const stale = open.filter((t) => t.isStale);
+      if (inProgress.length || stale.length || isMgr) agents.push({ member: a, inProgress, stale });
+    }
+    const unreadNotifications = db.notifications.unreadCount(m.orgId, m.id);
+    const inboxNew = isMgr ? db.inbox.countNew(m.orgId) : 0;
+    const name = firstName(m.name);
+    const greeting = voice.greeting(partOfDay(localParts(t0, tz).hour), name);
+    const mtgToday = meetings.filter((x) => x.startAt >= t0 - 30 * 6e4);
+    const headParts = [];
+    if (overdue.length) headParts.push(`${overdue.length} overdue`);
+    if (today2.length) headParts.push(`${today2.length} ${today2.length === 1 ? voice.task : voice.tasks} due today`);
+    if (mtgToday.length) headParts.push(`${mtgToday.length} meeting${mtgToday.length === 1 ? "" : "s"}`);
+    if (waitingOn.length) headParts.push(`waiting on ${waitingOn.length}`);
+    const headline = headParts.length ? headParts.join(" \xB7 ") : voice === TACTICAL ? "All clear \u2014 no missions due today" : "All clear \u2014 nothing due today";
+    const sentences = [`${greeting}.`];
+    if (voice.opener) sentences.push(voice.opener);
+    const dueTodayCount = overdue.length + today2.length;
+    if (overdue.length === 1) sentences.push(`One ${voice.task} is overdue: ${quote(overdue[0].title)}.`);
+    else if (overdue.length > 1) sentences.push(`${overdue.length} ${voice.tasks} are overdue, starting with ${quote(overdue[0].title)}.`);
+    if (today2.length) {
+      const top = today2.slice(0, 5);
+      const named = listJoin(top.slice(0, 3).map((t) => quote(t.title)));
+      sentences.push(`You have ${plural(today2.length, voice.task, voice.tasks)} due today${today2.length <= 3 ? `: ${named}` : `, including ${named}`}.`);
+    } else if (!dueTodayCount) {
+      sentences.push(voice === TACTICAL ? "No missions are due today." : "Nothing is due today.");
+    }
+    if (mtgToday.length) {
+      const items = mtgToday.slice(0, 3).map((x) => x.allDay ? `${x.title} all day` : `${x.title} at ${spokenTime(x.startAt, tz)}`);
+      sentences.push(mtgToday.length === 1 ? `You have a meeting: ${items[0]}.` : `You have ${mtgToday.length} meetings: ${listJoin(items)}.`);
+    }
+    if (waitingOn.length) {
+      const w = waitingOn[0];
+      sentences.push(waitingOn.length === 1 ? `You're waiting on ${w.waitingOn.name} for ${quote(w.title)}.` : `You're waiting on ${waitingOn.length} people, including ${w.waitingOn.name} for ${quote(w.title)}.`);
+    }
+    if (isMgr && team.length) {
+      const open = team.reduce((s2, p) => s2 + p.open, 0);
+      const od = team.reduce((s2, p) => s2 + p.overdue, 0);
+      const doneToday = team.reduce((s2, p) => s2 + p.doneToday, 0);
+      sentences.push(`Across ${voice.team}, ${open} ${open === 1 ? `${voice.task} is` : `${voice.tasks} are`} open, ${od} overdue, and ${doneToday} finished today.`);
+      const star = [...team].sort((a, b) => b.doneThisWeek - a.doneThisWeek)[0];
+      if (star && star.doneThisWeek > 0 && star.member.id !== m.id) sentences.push(`${firstName(star.member.name)} has closed ${plural(star.doneThisWeek, voice.task, voice.tasks)} this week.`);
+    }
+    if (isMgr) {
+      const working = agents.filter((a) => a.inProgress.length).slice(0, 2).map((a) => `${a.member.name} is working on ${quote(a.inProgress[0].title)}`);
+      if (working.length) sentences.push(`${listJoin(working)}.`);
+      const quiet = agents.filter((a) => a.stale.length).slice(0, 2).map((a) => `${a.member.name} has gone quiet on ${quote(a.stale[0].title)}`);
+      if (quiet.length) sentences.push(`Heads up: ${listJoin(quiet)}.`);
+      if (inboxNew) sentences.push(`${plural(inboxNew, "new message is", "new messages are")} waiting in the inbox.`);
+    }
+    let words = 0;
+    const kept = [];
+    for (const s2 of sentences) {
+      const n = s2.split(/\s+/).length;
+      if (kept.length >= 2 && words + n > MAX_WORDS) break;
+      kept.push(s2);
+      words += n;
+    }
+    let spoken = kept.join(" ");
+    if (opts.polish !== false && ctx.llm) {
+      try {
+        const polished = await withTimeout2(ctx.llm.polishBriefing({ script: spoken, name, timezone: tz }), POLISH_TIMEOUT_MS, "polishBriefing");
+        if (typeof polished === "string" && polished.trim() && polished.length < 2e3) spoken = polished.trim();
+      } catch (err) {
+        ctx.log.warn("[briefing] polish failed, using deterministic script", err);
+      }
+    }
+    return { memberId: m.id, generatedAt: t0, greeting, spoken, headline, myTasks: { overdue, today: today2, upcoming }, meetings, waitingOn, team, agents, unreadNotifications, inboxNew };
+  }
+  return {
+    compose,
+    invalidate(orgId) {
+      for (const [k, e] of cache2) if (e.orgId === orgId) cache2.delete(k);
+    },
+    service: {
+      async get(actor) {
+        const m = db.members.get(actor.orgId, actor.memberId);
+        if (!m) notFound("Member not found");
+        const hit = cache2.get(m.id);
+        const t0 = now2();
+        if (hit && t0 - hit.at < CACHE_MS && t0 >= hit.at) return hit.b;
+        const b = await compose(m);
+        cache2.set(m.id, { at: t0, orgId: m.orgId, b });
+        return b;
+      }
+    }
+  };
+}
+
+// packages/core/src/services/identity.ts
+import { randomBytes as randomBytes4 } from "node:crypto";
+
+// packages/core/src/password.ts
+import { randomBytes as randomBytes3, scrypt, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
+var KEY_LENGTH = 64;
+function scryptAsync(password2, salt) {
+  return new Promise((resolve6, reject) => {
+    scrypt(password2, salt, KEY_LENGTH, (err, key) => err ? reject(err) : resolve6(key));
+  });
+}
+async function hashPassword(password2) {
+  const salt = randomBytes3(16).toString("hex");
+  const hash2 = await scryptAsync(password2, salt);
+  return `scrypt$${salt}$${hash2.toString("hex")}`;
+}
+var dummy = null;
+function dummyHash() {
+  dummy ??= hashPassword(randomBytes3(16).toString("hex"));
+  return dummy;
+}
+async function verifyPassword(password2, stored) {
+  const parts = (stored ?? "").split("$");
+  const valid = parts.length === 3 && parts[0] === "scrypt" && !!parts[1] && /^[0-9a-f]+$/i.test(parts[2] ?? "");
+  const [, salt, hashHex] = valid ? parts : (await dummyHash()).split("$");
+  const expected = Buffer.from(hashHex, "hex");
+  const actual = await scryptAsync(password2, salt);
+  const same = actual.length === expected.length && timingSafeEqual2(actual, expected);
+  return valid && same;
+}
+
+// packages/core/src/services/identity.ts
+var SESSION_TTL_MS = 30 * 864e5;
+var TOUCH_EVERY_MS = 6e4;
+var ROLES = ["owner", "admin", "manager", "member", "guest", "agent"];
+var PROVIDERS = ["claude", "chatgpt", "gemini", "cursor", "copilot", "n8n", "custom"];
+var KEY_PREFIX = "cb_live_";
+function actorFor(m, via, scopes) {
+  return { orgId: m.orgId, memberId: m.id, role: m.role, kind: m.kind, via, ...scopes ? { scopes } : {} };
+}
+function createAuthService(ctx) {
+  const { db } = ctx;
+  function newSession(m, meta3) {
+    const token = randomBytes4(32).toString("base64url");
+    const now2 = ctx.clock();
+    const expiresAt = now2 + SESSION_TTL_MS;
+    db.sessions.insert({
+      id: newId("ses"),
+      orgId: m.orgId,
+      memberId: m.id,
+      tokenHash: sha256Hex(token),
+      createdAt: now2,
+      expiresAt,
+      lastUsedAt: now2,
+      ip: (meta3.ip ?? "").slice(0, 64) || null,
+      userAgent: (meta3.userAgent ?? "").slice(0, 300) || null
+    });
+    return { token, member: m, expiresAt };
+  }
+  return {
+    async login(identifier, password2, meta3) {
+      const ident = typeof identifier === "string" ? identifier.trim().slice(0, 254) : "";
+      const pw = typeof password2 === "string" ? password2.slice(0, 256) : "";
+      const found = ident ? db.members.findForLogin(ident) : null;
+      const ok = await verifyPassword(pw, found?.passwordHash ?? null);
+      if (!found || !ok || !pw) throw new AppError("unauthorized", "Invalid email or password");
+      return newSession(found.member, meta3 ?? { ip: "", userAgent: "" });
+    },
+    async logout(token) {
+      if (typeof token === "string" && token) db.sessions.deleteByHash(sha256Hex(token));
+    },
+    async resolveSession(token) {
+      if (typeof token !== "string" || token.length < 20 || token.length > 200) return null;
+      const s2 = db.sessions.findByHash(sha256Hex(token));
+      if (!s2) return null;
+      const now2 = ctx.clock();
+      if (s2.expiresAt <= now2) {
+        db.sessions.delete(s2.orgId, s2.id);
+        return null;
+      }
+      const m = db.members.get(s2.orgId, s2.memberId);
+      if (!m || !m.active || m.kind !== "human") {
+        db.sessions.delete(s2.orgId, s2.id);
+        return null;
+      }
+      if (now2 - s2.lastUsedAt >= TOUCH_EVERY_MS) db.sessions.touch(s2.orgId, s2.id, now2 + SESSION_TTL_MS, now2);
+      return actorFor(m, "session");
+    },
+    async resolveApiKey(rawKey) {
+      if (typeof rawKey !== "string" || !rawKey.startsWith(KEY_PREFIX) || rawKey.length > 200) return null;
+      const key = db.apiKeys.findByHash(sha256Hex(rawKey));
+      if (!key || key.revokedAt !== null) return null;
+      const now2 = ctx.clock();
+      if (key.expiresAt !== null && key.expiresAt <= now2) return null;
+      const m = db.members.get(key.orgId, key.memberId);
+      if (!m || !m.active) return null;
+      if (key.lastUsedAt === null || now2 - key.lastUsedAt >= TOUCH_EVERY_MS) {
+        db.apiKeys.touch(key.orgId, key.id, now2);
+        if (m.kind === "agent") db.members.touchAgentSeen(m.orgId, m.id, now2);
+      }
+      return actorFor(m, "api_key", [...key.scopes]);
+    },
+    async needsSetup() {
+      return !db.members.anyActiveOwner();
+    },
+    async setup(input) {
+      if (!isObj3(input)) bad("setup input required");
+      const orgName = str3(input.orgName, "orgName", { max: 100 });
+      const name = str3(input.name, "name", { max: 100 });
+      const email4 = email3(input.email);
+      const password2 = password(input.password);
+      const tz = timezone(input.timezone ?? systemTimezone());
+      const hash2 = await hashPassword(password2);
+      const now2 = ctx.clock();
+      const member = db.tx(() => {
+        if (db.members.anyActiveOwner()) throw new AppError("conflict", "Setup has already been completed");
+        let org = db.orgs.list()[0] ?? null;
+        if (org) {
+          org = { ...org, name: orgName, timezone: tz, updatedAt: now2 };
+          db.orgs.save(org);
+          if (db.members.findByEmail(org.id, email4)) throw new AppError("conflict", "A member with this email already exists");
+        } else {
+          org = {
+            id: newId("org"),
+            name: orgName,
+            timezone: tz,
+            logo: null,
+            workdayStart: 9,
+            workdayEnd: 18,
+            defaultReminderOffsets: [1440, 60, 0],
+            escalateAfterMin: 1440,
+            agentStaleAfterMin: 240,
+            intakeAutoAck: false,
+            createdAt: now2,
+            updatedAt: now2
+          };
+          db.orgs.insert(org);
+        }
+        const id = newId("mem");
+        const m = {
+          id,
+          orgId: org.id,
+          kind: "human",
+          role: "owner",
+          name,
+          email: email4,
+          phone: null,
+          title: null,
+          initials: initialsFor(name),
+          color: colorFor(id),
+          avatarUrl: null,
+          timezone: tz,
+          active: true,
+          prefs: defaultPrefs("human"),
+          agent: null,
+          createdAt: now2,
+          updatedAt: now2
+        };
+        db.members.insert(m, hash2);
+        return m;
+      });
+      ctx.internal.ensurePeriodic(member.orgId);
+      ctx.internal.scheduleDigest(member);
+      await audit(ctx, { orgId: member.orgId, memberId: member.id }, { type: "org.setup", entity: "org", entityId: member.orgId, summary: `${name} set up ${orgName}`, after: { orgName, ownerId: member.id } });
+      return newSession(member, { ip: "", userAgent: "" });
+    },
+    async orgId() {
+      return db.orgs.list()[0]?.id ?? null;
+    }
+  };
+}
+function validatePrefs(cur, patch) {
+  if (!isObj3(patch)) bad("prefs must be an object");
+  const p = { ...cur };
+  const hour = (x, f) => x === null ? null : int3(x, f, 0, 23);
+  if (patch.briefingVoice !== void 0) p.briefingVoice = oneOf(patch.briefingVoice, "prefs.briefingVoice", ["auto", "button", "off"]);
+  if (patch.voiceName !== void 0) p.voiceName = optStr(patch.voiceName, "prefs.voiceName", 200);
+  if (patch.digestHour !== void 0) p.digestHour = hour(patch.digestHour, "prefs.digestHour");
+  if (patch.notifyPush !== void 0) p.notifyPush = bool2(patch.notifyPush, "prefs.notifyPush");
+  if (patch.notifyWhatsapp !== void 0) p.notifyWhatsapp = bool2(patch.notifyWhatsapp, "prefs.notifyWhatsapp");
+  if (patch.notifyEmail !== void 0) p.notifyEmail = bool2(patch.notifyEmail, "prefs.notifyEmail");
+  if (patch.quietStart !== void 0) p.quietStart = hour(patch.quietStart, "prefs.quietStart");
+  if (patch.quietEnd !== void 0) p.quietEnd = hour(patch.quietEnd, "prefs.quietEnd");
+  if (patch.theme !== void 0) p.theme = oneOf(patch.theme, "prefs.theme", ["tactical", "classic"]);
+  if (patch.sound !== void 0) p.sound = bool2(patch.sound, "prefs.sound");
+  return p;
+}
+function createMemberService(ctx) {
+  const { db } = ctx;
+  function load(actor, id) {
+    const m = typeof id === "string" ? db.members.get(actor.orgId, id) : null;
+    if (!m) notFound("Member not found");
+    return m;
+  }
+  function revokeAccess(m, keys) {
+    db.sessions.deleteForMember(m.orgId, m.id);
+    if (keys) db.apiKeys.revokeForMember(m.orgId, m.id, ctx.clock());
+  }
+  function assertNotLastOwner(m) {
+    if (m.role === "owner" && m.active && db.members.countActive(m.orgId, "owner") <= 1) throw new AppError("conflict", "This is the last owner \u2014 promote someone else first");
+  }
+  function validSupervisor(actor, sid) {
+    if (sid === null || sid === void 0) return null;
+    const id = ref(sid, "agent.supervisorId");
+    const s2 = db.members.get(actor.orgId, id);
+    if (!s2 || !s2.active || s2.kind !== "human") bad("agent.supervisorId must be an active human member");
+    return id;
+  }
+  return {
+    async list(actor, opts = {}) {
+      const includeInactive = !!opts.includeInactive && isManager(actor);
+      const kind = opts.kind === "human" || opts.kind === "agent" ? opts.kind : void 0;
+      const list = db.members.list(actor.orgId, { includeInactive, kind });
+      return actor.role === "guest" ? list.map((m) => m.id === actor.memberId ? m : publicMember(m)) : list;
+    },
+    async get(actor, id) {
+      const m = load(actor, id);
+      if (!m.active && !isManager(actor) && m.id !== actor.memberId) notFound("Member not found");
+      return actor.role === "guest" && m.id !== actor.memberId ? publicMember(m) : m;
+    },
+    async me(actor) {
+      return load(actor, actor.memberId);
+    },
+    async create(actor, input) {
+      requireWrite(actor);
+      if (!isObj3(input)) bad("member input required");
+      const kind = oneOf(input.kind, "kind", ["human", "agent"]);
+      if (kind === "agent") requireRole(actor, "manager", "Managers and above can add AI agents");
+      else requireRole(actor, "admin", "Only owners and admins can add people");
+      let role = oneOf(input.role ?? (kind === "agent" ? "agent" : "member"), "role", ROLES);
+      if (kind === "agent") role = "agent";
+      else if (role === "agent") bad("Humans cannot have the agent role");
+      if (!isSystem(actor) && rank(role) > rank(actor.role)) forbidden("You cannot grant a role higher than your own");
+      if (role === "owner" && !isSystem(actor) && actor.role !== "owner") forbidden("Only owners can add owners");
+      const org = getOrg(ctx, actor.orgId);
+      const name = str3(input.name, "name", { max: 100 });
+      const email4 = kind === "human" ? email3(input.email) : input.email ? email3(input.email) : null;
+      if (email4 && db.members.findByEmail(actor.orgId, email4) && kind === "human") throw new AppError("conflict", "A member with this email already exists");
+      const hash2 = kind === "human" ? await hashPassword(password(input.password)) : null;
+      const now2 = ctx.clock();
+      const id = newId("mem");
+      const m = {
+        id,
+        orgId: actor.orgId,
+        kind,
+        role,
+        name,
+        email: email4,
+        phone: phone(input.phone),
+        title: optStr(input.title, "title", 100),
+        initials: initialsFor(name),
+        color: colorFor(id),
+        avatarUrl: null,
+        timezone: input.timezone !== void 0 ? timezone(input.timezone) : org.timezone,
+        active: true,
+        prefs: defaultPrefs(kind),
+        agent: kind === "agent" ? {
+          provider: oneOf(input.agent?.provider ?? "custom", "agent.provider", PROVIDERS),
+          description: optStr(input.agent?.description, "agent.description", 2e3) ?? "",
+          lastSeenAt: null,
+          supervisorId: input.agent?.supervisorId !== void 0 ? validSupervisor(actor, input.agent.supervisorId) : actor.kind === "human" && !isSystem(actor) ? actor.memberId : null
+        } : null,
+        createdAt: now2,
+        updatedAt: now2
+      };
+      db.members.insert(m, hash2);
+      ctx.internal.scheduleDigest(m);
+      await audit(ctx, actor, { type: "member.created", entity: "member", entityId: id, summary: `Added ${kind === "agent" ? "AI agent" : "member"} ${name}`, after: m });
+      publish(ctx, actor.orgId, { type: "member.upserted", member: m });
+      return m;
+    },
+    async update(actor, id, patch) {
+      requireWrite(actor);
+      if (!isObj3(patch)) bad("patch must be an object");
+      const cur = load(actor, id);
+      const self = cur.id === actor.memberId;
+      const adminOver = isAdmin(actor) && (isSystem(actor) || actor.role === "owner" || rank(cur.role) < rank("admin"));
+      const managerOverAgent = cur.kind === "agent" && isManager(actor);
+      const privileged = adminOver || managerOverAgent;
+      if (!self && !privileged) forbidden("You can only edit your own profile");
+      const touchesAdminFields = patch.role !== void 0 || patch.active !== void 0 || patch.agent !== void 0 || patch.email !== void 0;
+      if (touchesAdminFields && !privileged) forbidden("Only admins can change role, status or email");
+      if (self && !isSystem(actor) && (patch.role !== void 0 && patch.role !== cur.role || patch.active === false)) forbidden("You cannot change your own role or deactivate yourself");
+      const next = { ...cur, prefs: { ...cur.prefs }, agent: cur.agent ? { ...cur.agent } : null };
+      if (patch.name !== void 0) {
+        next.name = str3(patch.name, "name", { max: 100 });
+        next.initials = initialsFor(next.name);
+      }
+      if (patch.email !== void 0) {
+        next.email = cur.kind === "human" ? email3(patch.email) : patch.email ? email3(patch.email) : null;
+        const clash = next.email ? db.members.findByEmail(actor.orgId, next.email) : null;
+        if (clash && clash.id !== cur.id && cur.kind === "human") throw new AppError("conflict", "A member with this email already exists");
+      }
+      if (patch.phone !== void 0) next.phone = phone(patch.phone);
+      if (patch.title !== void 0) next.title = optStr(patch.title, "title", 100);
+      if (patch.timezone !== void 0) next.timezone = timezone(patch.timezone);
+      if (patch.color !== void 0) next.color = color(patch.color);
+      if (patch.avatarUrl !== void 0) next.avatarUrl = patch.avatarUrl === null ? null : url2(patch.avatarUrl, "avatarUrl");
+      if (patch.prefs !== void 0) next.prefs = validatePrefs(cur.prefs, patch.prefs);
+      if (patch.role !== void 0) {
+        const role = oneOf(patch.role, "role", ROLES);
+        if (cur.kind === "agent" && role !== "agent") bad("Agents always have the agent role");
+        if (cur.kind === "human" && role === "agent") bad("Humans cannot have the agent role");
+        if (!isSystem(actor) && rank(role) > rank(actor.role)) forbidden("You cannot grant a role higher than your own");
+        if (cur.role === "owner" && role !== "owner") assertNotLastOwner(cur);
+        next.role = role;
+      }
+      if (patch.active !== void 0) {
+        next.active = bool2(patch.active, "active");
+        if (!next.active) assertNotLastOwner(cur);
+      }
+      if (patch.agent !== void 0) {
+        if (cur.kind !== "agent" || !next.agent) bad("agent settings only apply to AI agents");
+        if (!isObj3(patch.agent)) bad("agent must be an object");
+        if (patch.agent.provider !== void 0) next.agent.provider = oneOf(patch.agent.provider, "agent.provider", PROVIDERS);
+        if (patch.agent.description !== void 0) next.agent.description = optStr(patch.agent.description, "agent.description", 2e3) ?? "";
+        if (patch.agent.supervisorId !== void 0) next.agent.supervisorId = validSupervisor(actor, patch.agent.supervisorId);
+      }
+      next.updatedAt = ctx.clock();
+      db.members.save(next);
+      if (next.role !== cur.role || cur.active && !next.active) revokeAccess(next, cur.active && !next.active);
+      if (next.timezone !== cur.timezone || next.prefs.digestHour !== cur.prefs.digestHour || next.active !== cur.active) ctx.internal.scheduleDigest(next);
+      await audit(ctx, actor, { type: "member.updated", entity: "member", entityId: id, summary: `Updated ${next.name}`, before: cur, after: next, undoable: true });
+      publish(ctx, actor.orgId, { type: "member.upserted", member: next });
+      ctx.internal.invalidateBriefings(actor.orgId);
+      return next;
+    },
+    async setPassword(actor, id, password2) {
+      requireWrite(actor);
+      requireRole(actor, "admin", "Only owners and admins can reset passwords");
+      const m = load(actor, id);
+      if (m.kind !== "human") bad("AI agents authenticate with API keys, not passwords");
+      if (!isSystem(actor) && rank(m.role) > rank(actor.role)) forbidden("You cannot reset the password of a higher role");
+      if (!isSystem(actor) && m.id !== actor.memberId && rank(m.role) >= rank("admin") && actor.role !== "owner") forbidden("Only owners can reset an admin's or owner's password");
+      const hash2 = await hashPassword(password(password2));
+      db.members.setPasswordHash(actor.orgId, m.id, hash2, ctx.clock());
+      db.sessions.deleteForMember(actor.orgId, m.id);
+      await audit(ctx, actor, { type: "member.password_reset", entity: "member", entityId: m.id, summary: `Reset password for ${m.name}` });
+    },
+    async changeOwnPassword(actor, current, next) {
+      if (actor.via !== "session") forbidden("Change your password from a signed-in session");
+      const m = load(actor, actor.memberId);
+      const ok = await verifyPassword(typeof current === "string" ? current : "", db.members.getPasswordHash(actor.orgId, m.id));
+      if (!ok) throw new AppError("bad_request", "Current password is incorrect");
+      const hash2 = await hashPassword(password(next, "new password"));
+      db.members.setPasswordHash(actor.orgId, m.id, hash2, ctx.clock());
+      db.sessions.deleteForMember(actor.orgId, m.id);
+      await audit(ctx, actor, { type: "member.password_changed", entity: "member", entityId: m.id, summary: `${m.name} changed their password` });
+    },
+    async remove(actor, id) {
+      requireWrite(actor);
+      const m = load(actor, id);
+      if (m.id === actor.memberId) forbidden("You cannot remove yourself");
+      if (m.kind === "agent") requireRole(actor, "manager");
+      else {
+        requireRole(actor, "admin", "Only owners and admins can remove people");
+        if (!isSystem(actor) && rank(m.role) > rank(actor.role)) forbidden("You cannot remove a higher role");
+        if (!isSystem(actor) && rank(m.role) >= rank("admin") && actor.role !== "owner") forbidden("Only owners can remove an admin or owner");
+      }
+      if (!m.active) return;
+      assertNotLastOwner(m);
+      const next = { ...m, active: false, updatedAt: ctx.clock() };
+      db.members.save(next);
+      revokeAccess(next, true);
+      ctx.internal.scheduleDigest(next);
+      await audit(ctx, actor, { type: "member.deleted", entity: "member", entityId: m.id, summary: `Removed ${m.name}`, before: m, after: next, undoable: true });
+      publish(ctx, actor.orgId, { type: "member.upserted", member: next });
+    }
+  };
+}
+function createApiKeyService(ctx) {
+  const { db } = ctx;
+  function canManage(actor, m) {
+    if (m.id === actor.memberId) return true;
+    if (isAdmin(actor)) return true;
+    return m.kind === "agent" && isManager(actor);
+  }
+  return {
+    async list(actor, memberId) {
+      if (memberId !== void 0 && memberId !== null && memberId !== "") {
+        const m = db.members.get(actor.orgId, String(memberId));
+        if (!m) notFound("Member not found");
+        if (!canManage(actor, m)) forbidden();
+        return db.apiKeys.list(actor.orgId, [m.id]);
+      }
+      if (isAdmin(actor)) return db.apiKeys.list(actor.orgId);
+      if (isManager(actor)) {
+        const agentIds = db.members.list(actor.orgId, { includeInactive: true, kind: "agent" }).map((a) => a.id);
+        return db.apiKeys.list(actor.orgId, [actor.memberId, ...agentIds]);
+      }
+      return db.apiKeys.list(actor.orgId, [actor.memberId]);
+    },
+    async create(actor, input) {
+      requireWrite(actor);
+      if (actor.via === "api_key") forbidden("API keys cannot mint other API keys");
+      if (!isObj3(input)) bad("key input required");
+      const m = db.members.get(actor.orgId, ref(input.memberId, "memberId"));
+      if (!m || !m.active) notFound("Member not found");
+      if (!canManage(actor, m)) forbidden("Managers can mint keys for AI agents; anyone can mint keys for themselves");
+      if (m.kind === "human" && m.id !== actor.memberId) forbidden("Keys for a person can only be created by that person");
+      const name = str3(input.name, "name", { max: 100 });
+      if (!Array.isArray(input.scopes) || !input.scopes.length) bad("scopes must include read and/or write");
+      const scopes = [...new Set(input.scopes.map((s2) => oneOf(s2, "scope", ["read", "write"])))];
+      if (scopes.includes("write") && !scopes.includes("read")) scopes.unshift("read");
+      if (m.role === "guest" && scopes.includes("write")) bad("Guests can only have read-only keys");
+      const now2 = ctx.clock();
+      const expiresAt = optTime(input.expiresAt, "expiresAt");
+      if (expiresAt !== null && expiresAt <= now2) bad("expiresAt must be in the future");
+      const raw = KEY_PREFIX + randomBase62(43);
+      const key = {
+        id: newId("key"),
+        orgId: actor.orgId,
+        memberId: m.id,
+        name,
+        prefix: raw.slice(0, 12),
+        scopes,
+        createdBy: actor.memberId,
+        createdAt: now2,
+        lastUsedAt: null,
+        expiresAt,
+        revokedAt: null
+      };
+      db.apiKeys.insert(key, sha256Hex(raw));
+      await audit(ctx, actor, { type: "api_key.created", entity: "api_key", entityId: key.id, summary: `Created API key "${name}" for ${m.name}`, after: key });
+      return { key, raw };
+    },
+    async revoke(actor, id) {
+      requireWrite(actor);
+      const key = typeof id === "string" ? db.apiKeys.get(actor.orgId, id) : null;
+      if (!key) notFound("API key not found");
+      const m = db.members.get(actor.orgId, key.memberId);
+      if (!m || !canManage(actor, m)) forbidden();
+      if (key.revokedAt !== null) return;
+      db.apiKeys.revoke(actor.orgId, key.id, ctx.clock());
+      await audit(ctx, actor, { type: "api_key.revoked", entity: "api_key", entityId: key.id, summary: `Revoked API key "${key.name}"`, before: key });
+    }
+  };
+}
+function validateOrgPatch(cur, patch) {
+  if (!isObj3(patch)) bad("patch must be an object");
+  const n = { ...cur };
+  if (patch.name !== void 0) n.name = str3(patch.name, "name", { max: 100 });
+  if (patch.timezone !== void 0) n.timezone = timezone(patch.timezone);
+  if (patch.logo !== void 0) n.logo = optStr(patch.logo, "logo", 2048);
+  if (patch.workdayStart !== void 0) n.workdayStart = int3(patch.workdayStart, "workdayStart", 0, 23);
+  if (patch.workdayEnd !== void 0) n.workdayEnd = int3(patch.workdayEnd, "workdayEnd", 1, 24);
+  if (n.workdayEnd <= n.workdayStart) bad("workdayEnd must be after workdayStart");
+  if (patch.defaultReminderOffsets !== void 0) n.defaultReminderOffsets = offsets(patch.defaultReminderOffsets, "defaultReminderOffsets");
+  if (patch.escalateAfterMin !== void 0) n.escalateAfterMin = patch.escalateAfterMin === null ? null : int3(patch.escalateAfterMin, "escalateAfterMin", 1, 60 * 24 * 60);
+  if (patch.agentStaleAfterMin !== void 0) n.agentStaleAfterMin = int3(patch.agentStaleAfterMin, "agentStaleAfterMin", 5, 60 * 24 * 30);
+  if (patch.intakeAutoAck !== void 0) n.intakeAutoAck = bool2(patch.intakeAutoAck, "intakeAutoAck");
+  return n;
+}
+function createOrgService(ctx) {
+  return {
+    async get(actor) {
+      return getOrg(ctx, actor.orgId);
+    },
+    async update(actor, patch) {
+      requireWrite(actor);
+      requireRole(actor, "admin", "Only owners and admins can change organization settings");
+      const cur = getOrg(ctx, actor.orgId);
+      const next = { ...validateOrgPatch(cur, patch), updatedAt: ctx.clock() };
+      ctx.db.orgs.save(next);
+      if (JSON.stringify(cur.defaultReminderOffsets) !== JSON.stringify(next.defaultReminderOffsets) || cur.escalateAfterMin !== next.escalateAfterMin) {
+        for (const t of ctx.db.tasks.query(actor.orgId, { open: true, hasDue: true, limit: 5e3 })) ctx.internal.scheduleTask(t);
+      }
+      await audit(ctx, actor, { type: "org.updated", entity: "org", entityId: cur.id, summary: "Updated organization settings", before: cur, after: next, undoable: true });
+      ctx.internal.invalidateBriefings(actor.orgId);
+      return next;
+    }
+  };
+}
+
+// packages/core/src/services/inbox.ts
+var LLM_TIMEOUT_MS = 8e3;
+var HELP = [
+  `Send me any message and I'll turn it into a task, e.g. "Call Raj tomorrow 5pm !high".`,
+  "Commands:",
+  "\u2022 list \u2014 your open tasks",
+  "\u2022 done 2 \u2014 complete task #2 from your last list",
+  "\u2022 help \u2014 this message"
+].join("\n");
+function memberActor(m) {
+  return { orgId: m.orgId, memberId: m.id, role: m.role, kind: m.kind, via: "system" };
+}
+var firstLine = (s2) => s2.split(/\r?\n/).map((l) => l.trim()).find(Boolean) ?? "";
+var UNVERIFIED_NOTE = "Sender not verified: this email did not pass sender authentication (DMARC/DKIM/SPF), so it may not really be from this address.";
+var senderVerified = (msg) => msg.channel === "whatsapp" || msg.authenticated === true;
+function createInboxService(ctx, tasks) {
+  const { db } = ctx;
+  const now2 = () => ctx.clock();
+  function load(actor, id) {
+    const i = typeof id === "string" ? db.inbox.get(actor.orgId, id) : null;
+    if (!i) notFound("Inbox item not found");
+    return i;
+  }
+  function matchSender(orgId, msg) {
+    if (!senderVerified(msg)) return null;
+    if (msg.channel === "whatsapp") {
+      const hits = db.members.findByPhone(orgId, msg.from);
+      return hits.length === 1 ? hits[0] : null;
+    }
+    const m = db.members.findByEmail(orgId, msg.from.replace(/^.*<([^>]+)>.*$/, "$1"));
+    return m && m.active ? m : null;
+  }
+  async function suggest(orgId, msg, tz) {
+    if (ctx.llm) {
+      try {
+        const d = await withTimeout2(
+          ctx.llm.extractTask({
+            text: msg.text,
+            subject: msg.subject,
+            from: msg.from,
+            now: now2(),
+            timezone: tz,
+            members: db.members.list(orgId).map((m) => ({ id: m.id, name: m.name })),
+            projects: db.projects.list(orgId).map((p) => ({ id: p.id, name: p.name }))
+          }),
+          LLM_TIMEOUT_MS,
+          "llm.extractTask"
+        );
+        if (d && typeof d.title === "string" && d.title.trim()) return d;
+      } catch (err) {
+        ctx.log.warn("[intake] llm.extractTask failed, using parser", err);
+      }
+    }
+    const text = msg.subject?.trim() || firstLine(msg.text);
+    if (!text) return null;
+    try {
+      return tasks.draftFromText(systemActor(orgId), text.slice(0, 500)).draft;
+    } catch {
+      return { title: text.slice(0, 500) };
+    }
+  }
+  function taskReply(t, m) {
+    const tz = safeTz(m.timezone);
+    let s2 = `\u2705 Added: "${t.title}"`;
+    if (t.dueAt) s2 += ` \u2014 due ${dueLabel(t.dueAt, now2(), tz, t.dueAllDay)}`;
+    const others = t.assigneeIds.filter((a) => a !== m.id);
+    if (others.length) s2 += ` \xB7 assigned to ${db.members.getMany(m.orgId, others).map((x) => x.name).join(", ")}`;
+    return s2;
+  }
+  async function memberCommand(m, text) {
+    const cmd = text.trim().toLowerCase().replace(/[.!]+$/, "");
+    const actor = memberActor(m);
+    const listKey = `intake:list:${m.id}`;
+    if (cmd === "help" || cmd === "?" || cmd === "commands") return HELP;
+    if (cmd === "list" || cmd === "today" || cmd === "tasks" || cmd === "my tasks") {
+      const open = await ctx.services.tasks.list(actor, { assigneeId: "me", limit: 10 });
+      db.kv.set(m.orgId, listKey, open.map((t) => t.id), now2());
+      if (!open.length) return "Nothing open \u2014 you're all caught up. \u{1F389}";
+      const tz = safeTz(m.timezone);
+      const lines = open.map((t, i) => `${i + 1}. ${t.title}${t.dueAt ? ` \u2014 ${t.isOverdue ? "OVERDUE, " : ""}due ${dueLabel(t.dueAt, now2(), tz, t.dueAllDay)}` : ""}`);
+      return `Your open tasks:
+${lines.join("\n")}
+
+Reply "done 1" to complete one.`;
+    }
+    const done = /^(done|complete|finished|close)\s+#?(\d{1,3})$/.exec(cmd);
+    if (done) {
+      const ids2 = db.kv.get(m.orgId, listKey) ?? [];
+      const id = ids2[Number(done[2]) - 1];
+      if (!id) return `I don't have that number \u2014 send "list" first, then "done 1".`;
+      try {
+        const t = await ctx.services.tasks.complete(actor, id);
+        return `\u2705 Done: "${t.title}". Nice work!`;
+      } catch (err) {
+        return err instanceof AppError && err.code === "not_found" ? "That task no longer exists." : "Sorry, I couldn't complete that task.";
+      }
+    }
+    return null;
+  }
+  async function createForMember(m, msg) {
+    const actor = memberActor(m);
+    const source = { channel: msg.channel, ref: msg.externalId, from: msg.from };
+    const body = msg.text.trim();
+    const headline = msg.subject?.trim() || firstLine(body);
+    const notes = msg.subject?.trim() ? body : body.includes("\n") ? body : "";
+    if (ctx.llm) {
+      const d = await suggest(m.orgId, msg, safeTz(m.timezone));
+      if (d && d.title) {
+        try {
+          return await ctx.services.tasks.create(actor, { ...d, notes: d.notes ?? notes, source });
+        } catch (err) {
+          ctx.log.warn("[intake] llm draft rejected, using parser", err);
+        }
+      }
+    }
+    const view = await ctx.services.tasks.quickAdd(actor, headline.slice(0, 2e3), { source });
+    if (notes) return ctx.services.tasks.update(actor, view.id, { notes: notes.slice(0, 2e4) });
+    return view;
+  }
+  async function ingest(orgId, msg) {
+    const empty2 = { item: null, task: null, reply: null };
+    try {
+      if (!isObj3(msg) || typeof orgId !== "string") return empty2;
+      if (msg.channel !== "whatsapp" && msg.channel !== "email") return empty2;
+      if (typeof msg.from !== "string" || !msg.from.trim() || typeof msg.externalId !== "string" || !msg.externalId.trim()) return empty2;
+      const text = typeof msg.text === "string" ? msg.text.slice(0, 2e4) : "";
+      const subject = typeof msg.subject === "string" ? msg.subject.slice(0, 500) : null;
+      if (!text.trim() && !subject?.trim()) return empty2;
+      const org = db.orgs.get(orgId);
+      if (!org) return empty2;
+      const clean2 = {
+        channel: msg.channel,
+        from: msg.from.trim().slice(0, 254),
+        fromName: typeof msg.fromName === "string" ? msg.fromName.slice(0, 200) : null,
+        subject,
+        text,
+        externalId: msg.externalId.trim().slice(0, 300),
+        receivedAt: typeof msg.receivedAt === "number" && Number.isFinite(msg.receivedAt) ? msg.receivedAt : now2(),
+        authenticated: senderVerified(msg)
+      };
+      const verified = clean2.authenticated === true;
+      const dup = db.inbox.findByExternal(orgId, clean2.externalId);
+      if (dup) return { item: dup, task: null, reply: null };
+      const sender = matchSender(orgId, clean2);
+      const canCreate = sender && sender.role !== "guest";
+      const item = {
+        id: newId("inbox"),
+        orgId,
+        channel: clean2.channel,
+        from: clean2.from,
+        fromName: clean2.fromName,
+        subject: clean2.subject,
+        text: clean2.text,
+        externalId: clean2.externalId,
+        memberId: sender?.id ?? null,
+        status: canCreate ? "converted" : "new",
+        suggestion: null,
+        taskId: null,
+        receivedAt: clean2.receivedAt,
+        createdAt: now2()
+      };
+      if (!db.inbox.insert(item)) return { item: db.inbox.findByExternal(orgId, clean2.externalId), task: null, reply: null };
+      if (canCreate) {
+        const reply2 = await memberCommand(sender, (subject?.trim() ? "" : text) || "");
+        if (reply2 !== null) {
+          item.status = "dismissed";
+          db.inbox.save(item);
+          return { item, task: null, reply: reply2 };
+        }
+        try {
+          const task = await createForMember(sender, clean2);
+          item.taskId = task.id;
+          db.inbox.save(item);
+          return { item, task, reply: taskReply(task, sender) };
+        } catch (err) {
+          ctx.log.warn("[intake] could not create task for member; moving to inbox", err);
+          item.status = "new";
+          db.inbox.save(item);
+        }
+      }
+      item.suggestion = await suggest(orgId, clean2, org.timezone);
+      if (!verified) {
+        const base = item.suggestion ?? { title: (clean2.subject?.trim() || firstLine(clean2.text) || "Message").slice(0, 500) };
+        const original = `From ${clean2.fromName ? `${clean2.fromName} <${clean2.from}>` : clean2.from}:
+
+${clean2.text}`;
+        item.suggestion = { ...base, notes: `${UNVERIFIED_NOTE}
+
+${base.notes ?? original}`.slice(0, 2e4) };
+      }
+      db.inbox.save(item);
+      const managers = db.members.list(orgId, { kind: "human" }).filter((m) => rank(m.role) >= rank("manager"));
+      const who = (clean2.fromName ? `${clean2.fromName} (${clean2.from})` : clean2.from) + (verified ? "" : " \u2014 sender not verified");
+      const preview = (verified ? "" : "\u26A0 Sender not verified. ") + (clean2.subject ? `${clean2.subject} \u2014 ` : "") + firstLine(clean2.text);
+      for (const m of managers.filter((x) => rank(x.role) >= rank("admin"))) {
+        try {
+          await ctx.services.notifications.notify(orgId, m.id, {
+            kind: "intake_new",
+            title: `New ${clean2.channel === "whatsapp" ? "WhatsApp" : "email"} from ${who}`,
+            body: preview.slice(0, 300),
+            taskId: null,
+            meetingId: null,
+            link: "/inbox",
+            urgent: false
+          });
+        } catch (err) {
+          ctx.log.warn("[intake] notify failed", err);
+        }
+      }
+      publish(ctx, orgId, { type: "inbox.new", item }, managers.map((m) => m.id));
+      ctx.internal.invalidateBriefings(orgId);
+      const reply = org.intakeAutoAck && verified ? `Thanks${clean2.fromName ? `, ${clean2.fromName.split(/\s+/)[0]}` : ""} \u2014 we received your message and will get back to you shortly.` : null;
+      return { item, task: null, reply };
+    } catch (err) {
+      ctx.log.error("[intake] ingest failed", err);
+      return empty2;
+    }
+  }
+  return {
+    async list(actor, opts = {}) {
+      requireRole(actor, "manager", "Managers and above can see the inbox");
+      const status = opts.status !== void 0 ? oneOf(opts.status, "status", ["new", "converted", "dismissed"]) : void 0;
+      return db.inbox.list(actor.orgId, { status });
+    },
+    async convert(actor, id, draft = {}) {
+      requireWrite(actor);
+      requireRole(actor, "manager", "Managers and above can triage the inbox");
+      const item = load(actor, id);
+      if (item.status === "converted") throw new AppError("conflict", "Already converted to a task");
+      const base = item.suggestion ?? { title: (item.subject?.trim() || firstLine(item.text) || "Message").slice(0, 500) };
+      const d = isObj3(draft) ? draft : {};
+      const task = await ctx.services.tasks.create(actor, {
+        ...base,
+        ...d,
+        title: d.title ?? base.title,
+        notes: d.notes ?? base.notes ?? `From ${item.fromName ?? item.from}:
+
+${item.text}`,
+        source: { channel: item.channel, ref: item.externalId, from: item.from }
+      });
+      const before = { ...item };
+      item.status = "converted";
+      item.taskId = task.id;
+      db.inbox.save(item);
+      await audit(ctx, actor, { type: "inbox.converted", entity: "inbox", entityId: item.id, summary: `Converted message from ${item.from} into "${task.title}"`, before, after: item });
+      return task;
+    },
+    async dismiss(actor, id) {
+      requireWrite(actor);
+      requireRole(actor, "manager", "Managers and above can triage the inbox");
+      const item = load(actor, id);
+      if (item.status === "dismissed") return;
+      if (item.status === "converted") forbidden("Converted items cannot be dismissed");
+      const before = { ...item };
+      item.status = "dismissed";
+      db.inbox.save(item);
+      await audit(ctx, actor, { type: "inbox.dismissed", entity: "inbox", entityId: item.id, summary: `Dismissed message from ${item.from}`, before, after: item, undoable: true });
+      ctx.internal.invalidateBriefings(actor.orgId);
+    },
+    ingest
+  };
+}
+
+// packages/core/src/services/meetings.ts
+var DAY3 = 864e5;
+var SYNC_PAST_MS = 7 * DAY3;
+var SYNC_FUTURE_MS = 120 * DAY3;
+function createMeetingService(ctx) {
+  const { db } = ctx;
+  const now2 = () => ctx.clock();
+  function audience(m) {
+    if (!m.ownerId && !m.attendeeIds.length) return void 0;
+    const ids2 = /* @__PURE__ */ new Set([...m.ownerId ? [m.ownerId] : [], ...m.attendeeIds]);
+    for (const x of db.members.list(m.orgId, { kind: "human" })) if (["owner", "admin", "manager"].includes(x.role)) ids2.add(x.id);
+    return [...ids2];
+  }
+  function canSee(actor, m) {
+    return isManager(actor) || !m.ownerId && !m.attendeeIds.length || m.ownerId === actor.memberId || m.attendeeIds.includes(actor.memberId);
+  }
+  function load(actor, id) {
+    const m = typeof id === "string" ? db.meetings.get(actor.orgId, id) : null;
+    if (!m || !canSee(actor, m)) notFound("Meeting not found");
+    return m;
+  }
+  function loadEditable(actor, id) {
+    requireWrite(actor);
+    const m = load(actor, id);
+    if (!isManager(actor) && m.ownerId !== actor.memberId) forbidden("Only the organizer or a manager can change this meeting");
+    return m;
+  }
+  function validAttendees(actor, ids2) {
+    const list = refs(ids2, "attendeeIds", 100);
+    if (db.members.getMany(actor.orgId, list).length !== list.length) bad("attendeeIds contains an unknown member");
+    return list;
+  }
+  function changed(m) {
+    ctx.internal.scheduleMeeting(m);
+    publish(ctx, m.orgId, { type: "meeting.upserted", meeting: m }, audience(m));
+    ctx.internal.invalidateBriefings(m.orgId);
+  }
+  async function syncFeed(orgId, feedId) {
+    const feed = db.feeds.get(orgId, feedId);
+    if (!feed) notFound("Calendar feed not found");
+    const url3 = db.feeds.getUrl(orgId, feedId);
+    const t0 = now2();
+    try {
+      const events = await ctx.calendar.fetch(url3);
+      const inWindow = events.filter((e) => e && typeof e.uid === "string" && e.endAt >= t0 - SYNC_PAST_MS && e.startAt <= t0 + SYNC_FUTURE_MS).slice(0, 2e3);
+      const existing = new Map(db.meetings.listByFeed(orgId, feedId).map((m) => [m.externalId, m]));
+      const seen = /* @__PURE__ */ new Set();
+      const touched = [];
+      db.tx(() => {
+        for (const e of inWindow) {
+          if (seen.has(e.uid)) continue;
+          seen.add(e.uid);
+          const prev = existing.get(e.uid);
+          const base = {
+            title: String(e.title || "Busy").slice(0, 300),
+            startAt: e.startAt,
+            endAt: Math.max(e.endAt, e.startAt),
+            allDay: !!e.allDay,
+            location: e.location ? String(e.location).slice(0, 500) : null,
+            url: e.url ? String(e.url).slice(0, 2048) : null,
+            notes: String(e.notes ?? "").slice(0, 5e3)
+          };
+          if (prev) {
+            const same = prev.title === base.title && prev.startAt === base.startAt && prev.endAt === base.endAt && prev.allDay === base.allDay && prev.location === base.location && prev.url === base.url && prev.notes === base.notes;
+            if (same) continue;
+            const next = { ...prev, ...base, updatedAt: t0 };
+            db.meetings.save(next);
+            touched.push(next);
+          } else {
+            const m = {
+              id: newId("mtg"),
+              orgId,
+              ownerId: feed.memberId,
+              ...base,
+              attendeeIds: [feed.memberId],
+              source: "ics",
+              externalId: e.uid,
+              feedId,
+              createdAt: t0,
+              updatedAt: t0
+            };
+            db.meetings.insert(m);
+            touched.push(m);
+          }
+        }
+        for (const [uid, m] of existing) {
+          if (!uid || !seen.has(uid)) {
+            db.meetings.delete(orgId, m.id);
+            ctx.internal.cancelMeeting(orgId, m.id);
+          }
+        }
+        db.feeds.setSync(orgId, feedId, t0, null);
+      });
+      for (const m of touched) changed(m);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      db.feeds.setSync(orgId, feedId, t0, msg.slice(0, 500));
+      throw new AppError("bad_request", `Calendar sync failed: ${msg}`);
+    }
+    return db.feeds.get(orgId, feedId);
+  }
+  const service = {
+    async list(actor, range) {
+      if (!isObj3(range)) bad("range is required");
+      const from = time3(range.from, "from");
+      const to = time3(range.to, "to");
+      if (to <= from) bad("to must be after from");
+      if (to - from > 400 * DAY3) bad("Range too large (max 400 days)");
+      let memberId;
+      if (range.memberId === "me") memberId = actor.memberId;
+      else if (range.memberId) {
+        memberId = ref(range.memberId, "memberId");
+        if (memberId !== actor.memberId && !isManager(actor)) forbidden("Only managers can view other people's calendars");
+      } else if (!isManager(actor)) memberId = actor.memberId;
+      return db.meetings.list(actor.orgId, { from, to, memberId });
+    },
+    async create(actor, input) {
+      requireWrite(actor);
+      if (!isObj3(input)) bad("meeting input required");
+      const t0 = now2();
+      const startAt = time3(input.startAt, "startAt");
+      const endAt = time3(input.endAt, "endAt");
+      if (endAt < startAt) bad("endAt must not be before startAt");
+      const m = {
+        id: newId("mtg"),
+        orgId: actor.orgId,
+        ownerId: actor.via === "system" ? null : actor.memberId,
+        title: str3(input.title, "title", { max: 300 }),
+        startAt,
+        endAt,
+        allDay: input.allDay === void 0 ? false : bool2(input.allDay, "allDay"),
+        location: optStr(input.location, "location", 500),
+        url: input.url === void 0 || input.url === null || input.url === "" ? null : url2(input.url, "url"),
+        attendeeIds: input.attendeeIds === void 0 ? [] : validAttendees(actor, input.attendeeIds),
+        notes: optStr(input.notes, "notes", 5e3) ?? "",
+        source: "manual",
+        externalId: null,
+        feedId: null,
+        createdAt: t0,
+        updatedAt: t0
+      };
+      db.meetings.insert(m);
+      await audit(ctx, actor, { type: "meeting.created", entity: "meeting", entityId: m.id, summary: `Scheduled "${m.title}"`, after: m, undoable: true });
+      changed(m);
+      return m;
+    },
+    async update(actor, id, patch) {
+      const cur = loadEditable(actor, id);
+      if (!isObj3(patch)) bad("patch must be an object");
+      const next = { ...cur };
+      if (patch.title !== void 0) next.title = str3(patch.title, "title", { max: 300 });
+      if (patch.startAt !== void 0) next.startAt = time3(patch.startAt, "startAt");
+      if (patch.endAt !== void 0) next.endAt = time3(patch.endAt, "endAt");
+      if (next.endAt < next.startAt) bad("endAt must not be before startAt");
+      if (patch.allDay !== void 0) next.allDay = bool2(patch.allDay, "allDay");
+      if (patch.location !== void 0) next.location = optStr(patch.location, "location", 500);
+      if (patch.url !== void 0) next.url = patch.url === null || patch.url === "" ? null : url2(patch.url, "url");
+      if (patch.attendeeIds !== void 0) next.attendeeIds = validAttendees(actor, patch.attendeeIds);
+      if (patch.notes !== void 0) next.notes = optStr(patch.notes, "notes", 5e3) ?? "";
+      next.updatedAt = now2();
+      db.meetings.save(next);
+      await audit(ctx, actor, { type: "meeting.updated", entity: "meeting", entityId: next.id, summary: `Updated "${next.title}"`, before: cur, after: next, undoable: true });
+      changed(next);
+      return next;
+    },
+    async remove(actor, id) {
+      const m = loadEditable(actor, id);
+      db.meetings.delete(actor.orgId, m.id);
+      ctx.internal.cancelMeeting(actor.orgId, m.id);
+      await audit(ctx, actor, { type: "meeting.deleted", entity: "meeting", entityId: m.id, summary: `Cancelled "${m.title}"`, before: m, undoable: true });
+      ctx.internal.invalidateBriefings(actor.orgId);
+    },
+    async listFeeds(actor) {
+      return db.feeds.list(actor.orgId, isAdmin(actor) ? void 0 : actor.memberId);
+    },
+    async addFeed(actor, input) {
+      requireWrite(actor);
+      if (actor.kind !== "human") forbidden("Only people can add calendar feeds");
+      if (!isObj3(input)) bad("feed input required");
+      const name = str3(input.name, "name", { max: 100 });
+      let raw = str3(input.url, "url", { max: 2048 });
+      if (raw.startsWith("webcal://")) raw = "https://" + raw.slice("webcal://".length);
+      const url3 = url2(raw, "url");
+      if (db.feeds.list(actor.orgId, actor.memberId).length >= 20) bad("Too many calendar feeds (max 20)");
+      const feed = { id: newId("feed"), orgId: actor.orgId, memberId: actor.memberId, name, urlMasked: maskUrl(url3), lastSyncAt: null, lastError: null, createdAt: now2() };
+      db.feeds.insert(feed, url3);
+      ctx.internal.scheduleFeedSync(actor.orgId, feed.id, now2());
+      return feed;
+    },
+    async removeFeed(actor, id) {
+      requireWrite(actor);
+      const f = typeof id === "string" ? db.feeds.get(actor.orgId, id) : null;
+      if (!f) notFound("Calendar feed not found");
+      if (f.memberId !== actor.memberId && !isAdmin(actor)) forbidden();
+      for (const m of db.meetings.listByFeed(actor.orgId, f.id)) ctx.internal.cancelMeeting(actor.orgId, m.id);
+      db.meetings.deleteByFeed(actor.orgId, f.id);
+      db.feeds.delete(actor.orgId, f.id);
+      db.jobs.cancel(actor.orgId, [`calendar.sync:${f.id}`], [], now2());
+      ctx.internal.invalidateBriefings(actor.orgId);
+    },
+    async syncFeed(actor, id) {
+      requireWrite(actor);
+      const f = typeof id === "string" ? db.feeds.get(actor.orgId, id) : null;
+      if (!f) notFound("Calendar feed not found");
+      if (f.memberId !== actor.memberId && !isAdmin(actor)) forbidden();
+      return syncFeed(actor.orgId, f.id);
+    }
+  };
+  return { service, syncFeed, audience };
+}
+
+// packages/core/src/services/notifications.ts
+var KINDS = /* @__PURE__ */ new Set(["task_assigned", "task_due_soon", "task_due_now", "task_overdue", "task_escalated", "task_comment", "task_mention", "task_completed", "agent_stale", "meeting_soon", "intake_new", "digest", "system"]);
+function createNotificationService(ctx) {
+  const { db } = ctx;
+  const now2 = () => ctx.clock();
+  function externalChannels(m) {
+    const st = safeStatus();
+    return {
+      push: st.push && m.prefs.notifyPush && db.push.list(m.orgId, m.id).length > 0,
+      whatsapp: st.whatsapp && m.prefs.notifyWhatsapp && !!m.phone,
+      email: st.email && m.prefs.notifyEmail && !!m.email
+    };
+  }
+  function safeStatus() {
+    try {
+      return ctx.outbound.status();
+    } catch {
+      return { whatsapp: false, email: false, push: false };
+    }
+  }
+  function linkUrl(link) {
+    return link ?? void 0;
+  }
+  async function deliver(orgId, notificationId) {
+    const n = db.notifications.get(orgId, notificationId);
+    if (!n) return;
+    const m = db.members.get(orgId, n.memberId);
+    if (!m || !m.active || m.kind !== "human") return;
+    const ch = externalChannels(m);
+    if (ch.push) {
+      for (const sub of db.push.list(orgId, m.id)) {
+        if (!isAllowedPushEndpoint(sub.endpoint)) {
+          db.push.delete(orgId, m.id, sub.endpoint);
+          continue;
+        }
+        try {
+          const res = await ctx.outbound.push({ endpoint: sub.endpoint, keys: sub.keys }, { title: n.title, body: n.body, url: linkUrl(n.link), tag: n.taskId ?? n.meetingId ?? n.kind });
+          if (res === "gone") db.push.delete(orgId, m.id, sub.endpoint);
+        } catch (err) {
+          ctx.log.warn("[notify] push failed", err);
+        }
+      }
+    }
+    if (ch.whatsapp) {
+      try {
+        await ctx.outbound.whatsapp(m.phone, `*${n.title}*
+${n.body}`);
+      } catch (err) {
+        ctx.log.warn("[notify] whatsapp failed", err);
+      }
+    }
+    if (ch.email) {
+      try {
+        await ctx.outbound.email(m.email, n.title, `${n.body}${n.link ? `
+
+Open: ${n.link}` : ""}
+
+\u2014 Company Brain`);
+      } catch (err) {
+        ctx.log.warn("[notify] email failed", err);
+      }
+    }
+  }
+  const service = {
+    async list(actor, opts = {}) {
+      return db.notifications.list(actor.orgId, actor.memberId, {
+        unreadOnly: !!opts.unreadOnly,
+        limit: opts.limit !== void 0 ? int3(opts.limit, "limit", 1, 500) : 50
+      });
+    },
+    async unreadCount(actor) {
+      return db.notifications.unreadCount(actor.orgId, actor.memberId);
+    },
+    async markRead(actor, ids2) {
+      requireWrite(actor);
+      if (ids2 !== "all") {
+        if (!Array.isArray(ids2)) bad("ids must be an array or 'all'");
+        if (ids2.length > 1e3) bad("Too many ids");
+        ids2 = ids2.filter((x) => typeof x === "string");
+      }
+      db.notifications.markRead(actor.orgId, actor.memberId, ids2, now2());
+      ctx.internal.invalidateBriefings(actor.orgId);
+    },
+    async subscribePush(actor, sub, userAgent) {
+      if (actor.kind !== "human") forbidden("Only people can subscribe to push notifications");
+      if (!isObj3(sub) || !isObj3(sub.keys)) bad("Invalid push subscription");
+      const endpoint = url2(sub.endpoint, "endpoint", { httpsOnly: true });
+      if (!isAllowedPushEndpoint(endpoint)) bad("endpoint must be a Web Push service URL (FCM, Mozilla, Apple or Windows push service)");
+      const p256dh = str3(sub.keys.p256dh, "keys.p256dh", { max: 200 });
+      const auth = str3(sub.keys.auth, "keys.auth", { max: 100 });
+      db.push.upsert(actor.orgId, actor.memberId, { endpoint, keys: { p256dh, auth } }, typeof userAgent === "string" ? userAgent.slice(0, 300) : null, now2());
+    },
+    async unsubscribePush(actor, endpoint) {
+      if (typeof endpoint !== "string" || !endpoint) bad("endpoint is required");
+      db.push.delete(actor.orgId, actor.memberId, endpoint);
+    },
+    vapidPublicKey() {
+      return ctx.vapidPublicKey ?? null;
+    },
+    async notify(orgId, memberId, input) {
+      const m = db.members.get(orgId, memberId);
+      if (!m) notFound("Member not found");
+      if (!KINDS.has(input.kind)) throw new AppError("bad_request", `Unknown notification kind ${input.kind}`);
+      const t0 = now2();
+      const n = {
+        id: newId("ntf"),
+        orgId,
+        memberId,
+        kind: input.kind,
+        title: String(input.title ?? "").slice(0, 300),
+        body: String(input.body ?? "").slice(0, 4e3),
+        taskId: input.taskId ?? null,
+        meetingId: input.meetingId ?? null,
+        link: input.link ?? null,
+        urgent: !!input.urgent,
+        readAt: null,
+        createdAt: t0
+      };
+      db.notifications.insert(n);
+      publish(ctx, orgId, { type: "notification", notification: n }, [memberId]);
+      ctx.internal.invalidateBriefings(orgId);
+      if (!m.active || m.kind !== "human") return n;
+      const ch = externalChannels(m);
+      if (ch.push || ch.whatsapp || ch.email) {
+        const runAt = !n.urgent && inQuietHours(m, t0) ? quietEndsAt(m, t0) : t0;
+        db.jobs.schedule(orgId, "notification.deliver", `notification.deliver:${n.id}`, runAt, { notificationId: n.id }, t0);
+      }
+      return n;
+    },
+    async sendTest(actor, channel) {
+      const c = oneOf(channel, "channel", ["whatsapp", "email", "push"]);
+      const m = db.members.get(actor.orgId, actor.memberId);
+      if (!m || m.kind !== "human") return { ok: false, error: "Only people can test notification channels" };
+      const st = safeStatus();
+      const text = `This is a test message from Company Brain. If you can read this, ${c === "whatsapp" ? "WhatsApp" : c === "email" ? "email" : "push"} notifications work.`;
+      try {
+        if (c === "whatsapp") {
+          if (!st.whatsapp) return { ok: false, error: "WhatsApp is not configured on this server" };
+          if (!m.phone) return { ok: false, error: "Add your phone number in your profile first" };
+          return await ctx.outbound.whatsapp(m.phone, text) ? { ok: true } : { ok: false, error: "WhatsApp send failed \u2014 check the integration status" };
+        }
+        if (c === "email") {
+          if (!st.email) return { ok: false, error: "Outbound email (SMTP) is not configured on this server" };
+          if (!m.email) return { ok: false, error: "Add your email address in your profile first" };
+          return await ctx.outbound.email(m.email, "Company Brain test message", text) ? { ok: true } : { ok: false, error: "Email send failed \u2014 check the SMTP settings" };
+        }
+        if (!st.push) return { ok: false, error: "Web Push is not configured on this server" };
+        const subs = db.push.list(actor.orgId, m.id);
+        if (!subs.length) return { ok: false, error: "No push subscriptions \u2014 enable notifications in this browser first" };
+        let sent = 0;
+        for (const s2 of subs) {
+          if (!isAllowedPushEndpoint(s2.endpoint)) {
+            db.push.delete(actor.orgId, m.id, s2.endpoint);
+            continue;
+          }
+          const res = await ctx.outbound.push({ endpoint: s2.endpoint, keys: s2.keys }, { title: "Company Brain", body: text, url: "/", tag: "test" });
+          if (res === "gone") db.push.delete(actor.orgId, m.id, s2.endpoint);
+          if (res === "sent") sent++;
+        }
+        return sent ? { ok: true } : { ok: false, error: "Push delivery failed \u2014 try re-enabling notifications in this browser" };
+      } catch (err) {
+        ctx.log.warn("[notify] sendTest failed", err);
+        return { ok: false, error: err instanceof Error ? err.message : "Send failed" };
+      }
+    }
+  };
+  return { service, deliver };
+}
+
+// packages/core/src/services/projects.ts
+var STATUSES2 = ["active", "paused", "done", "archived"];
+function createProjectService(ctx) {
+  const { db } = ctx;
+  const now2 = () => ctx.clock();
+  function summaries(orgId, projects, tz) {
+    const t0 = now2();
+    const counts = db.projects.counts(orgId, projects.map((p) => p.id), t0, startOfLocalDay(t0, tz, 7));
+    return projects.map((p) => {
+      const c = counts.get(p.id) ?? { total: 0, open: 0, done: 0, cancelled: 0, overdue: 0, dueThisWeek: 0 };
+      const denom = c.total - c.cancelled;
+      return { ...p, counts: { total: c.total, open: c.open, done: c.done, overdue: c.overdue, dueThisWeek: c.dueThisWeek }, progress: denom > 0 ? Math.round(c.done / denom * 1e3) / 1e3 : 0 };
+    });
+  }
+  function audience(p) {
+    if (!p.memberIds.length) return void 0;
+    const ids2 = /* @__PURE__ */ new Set([...p.memberIds, p.createdBy, ...p.leadId ? [p.leadId] : []]);
+    for (const m of db.members.list(p.orgId)) if (m.kind === "agent" || ["owner", "admin", "manager"].includes(m.role)) ids2.add(m.id);
+    return [...ids2];
+  }
+  function load(actor, id) {
+    const p = typeof id === "string" ? db.projects.get(actor.orgId, id, visibility(actor)) : null;
+    if (!p) notFound("Project not found");
+    return p;
+  }
+  function validMember(actor, id, field) {
+    if (id === null || id === void 0) return null;
+    const mid = ref(id, field);
+    if (!db.members.get(actor.orgId, mid)) bad(`${field} refers to an unknown member`);
+    return mid;
+  }
+  function validMembers(actor, ids2) {
+    const list = refs(ids2, "memberIds", 200);
+    if (db.members.getMany(actor.orgId, list).length !== list.length) bad("memberIds contains an unknown member");
+    return list;
+  }
+  const summary = (actor, p) => summaries(actor.orgId, [p], actorTz(ctx, actor))[0];
+  function changed(p) {
+    publish(ctx, p.orgId, { type: "project.upserted", project: p }, audience(p));
+    ctx.internal.invalidateBriefings(p.orgId);
+  }
+  const service = {
+    async list(actor, opts = {}) {
+      const ps = db.projects.list(actor.orgId, { includeArchived: !!opts.includeArchived, visibility: visibility(actor) });
+      return summaries(actor.orgId, ps, actorTz(ctx, actor));
+    },
+    async get(actor, id) {
+      return summary(actor, load(actor, id));
+    },
+    async create(actor, input) {
+      requireWrite(actor);
+      requireRole(actor, "manager", "Managers and above can create projects");
+      if (!isObj3(input)) bad("project input required");
+      const t0 = now2();
+      const id = newId("proj");
+      const p = {
+        id,
+        orgId: actor.orgId,
+        name: str3(input.name, "name", { max: 100 }),
+        emoji: input.emoji === void 0 || input.emoji === null || input.emoji === "" ? "\u{1F4C1}" : str3(input.emoji, "emoji", { max: 16 }),
+        color: input.color === void 0 ? colorFor(id) : color(input.color),
+        description: optStr(input.description, "description", 5e3) ?? "",
+        status: "active",
+        leadId: validMember(actor, input.leadId, "leadId"),
+        memberIds: input.memberIds === void 0 ? [] : validMembers(actor, input.memberIds),
+        dueAt: optTime(input.dueAt, "dueAt"),
+        createdBy: actor.memberId,
+        createdAt: t0,
+        updatedAt: t0
+      };
+      db.projects.insert(p);
+      await audit(ctx, actor, { type: "project.created", entity: "project", entityId: p.id, summary: `Created project ${p.name}`, after: p, undoable: true });
+      changed(p);
+      return summary(actor, p);
+    },
+    async update(actor, id, patch) {
+      requireWrite(actor);
+      const cur = load(actor, id);
+      if (!isManager(actor) && cur.leadId !== actor.memberId) forbidden("Only managers or the project lead can edit this project");
+      if (!isObj3(patch)) bad("patch must be an object");
+      const next = { ...cur, memberIds: [...cur.memberIds] };
+      if (patch.name !== void 0) next.name = str3(patch.name, "name", { max: 100 });
+      if (patch.emoji !== void 0) next.emoji = str3(patch.emoji, "emoji", { max: 16 });
+      if (patch.color !== void 0) next.color = color(patch.color);
+      if (patch.description !== void 0) next.description = optStr(patch.description, "description", 5e3) ?? "";
+      if (patch.status !== void 0) next.status = oneOf(patch.status, "status", STATUSES2);
+      if (patch.leadId !== void 0) next.leadId = validMember(actor, patch.leadId, "leadId");
+      if (patch.memberIds !== void 0) next.memberIds = validMembers(actor, patch.memberIds);
+      if (patch.dueAt !== void 0) next.dueAt = optTime(patch.dueAt, "dueAt");
+      next.updatedAt = now2();
+      db.projects.save(next);
+      await audit(ctx, actor, { type: "project.updated", entity: "project", entityId: next.id, summary: `Updated project ${next.name}`, before: cur, after: next, undoable: true });
+      changed(next);
+      return summary(actor, next);
+    },
+    async remove(actor, id) {
+      requireWrite(actor);
+      requireRole(actor, "manager", "Managers and above can delete projects");
+      const p = load(actor, id);
+      const taskIds = db.projects.taskIds(actor.orgId, p.id);
+      db.projects.delete(actor.orgId, p.id);
+      await audit(ctx, actor, { type: "project.deleted", entity: "project", entityId: p.id, summary: `Deleted project ${p.name}`, before: { ...p, taskIds }, undoable: true });
+      for (const tid of taskIds) {
+        const t = db.tasks.get(actor.orgId, tid);
+        if (t) ctx.internal.publishTask(t);
+      }
+      ctx.internal.invalidateBriefings(actor.orgId);
+    }
+  };
+  return { service, summaries, audience };
+}
+var STAGES = ["new", "contacted", "meeting", "proposal", "won", "lost"];
+var CHANNELS = ["manual", "quick_add", "voice", "whatsapp", "email", "mcp", "api", "calendar", "recurring", "import"];
+function createLeadService(ctx) {
+  const { db } = ctx;
+  const deny = (a) => {
+    if (a.role === "guest") forbidden("Guests cannot access the sales pipeline");
+  };
+  function apply(actor, base, p) {
+    const l = { ...base };
+    if (p.name !== void 0) l.name = str3(p.name, "name", { max: 200 });
+    if (p.company !== void 0) l.company = optStr(p.company, "company", 200) ?? "";
+    if (p.email !== void 0) l.email = p.email === "" || p.email === null ? "" : email3(p.email);
+    if (p.phone !== void 0) l.phone = phone(p.phone) ?? "";
+    if (p.stage !== void 0) l.stage = oneOf(p.stage, "stage", STAGES);
+    if (p.value !== void 0) l.value = p.value === null ? null : num2(p.value, "value", 0, 1e12);
+    if (p.notes !== void 0) l.notes = optStr(p.notes, "notes", 2e4) ?? "";
+    if (p.source !== void 0) l.source = oneOf(p.source, "source", CHANNELS);
+    if (p.ownerId !== void 0) {
+      l.ownerId = p.ownerId === null ? null : ref(p.ownerId, "ownerId");
+      if (l.ownerId && !db.members.get(actor.orgId, l.ownerId)) bad("ownerId refers to an unknown member");
+    }
+    return l;
+  }
+  function load(actor, id) {
+    const l = typeof id === "string" ? db.leads.get(actor.orgId, id) : null;
+    if (!l) notFound("Lead not found");
+    return l;
+  }
+  return {
+    async list(actor) {
+      deny(actor);
+      return db.leads.list(actor.orgId);
+    },
+    async create(actor, input) {
+      requireWrite(actor);
+      deny(actor);
+      if (!isObj3(input)) bad("lead input required");
+      const t0 = ctx.clock();
+      const blank = {
+        id: newId("lead"),
+        orgId: actor.orgId,
+        name: "",
+        company: "",
+        email: "",
+        phone: "",
+        stage: "new",
+        value: null,
+        notes: "",
+        ownerId: actor.kind === "human" && actor.via !== "system" ? actor.memberId : null,
+        source: actor.via === "api_key" ? "api" : "manual",
+        createdBy: actor.memberId,
+        createdAt: t0,
+        updatedAt: t0
+      };
+      const l = apply(actor, blank, { ...input, name: input.name });
+      db.leads.insert(l);
+      await audit(ctx, actor, { type: "lead.created", entity: "lead", entityId: l.id, summary: `Added lead ${l.name}`, after: l, undoable: true });
+      return l;
+    },
+    async update(actor, id, patch) {
+      requireWrite(actor);
+      deny(actor);
+      if (!isObj3(patch)) bad("patch must be an object");
+      const cur = load(actor, id);
+      const next = { ...apply(actor, cur, patch), updatedAt: ctx.clock() };
+      db.leads.save(next);
+      await audit(ctx, actor, { type: "lead.updated", entity: "lead", entityId: next.id, summary: `Updated lead ${next.name}`, before: cur, after: next, undoable: true });
+      return next;
+    },
+    async remove(actor, id) {
+      requireWrite(actor);
+      deny(actor);
+      const l = load(actor, id);
+      db.leads.delete(actor.orgId, l.id);
+      await audit(ctx, actor, { type: "lead.deleted", entity: "lead", entityId: l.id, summary: `Deleted lead ${l.name}`, before: l, undoable: true });
+    }
+  };
+}
+
+// packages/core/src/services/reports.ts
+var round = (n, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
+function createReportService(ctx) {
+  const { db } = ctx;
+  return {
+    async get(actor, windowDays) {
+      if (actor.role === "guest") forbidden("Guests cannot see team reports");
+      const days = windowDays === void 0 || windowDays === null ? 30 : int3(windowDays, "days", 1, 365);
+      const t0 = ctx.clock();
+      const org = db.orgs.get(actor.orgId);
+      const tz = safeTz(org?.timezone);
+      const start = startOfLocalDay(t0, tz, -(days - 1));
+      const vis = visibility(actor);
+      const created = db.tasks.query(actor.orgId, { visibility: vis, createdAfter: start, limit: 5e3 });
+      const completed = db.tasks.query(actor.orgId, { visibility: vis, statuses: ["done"], completedAfter: start, limit: 5e3 });
+      const openNow = db.tasks.query(actor.orgId, { visibility: vis, open: true, limit: 5e3 });
+      const overdueNow = openNow.filter((t) => t.dueAt !== null && t.dueAt < t0);
+      const onTime = (ts2) => {
+        const withDue = ts2.filter((t) => t.dueAt !== null && t.completedAt !== null);
+        return withDue.length ? round(withDue.filter((t) => t.completedAt <= t.dueAt).length / withDue.length, 3) : 1;
+      };
+      const cycles = completed.filter((t) => t.completedAt !== null).map((t) => (t.completedAt - t.createdAt) / 36e5);
+      const daily = [];
+      const idx = /* @__PURE__ */ new Map();
+      for (let i = 0; i < days; i++) {
+        const key = localDateKey(startOfLocalDay(start, tz, i), tz);
+        const row = { date: key, created: 0, completed: 0 };
+        daily.push(row);
+        idx.set(key, row);
+      }
+      for (const t of created) {
+        const r = idx.get(localDateKey(t.createdAt, tz));
+        if (r) r.created++;
+      }
+      for (const t of completed) {
+        const r = idx.get(localDateKey(t.completedAt, tz));
+        if (r) r.completed++;
+      }
+      const members = db.members.list(actor.orgId);
+      const byMember = members.map((m) => {
+        const done = completed.filter((t) => t.assigneeIds.includes(m.id));
+        return { memberId: m.id, completed: done.length, overdue: overdueNow.filter((t) => t.assigneeIds.includes(m.id)).length, onTimeRate: onTime(done) };
+      });
+      const projects = /* @__PURE__ */ new Map();
+      const bucket = (id) => {
+        if (!projects.has(id)) projects.set(id, { projectId: id, open: 0, completed: 0 });
+        return projects.get(id);
+      };
+      for (const t of openNow) bucket(t.projectId).open++;
+      for (const t of completed) bucket(t.projectId).completed++;
+      const kind = new Map(db.members.list(actor.orgId, { includeInactive: true }).map((m) => [m.id, m.kind]));
+      let humans = 0;
+      let agents = 0;
+      for (const t of completed) {
+        if (t.completedBy && kind.get(t.completedBy) === "agent") agents++;
+        else humans++;
+      }
+      return {
+        windowDays: days,
+        generatedAt: t0,
+        totals: {
+          created: created.length,
+          completed: completed.length,
+          overdueNow: overdueNow.length,
+          onTimeRate: onTime(completed),
+          avgCycleHours: cycles.length ? round(cycles.reduce((a, b) => a + b, 0) / cycles.length) : 0
+        },
+        daily,
+        byMember,
+        byProject: [...projects.values()],
+        humansVsAgents: { humans, agents }
+      };
+    }
+  };
+}
+function createSearchService(ctx) {
+  const { db } = ctx;
+  return {
+    async search(actor, q, limit) {
+      const query = typeof q === "string" ? q.trim().slice(0, 200) : "";
+      const n = limit === void 0 ? 10 : int3(limit, "limit", 1, 50);
+      if (!query) return { tasks: [], projects: [], members: [] };
+      const lc = query.toLowerCase();
+      const tasks = ctx.internal.views(actor.orgId, db.tasks.query(actor.orgId, { visibility: visibility(actor), search: query, order: "updated", limit: n }), actorTz(ctx, actor));
+      const projects = db.projects.list(actor.orgId, { visibility: visibility(actor), includeArchived: true }).filter((p) => p.name.toLowerCase().includes(lc) || p.description.toLowerCase().includes(lc)).slice(0, n);
+      const guest = actor.role === "guest";
+      const members = db.members.list(actor.orgId).filter((m) => m.name.toLowerCase().includes(lc) || !guest && (m.email ?? "").toLowerCase().includes(lc) || (m.title ?? "").toLowerCase().includes(lc)).slice(0, n).map((m) => guest && m.id !== actor.memberId ? publicMember(m) : m);
+      return { tasks, projects, members };
+    }
+  };
+}
+
+// packages/core/src/index.ts
+var consoleLog = {
+  info: (...a) => console.error("[info]", ...a),
+  warn: (...a) => console.error("[warn]", ...a),
+  error: (...a) => console.error("[error]", ...a)
+};
+function createCore(opts) {
+  if (!opts?.db) throw new Error("createCore: db is required");
+  const log = opts.log ?? consoleLog;
+  const ctx = {
+    db: opts.db,
+    clock: opts.clock ?? Date.now,
+    log,
+    outbound: opts.outbound ?? noopOutbound,
+    llm: opts.llm ?? null,
+    calendar: opts.calendar ?? noCalendar,
+    tts: opts.tts ?? null,
+    vapidPublicKey: opts.vapidPublicKey ?? null,
+    live: createLiveBus(log),
+    onAudit: opts.onAudit
+  };
+  const tasks = createTaskService(ctx);
+  const notifications = createNotificationService(ctx);
+  const meetings = createMeetingService(ctx);
+  const projects = createProjectService(ctx);
+  const briefing = createBriefingService(ctx);
+  const services = {
+    auth: createAuthService(ctx),
+    members: createMemberService(ctx),
+    apiKeys: createApiKeyService(ctx),
+    org: createOrgService(ctx),
+    tasks: tasks.service,
+    projects: projects.service,
+    meetings: meetings.service,
+    notifications: notifications.service,
+    inbox: createInboxService(ctx, tasks),
+    briefing: briefing.service,
+    reports: createReportService(ctx),
+    audit: createAuditService(ctx),
+    leads: createLeadService(ctx),
+    search: createSearchService(ctx),
+    live: ctx.live
+  };
+  ctx.services = services;
+  const reminders2 = createReminders(ctx, tasks);
+  const internal = {
+    scheduleTask: reminders2.scheduleTask,
+    cancelTask: reminders2.cancelTask,
+    scheduleMeeting: reminders2.scheduleMeeting,
+    cancelMeeting: reminders2.cancelMeeting,
+    scheduleDigest: (m) => reminders2.scheduleDigest(m),
+    ensurePeriodic: reminders2.ensurePeriodic,
+    scheduleFeedSync: reminders2.scheduleFeedSync,
+    views: tasks.views,
+    publishTask: tasks.publishTask,
+    publishTaskDeleted: tasks.publishTaskDeleted,
+    spawnNext: tasks.spawnNext,
+    syncFeed: meetings.syncFeed,
+    deliver: notifications.deliver,
+    composeBriefing: briefing.compose,
+    invalidateBriefings: briefing.invalidate
+  };
+  ctx.internal = internal;
+  const scheduler = createScheduler(ctx, reminders2.handlers);
+  for (const org of ctx.db.orgs.list()) {
+    try {
+      reminders2.ensurePeriodic(org.id);
+    } catch (err) {
+      log.warn("[core] could not ensure periodic jobs for org", org.id, err);
+    }
+  }
+  return { services, scheduler, tts: ctx.tts };
+}
+
+// packages/game/src/rules.ts
+var BASE_XP = { none: 10, low: 15, medium: 25, high: 40, urgent: 60 };
+var ON_TIME_BONUS_PCT = 0.5;
+var RESCUE_BONUS_XP = 10;
+var SUBTASK_XP = 3;
+var SUBTASK_MAX_PER_TASK = 10;
+var SUBTASK_MAX_PER_DAY = 30;
+var INTEL_XP = 2;
+var INTEL_MAX_PER_DAY = 10;
+var QUICK_SELF_COMPLETE_MS = 2 * 60 * 1e3;
+var QUICK_SELF_COMPLETE_PCT = 0.2;
+var DAILY_MISSION_XP_CAP = 1e3;
+var REVOKE_WINDOW_MS = 24 * 60 * 60 * 1e3;
+var STREAK_XP_PER_DAY = 5;
+var STREAK_XP_MAX = 50;
+var SQUAD_BONUS_XP = 100;
+var SQUAD_BONUS_MIN_TASKS = 3;
+var XP_PER_COIN = 10;
+var BOOST_MULTIPLIER = 1.5;
+var CRATE_EVERY_MISSIONS = 5;
+var EPIC_CRATE_EVERY_STREAK_DAYS = 7;
+var MAX_LEVEL = 100;
+function xpForLevel(n) {
+  const k = Math.max(0, Math.min(MAX_LEVEL, Math.floor(n)) - 1);
+  return Math.round(50 * Math.pow(k, 1.6) + 50 * k);
+}
+function levelForXp(xp) {
+  let lvl = 1;
+  while (lvl < MAX_LEVEL && xpForLevel(lvl + 1) <= xp) lvl++;
+  return lvl;
+}
+var RANKS = [
+  { id: "recruit", name: "Recruit", minLevel: 1, insignia: { kind: "chevron", count: 0, color: "#9ca3af" } },
+  { id: "private", name: "Private", minLevel: 3, insignia: { kind: "chevron", count: 1, color: "#a8a29e" } },
+  { id: "corporal", name: "Corporal", minLevel: 6, insignia: { kind: "chevron", count: 2, color: "#84cc16" } },
+  { id: "sergeant", name: "Sergeant", minLevel: 10, insignia: { kind: "chevron", count: 3, color: "#22c55e" } },
+  { id: "staff_sergeant", name: "Staff Sergeant", minLevel: 15, insignia: { kind: "chevron", count: 4, color: "#14b8a6" } },
+  { id: "lieutenant", name: "Lieutenant", minLevel: 21, insignia: { kind: "bar", count: 1, color: "#3b82f6" } },
+  { id: "captain", name: "Captain", minLevel: 28, insignia: { kind: "bar", count: 2, color: "#6366f1" } },
+  { id: "major", name: "Major", minLevel: 36, insignia: { kind: "star", count: 1, color: "#a855f7" } },
+  { id: "colonel", name: "Colonel", minLevel: 45, insignia: { kind: "star", count: 2, color: "#ec4899" } },
+  { id: "general", name: "General", minLevel: 60, insignia: { kind: "star", count: 3, color: "#f59e0b" } },
+  { id: "legend", name: "Legend", minLevel: 80, insignia: { kind: "crown", count: 1, color: "#facc15" } }
+];
+function rankIndexForLevel(level) {
+  let idx = 0;
+  for (let i = 0; i < RANKS.length; i++) if (level >= RANKS[i].minLevel) idx = i;
+  return idx;
+}
+function rankForLevel(level) {
+  return RANKS[rankIndexForLevel(level)];
+}
+var LEGENDARY_RANK_INDEX = RANKS.findIndex((r) => r.id === "lieutenant");
+var A = (id, name, description, icon, tier, metric, target, secret = false) => ({ id, name, description, icon, tier, secret, target, metric });
+var ACHIEVEMENTS = [
+  A("first_blood", "First Blood", "Complete your first mission.", "\u{1F3AF}", "bronze", "missions", 1),
+  A("veteran_25", "Veteran", "Complete 25 missions.", "\u{1F396}\uFE0F", "silver", "missions", 25),
+  A("centurion", "Centurion", "Complete 100 missions.", "\u{1F4AF}", "gold", "missions", 100),
+  A("warlord_500", "Warlord", "Complete 500 missions.", "\u2694\uFE0F", "legendary", "missions", 500),
+  A("sharpshooter_10", "Sharpshooter", "Complete 10 missions with a deadline on time, in a row.", "\u{1F3AF}", "silver", "ontime_run_best", 10),
+  A("precision_50", "Precision Strike", "Complete 50 missions on time.", "\u23F1\uFE0F", "gold", "on_time", 50),
+  A("rescue_specialist", "Rescue Specialist", "Clear 10 overdue missions.", "\u{1F691}", "silver", "rescued", 10),
+  A("comeback_kid", "Comeback Kid", "Clear a mission that was overdue by a week or more.", "\u{1F525}", "silver", "comeback", 1, true),
+  A("early_bird", "Early Bird", "Complete a mission before 8 am.", "\u{1F305}", "bronze", "early_bird", 1),
+  A("night_owl", "Night Owl", "Complete a mission after 10 pm.", "\u{1F989}", "bronze", "night_owl", 1),
+  A("ghost_protocol", "Ghost Protocol", "Complete a mission between 3 am and 5 am.", "\u{1F47B}", "gold", "ghost", 1, true),
+  A("weekend_warrior", "Weekend Warrior", "Complete a mission on a Saturday or Sunday.", "\u{1F3D5}\uFE0F", "bronze", "weekend", 1, true),
+  A("clutch_play", "Clutch Play", "Complete a mission in the final 10 minutes before its deadline.", "\u26A1", "bronze", "clutch", 1, true),
+  A("clean_sweep", "Clean Sweep", "Clear every one of today's missions (at least 3).", "\u{1F9F9}", "silver", "clean_sweep", 1),
+  A("squad_player", "Squad Player", "Complete 10 missions shared with other operatives.", "\u{1F91D}", "silver", "squad_missions", 10),
+  A("operation_commander", "Operation Commander", "Lead an operation all the way to 100%.", "\u{1F5FA}\uFE0F", "gold", "ops_commanded", 1),
+  A("squad_goals", "Squad Goals", "Earn 5 squad bonuses.", "\u{1F6E1}\uFE0F", "gold", "squad_bonuses", 5),
+  A("intel_officer", "Intel Officer", "Create 50 missions.", "\u{1F4E1}", "silver", "created", 50),
+  A("ai_whisperer", "AI Whisperer", "Assign 10 missions to AI operatives that they complete.", "\u{1F916}", "silver", "ai_whisperer", 10),
+  A("high_value_target", "High-Value Target", "Complete 10 urgent missions.", "\u{1F6A8}", "silver", "urgent", 10),
+  A("objective_master", "Objective Master", "Check off 50 objectives.", "\u2705", "silver", "objectives", 50),
+  A("streak_3", "On a Roll", "Reach a 3-day streak.", "\u{1F525}", "bronze", "streak_best", 3),
+  A("streak_7", "Unstoppable", "Reach a 7-day streak.", "\u{1F525}", "silver", "streak_best", 7),
+  A("streak_30", "Iron Will", "Reach a 30-day streak.", "\u{1F3D4}\uFE0F", "gold", "streak_best", 30),
+  A("level_10", "Field Ready", "Reach level 10.", "\u2B50", "bronze", "level", 10),
+  A("level_25", "Seasoned", "Reach level 25.", "\u{1F31F}", "silver", "level", 25),
+  A("level_50", "Elite", "Reach level 50.", "\u{1F4AB}", "gold", "level", 50),
+  A("legend", "Legend", "Reach the rank of Legend.", "\u{1F451}", "legendary", "level", 80),
+  A("challenge_hunter", "Challenge Hunter", "Complete 10 daily challenges.", "\u{1F3F9}", "silver", "challenges", 10),
+  A("daily_triple", "Hat Trick", "Complete all 3 daily challenges in one day.", "\u{1F3A9}", "gold", "daily_triple", 1),
+  A("crate_collector", "Crate Collector", "Open 10 crates.", "\u{1F4E6}", "bronze", "crates_opened", 10)
+];
+var ACHIEVEMENT_XP = { bronze: 25, silver: 75, gold: 150, legendary: 500 };
+var ACHIEVEMENT_CRATE = {
+  bronze: null,
+  silver: "common",
+  gold: "rare",
+  legendary: "legendary"
+};
+var COSMETICS = [
+  { kind: "title", id: "rookie-operator", name: "Rookie Operator", rarity: "common" },
+  { kind: "title", id: "inbox-sniper", name: "Inbox Sniper", rarity: "common" },
+  { kind: "title", id: "night-raider", name: "Night Raider", rarity: "rare" },
+  { kind: "title", id: "field-medic", name: "Field Medic", rarity: "rare" },
+  { kind: "title", id: "deadline-slayer", name: "Deadline Slayer", rarity: "epic" },
+  { kind: "title", id: "shadow-ops", name: "Shadow Ops", rarity: "epic" },
+  { kind: "title", id: "ghost-protocol", name: "Ghost Protocol", rarity: "legendary" },
+  { kind: "frame", id: "olive-drab", name: "Olive Drab", rarity: "common" },
+  { kind: "frame", id: "desert-storm", name: "Desert Storm", rarity: "common" },
+  { kind: "frame", id: "arctic", name: "Arctic", rarity: "rare" },
+  { kind: "frame", id: "urban-grey", name: "Urban Grey", rarity: "rare" },
+  { kind: "frame", id: "neon-grid", name: "Neon Grid", rarity: "epic" },
+  { kind: "frame", id: "gold-camo", name: "Gold Camo", rarity: "legendary" },
+  { kind: "emote", id: "salute", name: "Salute", rarity: "common" },
+  { kind: "emote", id: "thumbs-up", name: "Thumbs Up", rarity: "common" },
+  { kind: "emote", id: "mic-drop", name: "Mic Drop", rarity: "rare" },
+  { kind: "emote", id: "victory-dance", name: "Victory Dance", rarity: "epic" },
+  { kind: "emote", id: "airstrike", name: "Airstrike", rarity: "legendary" }
+];
+var DUPLICATE_COINS = { common: 25, rare: 75, epic: 200, legendary: 500 };
+var LOOT_TABLES = {
+  common: [
+    { weight: 55, kind: "coins", min: 20, max: 50 },
+    { weight: 15, kind: "xp_boost", minutes: 30 },
+    { weight: 30, kind: "cosmetic", rarity: "common" }
+  ],
+  rare: [
+    { weight: 35, kind: "coins", min: 60, max: 120 },
+    { weight: 15, kind: "xp_boost", minutes: 30 },
+    { weight: 35, kind: "cosmetic", rarity: "rare" },
+    { weight: 15, kind: "cosmetic", rarity: "common" }
+  ],
+  epic: [
+    { weight: 25, kind: "coins", min: 150, max: 300 },
+    { weight: 15, kind: "xp_boost", minutes: 60 },
+    { weight: 40, kind: "cosmetic", rarity: "epic" },
+    { weight: 20, kind: "cosmetic", rarity: "rare" }
+  ],
+  legendary: [
+    { weight: 15, kind: "coins", min: 400, max: 800 },
+    { weight: 15, kind: "xp_boost", minutes: 60 },
+    { weight: 50, kind: "cosmetic", rarity: "legendary" },
+    { weight: 20, kind: "cosmetic", rarity: "epic" }
+  ]
+};
+function rollLoot(rarity, rand, owned) {
+  const table = LOOT_TABLES[rarity];
+  const total = table.reduce((s2, e) => s2 + e.weight, 0);
+  let r = rand() * total;
+  let entry = table[table.length - 1];
+  for (const e of table) {
+    if (r < e.weight) {
+      entry = e;
+      break;
+    }
+    r -= e.weight;
+  }
+  if (entry.kind === "coins") {
+    const amount = entry.min + Math.floor(rand() * (entry.max - entry.min + 1));
+    return { kind: "coins", id: "coins", name: `${amount} coins`, rarity, amount };
+  }
+  if (entry.kind === "xp_boost") {
+    return { kind: "xp_boost", id: `boost-${entry.minutes}`, name: `${entry.minutes}-min XP Boost \xD7${BOOST_MULTIPLIER}`, rarity, amount: entry.minutes };
+  }
+  const pool = COSMETICS.filter((c) => c.rarity === entry.rarity);
+  const pick3 = pool[Math.floor(rand() * pool.length)] ?? pool[0];
+  if (owned.has(pick3.id)) {
+    const amount = DUPLICATE_COINS[pick3.rarity];
+    return { kind: "coins", id: "coins", name: `${amount} coins (duplicate ${pick3.name})`, rarity, amount };
+  }
+  return { kind: pick3.kind, id: pick3.id, name: pick3.name, rarity: pick3.rarity };
+}
+var CHALLENGES = [
+  { id: "clear_1", title: "Boots on the ground", description: "Clear any mission.", target: 1, xp: 15, metric: "complete", achievable: (s2) => s2.open >= 1 },
+  { id: "clear_3", title: "Clear 3 missions", description: "Complete three missions today.", target: 3, xp: 30, metric: "complete", achievable: (s2) => s2.open >= 3 },
+  { id: "clear_5", title: "Clear 5 missions", description: "Complete five missions today.", target: 5, xp: 50, metric: "complete", achievable: (s2) => s2.open >= 5 },
+  { id: "high_value", title: "High-value target", description: "Complete a high-priority or urgent mission.", target: 1, xp: 25, metric: "complete_high", achievable: (s2) => s2.highOpen >= 1 },
+  { id: "rescue", title: "Rescue op", description: "Clear a critical (overdue) mission.", target: 1, xp: 30, metric: "complete_overdue", achievable: (s2) => s2.overdueOpen >= 1 },
+  { id: "on_time_2", title: "Right on schedule", description: "Complete 2 missions on time.", target: 2, xp: 30, metric: "complete_on_time", achievable: (s2) => s2.dueFutureOpen >= 2 },
+  { id: "all_objectives", title: "Full debrief", description: "Finish every objective of a mission.", target: 1, xp: 25, metric: "complete_all_objectives", achievable: (s2) => s2.withObjectives >= 1 },
+  { id: "objectives_5", title: "Checklist commando", description: "Check off 5 objectives.", target: 5, xp: 20, metric: "objective", achievable: (s2) => s2.openObjectives >= 5 },
+  { id: "squad_assist", title: "Squad assist", description: "Complete a mission shared with a squadmate.", target: 1, xp: 25, metric: "complete_shared", achievable: (s2) => s2.sharedOpen >= 1 },
+  { id: "before_noon", title: "Morning strike", description: "Clear a mission before noon.", target: 1, xp: 20, metric: "complete_before_noon", achievable: (s2) => s2.open >= 1 },
+  { id: "deploy_3", title: "Deploy 3 new missions", description: "Create three new missions.", target: 3, xp: 15, metric: "create", achievable: () => true }
+];
+var CHALLENGES_PER_DAY = 3;
+
+// packages/game/src/time.ts
+var fmtCache3 = /* @__PURE__ */ new Map();
+function safeTz3(tz) {
+  if (!tz) return "UTC";
+  if (fmtCache3.has(tz)) return tz;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return tz;
+  } catch {
+    return "UTC";
+  }
+}
+function fmt(tz) {
+  let f = fmtCache3.get(tz);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+    fmtCache3.set(tz, f);
+  }
+  return f;
+}
+function localParts2(ts2, tz) {
+  const out = {};
+  for (const p of fmt(safeTz3(tz)).formatToParts(new Date(ts2))) {
+    if (p.type !== "literal") out[p.type] = Number(p.value);
+  }
+  return {
+    year: out.year ?? 1970,
+    month: out.month ?? 1,
+    day: out.day ?? 1,
+    hour: (out.hour ?? 0) % 24,
+    minute: out.minute ?? 0,
+    second: out.second ?? 0
+  };
+}
+var pad2 = (n) => String(n).padStart(2, "0");
+function dayKey(ts2, tz) {
+  const p = localParts2(ts2, tz);
+  return `${p.year}-${pad2(p.month)}-${pad2(p.day)}`;
+}
+function localHour(ts2, tz) {
+  return localParts2(ts2, tz).hour;
+}
+function parseDay(day) {
+  const [y, m, d] = day.split("-").map(Number);
+  return [y ?? 1970, m ?? 1, d ?? 1];
+}
+function weekdayOf(day) {
+  const [y, m, d] = parseDay(day);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+function addDays3(day, n) {
+  const [y, m, d] = parseDay(day);
+  const t = new Date(Date.UTC(y, m - 1, d + n));
+  return `${t.getUTCFullYear()}-${pad2(t.getUTCMonth() + 1)}-${pad2(t.getUTCDate())}`;
+}
+function tzOffset2(ts2, tz) {
+  const p = localParts2(ts2, tz);
+  const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  return asUtc - Math.floor(ts2 / 1e3) * 1e3;
+}
+function startOfDay2(day, tz) {
+  const z2 = safeTz3(tz);
+  const [y, m, d] = parseDay(day);
+  const guess = Date.UTC(y, m - 1, d);
+  let t = guess - tzOffset2(guess, z2);
+  t = guess - tzOffset2(t, z2);
+  return t;
+}
+function isWeekend(day) {
+  const w = weekdayOf(day);
+  return w === 0 || w === 6;
+}
+function onlyWeekendsBetween(from, to) {
+  let d = addDays3(from, 1);
+  let guard = 0;
+  while (d < to && guard++ < 400) {
+    if (!isWeekend(d)) return false;
+    d = addDays3(d, 1);
+  }
+  return guard < 400;
+}
+function mondayOf(day) {
+  const w = weekdayOf(day);
+  return addDays3(day, -((w + 6) % 7));
+}
+function firstOfMonth(day) {
+  return `${day.slice(0, 8)}01`;
+}
+
+// packages/game/src/util.ts
+import { randomBytes as randomBytes5, randomInt } from "node:crypto";
+function newId2(prefix) {
+  return `${prefix}_${randomBytes5(12).toString("base64url")}`;
+}
+function cryptoRandom() {
+  return randomInt(0, 2 ** 32) / 2 ** 32;
+}
+function fnv1a(s2) {
+  let h = 2166136261;
+  for (let i = 0; i < s2.length; i++) {
+    h ^= s2.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function seededRandom(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = a + 1831565813 >>> 0;
+    let t = a;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function systemActor2(orgId) {
+  return { orgId, memberId: SYSTEM_MEMBER_ID, role: "owner", kind: "human", via: "system" };
+}
+function toInfo(m) {
+  return { id: m.id, name: m.name, kind: m.kind, role: m.role, tz: safeTz3(m.timezone), member: m };
+}
+var PRIORITIES3 = ["urgent", "high", "medium", "low", "none"];
+var str4 = (v) => typeof v === "string" && v.length > 0 ? v : null;
+var num3 = (v) => typeof v === "number" && Number.isFinite(v) ? v : null;
+function taskSnap(r, fallbackId2) {
+  if (!r || typeof r !== "object") return null;
+  const pr = str4(r.priority);
+  const subs = Array.isArray(r.subtasks) ? r.subtasks : [];
+  return {
+    id: str4(r.id) ?? fallbackId2,
+    projectId: str4(r.projectId),
+    title: str4(r.title) ?? "Untitled mission",
+    status: str4(r.status) ?? "todo",
+    priority: pr && PRIORITIES3.includes(pr) ? pr : "none",
+    assigneeIds: Array.isArray(r.assigneeIds) ? r.assigneeIds.filter((x) => typeof x === "string") : [],
+    creatorId: str4(r.creatorId),
+    dueAt: num3(r.dueAt),
+    subtasks: subs.filter((s2) => !!s2 && typeof s2 === "object").map((s2) => ({ id: str4(s2.id) ?? "", title: str4(s2.title) ?? "", done: s2.done === true, doneBy: str4(s2.doneBy) })).filter((s2) => s2.id),
+    createdAt: num3(r.createdAt),
+    completedAt: num3(r.completedAt),
+    completedBy: str4(r.completedBy)
+  };
+}
+function fmtXp(xp) {
+  return xp >= 0 ? `+${xp} XP` : `\u2212${Math.abs(xp)} XP`;
+}
+
+// packages/game/src/engine.ts
+function rewardFromRow(r) {
+  const ev = {
+    id: r.id,
+    orgId: r.org_id,
+    memberId: r.member_id,
+    kind: r.kind,
+    xp: r.xp,
+    coins: r.coins,
+    label: r.label,
+    taskId: r.task_id,
+    at: r.at
+  };
+  if (r.level != null) ev.level = r.level;
+  if (r.rank_id) ev.rank = RANKS.find((k) => k.id === r.rank_id);
+  if (r.crate_id) ev.crateId = r.crate_id;
+  if (r.rarity) ev.rarity = r.rarity;
+  if (r.achievement_id) ev.achievementId = r.achievement_id;
+  return ev;
+}
+var OPEN2 = (t) => t.status !== "done" && t.status !== "cancelled";
+function openStatsOf(tasks, memberId, now2) {
+  const mine = tasks.filter((t) => OPEN2(t) && t.assigneeIds.includes(memberId));
+  return {
+    open: mine.length,
+    highOpen: mine.filter((t) => t.priority === "high" || t.priority === "urgent").length,
+    overdueOpen: mine.filter((t) => t.dueAt != null && t.dueAt < now2).length,
+    dueFutureOpen: mine.filter((t) => t.dueAt != null && t.dueAt >= now2).length,
+    withObjectives: mine.filter((t) => t.subtasks.length > 0).length,
+    openObjectives: mine.reduce((s2, t) => s2 + t.subtasks.filter((x) => !x.done).length, 0),
+    sharedOpen: mine.filter((t) => t.assigneeIds.length >= 2).length
+  };
+}
+function pickChallenges(orgId, memberId, day, stats) {
+  const rand = seededRandom(fnv1a(`${orgId}|${memberId}|${day}`));
+  const pool = [...CHALLENGES];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const ordered = [...pool.filter((c) => c.achievable(stats)), ...pool.filter((c) => !c.achievable(stats))];
+  const picked = [];
+  for (const c of ordered) {
+    if (picked.length >= CHALLENGES_PER_DAY) break;
+    if (!picked.some((p) => p.metric === c.metric)) picked.push(c);
+  }
+  for (const c of ordered) {
+    if (picked.length >= CHALLENGES_PER_DAY) break;
+    if (!picked.includes(c)) picked.push(c);
+  }
+  return picked;
+}
+var Engine = class {
+  db;
+  services;
+  clock;
+  random;
+  log;
+  stmts = /* @__PURE__ */ new Map();
+  queue = Promise.resolve();
+  /** Rewards created inside the current transaction; published after commit. */
+  pending = [];
+  names = /* @__PURE__ */ new Map();
+  constructor(deps) {
+    this.db = deps.db;
+    this.services = deps.services;
+    this.clock = deps.clock;
+    this.random = deps.random;
+    this.log = deps.log;
+  }
+  q(sql) {
+    let s2 = this.stmts.get(sql);
+    if (!s2) {
+      s2 = this.db.prepare(sql);
+      this.stmts.set(sql, s2);
+    }
+    return s2;
+  }
+  // ─── Entry point ───────────────────────────────────────────────────────────
+  /** Serialized, idempotent, never throws. */
+  onAudit(e) {
+    const run = this.queue.then(() => this.process(e)).catch((err) => {
+      this.log.error("[game] failed to process audit event", e?.id, err);
+    });
+    this.queue = run;
+    return run;
+  }
+  async process(e) {
+    if (!e || e.entity !== "task" || !e.orgId || !e.id) return;
+    if (this.q("SELECT 1 FROM game_processed WHERE org_id = ? AND audit_id = ?").get(e.orgId, e.id)) return;
+    const before = taskSnap(e.before, e.entityId);
+    const after = taskSnap(e.after, e.entityId);
+    const task = after ?? before;
+    if (!task) {
+      this.markProcessed(e);
+      return;
+    }
+    const prev = before?.status ?? null;
+    const next = after?.status ?? null;
+    const completed = next === "done" && prev !== "done";
+    const reopened = prev === "done" && next !== "done";
+    const created = !before && !!after;
+    const newlyDoneSubs = this.newlyDoneSubtasks(before, after);
+    if (!completed && !reopened && !created && newlyDoneSubs.length === 0) {
+      this.markProcessed(e);
+      return;
+    }
+    const at = typeof e.at === "number" ? e.at : this.clock();
+    const completer = completed ? after?.completedBy ?? e.actorId : null;
+    const earners = completed && after ? this.earnersOf(after, completer) : [];
+    const involved = new Set(earners);
+    if (created && after) involved.add(after.creatorId ?? e.actorId);
+    for (const s2 of newlyDoneSubs) involved.add(s2.doneBy ?? e.actorId);
+    if (completed && after?.creatorId) involved.add(after.creatorId);
+    involved.delete(SYSTEM_MEMBER_ID);
+    const g = await this.gather(e.orgId, at, involved, completed ? after : null, earners);
+    const tx = this.db.transaction(() => {
+      const ins = this.q("INSERT OR IGNORE INTO game_processed (org_id, audit_id, at) VALUES (?, ?, ?)").run(e.orgId, e.id, at);
+      if (ins.changes === 0) return;
+      const touched = /* @__PURE__ */ new Set();
+      if (created && after) this.applyCreate(e.orgId, after, after.creatorId ?? e.actorId, at, g, touched);
+      if (newlyDoneSubs.length && after) this.applySubtasks(e.orgId, after, newlyDoneSubs, e.actorId, at, g, touched);
+      if (reopened) this.applyRevoke(e.orgId, task, at, touched);
+      if (completed && after) this.applyCompletion(e.orgId, after, completer, earners, at, g, touched);
+      for (const id of touched) {
+        const m = g.members.get(id);
+        if (m) this.settle(e.orgId, m, at);
+      }
+    });
+    try {
+      tx();
+    } catch (err) {
+      this.discard();
+      throw err;
+    }
+    this.flush();
+  }
+  markProcessed(e) {
+    this.q("INSERT OR IGNORE INTO game_processed (org_id, audit_id, at) VALUES (?, ?, ?)").run(e.orgId, e.id, e.at ?? this.clock());
+  }
+  /** Publish rewards created by the last committed transaction. */
+  flush() {
+    const out = this.pending;
+    this.pending = [];
+    for (const r of out) {
+      try {
+        this.services.live.publish(r.orgId, { type: "game.reward", reward: r }, { memberIds: [r.memberId] });
+      } catch (err) {
+        this.log.warn("[game] live publish failed", err);
+      }
+    }
+  }
+  /** Discard rewards from a rolled-back transaction. */
+  discard() {
+    this.pending = [];
+  }
+  earnersOf(t, completer) {
+    const set2 = new Set(t.assigneeIds);
+    if (completer) set2.add(completer);
+    set2.delete(SYSTEM_MEMBER_ID);
+    return [...set2];
+  }
+  newlyDoneSubtasks(before, after) {
+    if (!after || !before) return [];
+    const wasDone = new Set(before.subtasks.filter((s2) => s2.done).map((s2) => s2.id));
+    return after.subtasks.filter((s2) => s2.done && !wasDone.has(s2.id));
+  }
+  // ─── Async gathering ───────────────────────────────────────────────────────
+  async members(orgId) {
+    const map2 = /* @__PURE__ */ new Map();
+    try {
+      const list = await this.services.members.list(systemActor2(orgId), { includeInactive: true });
+      for (const m of list) if (m.orgId === orgId) map2.set(m.id, toInfo(m));
+    } catch (err) {
+      this.log.warn("[game] members.list failed", err);
+    }
+    for (const m of map2.values()) this.names.set(`${orgId}:${m.id}`, m.name);
+    return map2;
+  }
+  async gather(orgId, at, involved, completedTask, earners) {
+    const members = await this.members(orgId);
+    const sys = systemActor2(orgId);
+    const openStats = /* @__PURE__ */ new Map();
+    const cleanSweep = /* @__PURE__ */ new Map();
+    for (const id of involved) {
+      const m = members.get(id);
+      if (!m) continue;
+      const day = dayKey(at, m.tz);
+      const needChallenges = !this.q("SELECT 1 FROM game_challenges WHERE org_id = ? AND member_id = ? AND day = ? LIMIT 1").get(orgId, id, day);
+      const needSweep = !!completedTask && earners.includes(id);
+      if (!needChallenges && !needSweep) continue;
+      try {
+        const tasks = await this.services.tasks.list(sys, { assigneeId: id, includeDone: true, limit: 1e3 });
+        if (needChallenges) openStats.set(id, openStatsOf(tasks, id, at));
+        if (needSweep) {
+          const from = startOfDay2(day, m.tz);
+          const to = startOfDay2(addDays3(day, 1), m.tz);
+          const today2 = tasks.filter((t) => t.assigneeIds.includes(id) && t.status !== "cancelled" && t.dueAt != null && t.dueAt >= from && t.dueAt < to);
+          cleanSweep.set(id, today2.length >= 3 && today2.every((t) => t.status === "done"));
+        }
+      } catch (err) {
+        this.log.warn("[game] tasks.list failed", err);
+      }
+    }
+    let project = null;
+    const pid = completedTask?.projectId;
+    if (pid && !this.q("SELECT 1 FROM game_squad_bonus WHERE org_id = ? AND project_id = ?").get(orgId, pid)) {
+      try {
+        const tasks = (await this.services.tasks.list(sys, { projectId: pid, includeDone: true, limit: 1e3 })).filter((t) => t.projectId === pid && t.status !== "cancelled");
+        if (tasks.length >= SQUAD_BONUS_MIN_TASKS && tasks.every((t) => t.status === "done")) {
+          const p = await this.services.projects.get(sys, pid);
+          const completers = tasks.map((t) => t.completedBy).filter((x) => !!x);
+          project = { id: pid, name: p.name, leadId: p.leadId, completers };
+        }
+      } catch (err) {
+        this.log.warn("[game] project lookup failed", err);
+      }
+    }
+    return { members, openStats, cleanSweep, project };
+  }
+  // ─── Ledger primitives (call inside a transaction) ─────────────────────────
+  player(orgId, memberId) {
+    this.q("INSERT OR IGNORE INTO game_players (org_id, member_id, updated_at) VALUES (?, ?, ?)").run(orgId, memberId, this.clock());
+    return this.q("SELECT * FROM game_players WHERE org_id = ? AND member_id = ?").get(orgId, memberId);
+  }
+  readPlayer(orgId, memberId) {
+    const row = this.q("SELECT * FROM game_players WHERE org_id = ? AND member_id = ?").get(orgId, memberId);
+    return row ?? {
+      org_id: orgId,
+      member_id: memberId,
+      xp: 0,
+      level: 1,
+      rank_id: "recruit",
+      max_level: 1,
+      max_rank: 0,
+      missions_hw: 0,
+      streak_current: 0,
+      streak_best: 0,
+      streak_last_day: null,
+      updated_at: 0
+    };
+  }
+  award(orgId, memberId, kind, xp, label, o) {
+    const p = this.player(orgId, memberId);
+    const newXp = p.xp + xp;
+    const coins = Math.floor(newXp / XP_PER_COIN) - Math.floor(p.xp / XP_PER_COIN);
+    this.q("UPDATE game_players SET xp = ?, updated_at = ? WHERE org_id = ? AND member_id = ?").run(newXp, o.at, orgId, memberId);
+    const row = {
+      id: newId2("rwd"),
+      org_id: orgId,
+      member_id: memberId,
+      kind,
+      xp,
+      coins,
+      label,
+      task_id: o.taskId ?? null,
+      completion_id: o.completionId ?? null,
+      cap_day: o.capDay ?? null,
+      level: o.level ?? null,
+      rank_id: o.rankId ?? null,
+      crate_id: o.crateId ?? null,
+      rarity: o.rarity ?? null,
+      achievement_id: o.achievementId ?? null,
+      at: o.at
+    };
+    this.q(`INSERT INTO game_rewards (id, org_id, member_id, kind, xp, coins, label, task_id, completion_id, cap_day, level,
+      rank_id, crate_id, rarity, achievement_id, at) VALUES (@id, @org_id, @member_id, @kind, @xp, @coins, @label, @task_id,
+      @completion_id, @cap_day, @level, @rank_id, @crate_id, @rarity, @achievement_id, @at)`).run(row);
+    const ev = rewardFromRow(row);
+    this.pending.push(ev);
+    return ev;
+  }
+  feed(orgId, memberId, kind, xp, text, at) {
+    this.q("INSERT INTO game_feed (id, org_id, member_id, text, kind, xp, at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(newId2("feed"), orgId, memberId, text, kind, xp, at);
+  }
+  name(orgId, memberId) {
+    return this.names.get(`${orgId}:${memberId}`) ?? "An operative";
+  }
+  counter(orgId, memberId, key) {
+    const r = this.q("SELECT value FROM game_counters WHERE org_id = ? AND member_id = ? AND key = ?").get(orgId, memberId, key);
+    return r?.value ?? 0;
+  }
+  setCounter(orgId, memberId, key, value) {
+    this.q(`INSERT INTO game_counters (org_id, member_id, key, value) VALUES (?, ?, ?, ?)
+      ON CONFLICT (org_id, member_id, key) DO UPDATE SET value = excluded.value`).run(orgId, memberId, key, value);
+  }
+  bump(orgId, memberId, key, by = 1) {
+    const v = this.counter(orgId, memberId, key) + by;
+    this.setCounter(orgId, memberId, key, v);
+    return v;
+  }
+  grantCrate(orgId, memberId, rarity, source, at) {
+    const id = newId2("crt");
+    this.q("INSERT INTO game_crates (id, org_id, member_id, rarity, source, earned_at) VALUES (?, ?, ?, ?, ?, ?)").run(id, orgId, memberId, rarity, source, at);
+    const label = `${rarity[0].toUpperCase()}${rarity.slice(1)} crate earned \xB7 ${source}`;
+    this.award(orgId, memberId, "crate_earned", 0, label, { at, crateId: id, rarity });
+    if (rarity === "legendary") this.feed(orgId, memberId, "crate_earned", 0, `${this.name(orgId, memberId)} earned a Legendary crate \u2014 ${source}`, at);
+    return id;
+  }
+  activeBoost(orgId, memberId, at) {
+    const r = this.q("SELECT MAX(multiplier) AS m, MAX(until) AS u FROM game_boosts WHERE org_id = ? AND member_id = ? AND starts_at <= ? AND until > ?").get(orgId, memberId, at, at);
+    return r.m ? { multiplier: r.m, until: r.u ?? at } : null;
+  }
+  capUsed(orgId, memberId, day) {
+    const r = this.q("SELECT COALESCE(SUM(xp), 0) AS s FROM game_rewards WHERE org_id = ? AND member_id = ? AND cap_day = ? AND xp > 0").get(orgId, memberId, day);
+    return r.s;
+  }
+  /** Award capped, boosted mission XP rows. */
+  awardMission(orgId, m, rows, o) {
+    const boost = this.activeBoost(orgId, m.id, o.at);
+    let remaining = Math.max(0, DAILY_MISSION_XP_CAP - this.capUsed(orgId, m.id, o.day));
+    for (const r of rows) {
+      const boosted = boost ? Math.round(r.xp * boost.multiplier) : r.xp;
+      const xp = Math.min(boosted, remaining);
+      remaining -= xp;
+      let label = `${fmtXp(xp)} \xB7 ${r.what}`;
+      if (boost && xp > 0) label += ` (\xD7${boost.multiplier} boost)`;
+      if (xp < boosted) label += " (daily cap reached)";
+      this.award(orgId, m.id, r.kind, xp, label, { ...o, capDay: o.day });
+    }
+  }
+  // ─── Daily challenges ──────────────────────────────────────────────────────
+  ensureChallenges(orgId, memberId, day, stats) {
+    const existing = this.q("SELECT * FROM game_challenges WHERE org_id = ? AND member_id = ? AND day = ? ORDER BY slot").all(orgId, memberId, day);
+    if (existing.length || !stats) return existing;
+    const picks = pickChallenges(orgId, memberId, day, stats);
+    picks.forEach((c, slot) => {
+      this.q(`INSERT OR IGNORE INTO game_challenges (id, org_id, member_id, day, slot, pool_id, title, description, metric, target, xp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(newId2("chl"), orgId, memberId, day, slot, c.id, c.title, c.description, c.metric, c.target, c.xp);
+    });
+    return this.q("SELECT * FROM game_challenges WHERE org_id = ? AND member_id = ? AND day = ? ORDER BY slot").all(orgId, memberId, day);
+  }
+  progressChallenges(orgId, m, day, metrics, at, g) {
+    const rows = this.ensureChallenges(orgId, m.id, day, g.openStats.get(m.id) ?? null);
+    for (const c of rows) {
+      const n = metrics[c.metric];
+      if (!n || c.completed_at != null) continue;
+      const progress = Math.min(c.target, c.progress + n);
+      const done = progress >= c.target;
+      this.q("UPDATE game_challenges SET progress = ?, completed_at = ? WHERE id = ?").run(progress, done ? at : null, c.id);
+      if (done) this.award(orgId, m.id, "challenge", c.xp, `${fmtXp(c.xp)} \xB7 Challenge complete: ${c.title}`, { at });
+    }
+    const after = this.q("SELECT COUNT(*) AS n, SUM(completed_at IS NOT NULL) AS d FROM game_challenges WHERE org_id = ? AND member_id = ? AND day = ?").get(orgId, m.id, day);
+    if (after.n >= CHALLENGES_PER_DAY && (after.d ?? 0) >= after.n) this.setCounter(orgId, m.id, "daily_triple", 1);
+  }
+  // ─── Event handlers (inside the transaction) ───────────────────────────────
+  applyCreate(orgId, t, creatorId, at, g, touched) {
+    const m = g.members.get(creatorId);
+    if (!m) return;
+    const day = dayKey(at, m.tz);
+    const used = this.q("SELECT COUNT(*) AS n FROM game_intel WHERE org_id = ? AND member_id = ? AND day = ? AND xp > 0").get(orgId, m.id, day).n;
+    const xp = used < INTEL_MAX_PER_DAY ? INTEL_XP : 0;
+    const ins = this.q("INSERT OR IGNORE INTO game_intel (org_id, member_id, task_id, day, xp, at) VALUES (?, ?, ?, ?, ?, ?)").run(orgId, m.id, t.id, day, xp, at);
+    if (ins.changes === 0) return;
+    if (xp > 0) this.award(orgId, m.id, "intel", xp, `${fmtXp(xp)} \xB7 Intel: ${t.title}`, { at, taskId: t.id });
+    this.progressChallenges(orgId, m, day, { create: 1 }, at, g);
+    touched.add(m.id);
+  }
+  applySubtasks(orgId, t, subs, actorId, at, g, touched) {
+    const allDone = t.subtasks.length > 0 && t.subtasks.every((s2) => s2.done);
+    const perMember = /* @__PURE__ */ new Map();
+    for (const s2 of subs) {
+      const m = g.members.get(s2.doneBy ?? actorId);
+      if (!m) continue;
+      const day = dayKey(at, m.tz);
+      const taskPaid = this.q("SELECT COUNT(*) AS n FROM game_subtasks WHERE org_id = ? AND task_id = ? AND xp > 0").get(orgId, t.id).n;
+      const dayPaid = this.q("SELECT COUNT(*) AS n FROM game_subtasks WHERE org_id = ? AND member_id = ? AND day = ? AND xp > 0").get(orgId, m.id, day).n;
+      const xp = taskPaid < SUBTASK_MAX_PER_TASK && dayPaid < SUBTASK_MAX_PER_DAY ? SUBTASK_XP : 0;
+      const ins = this.q("INSERT OR IGNORE INTO game_subtasks (org_id, task_id, subtask_id, member_id, day, xp, at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(orgId, t.id, s2.id, m.id, day, xp, at);
+      if (ins.changes === 0) continue;
+      if (xp > 0) this.awardMission(orgId, m, [{ kind: "subtask", xp, what: `Objective: ${s2.title || t.title}` }], { at, taskId: t.id, day });
+      perMember.set(m.id, (perMember.get(m.id) ?? 0) + 1);
+      touched.add(m.id);
+    }
+    for (const [id, n] of perMember) {
+      const m = g.members.get(id);
+      const metrics = { objective: n };
+      if (allDone) metrics.complete_all_objectives = 1;
+      this.progressChallenges(orgId, m, dayKey(at, m.tz), metrics, at, g);
+    }
+  }
+  applyRevoke(orgId, t, at, touched) {
+    const rows = this.q("SELECT id, member_id, at FROM game_completions WHERE org_id = ? AND task_id = ? AND revoked_at IS NULL").all(orgId, t.id);
+    for (const c of rows) {
+      if (at - c.at > REVOKE_WINDOW_MS || at < c.at) continue;
+      const sum = this.q("SELECT COALESCE(SUM(xp), 0) AS s FROM game_rewards WHERE org_id = ? AND completion_id = ? AND kind != ?").get(orgId, c.id, "revoked").s;
+      this.q("UPDATE game_completions SET revoked_at = ? WHERE id = ?").run(at, c.id);
+      if (sum > 0) {
+        this.award(orgId, c.member_id, "revoked", -sum, `${fmtXp(-sum)} \xB7 Mission reopened: ${t.title}`, { at, taskId: t.id, completionId: c.id });
+      }
+      touched.add(c.member_id);
+    }
+  }
+  applyCompletion(orgId, t, completer, earners, at, g, touched) {
+    const firstEver = !this.q("SELECT 1 FROM game_completions WHERE org_id = ? AND task_id = ? LIMIT 1").get(orgId, t.id);
+    const farm = !!t.creatorId && t.createdAt != null && at - t.createdAt < QUICK_SELF_COMPLETE_MS && (completer ?? "") === t.creatorId;
+    const base = BASE_XP[t.priority];
+    const hadDue = t.dueAt != null;
+    const onTime = hadDue && at <= t.dueAt;
+    const rescued = hadDue && at > t.dueAt;
+    let anyAwarded = false;
+    for (const id of earners) {
+      const m = g.members.get(id);
+      if (!m) continue;
+      const day = dayKey(at, m.tz);
+      if (this.q("SELECT 1 FROM game_completions WHERE org_id = ? AND member_id = ? AND task_id = ? AND day = ?").get(orgId, id, t.id, day)) continue;
+      const cid = newId2("cmp");
+      this.q(`INSERT INTO game_completions (id, org_id, member_id, task_id, project_id, day, at, priority, had_due, on_time, rescued, farm)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+        cid,
+        orgId,
+        id,
+        t.id,
+        t.projectId,
+        day,
+        at,
+        t.priority,
+        hadDue ? 1 : 0,
+        !farm && onTime ? 1 : 0,
+        !farm && rescued ? 1 : 0,
+        farm ? 1 : 0
+      );
+      touched.add(id);
+      anyAwarded = true;
+      if (farm) {
+        const xp = Math.round(base * QUICK_SELF_COMPLETE_PCT);
+        this.awardMission(orgId, m, [{ kind: "mission_complete", xp, what: `Mission complete: ${t.title} (quick self-complete)` }], { at, taskId: t.id, completionId: cid, day });
+        continue;
+      }
+      const rows = [{ kind: "mission_complete", xp: base, what: `Mission complete: ${t.title}` }];
+      if (onTime) rows.push({ kind: "on_time_bonus", xp: Math.round(base * ON_TIME_BONUS_PCT), what: "On-time bonus" });
+      if (rescued) rows.push({ kind: "rescue_bonus", xp: RESCUE_BONUS_XP, what: `Rescue bonus: ${t.title}` });
+      this.awardMission(orgId, m, rows, { at, taskId: t.id, completionId: cid, day });
+      this.updateStreak(orgId, m, day, at, t.id, cid);
+      const hour = localHour(at, m.tz);
+      if (hadDue) {
+        const run = onTime ? this.bump(orgId, id, "ontime_run") : 0;
+        if (!onTime) this.setCounter(orgId, id, "ontime_run", 0);
+        if (run > this.counter(orgId, id, "ontime_run_best")) this.setCounter(orgId, id, "ontime_run_best", run);
+      }
+      if (hour < 8) this.bump(orgId, id, "early_bird");
+      if (hour >= 22) this.bump(orgId, id, "night_owl");
+      if (hour >= 3 && hour < 5) this.bump(orgId, id, "ghost");
+      if (isWeekend(day)) this.bump(orgId, id, "weekend");
+      if (onTime && t.dueAt - at <= 10 * 60 * 1e3) this.bump(orgId, id, "clutch");
+      if (rescued && at - t.dueAt >= 7 * 24 * 60 * 60 * 1e3) this.bump(orgId, id, "comeback");
+      if (t.assigneeIds.length >= 2) this.bump(orgId, id, "squad_missions");
+      if (g.cleanSweep.get(id)) this.bump(orgId, id, "clean_sweep");
+      const missions = this.stat(orgId, id, "missions");
+      const p = this.player(orgId, id);
+      const milestones = Math.floor(missions / CRATE_EVERY_MISSIONS);
+      for (let k = p.missions_hw + 1; k <= milestones; k++) this.grantCrate(orgId, id, "common", `${k * CRATE_EVERY_MISSIONS} missions completed`, at);
+      if (milestones > p.missions_hw) this.q("UPDATE game_players SET missions_hw = ? WHERE org_id = ? AND member_id = ?").run(milestones, orgId, id);
+      const allObjectives = t.subtasks.length > 0 && t.subtasks.every((s2) => s2.done);
+      this.progressChallenges(orgId, m, day, {
+        complete: 1,
+        complete_high: t.priority === "high" || t.priority === "urgent" ? 1 : 0,
+        complete_overdue: rescued ? 1 : 0,
+        complete_on_time: onTime ? 1 : 0,
+        complete_all_objectives: allObjectives ? 1 : 0,
+        complete_shared: t.assigneeIds.length >= 2 ? 1 : 0,
+        complete_before_noon: hour < 12 ? 1 : 0
+      }, at, g);
+    }
+    if (!farm && firstEver && anyAwarded && t.creatorId) {
+      const creator = g.members.get(t.creatorId);
+      const hasAgent = t.assigneeIds.some((a) => g.members.get(a)?.kind === "agent");
+      if (creator && creator.kind === "human" && hasAgent) {
+        this.bump(orgId, creator.id, "ai_whisperer");
+        touched.add(creator.id);
+      }
+    }
+    if (g.project) this.applySquadBonus(orgId, g.project, at, g, touched);
+  }
+  updateStreak(orgId, m, day, at, taskId2, cid) {
+    const p = this.player(orgId, m.id);
+    const last = p.streak_last_day;
+    if (last === day || last && day < last) return;
+    const current = last && onlyWeekendsBetween(last, day) ? p.streak_current + 1 : 1;
+    const best = Math.max(p.streak_best, current);
+    this.q("UPDATE game_players SET streak_current = ?, streak_best = ?, streak_last_day = ? WHERE org_id = ? AND member_id = ?").run(current, best, day, orgId, m.id);
+    const bonus = Math.min(STREAK_XP_PER_DAY * current, STREAK_XP_MAX);
+    this.award(orgId, m.id, "streak_bonus", bonus, `${fmtXp(bonus)} \xB7 ${current}-day streak`, { at, taskId: taskId2, completionId: cid });
+    if (current % EPIC_CRATE_EVERY_STREAK_DAYS === 0) {
+      this.grantCrate(orgId, m.id, "epic", `${current}-day streak`, at);
+      this.feed(orgId, m.id, "streak_bonus", bonus, `${m.name} is on a ${current}-day streak \u{1F525}`, at);
+    }
+  }
+  applySquadBonus(orgId, proj, at, g, touched) {
+    const ins = this.q("INSERT OR IGNORE INTO game_squad_bonus (org_id, project_id, at) VALUES (?, ?, ?)").run(orgId, proj.id, at);
+    if (ins.changes === 0) return;
+    const fromLedger = this.q("SELECT DISTINCT member_id FROM game_completions WHERE org_id = ? AND project_id = ? AND revoked_at IS NULL").all(orgId, proj.id).map((r) => r.member_id);
+    const recipients = [.../* @__PURE__ */ new Set([...fromLedger, ...proj.completers])].filter((id) => g.members.has(id));
+    for (const id of recipients) {
+      this.award(orgId, id, "squad_bonus", SQUAD_BONUS_XP, `${fmtXp(SQUAD_BONUS_XP)} \xB7 Operation cleared: ${proj.name}`, { at });
+      touched.add(id);
+    }
+    const lead = proj.leadId ? g.members.get(proj.leadId) : void 0;
+    if (lead) {
+      this.bump(orgId, lead.id, "ops_commanded");
+      touched.add(lead.id);
+    }
+    const credit = lead?.id ?? recipients[0];
+    if (credit) {
+      this.feed(
+        orgId,
+        credit,
+        "squad_bonus",
+        SQUAD_BONUS_XP,
+        `Operation ${proj.name} cleared \u2014 ${fmtXp(SQUAD_BONUS_XP)} to ${recipients.length} operative${recipients.length === 1 ? "" : "s"}`,
+        at
+      );
+    }
+  }
+  // ─── Levels, ranks, achievements ───────────────────────────────────────────
+  stat(orgId, memberId, metric) {
+    const one = (sql, ...a) => this.q(sql).get(...a).n ?? 0;
+    const done = "FROM game_completions WHERE org_id = ? AND member_id = ? AND revoked_at IS NULL AND farm = 0";
+    switch (metric) {
+      case "missions":
+        return one(`SELECT COUNT(*) AS n ${done}`, orgId, memberId);
+      case "on_time":
+        return one(`SELECT COUNT(*) AS n ${done} AND on_time = 1`, orgId, memberId);
+      case "rescued":
+        return one(`SELECT COUNT(*) AS n ${done} AND rescued = 1`, orgId, memberId);
+      case "urgent":
+        return one(`SELECT COUNT(*) AS n ${done} AND priority = 'urgent'`, orgId, memberId);
+      case "created":
+        return one("SELECT COUNT(*) AS n FROM game_intel WHERE org_id = ? AND member_id = ?", orgId, memberId);
+      case "objectives":
+        return one("SELECT COUNT(*) AS n FROM game_subtasks WHERE org_id = ? AND member_id = ?", orgId, memberId);
+      case "crates_opened":
+        return one("SELECT COUNT(*) AS n FROM game_crates WHERE org_id = ? AND member_id = ? AND opened_at IS NOT NULL", orgId, memberId);
+      case "challenges":
+        return one("SELECT COUNT(*) AS n FROM game_challenges WHERE org_id = ? AND member_id = ? AND completed_at IS NOT NULL", orgId, memberId);
+      case "squad_bonuses":
+        return one("SELECT COUNT(*) AS n FROM game_rewards WHERE org_id = ? AND member_id = ? AND kind = 'squad_bonus'", orgId, memberId);
+      case "streak_best":
+        return this.readPlayer(orgId, memberId).streak_best;
+      case "level":
+        return this.readPlayer(orgId, memberId).max_level;
+      default:
+        return this.counter(orgId, memberId, metric);
+    }
+  }
+  /** Level-ups, rank-ups, achievement unlocks — repeated until stable. */
+  settle(orgId, m, at) {
+    for (let i = 0; i < 10; i++) {
+      this.applyLevel(orgId, m, at);
+      if (!this.checkAchievements(orgId, m, at)) return;
+    }
+  }
+  applyLevel(orgId, m, at) {
+    const p = this.player(orgId, m.id);
+    const lvl = levelForXp(p.xp);
+    let maxRank = p.max_rank;
+    for (let l = p.max_level + 1; l <= lvl; l++) {
+      const rIdx = rankIndexForLevel(l);
+      const rank2 = RANKS[rIdx];
+      const promoted = rIdx > maxRank;
+      const label = promoted ? `Promoted to ${rank2.name} \xB7 Level ${l}` : `Level ${l} reached`;
+      this.award(orgId, m.id, "level_up", 0, label, { at, level: l, rankId: rank2.id });
+      this.grantCrate(orgId, m.id, "rare", `Level ${l} reached`, at);
+      if (promoted) {
+        if (rIdx >= LEGENDARY_RANK_INDEX) this.grantCrate(orgId, m.id, "legendary", `Promoted to ${rank2.name}`, at);
+        this.feed(orgId, m.id, "level_up", 0, `${m.name} was promoted to ${rank2.name} (Level ${l})`, at);
+        maxRank = rIdx;
+      } else {
+        this.feed(orgId, m.id, "level_up", 0, `${m.name} reached Level ${l}`, at);
+      }
+    }
+    this.q("UPDATE game_players SET level = ?, rank_id = ?, max_level = ?, max_rank = ? WHERE org_id = ? AND member_id = ?").run(lvl, rankForLevel(lvl).id, Math.max(p.max_level, lvl), maxRank, orgId, m.id);
+  }
+  checkAchievements(orgId, m, at) {
+    const have = new Set(this.q("SELECT achievement_id FROM game_achievements WHERE org_id = ? AND member_id = ?").all(orgId, m.id).map((r) => r.achievement_id));
+    let unlocked = false;
+    const cache2 = /* @__PURE__ */ new Map();
+    for (const a of ACHIEVEMENTS) {
+      if (have.has(a.id)) continue;
+      if (!cache2.has(a.metric)) cache2.set(a.metric, this.stat(orgId, m.id, a.metric));
+      if ((cache2.get(a.metric) ?? 0) < a.target) continue;
+      this.q("INSERT OR IGNORE INTO game_achievements (org_id, member_id, achievement_id, unlocked_at) VALUES (?, ?, ?, ?)").run(orgId, m.id, a.id, at);
+      const xp = ACHIEVEMENT_XP[a.tier];
+      this.award(orgId, m.id, "achievement", xp, `${fmtXp(xp)} \xB7 Medal unlocked: ${a.name}`, { at, achievementId: a.id });
+      const crate = ACHIEVEMENT_CRATE[a.tier];
+      if (crate) this.grantCrate(orgId, m.id, crate, `Medal: ${a.name}`, at);
+      this.feed(orgId, m.id, "achievement", xp, `${m.name} unlocked ${a.name} ${a.icon}`, at);
+      unlocked = true;
+    }
+    return unlocked;
+  }
+  // ─── Crates (called by the service) ────────────────────────────────────────
+  openCrate(orgId, memberId, crateId, now2) {
+    const crate = this.q("SELECT * FROM game_crates WHERE id = ? AND org_id = ? AND member_id = ?").get(crateId, orgId, memberId);
+    if (!crate || crate.opened_at != null) return null;
+    const owned = new Set(this.q("SELECT item_id FROM game_inventory WHERE org_id = ? AND member_id = ?").all(orgId, memberId).map((r) => r.item_id));
+    const reward = rollLoot(crate.rarity, this.random, owned);
+    let coins = 0;
+    if (reward.kind === "coins") coins = reward.amount ?? 0;
+    else if (reward.kind === "xp_boost") {
+      const active = this.activeBoost(orgId, memberId, now2);
+      const start = active ? active.until : now2;
+      this.q("INSERT INTO game_boosts (id, org_id, member_id, multiplier, starts_at, until) VALUES (?, ?, ?, ?, ?, ?)").run(newId2("bst"), orgId, memberId, BOOST_MULTIPLIER, start, start + (reward.amount ?? 30) * 6e4);
+    } else {
+      const c = COSMETICS.find((x) => x.id === reward.id);
+      this.q("INSERT OR IGNORE INTO game_inventory (org_id, member_id, kind, item_id, name, rarity, acquired_at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(orgId, memberId, c.kind, c.id, c.name, c.rarity, now2);
+    }
+    this.q("UPDATE game_crates SET opened_at = ?, reward_json = ?, reward_coins = ? WHERE id = ?").run(now2, JSON.stringify(reward), coins, crateId);
+    return { reward, openedAt: now2 };
+  }
+  // ─── Rebuild (cache is derived from the ledger) ────────────────────────────
+  /** Recompute game_players for every member of an org from the ledger + completions. */
+  rebuildPlayers(orgId) {
+    const ids2 = this.q(`SELECT member_id FROM game_rewards WHERE org_id = ? UNION SELECT member_id FROM game_completions WHERE org_id = ?`).all(orgId, orgId).map((r) => r.member_id);
+    this.db.transaction(() => {
+      for (const id of ids2) {
+        const xp = this.q("SELECT COALESCE(SUM(xp), 0) AS s FROM game_rewards WHERE org_id = ? AND member_id = ?").get(orgId, id).s;
+        const lvl = levelForXp(xp);
+        const maxLevel = Math.max(lvl, this.q("SELECT MAX(level) AS l FROM game_rewards WHERE org_id = ? AND member_id = ? AND kind = 'level_up'").get(orgId, id).l ?? 1);
+        const days = this.q("SELECT DISTINCT day FROM game_completions WHERE org_id = ? AND member_id = ? AND farm = 0 ORDER BY day").all(orgId, id).map((r) => r.day);
+        let cur = 0, best = 0, last = null;
+        for (const d of days) {
+          cur = last && onlyWeekendsBetween(last, d) ? cur + 1 : 1;
+          best = Math.max(best, cur);
+          last = d;
+        }
+        const missionsHw = Math.floor(this.stat(orgId, id, "missions") / CRATE_EVERY_MISSIONS);
+        const prevHw = this.readPlayer(orgId, id).missions_hw;
+        this.q(`INSERT INTO game_players (org_id, member_id, xp, level, rank_id, max_level, max_rank, missions_hw, streak_current, streak_best, streak_last_day, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT (org_id, member_id) DO UPDATE SET xp = excluded.xp, level = excluded.level, rank_id = excluded.rank_id,
+            max_level = excluded.max_level, max_rank = excluded.max_rank, missions_hw = excluded.missions_hw,
+            streak_current = excluded.streak_current, streak_best = excluded.streak_best, streak_last_day = excluded.streak_last_day,
+            updated_at = excluded.updated_at`).run(orgId, id, xp, lvl, rankForLevel(lvl).id, maxLevel, rankIndexForLevel(maxLevel), Math.max(missionsHw, prevHw), cur, best, last, this.clock());
+      }
+    })();
+    return ids2.length;
+  }
+};
+
+// packages/game/src/schema.ts
+var MIGRATIONS2 = [
+  {
+    version: 1,
+    sql: `
+CREATE TABLE IF NOT EXISTS game_processed (
+  org_id TEXT NOT NULL, audit_id TEXT NOT NULL, at INTEGER NOT NULL,
+  PRIMARY KEY (org_id, audit_id)
+);
+CREATE TABLE IF NOT EXISTS game_rewards (
+  id TEXT PRIMARY KEY, org_id TEXT NOT NULL, member_id TEXT NOT NULL, kind TEXT NOT NULL,
+  xp INTEGER NOT NULL, coins INTEGER NOT NULL, label TEXT NOT NULL, task_id TEXT,
+  completion_id TEXT, cap_day TEXT, level INTEGER, rank_id TEXT, crate_id TEXT, rarity TEXT,
+  achievement_id TEXT, at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS game_rewards_member ON game_rewards (org_id, member_id, at);
+CREATE INDEX IF NOT EXISTS game_rewards_org ON game_rewards (org_id, at);
+CREATE INDEX IF NOT EXISTS game_rewards_completion ON game_rewards (completion_id);
+CREATE TABLE IF NOT EXISTS game_completions (
+  id TEXT PRIMARY KEY, org_id TEXT NOT NULL, member_id TEXT NOT NULL, task_id TEXT NOT NULL,
+  project_id TEXT, day TEXT NOT NULL, at INTEGER NOT NULL, priority TEXT NOT NULL,
+  had_due INTEGER NOT NULL, on_time INTEGER NOT NULL, rescued INTEGER NOT NULL, farm INTEGER NOT NULL,
+  revoked_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS game_completions_member ON game_completions (org_id, member_id, at);
+CREATE INDEX IF NOT EXISTS game_completions_task ON game_completions (org_id, task_id);
+CREATE TABLE IF NOT EXISTS game_intel (
+  org_id TEXT NOT NULL, member_id TEXT NOT NULL, task_id TEXT NOT NULL, day TEXT NOT NULL,
+  xp INTEGER NOT NULL, at INTEGER NOT NULL,
+  PRIMARY KEY (org_id, task_id)
+);
+CREATE INDEX IF NOT EXISTS game_intel_member ON game_intel (org_id, member_id, day);
+CREATE TABLE IF NOT EXISTS game_subtasks (
+  org_id TEXT NOT NULL, task_id TEXT NOT NULL, subtask_id TEXT NOT NULL, member_id TEXT NOT NULL,
+  day TEXT NOT NULL, xp INTEGER NOT NULL, at INTEGER NOT NULL,
+  PRIMARY KEY (org_id, task_id, subtask_id)
+);
+CREATE INDEX IF NOT EXISTS game_subtasks_member ON game_subtasks (org_id, member_id, day);
+CREATE TABLE IF NOT EXISTS game_players (
+  org_id TEXT NOT NULL, member_id TEXT NOT NULL,
+  xp INTEGER NOT NULL DEFAULT 0, level INTEGER NOT NULL DEFAULT 1, rank_id TEXT NOT NULL DEFAULT 'recruit',
+  max_level INTEGER NOT NULL DEFAULT 1, max_rank INTEGER NOT NULL DEFAULT 0, missions_hw INTEGER NOT NULL DEFAULT 0,
+  streak_current INTEGER NOT NULL DEFAULT 0, streak_best INTEGER NOT NULL DEFAULT 0, streak_last_day TEXT,
+  updated_at INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (org_id, member_id)
+);
+CREATE TABLE IF NOT EXISTS game_loadout (
+  org_id TEXT NOT NULL, member_id TEXT NOT NULL, title TEXT, frame TEXT, emote TEXT,
+  PRIMARY KEY (org_id, member_id)
+);
+CREATE TABLE IF NOT EXISTS game_counters (
+  org_id TEXT NOT NULL, member_id TEXT NOT NULL, key TEXT NOT NULL, value INTEGER NOT NULL,
+  PRIMARY KEY (org_id, member_id, key)
+);
+CREATE TABLE IF NOT EXISTS game_achievements (
+  org_id TEXT NOT NULL, member_id TEXT NOT NULL, achievement_id TEXT NOT NULL, unlocked_at INTEGER NOT NULL,
+  PRIMARY KEY (org_id, member_id, achievement_id)
+);
+CREATE TABLE IF NOT EXISTS game_crates (
+  id TEXT PRIMARY KEY, org_id TEXT NOT NULL, member_id TEXT NOT NULL, rarity TEXT NOT NULL,
+  source TEXT NOT NULL, earned_at INTEGER NOT NULL, opened_at INTEGER, reward_json TEXT,
+  reward_coins INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS game_crates_member ON game_crates (org_id, member_id, earned_at);
+CREATE TABLE IF NOT EXISTS game_inventory (
+  org_id TEXT NOT NULL, member_id TEXT NOT NULL, kind TEXT NOT NULL, item_id TEXT NOT NULL,
+  name TEXT NOT NULL, rarity TEXT NOT NULL, acquired_at INTEGER NOT NULL,
+  PRIMARY KEY (org_id, member_id, item_id)
+);
+CREATE TABLE IF NOT EXISTS game_boosts (
+  id TEXT PRIMARY KEY, org_id TEXT NOT NULL, member_id TEXT NOT NULL, multiplier REAL NOT NULL,
+  starts_at INTEGER NOT NULL, until INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS game_boosts_member ON game_boosts (org_id, member_id, until);
+CREATE TABLE IF NOT EXISTS game_challenges (
+  id TEXT PRIMARY KEY, org_id TEXT NOT NULL, member_id TEXT NOT NULL, day TEXT NOT NULL, slot INTEGER NOT NULL,
+  pool_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, metric TEXT NOT NULL,
+  target INTEGER NOT NULL, progress INTEGER NOT NULL DEFAULT 0, xp INTEGER NOT NULL, completed_at INTEGER,
+  UNIQUE (org_id, member_id, day, pool_id)
+);
+CREATE INDEX IF NOT EXISTS game_challenges_member ON game_challenges (org_id, member_id, day);
+CREATE TABLE IF NOT EXISTS game_squad_bonus (
+  org_id TEXT NOT NULL, project_id TEXT NOT NULL, at INTEGER NOT NULL,
+  PRIMARY KEY (org_id, project_id)
+);
+CREATE TABLE IF NOT EXISTS game_feed (
+  id TEXT PRIMARY KEY, org_id TEXT NOT NULL, member_id TEXT NOT NULL, text TEXT NOT NULL,
+  kind TEXT NOT NULL, xp INTEGER NOT NULL, at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS game_feed_org ON game_feed (org_id, at);
+`
+  }
+];
+function migrate(db) {
+  db.exec("CREATE TABLE IF NOT EXISTS game_migrations (version INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL)");
+  const row = db.prepare("SELECT MAX(version) AS v FROM game_migrations").get();
+  const current = row.v ?? 0;
+  for (const m of MIGRATIONS2) {
+    if (m.version <= current) continue;
+    db.transaction(() => {
+      db.exec(m.sql);
+      db.prepare("INSERT INTO game_migrations (version, applied_at) VALUES (?, ?)").run(m.version, Date.now());
+    })();
+  }
+}
+
+// packages/game/src/service.ts
+var clampLimit = (n, def, max) => Math.max(1, Math.min(max, Number.isFinite(n) ? Math.floor(n) : def));
+function progressOf(tasks, from, to, now2) {
+  const rel = tasks.filter((t) => t.status !== "cancelled" && (t.status === "done" ? t.completedAt != null && t.completedAt >= from && t.completedAt < to : t.dueAt != null && t.dueAt < to));
+  const done = rel.filter((t) => t.status === "done").length;
+  const overdue = rel.filter((t) => t.status !== "done" && t.dueAt != null && t.dueAt < now2).length;
+  const total = rel.length;
+  return { total, done, pending: total - done, overdue, pct: total ? Math.round(done / total * 100) : 0 };
+}
+var Service = class {
+  constructor(engine, services) {
+    this.engine = engine;
+    this.services = services;
+  }
+  get db() {
+    return this.engine.db;
+  }
+  // ─── Access helpers ──────────────────────────────────────────────────────
+  async member(orgId, id) {
+    try {
+      const m = await this.services.members.get(systemActor2(orgId), id);
+      if (!m || m.orgId !== orgId) throw new Error("wrong org");
+      return toInfo(m);
+    } catch {
+      throw new AppError("not_found", "Operative not found");
+    }
+  }
+  /** Resolve whose data the actor may view (any squad member; guests only themselves). */
+  async viewable(actor, memberId) {
+    const target = memberId && memberId !== "me" ? memberId : actor.memberId;
+    if (target !== actor.memberId && actor.role === "guest") throw new AppError("forbidden", "Guests can only view their own profile");
+    return this.member(actor.orgId, target);
+  }
+  requireWrite(actor) {
+    if (actor.via === "api_key" && !(actor.scopes ?? []).includes("write")) throw new AppError("forbidden", "API key lacks write scope");
+  }
+  // ─── Profile ─────────────────────────────────────────────────────────────
+  buildProfile(orgId, m, now2) {
+    const e = this.engine;
+    const p = e.readPlayer(orgId, m.id);
+    const level = levelForXp(p.xp);
+    const floor = xpForLevel(level);
+    const levelXp = level >= MAX_LEVEL ? 0 : xpForLevel(level + 1) - floor;
+    const rIdx = rankIndexForLevel(level);
+    const xpCoins = e.q("SELECT COALESCE(SUM(coins), 0) AS s FROM game_rewards WHERE org_id = ? AND member_id = ?").get(orgId, m.id).s;
+    const crateCoins = e.q("SELECT COALESCE(SUM(reward_coins), 0) AS s FROM game_crates WHERE org_id = ? AND member_id = ?").get(orgId, m.id).s;
+    const today2 = dayKey(now2, m.tz);
+    const last = p.streak_last_day;
+    const alive = !!last && (last === today2 || last < today2 && onlyWeekendsBetween(last, today2));
+    const loadout = e.q("SELECT title, frame, emote FROM game_loadout WHERE org_id = ? AND member_id = ?").get(orgId, m.id);
+    const count = (sql) => e.q(sql).get(orgId, m.id).n;
+    return {
+      memberId: m.id,
+      xp: p.xp,
+      level,
+      levelXp,
+      levelProgressXp: level >= MAX_LEVEL ? 0 : p.xp - floor,
+      rank: RANKS[rIdx],
+      nextRank: RANKS[rIdx + 1] ?? null,
+      coins: xpCoins + crateCoins,
+      streak: { current: alive ? p.streak_current : 0, best: p.streak_best, lastActiveDay: last },
+      stats: {
+        missionsCompleted: e.stat(orgId, m.id, "missions"),
+        onTime: e.stat(orgId, m.id, "on_time"),
+        rescued: e.stat(orgId, m.id, "rescued"),
+        created: e.stat(orgId, m.id, "created"),
+        cratesOpened: e.stat(orgId, m.id, "crates_opened"),
+        achievements: count("SELECT COUNT(*) AS n FROM game_achievements WHERE org_id = ? AND member_id = ?")
+      },
+      equipped: { title: loadout?.title ?? null, frame: loadout?.frame ?? null, emote: loadout?.emote ?? null },
+      unopenedCrates: count("SELECT COUNT(*) AS n FROM game_crates WHERE org_id = ? AND member_id = ? AND opened_at IS NULL")
+    };
+  }
+  async profile(actor, memberId) {
+    const m = await this.viewable(actor, memberId);
+    return this.buildProfile(actor.orgId, m, this.engine.clock());
+  }
+  // ─── HUD ─────────────────────────────────────────────────────────────────
+  async hud(actor) {
+    const m = await this.member(actor.orgId, actor.memberId);
+    const now2 = this.engine.clock();
+    const [mineRaw, squadRaw, projects] = await Promise.all([
+      this.services.tasks.list(actor, { assigneeId: m.id, includeDone: true, limit: 1e3 }),
+      this.services.tasks.list(actor, { includeDone: true, limit: 1e3 }).catch(() => []),
+      this.services.projects.list(actor).catch(() => [])
+    ]);
+    const mine = mineRaw.filter((t) => t.orgId === actor.orgId && t.assigneeIds.includes(m.id));
+    const squad = squadRaw.filter((t) => t.orgId === actor.orgId);
+    const today2 = dayKey(now2, m.tz);
+    const dayFrom = startOfDay2(today2, m.tz);
+    const dayTo = startOfDay2(addDays3(today2, 1), m.tz);
+    const monday = mondayOf(today2);
+    const weekFrom = startOfDay2(monday, m.tz);
+    const weekTo = startOfDay2(addDays3(monday, 7), m.tz);
+    const operations = projects.filter((p) => p.orgId === actor.orgId && p.status !== "archived" && (p.memberIds.includes(m.id) || p.leadId === m.id)).map((p) => {
+      const tasks = squad.filter((t) => t.projectId === p.id && t.status !== "cancelled");
+      const done = tasks.filter((t) => t.status === "done").length;
+      const overdue = tasks.filter((t) => t.status !== "done" && t.dueAt != null && t.dueAt < now2).length;
+      const total = tasks.length;
+      return {
+        projectId: p.id,
+        name: p.name,
+        emoji: p.emoji,
+        color: p.color,
+        progress: { total, done, pending: total - done, overdue, pct: total ? Math.round(done / total * 100) : 0 }
+      };
+    });
+    const challenges = this.ensureToday(actor.orgId, m, now2, mine);
+    return {
+      profile: this.buildProfile(actor.orgId, m, now2),
+      today: progressOf(mine, dayFrom, dayTo, now2),
+      week: progressOf(mine, weekFrom, weekTo, now2),
+      operations,
+      squadToday: progressOf(squad, dayFrom, dayTo, now2),
+      challenges,
+      boost: this.engine.activeBoost(actor.orgId, m.id, now2)
+    };
+  }
+  // ─── Challenges ──────────────────────────────────────────────────────────
+  toChallenge(r) {
+    return {
+      id: r.id,
+      memberId: r.member_id,
+      day: r.day,
+      title: r.title,
+      description: r.description,
+      target: r.target,
+      progress: r.progress,
+      xp: r.xp,
+      completedAt: r.completed_at
+    };
+  }
+  ensureToday(orgId, m, now2, tasks) {
+    const day = dayKey(now2, m.tz);
+    const rows = this.db.transaction(() => this.engine.ensureChallenges(orgId, m.id, day, openStatsOf(tasks, m.id, now2)))();
+    return rows.map((r) => this.toChallenge(r));
+  }
+  async challenges(actor) {
+    const m = await this.member(actor.orgId, actor.memberId);
+    const now2 = this.engine.clock();
+    const day = dayKey(now2, m.tz);
+    const existing = this.engine.ensureChallenges(actor.orgId, m.id, day, null);
+    if (existing.length) return existing.map((r) => this.toChallenge(r));
+    const tasks = await this.services.tasks.list(actor, { assigneeId: m.id, limit: 1e3 }).catch(() => []);
+    return this.ensureToday(actor.orgId, m, now2, tasks.filter((t) => t.orgId === actor.orgId));
+  }
+  // ─── Leaderboard ─────────────────────────────────────────────────────────
+  async leaderboard(actor, period) {
+    if (period !== "week" && period !== "month" && period !== "all") throw new AppError("bad_request", "period must be week, month or all");
+    const me = await this.member(actor.orgId, actor.memberId);
+    const now2 = this.engine.clock();
+    const today2 = dayKey(now2, me.tz);
+    const from = period === "all" ? 0 : startOfDay2(period === "week" ? mondayOf(today2) : firstOfMonth(today2), me.tz);
+    let members = (await this.services.members.list(systemActor2(actor.orgId))).filter((m) => m.orgId === actor.orgId && m.active);
+    if (actor.role === "guest") members = members.filter((m) => m.id === actor.memberId);
+    const xpRows = this.engine.q("SELECT member_id, COALESCE(SUM(xp), 0) AS xp FROM game_rewards WHERE org_id = ? AND at >= ? GROUP BY member_id").all(actor.orgId, from);
+    const mRows = this.engine.q(`SELECT member_id, COUNT(*) AS missions, SUM(on_time) AS on_time, SUM(had_due) AS had_due
+      FROM game_completions WHERE org_id = ? AND at >= ? AND revoked_at IS NULL AND farm = 0 GROUP BY member_id`).all(actor.orgId, from);
+    const xpBy = new Map(xpRows.map((r) => [r.member_id, r.xp]));
+    const mBy = new Map(mRows.map((r) => [r.member_id, r]));
+    const entries = members.map((member) => {
+      const p = this.buildProfile(actor.orgId, toInfo(member), now2);
+      const s2 = mBy.get(member.id);
+      const entry = {
+        member,
+        position: 0,
+        xp: xpBy.get(member.id) ?? 0,
+        missions: s2?.missions ?? 0,
+        onTimeRate: s2 && s2.had_due > 0 ? s2.on_time / s2.had_due : 0,
+        rank: p.rank,
+        level: p.level,
+        streak: p.streak.current
+      };
+      return entry;
+    });
+    const sortRank = (list) => {
+      list.sort((a, b) => b.xp - a.xp || b.missions - a.missions || b.onTimeRate - a.onTimeRate || a.member.name.localeCompare(b.member.name));
+      list.forEach((e, i) => {
+        e.position = i + 1;
+      });
+      return list;
+    };
+    return {
+      period,
+      humans: sortRank(entries.filter((e) => e.member.kind === "human")),
+      agents: sortRank(entries.filter((e) => e.member.kind === "agent"))
+    };
+  }
+  // ─── Achievements ────────────────────────────────────────────────────────
+  async achievements(actor, memberId) {
+    const m = await this.viewable(actor, memberId);
+    const unlocked = new Map(this.engine.q("SELECT achievement_id, unlocked_at FROM game_achievements WHERE org_id = ? AND member_id = ?").all(actor.orgId, m.id).map((r) => [r.achievement_id, r.unlocked_at]));
+    const cache2 = /* @__PURE__ */ new Map();
+    return ACHIEVEMENTS.map(({ metric, ...a }) => {
+      const at = unlocked.get(a.id) ?? null;
+      if (!cache2.has(metric)) cache2.set(metric, this.engine.stat(actor.orgId, m.id, metric));
+      const progress = Math.min(a.target, cache2.get(metric) ?? 0);
+      if (a.secret && at == null) {
+        return {
+          achievement: { ...a, name: "Classified", description: "Secret medal \u2014 keep playing to reveal it.", icon: "\u{1F512}" },
+          progress: 0,
+          unlockedAt: null
+        };
+      }
+      return { achievement: a, progress: at != null ? a.target : progress, unlockedAt: at };
+    });
+  }
+  // ─── Crates & inventory ──────────────────────────────────────────────────
+  crateRow(r) {
+    let reward = null;
+    if (r.reward_json) {
+      try {
+        reward = JSON.parse(r.reward_json);
+      } catch {
+        reward = null;
+      }
+    }
+    return { id: r.id, memberId: r.member_id, rarity: r.rarity, source: r.source, earnedAt: r.earned_at, openedAt: r.opened_at, reward };
+  }
+  async crates(actor) {
+    const rows = this.engine.q("SELECT * FROM game_crates WHERE org_id = ? AND member_id = ? ORDER BY opened_at IS NOT NULL, earned_at DESC LIMIT 500").all(actor.orgId, actor.memberId);
+    return rows.map((r) => this.crateRow(r));
+  }
+  async openCrate(actor, crateId) {
+    this.requireWrite(actor);
+    const m = await this.member(actor.orgId, actor.memberId);
+    const now2 = this.engine.clock();
+    const get = () => this.engine.q("SELECT * FROM game_crates WHERE id = ? AND org_id = ? AND member_id = ?").get(crateId, actor.orgId, actor.memberId);
+    if (!get()) throw new AppError("not_found", "Crate not found");
+    try {
+      this.db.transaction(() => {
+        const opened = this.engine.openCrate(actor.orgId, actor.memberId, crateId, now2);
+        if (opened) this.engine.settle(actor.orgId, m, now2);
+      })();
+    } catch (err) {
+      this.engine.discard();
+      throw err;
+    }
+    this.engine.flush();
+    return this.crateRow(get());
+  }
+  async inventory(actor) {
+    const rows = this.engine.q("SELECT kind, item_id, name, rarity, acquired_at FROM game_inventory WHERE org_id = ? AND member_id = ? ORDER BY acquired_at DESC").all(actor.orgId, actor.memberId);
+    return rows.map((r) => ({ kind: r.kind, id: r.item_id, name: r.name, rarity: r.rarity, acquiredAt: r.acquired_at }));
+  }
+  async equip(actor, patch) {
+    this.requireWrite(actor);
+    const m = await this.member(actor.orgId, actor.memberId);
+    const owned = new Set((await this.inventory(actor)).map((i) => `${i.kind}:${i.id}`));
+    const cur = this.engine.q("SELECT title, frame, emote FROM game_loadout WHERE org_id = ? AND member_id = ?").get(actor.orgId, m.id);
+    const next = { title: cur?.title ?? null, frame: cur?.frame ?? null, emote: cur?.emote ?? null };
+    for (const kind of ["title", "frame", "emote"]) {
+      if (!(kind in patch)) continue;
+      const v = patch[kind];
+      if (v === void 0) continue;
+      if (v !== null) {
+        if (typeof v !== "string" || !COSMETICS.some((c) => c.kind === kind && c.id === v)) throw new AppError("bad_request", `Unknown ${kind}: ${String(v)}`);
+        if (!owned.has(`${kind}:${v}`)) throw new AppError("forbidden", `You don't own that ${kind} yet`);
+      }
+      next[kind] = v;
+    }
+    this.engine.q(`INSERT INTO game_loadout (org_id, member_id, title, frame, emote) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT (org_id, member_id) DO UPDATE SET title = excluded.title, frame = excluded.frame, emote = excluded.emote`).run(actor.orgId, m.id, next.title, next.frame, next.emote);
+    return this.buildProfile(actor.orgId, m, this.engine.clock());
+  }
+  // ─── Feed & rewards ──────────────────────────────────────────────────────
+  async feed(actor, limit) {
+    const n = clampLimit(limit, 30, 200);
+    const rows = actor.role === "guest" ? this.engine.q("SELECT * FROM game_feed WHERE org_id = ? AND member_id = ? ORDER BY at DESC, rowid DESC LIMIT ?").all(actor.orgId, actor.memberId, n) : this.engine.q("SELECT * FROM game_feed WHERE org_id = ? ORDER BY at DESC, rowid DESC LIMIT ?").all(actor.orgId, n);
+    return rows.map((r) => ({ id: r.id, memberId: r.member_id, text: r.text, kind: r.kind, xp: r.xp, at: r.at }));
+  }
+  async rewards(actor, limit) {
+    const n = clampLimit(limit, 50, 500);
+    const rows = this.engine.q("SELECT * FROM game_rewards WHERE org_id = ? AND member_id = ? ORDER BY at DESC, rowid DESC LIMIT ?").all(actor.orgId, actor.memberId, n);
+    return rows.map(rewardFromRow);
+  }
+};
+
+// packages/game/src/index.ts
+function createGame(opts) {
+  migrate(opts.sqlite);
+  const engine = new Engine({
+    db: opts.sqlite,
+    services: opts.services,
+    clock: opts.clock ?? Date.now,
+    random: opts.random ?? cryptoRandom,
+    log: opts.log ?? console
+  });
+  const service = new Service(engine, opts.services);
+  return {
+    service,
+    onAudit: (e) => engine.onAudit(e),
+    rebuild: (orgId) => engine.rebuildPlayers(orgId)
+  };
 }
 
 // packages/server/src/server.ts
@@ -180639,10 +180979,22 @@ function safeEqual2(a, b) {
   const hb = createHash4("sha256").update(b, "utf8").digest();
   return timingSafeEqual3(ha, hb) && a.length === b.length;
 }
+var SECRET_PARAMS = /* @__PURE__ */ new Set(["secret", "key", "token", "hub.verify_token", "access_token", "code", "code_verifier"]);
 function redactUrl(url3) {
-  let out = url3.replace(/(\/mcp\/k\/)[^/?#]+/i, "$1[REDACTED]");
-  out = out.replace(/([?&](?:secret|key|token|hub\.verify_token)=)[^&#]*/gi, "$1[REDACTED]");
-  return out;
+  const out = url3.replace(/(\/mcp\/k\/)[^/?#]+/i, "$1[REDACTED]");
+  const q = out.indexOf("?");
+  if (q < 0) return out;
+  const params = out.slice(q + 1).split("&").map((pair) => {
+    const eq2 = pair.indexOf("=");
+    if (eq2 < 0) return pair;
+    let name = pair.slice(0, eq2);
+    try {
+      name = decodeURIComponent(name.replace(/\+/g, " "));
+    } catch {
+    }
+    return SECRET_PARAMS.has(name.trim().toLowerCase()) ? `${pair.slice(0, eq2)}=[REDACTED]` : pair;
+  });
+  return `${out.slice(0, q)}?${params.join("&")}`;
 }
 function looksLikeApiPath(url3) {
   let p = url3.split("?")[0] ?? "";
@@ -180755,6 +181107,9 @@ function mount(app, defs) {
 }
 var json4 = (schema, status) => ({ kind: "json", schema, status });
 var empty = { kind: "empty" };
+
+// packages/server/src/routes/api.ts
+import { createHash as createHash5 } from "node:crypto";
 
 // packages/server/src/schemas.ts
 var ID_RE2 = /^[a-z]+_[A-Za-z0-9]{6,32}$/;
@@ -181559,9 +181914,13 @@ function baseUrl(publicUrl, req) {
 // packages/server/src/routes/api.ts
 var Ok = { ok: true };
 var DAY4 = 864e5;
+var TTS_MAX_PER_HOUR = 20;
+var TTS_CACHE_MS = 10 * 6e4;
 function apiRoutes(deps) {
   const s2 = deps.services;
   const now2 = () => (deps.clock ?? Date.now)();
+  const ttsCalls = /* @__PURE__ */ new Map();
+  const ttsCache = /* @__PURE__ */ new Map();
   return [
     // ─── Me & briefing ─────────────────────────────────────────────────────
     apiRoute({
@@ -181613,11 +181972,31 @@ function apiRoutes(deps) {
       summary: "Server text-to-speech for the briefing (204 when no TTS provider is configured)",
       body: AudioBody,
       response: { kind: "binary", mime: "audio/mpeg", description: "Audio bytes (provider-specific audio/* type), or 204 without TTS", alsoEmpty: true },
-      handler: async ({ body, reply }) => {
+      handler: async ({ actor, body, reply }) => {
+        if (actor.via !== "session" || actor.kind !== "human" || actor.role === "guest") {
+          throw new AppError("forbidden", "Briefing audio is only available to signed-in team members");
+        }
         if (!deps.tts) return reply.code(204).send();
-        const out = await deps.tts.synthesize(body.text.slice(0, 2e3), body.voice ? { voice: body.voice } : void 0);
+        const text = body.text.slice(0, 2e3);
+        const t = now2();
+        const key = `${actor.orgId}:${actor.memberId}`;
+        const hash2 = createHash5("sha256").update(`${body.voice ?? ""}
+${text}`).digest("hex");
+        const send = (audio2, mime) => reply.code(200).header("cache-control", "no-store").type(mime || "audio/mpeg").send(audio2);
+        const cached2 = ttsCache.get(key);
+        if (cached2 && cached2.hash === hash2 && t - cached2.at < TTS_CACHE_MS) return send(cached2.audio, cached2.mime);
+        const recent = (ttsCalls.get(key) ?? []).filter((x) => t - x < 36e5);
+        if (recent.length >= TTS_MAX_PER_HOUR) {
+          reply.header("retry-after", Math.ceil((recent[0] + 36e5 - t) / 1e3));
+          throw new AppError("rate_limited", `Briefing audio is limited to ${TTS_MAX_PER_HOUR} per hour`);
+        }
+        recent.push(t);
+        ttsCalls.set(key, recent);
+        const out = await deps.tts.synthesize(text, body.voice ? { voice: body.voice } : void 0);
         if (!out) return reply.code(204).send();
-        return reply.code(200).header("cache-control", "no-store").type(out.mime || "audio/mpeg").send(out.audio);
+        const audio = out.audio;
+        ttsCache.set(key, { hash: hash2, at: t, audio, mime: out.mime });
+        return send(audio, out.mime);
       }
     }),
     // ─── Tasks ─────────────────────────────────────────────────────────────
@@ -182505,10 +182884,27 @@ function publicRoutes(deps, opts) {
 
 // packages/server/src/routes/stream.ts
 var PING_MS = 25e3;
+var MAX_STREAMS_PER_MEMBER = 5;
 function registerStream(api, deps, opts = {}) {
-  const pingMs = opts.pingMs ?? PING_MS;
+  const pingMs = Math.min(opts.pingMs ?? PING_MS, PING_MS);
+  const maxPerMember = opts.maxPerMember ?? MAX_STREAMS_PER_MEMBER;
+  const open = /* @__PURE__ */ new Map();
   api.get("/api/stream", async (req, reply) => {
     const actor = req.actor;
+    const auth = deps.services.auth;
+    const sessionToken = req.sessionToken;
+    const apiKey = sessionToken === null ? bearerToken(req) : null;
+    const stillValid = async () => {
+      let now2 = null;
+      try {
+        if (sessionToken !== null) now2 = await auth.resolveSession(sessionToken);
+        else if (apiKey) now2 = await auth.resolveApiKey(apiKey);
+      } catch (err) {
+        req.log.warn({ err }, "sse revalidation failed");
+        return false;
+      }
+      return !!now2 && now2.memberId === actor.memberId && now2.orgId === actor.orgId && now2.role === actor.role;
+    };
     const headers = reply.getHeaders();
     reply.hijack();
     const res = reply.raw;
@@ -182523,6 +182919,8 @@ function registerStream(api, deps, opts = {}) {
     });
     res.socket?.setNoDelay(true);
     let closed = false;
+    let timer = null;
+    let unsubscribe = null;
     const write = (e) => {
       if (closed || res.writableEnded) return;
       try {
@@ -182534,22 +182932,49 @@ function registerStream(api, deps, opts = {}) {
         cleanup();
       }
     };
+    let chain = Promise.resolve();
+    const deliver = (e) => {
+      if (closed) return;
+      chain = chain.then(async () => {
+        if (closed) return;
+        if (!await stillValid()) return cleanup();
+        write(e);
+      });
+    };
     res.write("retry: 5000\n\n");
     write({ type: "ping", at: Date.now() });
-    let unsubscribe = null;
+    const key = `${actor.orgId}:${actor.memberId}`;
+    let mine = open.get(key);
+    if (!mine) open.set(key, mine = /* @__PURE__ */ new Set());
+    while (mine.size >= maxPerMember) {
+      const oldest = mine.values().next().value;
+      if (!oldest) break;
+      mine.delete(oldest);
+      oldest();
+    }
+    const evict = () => {
+      if (!closed && !res.writableEnded) res.write("retry: 60000\n\n");
+      cleanup();
+    };
+    mine.add(evict);
     try {
-      unsubscribe = deps.services.live.subscribe(actor.orgId, actor.memberId, write);
+      unsubscribe = deps.services.live.subscribe(actor.orgId, actor.memberId, deliver);
     } catch (err) {
       req.log.error({ err }, "live subscribe failed");
-      res.end();
+      cleanup();
       return;
     }
-    const timer = setInterval(() => write({ type: "ping", at: Date.now() }), pingMs);
+    timer = setInterval(() => deliver({ type: "ping", at: Date.now() }), pingMs);
     timer.unref?.();
     function cleanup() {
       if (closed) return;
       closed = true;
-      clearInterval(timer);
+      if (timer) clearInterval(timer);
+      const set2 = open.get(key);
+      if (set2) {
+        set2.delete(evict);
+        if (!set2.size) open.delete(key);
+      }
       try {
         unsubscribe?.();
       } catch {
@@ -182647,7 +183072,7 @@ async function registerWebhooks(app, deps, limit) {
 }
 
 // packages/server/src/oauth.ts
-import { createHash as createHash5, createHmac as createHmac2, randomBytes as randomBytes6, timingSafeEqual as timingSafeEqual4 } from "node:crypto";
+import { createHash as createHash6, createHmac as createHmac2, randomBytes as randomBytes6, timingSafeEqual as timingSafeEqual4 } from "node:crypto";
 var CODE_TTL_MS = 5 * 6e4;
 var MAX_PENDING_CODES = 1e4;
 var MAX_CLIENT_ID_LEN = 4096;
@@ -182709,24 +183134,20 @@ function withParams(uri, params) {
   for (const [k, v] of Object.entries(params)) if (v !== null && v !== void 0) url3.searchParams.set(k, v);
   return url3.toString();
 }
-function checkAuthorize(secret, q, issuer) {
+function checkAuthorize(secret, q, _issuer) {
+  const fail = (error51, description) => ({ ok: false, error: error51, description });
   const clientId = pick2(q, "client_id");
   const client = verifyClientId(secret, clientId);
-  if (!clientId || !client) return { ok: false, fatal: true, error: "invalid_client", description: "Unknown or invalid client_id" };
+  if (!clientId || !client) return fail("invalid_client", "Unknown or invalid client_id");
   let redirectUri = pick2(q, "redirect_uri");
   if (!redirectUri) {
-    if (client.redirectUris.length !== 1) return { ok: false, fatal: true, error: "invalid_request", description: "redirect_uri is required" };
+    if (client.redirectUris.length !== 1) return fail("invalid_request", "redirect_uri is required");
     redirectUri = client.redirectUris[0];
   }
   if (!client.redirectUris.includes(redirectUri) || !isAllowedRedirectUri(redirectUri)) {
-    return { ok: false, fatal: true, error: "invalid_request", description: "redirect_uri is not registered for this client" };
+    return fail("invalid_request", "redirect_uri is not registered for this client");
   }
   const state = pick2(q, "state");
-  const fail = (error51, description) => ({
-    ok: false,
-    fatal: false,
-    redirectTo: withParams(redirectUri, { error: error51, error_description: description, state, iss: issuer })
-  });
   if (state !== null && state.length > 1024) return fail("invalid_request", "state too long");
   if (pick2(q, "response_type") !== "code") return fail("unsupported_response_type", 'response_type must be "code"');
   const challenge = pick2(q, "code_challenge");
@@ -182767,12 +183188,20 @@ var CodeStore = class {
   }
 };
 function s256(verifier) {
-  return createHash5("sha256").update(verifier, "ascii").digest("base64url");
+  return createHash6("sha256").update(verifier, "ascii").digest("base64url");
 }
 function eq(a, b) {
   const ba = Buffer.from(a);
   const bb = Buffer.from(b);
   return ba.length === bb.length && timingSafeEqual4(ba, bb);
+}
+var HTML_ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+var escapeHtml = (s2) => s2.replace(/[&<>"']/g, (c) => HTML_ESC[c]);
+function oauthErrorPage(reply, status, error51, description) {
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connection failed</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1rem;color:#222}code{background:#f2f2f2;padding:.1em .3em;border-radius:4px}</style></head>
+<body><h1>Could not connect</h1><p>${escapeHtml(description)}</p><p><code>${escapeHtml(error51)}</code></p><p>Close this window and try connecting again from your AI app.</p></body></html>`;
+  return reply.code(status).header("cache-control", "no-store").header("content-security-policy", "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'").type("text/html; charset=utf-8").send(body);
 }
 function oauthError(reply, status, error51, description) {
   return reply.code(status).header("cache-control", "no-store").header("pragma", "no-cache").type("application/json; charset=utf-8").send({ error: error51, error_description: description });
@@ -182881,10 +183310,7 @@ async function registerOAuthPublic(app, deps, store, limit) {
     oauth.get("/oauth/authorize", async (req, reply) => {
       const q = req.query ?? {};
       const check2 = checkAuthorize(secret, q, baseUrl(deps.config.publicUrl, req));
-      if (!check2.ok) {
-        if (check2.fatal) return oauthError(reply, 400, check2.error, check2.description);
-        return reply.redirect(check2.redirectTo, 302);
-      }
+      if (!check2.ok) return oauthErrorPage(reply, 400, check2.error, check2.description);
       const p = check2.p;
       const qs = new URLSearchParams();
       qs.set("response_type", "code");
@@ -182958,10 +183384,7 @@ function oauthApiRoutes(deps, store) {
       handler: async ({ actor, req, body }) => {
         if (actor.via !== "session") throw new AppError("forbidden", "OAuth approval requires a signed-in web session");
         const check2 = checkAuthorize(secret, body.query, baseUrl(deps.config.publicUrl, req));
-        if (!check2.ok) {
-          if (check2.fatal) throw new AppError("bad_request", check2.description, { error: check2.error });
-          return { redirectTo: check2.redirectTo };
-        }
+        if (!check2.ok) throw new AppError("bad_request", check2.description, { error: check2.error });
         const p = check2.p;
         const iss = baseUrl(deps.config.publicUrl, req);
         if (!body.approve) {
@@ -183164,6 +183587,16 @@ function buildOpenApi(routes, opts) {
 // packages/server/src/server.ts
 var BODY_LIMIT = 1048576;
 var MINUTE = 6e4;
+var LOGIN_ACCOUNT_MAX = 30;
+var LOGIN_ACCOUNT_WINDOW_MS = 15 * MINUTE;
+function normalizeIdentifier(identifier) {
+  return String(identifier ?? "").normalize("NFKC").trim().toLowerCase().slice(0, 320);
+}
+function normalizeTrustProxy(v) {
+  if (v === true) return 1;
+  if (v === false || v === void 0 || v === null || v === "") return false;
+  return v;
+}
 var CSP_DIRECTIVES = {
   defaultSrc: ["'self'"],
   baseUri: ["'self'"],
@@ -183216,7 +183649,7 @@ async function buildServer(deps) {
         }
       }
     },
-    trustProxy: cfg.trustProxy,
+    trustProxy: normalizeTrustProxy(cfg.trustProxy),
     bodyLimit: BODY_LIMIT,
     genReqId: () => randomUUID(),
     requestIdHeader: false,
@@ -183267,10 +183700,17 @@ async function buildServer(deps) {
   const globalLimit = makeLimiter(app, { max: 300, windowMs: MINUTE, key: actorOrIp, prefix: "g" });
   const authIdLimit = makeLimiter(app, { max: 10, windowMs: MINUTE, prefix: "auth", key: (req) => `${req.ip}|${authIds.get(req) ?? ""}` });
   const authIpLimit = makeLimiter(app, { max: 60, windowMs: MINUTE, prefix: "auth-ip", key: (req) => req.ip });
+  const authAccountLimit = makeLimiter(app, {
+    max: LOGIN_ACCOUNT_MAX,
+    windowMs: LOGIN_ACCOUNT_WINDOW_MS,
+    prefix: "auth-acct",
+    key: (req) => authIds.get(req) ?? ""
+  });
   const authLimit = async (req, identifier, reply) => {
-    authIds.set(req, identifier.trim().toLowerCase());
+    authIds.set(req, normalizeIdentifier(identifier));
     await authIpLimit(req, reply);
     await authIdLimit(req, reply);
+    await authAccountLimit(req, reply);
   };
   const identify = makeIdentify(deps);
   const codes = new CodeStore(() => (deps.clock ?? Date.now)());
@@ -183367,49 +183807,29 @@ async function buildServer(deps) {
   return app;
 }
 
-// cli/bin/companybrain.ts
+// cli/src/app.ts
 var VERSION = "2.0.0";
-var command = process.argv.slice(2).find((a) => !a.startsWith("-")) ?? "serve";
-var env = process.env;
-var dbPath = resolveDbPath(env);
-var dataDir = dirname4(dbPath);
-mkdirSync3(dataDir, { recursive: true });
-var log = {
+var stderrLog = {
   info: (...a) => console.error("[companybrain]", ...a),
   warn: (...a) => console.error("[companybrain] warn:", ...a),
   error: (...a) => console.error("[companybrain] error:", ...a)
 };
-if (command === "mcp") {
-  await runMcp();
-} else if (command === "migrate") {
-  const db = openDatabase(dbPath);
-  db.close();
-  log.info(`migrations applied \u2192 ${dbPath}`);
-} else if (command === "serve" || command === "start") {
-  await serve();
-} else {
-  console.error(`Unknown command "${command}". Use: companybrain [serve|mcp|migrate]`);
-  process.exit(64);
+function createAppServices(db, opts) {
+  let game = null;
+  const core = createCore({ ...opts, db, onAudit: (e) => game?.onAudit(e) });
+  game = createGame({ sqlite: db.sqlite, services: core.services, clock: opts.clock });
+  return { core, game, services: { ...core.services, game: game.service } };
 }
-async function runMcp() {
-  const key = env.COMPANYBRAIN_MCP_KEY?.trim();
-  if (!key) {
-    console.error("COMPANYBRAIN_MCP_KEY is not set. Create an API key in Settings \u2192 AI agents & API keys.");
-    process.exit(2);
-  }
-  const db = openDatabase(dbPath);
-  const cfg = loadIntegrationsConfig(env, dataDir);
-  const { services } = createAppServices(db, { llm: createLlm(cfg), calendar: createCalendarFetcher(), log });
-  await runMcpStdio(services, key);
-}
-async function serve() {
-  const db = openDatabase(dbPath);
-  const cfg = loadIntegrationsConfig(env, dataDir);
+async function createApp(opts) {
+  const { env: env2, dataDir: dataDir2 } = opts;
+  const log = opts.log ?? stderrLog;
+  const db = openDatabase(opts.dbPath);
+  const cfg = loadIntegrationsConfig(env2, dataDir2);
   const vapid = getVapidKeys(cfg);
-  let onInbound = async () => ({ reply: null });
-  const inbound = (msg) => onInbound(msg);
+  let route = async () => ({ reply: null });
+  const inbound = (msg) => route(msg);
   const whatsappQr = cfg.whatsapp.qrEnabled ? createWhatsAppQr(cfg, inbound) : null;
-  const outbound = createOutbound(cfg, whatsappQr);
+  const outbound = opts.outbound ?? createOutbound(cfg, whatsappQr);
   const tts = createTts(cfg);
   const { core, services } = createAppServices(db, {
     outbound,
@@ -183417,99 +183837,198 @@ async function serve() {
     calendar: createCalendarFetcher(),
     tts,
     vapidPublicKey: vapid.publicKey,
+    clock: opts.clock,
     log
   });
-  const orgId = await services.auth.orgId();
-  onInbound = async (msg) => {
-    if (!orgId) return { reply: null };
+  let orgId = null;
+  route = async (msg) => {
+    orgId ??= await services.auth.orgId();
+    if (!orgId) {
+      log.warn(`inbound ${msg.channel} message from ${msg.from} ignored: run first-time setup first`);
+      return { reply: null };
+    }
     const res = await services.inbox.ingest(orgId, msg);
     return { reply: res.reply };
   };
-  const app = await buildServer({
+  const webhookInbound = async (msg) => {
+    const res = await inbound(msg);
+    if (res.reply) {
+      const ok = msg.channel === "whatsapp" ? await outbound.whatsapp(msg.from, res.reply) : await outbound.email(msg.from, msg.subject ? `Re: ${msg.subject.replace(/^re:\s*/i, "")}` : "companybrain", res.reply);
+      if (!ok) log.warn(`could not send ${msg.channel} reply to ${msg.from} (channel not configured)`);
+    }
+    return { reply: null };
+  };
+  const server = await buildServer({
     services,
     tts,
+    clock: opts.clock,
     integrations: {
       config: cfg,
       status: () => integrationsStatus(cfg, whatsappQr),
       whatsappQr,
-      onInbound: inbound,
+      onInbound: webhookInbound,
       whatsappWebhook: {
         verifyChallenge: (q) => whatsappCloud.verifyChallenge(cfg, q),
         verifySignature: (raw, sig) => whatsappCloud.verifySignature(cfg, raw, sig),
         parse: (body) => whatsappCloud.parseWebhook(body)
       },
-      parseEmailWebhook: parseInboundEmailWebhook,
+      parseEmailWebhook: (body) => parseInboundEmailWebhook(body, cfg.emailAuth),
       sendTest: (actor, channel) => services.notifications.sendTest(actor, channel)
     },
     mcp: { handleHttp: handleMcpHttp },
     config: {
       version: VERSION,
-      publicUrl: env.COMPANYBRAIN_PUBLIC_URL?.replace(/\/$/, "") || null,
-      webDir: resolveWebDir(),
-      trustProxy: parseTrustProxy(env.COMPANYBRAIN_TRUST_PROXY),
-      secureCookies: env.COMPANYBRAIN_SECURE_COOKIE === "true" ? true : env.COMPANYBRAIN_SECURE_COOKIE === "false" ? false : "auto",
-      corsOrigins: (env.COMPANYBRAIN_CORS_ORIGINS ?? "").split(",").map((s2) => s2.trim()).filter(Boolean),
-      emailWebhookSecret: env.EMAIL_WEBHOOK_SECRET || null,
-      signingSecret: loadSigningSecret(),
-      logLevel: env.COMPANYBRAIN_LOG_LEVEL || "info"
+      publicUrl: env2.COMPANYBRAIN_PUBLIC_URL?.replace(/\/$/, "") || null,
+      webDir: opts.webDir,
+      trustProxy: parseTrustProxy(env2.COMPANYBRAIN_TRUST_PROXY),
+      secureCookies: env2.COMPANYBRAIN_SECURE_COOKIE === "true" ? true : env2.COMPANYBRAIN_SECURE_COOKIE === "false" ? false : "auto",
+      corsOrigins: (env2.COMPANYBRAIN_CORS_ORIGINS ?? "").split(",").map((s2) => s2.trim()).filter(Boolean),
+      emailWebhookSecret: env2.EMAIL_WEBHOOK_SECRET || null,
+      signingSecret: loadSigningSecret(env2, dataDir2),
+      logLevel: env2.COMPANYBRAIN_LOG_LEVEL || "info"
     }
   });
-  const port = Number(env.PORT ?? env.COMPANYBRAIN_PORT ?? 4317);
-  const host = env.COMPANYBRAIN_HOST ?? "0.0.0.0";
-  await app.listen({ port, host });
-  core.scheduler.start();
   const poller = createEmailPoller(cfg, inbound);
-  poller?.start();
-  if (whatsappQr) whatsappQr.start().catch((err) => log.warn("WhatsApp QR start failed:", err));
-  const url3 = env.COMPANYBRAIN_PUBLIC_URL || `http://localhost:${port}`;
-  log.info(`v${VERSION} running at ${url3}  \xB7  data: ${dbPath}`);
-  if (await services.auth.needsSetup()) log.info(`first run \u2014 open ${url3} to create your company and owner account`);
-  let stopping = false;
-  for (const sig of ["SIGINT", "SIGTERM"]) {
-    process.on(sig, async () => {
-      if (stopping) return;
-      stopping = true;
-      log.info(`${sig} received, shutting down\u2026`);
-      const force = setTimeout(() => process.exit(1), 1e4);
-      force.unref();
-      try {
-        await app.close();
-        await core.scheduler.stop();
-        await poller?.stop();
-        db.close();
-      } finally {
-        process.exit(0);
-      }
-    });
-  }
-  process.on("unhandledRejection", (reason) => log.error("unhandledRejection:", reason));
+  let started = false;
+  return {
+    server,
+    core,
+    services,
+    db,
+    startBackground() {
+      if (started) return;
+      started = true;
+      core.scheduler.start();
+      poller?.start();
+      if (whatsappQr) whatsappQr.start().catch((err) => log.warn("WhatsApp QR start failed:", err));
+    },
+    async stop() {
+      await server.close();
+      await core.scheduler.stop();
+      await poller?.stop();
+      db.close();
+    }
+  };
 }
-function createAppServices(db, opts) {
-  let game = null;
-  const core = createCore({ ...opts, db, onAudit: (e) => game?.onAudit(e) });
-  game = createGame({ sqlite: db.sqlite, services: core.services });
-  return { core, game, services: { ...core.services, game: game.service } };
-}
-function loadSigningSecret() {
-  if (env.COMPANYBRAIN_SIGNING_SECRET) return env.COMPANYBRAIN_SIGNING_SECRET;
-  const file2 = join5(dataDir, "signing.key");
+function loadSigningSecret(env2, dataDir2) {
+  if (env2.COMPANYBRAIN_SIGNING_SECRET) return env2.COMPANYBRAIN_SIGNING_SECRET;
+  const file2 = join5(dataDir2, "signing.key");
   if (existsSync3(file2)) return readFileSync3(file2, "utf8").trim();
   const secret = randomBytes7(32).toString("hex");
   writeFileSync3(file2, secret, { mode: 384 });
   return secret;
 }
-function resolveWebDir() {
-  if (env.COMPANYBRAIN_WEB_DIR) return resolve4(env.COMPANYBRAIN_WEB_DIR);
-  const here = dirname4(fileURLToPath(import.meta.url));
-  for (const candidate of [join5(here, "web"), join5(here, "..", "..", "dist", "web")]) {
-    if (existsSync3(join5(candidate, "index.html"))) return candidate;
-  }
-  log.warn("web UI build not found (run `pnpm build`); serving the API only");
-  return null;
-}
 function parseTrustProxy(v) {
-  if (!v || v === "false") return false;
-  if (v === "true") return true;
-  const n = Number(v);
-  return Number.isInteger(n) ? n : v;
+  const s2 = (v ?? "").trim();
+  if (!s2 || s2.toLowerCase() === "false" || s2 === "0") return false;
+  if (s2.toLowerCase() === "true") return 1;
+  if (/^\d+$/.test(s2)) return Math.min(Number(s2), 10);
+  const parts = s2.split(",").map((p) => p.trim()).filter(Boolean);
+  const ok = parts.every((p) => /^[0-9a-fA-F:.]+(\/\d{1,3})?$/.test(p) || ["loopback", "linklocal", "uniquelocal"].includes(p));
+  if (!ok || !parts.length) throw new Error(`COMPANYBRAIN_TRUST_PROXY must be true/false, a hop count, or a comma-separated list of proxy IPs/CIDRs (got "${s2}")`);
+  return parts.join(",");
+}
+
+// cli/src/backup.ts
+import { copyFileSync, existsSync as existsSync4, mkdirSync as mkdirSync3 } from "node:fs";
+import { join as join6, resolve as resolve4 } from "node:path";
+var KEY_FILES = ["secret.key", "signing.key", "vapid.json"];
+async function backupTo(dbPath2, dataDir2, target, opts = {}) {
+  const stamp = (opts.now ?? /* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const dir = resolve4(target, `companybrain-${stamp}`);
+  mkdirSync3(dir, { recursive: true, mode: 448 });
+  const db = openDatabase(dbPath2);
+  try {
+    await db.sqlite.backup(join6(dir, "companybrain.sqlite"));
+  } finally {
+    db.close();
+  }
+  const files = ["companybrain.sqlite"];
+  if (!opts.withoutKeys) {
+    for (const f of KEY_FILES) {
+      if (existsSync4(join6(dataDir2, f))) {
+        copyFileSync(join6(dataDir2, f), join6(dir, f));
+        files.push(f);
+      }
+    }
+  }
+  return { dir, files };
+}
+
+// cli/bin/companybrain.ts
+if (existsSync5(".env")) {
+  try {
+    process.loadEnvFile(".env");
+  } catch (err) {
+    console.error("[companybrain] warn: could not read .env:", err instanceof Error ? err.message : err);
+  }
+}
+var command = process.argv.slice(2).find((a) => !a.startsWith("-")) ?? "serve";
+var env = process.env;
+var dbPath = resolveDbPath(env);
+var dataDir = dirname4(dbPath);
+mkdirSync4(dataDir, { recursive: true });
+if (command === "mcp") {
+  await runMcp();
+} else if (command === "migrate") {
+  openDatabase(dbPath).close();
+  stderrLog.info(`migrations applied \u2192 ${dbPath}`);
+} else if (command === "backup") {
+  await backup(process.argv.slice(3).find((a) => !a.startsWith("-")) ?? "backups", process.argv.includes("--without-keys"));
+} else if (command === "serve" || command === "start") {
+  await serve();
+} else {
+  console.error(`Unknown command "${command}". Use: companybrain [serve|mcp|migrate|backup]`);
+  process.exit(64);
+}
+async function backup(target, withoutKeys) {
+  const { dir, files } = await backupTo(dbPath, dataDir, target, { withoutKeys });
+  stderrLog.info(`backup written \u2192 ${dir} (${files.join(", ")})`);
+  if (withoutKeys) stderrLog.info("key files skipped (--without-keys): keep secret.key / signing.key / vapid.json (or COMPANYBRAIN_SECRET) safe separately \u2014 the backup cannot decrypt stored secrets without them");
+  else stderrLog.warn("this backup contains secret.key, which decrypts the secrets stored in the database \u2014 store it encrypted");
+}
+async function runMcp() {
+  const key = env.COMPANYBRAIN_MCP_KEY?.trim();
+  if (!key) {
+    console.error("COMPANYBRAIN_MCP_KEY is not set. Create an API key in Settings \u2192 Connect AI.");
+    process.exit(2);
+  }
+  const db = openDatabase(dbPath);
+  const cfg = loadIntegrationsConfig(env, dataDir);
+  const { services } = createAppServices(db, { llm: createLlm(cfg), calendar: createCalendarFetcher(), log: stderrLog });
+  await runMcpStdio(services, key);
+}
+async function serve() {
+  const app = await createApp({ env, dbPath, dataDir, webDir: resolveWebDir(), log: stderrLog });
+  const port = Number(env.PORT ?? env.COMPANYBRAIN_PORT ?? 4317);
+  const host = env.COMPANYBRAIN_HOST ?? "0.0.0.0";
+  await app.server.listen({ port, host });
+  app.startBackground();
+  const url3 = env.COMPANYBRAIN_PUBLIC_URL || `http://localhost:${port}`;
+  stderrLog.info(`v${VERSION} running at ${url3}  \xB7  data: ${dbPath}`);
+  if (await app.services.auth.needsSetup()) stderrLog.info(`first run \u2014 open ${url3} to create your company and owner account`);
+  let stopping = false;
+  for (const sig of ["SIGINT", "SIGTERM"]) {
+    process.on(sig, async () => {
+      if (stopping) return;
+      stopping = true;
+      stderrLog.info(`${sig} received, shutting down\u2026`);
+      setTimeout(() => process.exit(1), 1e4).unref();
+      try {
+        await app.stop();
+      } finally {
+        process.exit(0);
+      }
+    });
+  }
+  process.on("unhandledRejection", (reason) => stderrLog.error("unhandledRejection:", reason));
+}
+function resolveWebDir() {
+  if (env.COMPANYBRAIN_WEB_DIR) return resolve5(env.COMPANYBRAIN_WEB_DIR);
+  const here = dirname4(fileURLToPath(import.meta.url));
+  for (const candidate of [join7(here, "web"), join7(here, "..", "..", "dist", "web")]) {
+    if (existsSync5(join7(candidate, "index.html"))) return candidate;
+  }
+  stderrLog.warn("web UI build not found (run `pnpm build`); serving the API only");
+  return null;
 }
