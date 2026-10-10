@@ -201,6 +201,26 @@ test('M3: only members (not agents, guests or read-only keys) can set a waiting-
   assert.equal(t2.waitingOn!.contact, '+15551234567');
 });
 
+// ─── M5: WhatsApp sender matching ───────────────────────────────────────────
+
+test('M5: member phones are stored as E.164 and WhatsApp senders match on all digits only', async () => {
+  const env = makeEnv();
+  const team = await bootstrap(env);
+  const { m: priya } = await team.add('Priya', 'member', { phone: '0091 98765 43210' });
+  assert.equal(priya.phone, '+919876543210', '00 prefix normalized to +');
+  for (const bad of ['9876543210', '98765 43210', '+0123456789', '+1234567', '+1234567890123456']) {
+    await assert.rejects(env.s.members.update(team.ownerA, priya.id, { phone: bad }), (e: any) => e.code === 'bad_request', bad);
+  }
+  const orgId = team.owner.orgId;
+  const wa = (from: string) => env.s.inbox.ingest(orgId, { channel: 'whatsapp', from, fromName: null, subject: null, text: 'Buy ink', externalId: `wamid.${++seq}`, receivedAt: T0 });
+  const spoof = await wa('19876543210'); // same last 10 digits, US number
+  assert.equal(spoof.item!.memberId, null);
+  assert.equal(spoof.task, null);
+  const real = await wa('919876543210');
+  assert.equal(real.item!.memberId, priya.id);
+  assert.ok(real.task);
+});
+
 // ─── L1: read-only keys ─────────────────────────────────────────────────────
 
 test('L1: a read-only API key cannot mark notifications read', async () => {
