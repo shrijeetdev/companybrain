@@ -107,3 +107,23 @@ export function buildServer(deps: ServerDeps): Promise<FastifyInstance>;
 `companybrain` → load env → `openDatabase` → integrations → `createCore` → `buildServer` → listen →
 `scheduler.start()` → email poller / WhatsApp QR start. `companybrain mcp` → stdio ONLY (no web server,
 nothing on stdout except JSON-RPC, logs to stderr).
+
+## @companybrain/game (Tactical Ops)
+```ts
+export interface GameOptions {
+  sqlite: import('better-sqlite3').Database;    // same connection as @companybrain/db (Db.sqlite)
+  services: CoreServices;                       // read members/tasks/projects; publish via services.live
+  clock?: () => number;
+}
+export interface Game {
+  service: GameService;
+  /** Feed every audit event here (core calls CoreOptions.onAudit). Never throws. */
+  onAudit(e: AuditEvent): Promise<void>;
+}
+export function createGame(opts: GameOptions): Game;
+```
+Core additions: `CoreOptions.onAudit?: (e: AuditEvent) => void | Promise<void>` (called after every audit
+write, errors swallowed + logged, never blocks the request beyond one await) and `Db.sqlite` (the raw
+better-sqlite3 handle). Wiring: `const game = createGame({ sqlite: db.sqlite, services: core.services })`,
+then `createCore({ ..., onAudit: (e) => game.onAudit(e) })` — use a late-bound callback since the game
+needs core.services first. `AppServices = { ...core.services, game: game.service }` goes to server + MCP.

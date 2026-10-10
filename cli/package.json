@@ -13,6 +13,7 @@
     "@companybrain/core": "file:../packages/core",
     "@companybrain/integrations": "file:../packages/integrations",
     "@companybrain/mcp": "file:../packages/mcp",
-    "@companybrain/server": "file:../packages/server"
+    "@companybrain/server": "file:../packages/server",
+    "@companybrain/game": "file:../packages/game"
   }
 }

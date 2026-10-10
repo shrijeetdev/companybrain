@@ -30,6 +30,10 @@ export interface MemberPrefs {
   /** Quiet hours (member timezone, 0-23). Non-urgent notifications are held until the end. */
   quietStart: number | null;
   quietEnd: number | null;
+  /** UI + voice style. 'tactical' = game mode (Missions/Operations/Squad, HUD, rewards). Default 'tactical'. */
+  theme: 'tactical' | 'classic';
+  /** Game sound effects in the UI. Default true. */
+  sound: boolean;
 }
 
 export interface Member {
@@ -515,6 +519,7 @@ export type LiveEvent =
   | { type: 'inbox.new'; item: InboxItem }
   | { type: 'member.upserted'; member: Member }
   | { type: 'meeting.upserted'; meeting: Meeting }
+  | { type: 'game.reward'; reward: import('./game').RewardEvent }
   | { type: 'ping'; at: number };
 
 // ─── Query / input DTOs ──────────────────────────────────────────────────────
@@ -806,3 +811,9 @@ export interface IntegrationsStatus {
   llm: { provider: string | null };
   tts: { provider: string | null };
 }
+
+// ─── Gamification ────────────────────────────────────────────────────────────
+export * from './game';
+
+/** Services exposed to the server and MCP: core services + the game layer. */
+export type AppServices = CoreServices & { game: import('./game').GameService };
