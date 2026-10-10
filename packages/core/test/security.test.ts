@@ -221,6 +221,94 @@ test('M5: member phones are stored as E.164 and WhatsApp senders match on all di
   assert.ok(real.task);
 });
 
+// ─── L3: admins vs admins/owners ────────────────────────────────────────────
+
+test('L3: only owners can reset the password of, change the role of, or deactivate an admin/owner', async () => {
+  const env = makeEnv();
+  const team = await bootstrap(env);
+  const { a: adminA } = await team.add('Ada', 'admin');
+  const { m: admin2 } = await team.add('Abe', 'admin');
+  const { m: mgr } = await team.add('Mia', 'manager');
+  const forb = (e: any) => e.code === 'forbidden';
+
+  await assert.rejects(env.s.members.setPassword(adminA, admin2.id, 'new password 123'), forb);
+  await assert.rejects(env.s.members.setPassword(adminA, team.owner.id, 'new password 123'), forb);
+  await assert.rejects(env.s.members.update(adminA, admin2.id, { role: 'member' }), forb);
+  await assert.rejects(env.s.members.update(adminA, admin2.id, { active: false }), forb);
+  await assert.rejects(env.s.members.update(adminA, admin2.id, { email: 'takeover@evil.io' }), forb);
+  await assert.rejects(env.s.members.remove(adminA, admin2.id), forb);
+  await assert.rejects(env.s.members.remove(adminA, team.owner.id), forb);
+
+  // Admins still manage managers and below…
+  await env.s.members.setPassword(adminA, mgr.id, 'new password 123');
+  await env.s.members.update(adminA, mgr.id, { role: 'member' });
+  // …and the owner manages admins.
+  await env.s.members.setPassword(team.ownerA, admin2.id, 'new password 123');
+  await env.s.members.update(team.ownerA, admin2.id, { role: 'manager' });
+  const demoted = await env.s.members.update(team.ownerA, admin2.id, { role: 'admin' });
+  assert.equal(demoted.role, 'admin');
+
+  // Undo can't be used to get around it: an admin can't undo the owner's change to another admin.
+  await env.s.members.update(team.ownerA, admin2.id, { title: 'CFO' });
+  const ev = (await env.s.audit.list(team.ownerA, { entity: 'member', entityId: admin2.id }))[0]!;
+  await assert.rejects(env.s.audit.undo(adminA, ev.id), (e: any) => e.code === 'forbidden' && /Only owners/.test(e.message));
+  await env.s.members.remove(team.ownerA, admin2.id);
+});
+
+// ─── L4: guests ─────────────────────────────────────────────────────────────
+
+test('L4: guests get a reduced member projection and no reports', async () => {
+  const env = makeEnv();
+  const team = await bootstrap(env);
+  const { m: priya } = await team.add('Priya', 'member', { email: 'priya@acme.io', phone: '+919876543210' });
+  const { m: gus, a: guestA } = await team.add('Gus', 'guest');
+  const list = await env.s.members.list(guestA);
+  const p = list.find((m) => m.id === priya.id)!;
+  assert.equal(p.name, 'Priya');
+  assert.equal(p.email, null);
+  assert.equal(p.phone, null);
+  assert.ok(list.every((m) => m.id === gus.id || (m.email === null && m.phone === null)));
+  assert.equal(list.find((m) => m.id === gus.id)!.email, gus.email, 'own record is complete');
+  const one = await env.s.members.get(guestA, priya.id);
+  assert.equal(one.email, null);
+  assert.equal(one.phone, null);
+  assert.equal((await env.s.members.get(team.ownerA, priya.id)).email, 'priya@acme.io', 'members still see contacts');
+  const found = await env.s.search.search(guestA, 'priya');
+  assert.equal(found.members[0]!.email, null);
+  assert.equal((await env.s.search.search(guestA, 'acme.io')).members.length, 0, 'no searching by email');
+  await assert.rejects(env.s.reports.get(guestA, 30), (e: any) => e.code === 'forbidden');
+  assert.ok((await env.s.briefing.get(guestA)).team.length === 0, 'no team pulse for guests');
+});
+
+// ─── L5: deactivation revokes API keys ──────────────────────────────────────
+
+test('L5: deactivating a member revokes their API keys (remove, update and undo paths)', async () => {
+  const env = makeEnv();
+  const team = await bootstrap(env);
+  const { m: p, a: pA } = await team.add('Priya');
+  const { raw } = await env.s.apiKeys.create(pA, { memberId: p.id, name: 'cli', scopes: ['read'] });
+  assert.ok(await env.s.auth.resolveApiKey(raw));
+  await env.s.members.remove(team.ownerA, p.id);
+  assert.equal(await env.s.auth.resolveApiKey(raw), null);
+
+  const { m: q, a: qA } = await team.add('Quinn');
+  const k2 = await env.s.apiKeys.create(qA, { memberId: q.id, name: 'cli', scopes: ['read'] });
+  await env.s.members.update(team.ownerA, q.id, { active: false });
+  assert.equal(await env.s.auth.resolveApiKey(k2.raw), null);
+  // Reactivate, mint a key, then undo the reactivation → the new key is revoked too.
+  await env.s.members.update(team.ownerA, q.id, { active: true });
+  const reactivation = (await env.s.audit.list(team.ownerA, { entity: 'member', entityId: q.id }))[0]!;
+  const k3 = await env.s.apiKeys.create(qA, { memberId: q.id, name: 'cli2', scopes: ['read'] });
+  assert.ok(await env.s.auth.resolveApiKey(k3.raw));
+  await env.s.audit.undo(team.ownerA, reactivation.id);
+  assert.equal(await env.s.auth.resolveApiKey(k3.raw), null);
+  // Password changes deliberately do NOT revoke keys (documented in DEPLOY.md).
+  const { m: r, a: rA } = await team.add('Ravi');
+  const k4 = await env.s.apiKeys.create(rA, { memberId: r.id, name: 'cli', scopes: ['read'] });
+  await env.s.members.setPassword(team.ownerA, r.id, 'another password 1');
+  assert.ok(await env.s.auth.resolveApiKey(k4.raw));
+});
+
 // ─── L1: read-only keys ─────────────────────────────────────────────────────
 
 test('L1: a read-only API key cannot mark notifications read', async () => {

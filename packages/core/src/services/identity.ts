@@ -19,7 +19,7 @@ import {
   type UpdateMemberInput,
 } from '@companybrain/types';
 import { colorFor, defaultPrefs, initialsFor, newId, randomBase62, sha256Hex, systemTimezone } from '@companybrain/db';
-import { audit, getOrg, publish, type Ctx } from '../context.js';
+import { audit, getOrg, publicMember, publish, type Ctx } from '../context.js';
 import { hashPassword, verifyPassword } from '../password.js';
 import { forbidden, isAdmin, isManager, isSystem, notFound, rank, requireRole, requireWrite } from '../perms.js';
 import * as v from '../validate.js';
@@ -203,13 +203,15 @@ export function createMemberService(ctx: Ctx): MemberService {
     async list(actor, opts = {}) {
       const includeInactive = !!opts.includeInactive && isManager(actor);
       const kind = opts.kind === 'human' || opts.kind === 'agent' ? opts.kind : undefined;
-      return db.members.list(actor.orgId, { includeInactive, kind });
+      const list = db.members.list(actor.orgId, { includeInactive, kind });
+      // Guests see who is on the team, not their contact details or preferences.
+      return actor.role === 'guest' ? list.map((m) => (m.id === actor.memberId ? m : publicMember(m))) : list;
     },
 
     async get(actor, id) {
       const m = load(actor, id);
       if (!m.active && !isManager(actor) && m.id !== actor.memberId) notFound('Member not found');
-      return m;
+      return actor.role === 'guest' && m.id !== actor.memberId ? publicMember(m) : m;
     },
 
     async me(actor) {
@@ -272,7 +274,8 @@ export function createMemberService(ctx: Ctx): MemberService {
       if (!v.isObj(patch)) v.bad('patch must be an object');
       const cur = load(actor, id);
       const self = cur.id === actor.memberId;
-      const adminOver = isAdmin(actor) && (isSystem(actor) || rank(cur.role) <= rank(actor.role));
+      // Admins manage managers and below; only owners manage admins and owners.
+      const adminOver = isAdmin(actor) && (isSystem(actor) || actor.role === 'owner' || rank(cur.role) < rank('admin'));
       const managerOverAgent = cur.kind === 'agent' && isManager(actor);
       const privileged = adminOver || managerOverAgent;
       if (!self && !privileged) forbidden('You can only edit your own profile');
@@ -331,6 +334,7 @@ export function createMemberService(ctx: Ctx): MemberService {
       const m = load(actor, id);
       if (m.kind !== 'human') v.bad('AI agents authenticate with API keys, not passwords');
       if (!isSystem(actor) && rank(m.role) > rank(actor.role)) forbidden('You cannot reset the password of a higher role');
+      if (!isSystem(actor) && m.id !== actor.memberId && rank(m.role) >= rank('admin') && actor.role !== 'owner') forbidden("Only owners can reset an admin's or owner's password");
       const hash = await hashPassword(v.password(password));
       db.members.setPasswordHash(actor.orgId, m.id, hash, ctx.clock());
       db.sessions.deleteForMember(actor.orgId, m.id);
@@ -356,6 +360,7 @@ export function createMemberService(ctx: Ctx): MemberService {
       else {
         requireRole(actor, 'admin', 'Only owners and admins can remove people');
         if (!isSystem(actor) && rank(m.role) > rank(actor.role)) forbidden('You cannot remove a higher role');
+        if (!isSystem(actor) && rank(m.role) >= rank('admin') && actor.role !== 'owner') forbidden('Only owners can remove an admin or owner');
       }
       if (!m.active) return;
       assertNotLastOwner(m);

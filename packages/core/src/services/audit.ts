@@ -121,12 +121,14 @@ export function createAuditService(ctx: Ctx): AuditService {
         const cur = db.members.get(org, e.entityId);
         if (!cur || created) conflict('This change cannot be undone');
         if (rank(cur!.role) > rank(actor.role) && actor.via !== 'system') forbidden('You cannot modify a higher role');
+        if (actor.via !== 'system' && cur!.id !== actor.memberId && rank(cur!.role) >= rank('admin') && actor.role !== 'owner') forbidden('Only owners can modify an admin or owner');
         const next = restoreFields(cur!, before!, e.after) as Member;
         if (rank(next.role) > rank(actor.role) && actor.via !== 'system') forbidden('You cannot grant a role higher than your own');
         if (cur!.role === 'owner' && cur!.active && (next.role !== 'owner' || !next.active) && db.members.countActive(org, 'owner') <= 1) conflict('This is the last owner');
         next.updatedAt = t0;
         db.members.save(next);
         if (next.role !== cur!.role || (cur!.active && !next.active)) db.sessions.deleteForMember(org, next.id);
+        if (cur!.active && !next.active) db.apiKeys.revokeForMember(org, next.id, t0); // deactivation revokes keys too
         return {
           snapshot: { type: 'member.updated', before: cur, after: next },
           after: () => {
