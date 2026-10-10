@@ -39,6 +39,9 @@ importers:
       '@companybrain/db':
         specifier: file:../packages/db
         version: link:../packages/db
+      '@companybrain/game':
+        specifier: file:../packages/game
+        version: link:../packages/game
       '@companybrain/integrations':
         specifier: file:../packages/integrations
         version: link:../packages/integrations
@@ -68,6 +71,19 @@ importers:
         version: link:../types
 
   packages/db:
+    dependencies:
+      '@companybrain/types':
+        specifier: file:../types
+        version: link:../types
+      better-sqlite3:
+        specifier: ^11.3.0
+        version: 11.10.0
+    devDependencies:
+      '@types/better-sqlite3':
+        specifier: ^7.6.11
+        version: 7.6.13
+
+  packages/game:
     dependencies:
       '@companybrain/types':
         specifier: file:../types
