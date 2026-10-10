@@ -178,6 +178,40 @@ test('M4: /oauth/authorize never redirects on a validation error (audit repro); 
   await h.app.close();
 });
 
+// ─── L2: TTS abuse ──────────────────────────────────────────────────────────
+
+test('L2: briefing audio — human sessions only, 20 syntheses/hour per member, 10-minute per-text cache', async () => {
+  let t = Date.UTC(2026, 9, 12, 9);
+  const h = await harness({ clock: () => t, tts: { synthesize: async (text) => ({ audio: Buffer.from(`AUDIO:${text}`), mime: 'audio/mpeg' }) } });
+  const post = (headers: Record<string, string>, text: string) => h.app.inject({ method: 'POST', url: '/api/briefing/audio', headers, payload: { text } });
+  const web = { cookie: h.cookie('regular'), 'x-cb-client': 'web' };
+
+  assert.equal((await post({ authorization: h.bearer('regular') }, 'hi')).statusCode, 403, 'API keys cannot spend TTS');
+  assert.equal((await post({ authorization: h.bearer('agent') }, 'hi')).statusCode, 403, 'agents cannot');
+  const guest = await h.fake.services.members.create(h.fake.actorFor(h.fake.members.owner, 'session'), { kind: 'human', role: 'guest', name: 'Gus', email: 'gus@example.com', password: 'long enough pw' });
+  assert.equal((await post({ cookie: `cb_session=${h.fake.sessionFor(guest)}`, 'x-cb-client': 'web' }, 'hi')).statusCode, 403, 'guests cannot');
+  assert.equal(h.ttsCalls.length, 0);
+
+  // Same text again within 10 minutes → served from cache.
+  assert.equal((await post(web, 'Good morning')).body, 'AUDIO:Good morning');
+  assert.equal((await post(web, 'Good morning')).body, 'AUDIO:Good morning');
+  assert.equal(h.ttsCalls.length, 1);
+  t += 11 * 60_000;
+  await post(web, 'Good morning');
+  assert.equal(h.ttsCalls.length, 2, 'cache expires after 10 min');
+
+  for (let i = 0; i < 18; i++) assert.equal((await post(web, `text ${i}`)).statusCode, 200);
+  const limited = await post(web, 'one too many');
+  assert.equal(limited.statusCode, 429);
+  assert.ok(Number(limited.headers['retry-after']) > 0);
+  assert.equal(h.ttsCalls.length, 20);
+  // Other members have their own budget; the window slides.
+  assert.equal((await post({ cookie: h.cookie('owner'), 'x-cb-client': 'web' }, 'hi')).statusCode, 200);
+  t += 60 * 60_000;
+  assert.equal((await post(web, 'later')).statusCode, 200);
+  await h.app.close();
+});
+
 test('H1: normalizeTrustProxy never passes Fastify trust-everything `true`', () => {
   assert.equal(normalizeTrustProxy(true), 1);
   assert.equal(normalizeTrustProxy(false), false);

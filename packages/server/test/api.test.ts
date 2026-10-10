@@ -167,12 +167,12 @@ test('me, briefing, misc service routes', async () => {
 
 test('briefing audio: 204 without TTS; bytes with TTS; text capped at 2000 chars', async () => {
   const none = await harness();
-  const r0 = await none.app.inject({ method: 'POST', url: '/api/briefing/audio', headers: { authorization: none.bearer() }, payload: { text: 'hello' } });
+  const r0 = await none.app.inject({ method: 'POST', url: '/api/briefing/audio', headers: { cookie: none.cookie(), ...WEB }, payload: { text: 'hello' } });
   assert.equal(r0.statusCode, 204);
   await none.app.close();
 
   const h = await harness({ tts: { synthesize: async (text) => ({ audio: Buffer.from(`AUDIO:${text.length}`), mime: 'audio/mpeg' }) } });
-  const r = await h.app.inject({ method: 'POST', url: '/api/briefing/audio', headers: { authorization: h.bearer() }, payload: { text: 'x'.repeat(5000) } });
+  const r = await h.app.inject({ method: 'POST', url: '/api/briefing/audio', headers: { cookie: h.cookie(), ...WEB }, payload: { text: 'x'.repeat(5000) } });
   assert.equal(r.statusCode, 200);
   assert.equal(r.headers['content-type'], 'audio/mpeg');
   assert.equal(r.body, 'AUDIO:2000');
@@ -180,7 +180,7 @@ test('briefing audio: 204 without TTS; bytes with TTS; text capped at 2000 chars
   await h.app.close();
 
   const nul = await harness({ tts: { synthesize: async () => null } });
-  const rn = await nul.app.inject({ method: 'POST', url: '/api/briefing/audio', headers: { authorization: nul.bearer() }, payload: { text: 'hi' } });
+  const rn = await nul.app.inject({ method: 'POST', url: '/api/briefing/audio', headers: { cookie: nul.cookie(), ...WEB }, payload: { text: 'hi' } });
   assert.equal(rn.statusCode, 204);
   await nul.app.close();
 });
