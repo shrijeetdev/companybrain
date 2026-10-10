@@ -268,9 +268,12 @@ test('org isolation + viewing rules', async () => {
   await assert.rejects(w.game.service.openCrate(w.actor('alice'), zedCrate.id), /not found/i);
   assert.ok((await w.game.service.crates(w.actor('alice'))).every((c) => c.memberId === 'alice'));
   assert.ok((await w.game.service.rewards(w.actor('alice'))).every((r) => r.orgId === 'org1' && r.memberId === 'alice'));
-  // Live events are org-scoped and member-targeted.
-  assert.ok(w.published.every((p) => p.memberIds?.length === 1));
-  assert.ok(w.published.filter((p) => p.orgId === 'org2').every((p) => ['zed', 'yan'].includes(p.memberIds![0]!)));
+  // Live events are org-scoped and member-targeted: rewards to the earner only, squad-feed items
+  // to the earner's own org (never another org's members).
+  assert.ok(w.published.filter((p) => p.event.type === 'game.reward').every((p) => p.memberIds?.length === 1));
+  assert.ok(w.published.every((p) => (p.memberIds?.length ?? 0) >= 1));
+  const org2 = new Set(['zed', 'yan']);
+  for (const p of w.published) assert.ok(p.memberIds!.every((id) => org2.has(id) === (p.orgId === 'org2')), `${p.event.type} → ${p.memberIds}`);
   // An event for a member of another org cannot credit them in this org.
   const xpZed = w.xpOf('zed');
   const t = w.tasks.find((x) => x.orgId === 'org1')!;

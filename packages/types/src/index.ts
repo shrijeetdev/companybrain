@@ -110,6 +110,11 @@ export interface OrgSettings {
   agentStaleAfterMin: number; // e.g. 240
   /** Auto-acknowledge messages from unknown senders on WhatsApp/email. */
   intakeAutoAck: boolean;
+  /**
+   * ISO 4217 currency code used to display money (lead values in Pipeline/Reports), e.g. "USD",
+   * "INR", "EUR". Uppercase, 3 letters. Default 'USD'.
+   */
+  currency: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -487,7 +492,11 @@ export interface Briefing {
   myTasks: { overdue: TaskView[]; today: TaskView[]; upcoming: TaskView[] };
   meetings: Meeting[];
   waitingOn: TaskView[];
-  /** Managers+ only: per-person summary. Empty for others. */
+  /**
+   * Managers+ (human, role manager/admin/owner) only: one pulse per active human teammate
+   * (guests excluded). It INCLUDES THE VIEWER, always as the first entry, followed by everyone
+   * else sorted by name — so team-wide totals add up. Empty for members, guests and agents.
+   */
   team: TeamPulse[];
   /** AI agents and what they're working on (all members can see). */
   agents: { member: Member; inProgress: TaskView[]; stale: TaskView[] }[];
@@ -530,6 +539,9 @@ export type LiveEvent =
   | { type: 'member.upserted'; member: Member }
   | { type: 'meeting.upserted'; meeting: Meeting }
   | { type: 'game.reward'; reward: import('./game').RewardEvent }
+  /** A notable squad-feed item (level-up, rank-up, achievement, operation cleared, legendary crate,
+   *  streak milestone). Sent org-wide to every member who can see the feed (guests: only their own). */
+  | { type: 'game.feed'; item: import('./game').FeedItem }
   | { type: 'ping'; at: number };
 
 // ─── Query / input DTOs ──────────────────────────────────────────────────────
@@ -543,9 +555,17 @@ export interface TaskQuery {
   view?: 'today' | 'upcoming' | 'overdue' | 'waiting' | 'done' | 'all' | 'agents';
   search?: string;
   tag?: string;
+  /** Only these priorities (any of). REST: comma-separated, e.g. `priority=urgent,high`. */
+  priority?: Priority[];
   dueBefore?: number;
   dueAfter?: number;
   includeDone?: boolean;
+  /**
+   * Closed tasks (done/cancelled) are only returned when they were closed at/after this time
+   * (`completedAt`, or `updatedAt` for cancelled tasks without one). Open tasks are unaffected.
+   * Use with `includeDone` (e.g. the board's Done column: last 7 days).
+   */
+  completedSince?: number;
   limit?: number;
   offset?: number;
 }
@@ -664,10 +684,13 @@ export interface TaskService {
   update(actor: Actor, id: string, patch: UpdateTaskInput): Promise<TaskView>;
   complete(actor: Actor, id: string): Promise<TaskView>;
   reopen(actor: Actor, id: string): Promise<TaskView>;
-  remove(actor: Actor, id: string): Promise<void>;
+  /** Deletes the task; the returned audit event id can be passed to `audit.undo` to restore it. */
+  remove(actor: Actor, id: string): Promise<{ auditId: string }>;
   addSubtask(actor: Actor, id: string, title: string): Promise<TaskView>;
   updateSubtask(actor: Actor, id: string, subtaskId: string, patch: { title?: string; done?: boolean }): Promise<TaskView>;
   removeSubtask(actor: Actor, id: string, subtaskId: string): Promise<TaskView>;
+  /** Persist a new subtask order. `ids` must be exactly the task's current subtask ids (any order). */
+  reorderSubtasks(actor: Actor, id: string, ids: string[]): Promise<TaskView>;
   comment(actor: Actor, id: string, text: string, kind?: 'comment' | 'handoff'): Promise<TaskActivity>;
   activity(actor: Actor, id: string): Promise<TaskActivity[]>;
   /** Send the waitingOn party a nudge now (WhatsApp/email). */

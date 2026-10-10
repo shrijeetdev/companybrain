@@ -129,7 +129,7 @@ export function createAuthService(ctx: Ctx): AuthService {
         } else {
           org = {
             id: newId('org'), name: orgName, timezone: tz, logo: null, workdayStart: 9, workdayEnd: 18, defaultReminderOffsets: [1440, 60, 0],
-            escalateAfterMin: 1440, agentStaleAfterMin: 240, intakeAutoAck: false, createdAt: now, updatedAt: now,
+            escalateAfterMin: 1440, agentStaleAfterMin: 240, intakeAutoAck: false, currency: 'USD', createdAt: now, updatedAt: now,
           };
           db.orgs.insert(org);
         }
@@ -456,6 +456,7 @@ export function validateOrgPatch(cur: OrgSettings, patch: unknown): OrgSettings 
   if (patch.escalateAfterMin !== undefined) n.escalateAfterMin = patch.escalateAfterMin === null ? null : v.int(patch.escalateAfterMin, 'escalateAfterMin', 1, 60 * 24 * 60);
   if (patch.agentStaleAfterMin !== undefined) n.agentStaleAfterMin = v.int(patch.agentStaleAfterMin, 'agentStaleAfterMin', 5, 60 * 24 * 30);
   if (patch.intakeAutoAck !== undefined) n.intakeAutoAck = v.bool(patch.intakeAutoAck, 'intakeAutoAck');
+  if (patch.currency !== undefined) n.currency = v.currency(patch.currency);
   return n;
 }
 

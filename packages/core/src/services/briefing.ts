@@ -73,8 +73,11 @@ export function createBriefingService(ctx: Ctx): BriefingInternals {
     const isMgr = m.kind === 'human' && rank(m.role) >= ROLE_RANK.manager;
     const team: TeamPulse[] = [];
     if (isMgr) {
-      for (const p of db.members.list(m.orgId, { kind: 'human' })) {
-        if (p.role === 'guest') continue;
+      // The viewer is part of their own team pulse: always first, then everyone else by name.
+      const others = db.members.list(m.orgId, { kind: 'human' })
+        .filter((p) => p.id !== m.id && p.active && p.role !== 'guest')
+        .sort((a, b) => a.name.localeCompare(b.name));
+      for (const p of [m, ...others]) {
         team.push({
           member: p,
           open: db.tasks.count(m.orgId, { assigneeId: p.id, open: true }),

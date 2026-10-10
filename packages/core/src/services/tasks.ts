@@ -578,6 +578,11 @@ export function createTaskService(ctx: Ctx): TaskInternals {
     }
     if (query.search) f.search = v.str(query.search, 'search', { max: 200 });
     if (query.tag) f.tag = v.str(query.tag, 'tag', { max: 40 }).replace(/^#/, '');
+    if (query.priority !== undefined) {
+      const arr = Array.isArray(query.priority) ? query.priority : String(query.priority).split(',').filter(Boolean);
+      if (arr.length) f.priorities = [...new Set(arr.map((p) => v.oneOf(p, 'priority', PRIORITIES)))];
+    }
+    if (query.completedSince !== undefined) f.closedSince = v.time(query.completedSince, 'completedSince');
     if (query.dueBefore !== undefined) f.dueBefore = v.time(query.dueBefore, 'dueBefore');
     if (query.dueAfter !== undefined) f.dueAfter = v.time(query.dueAfter, 'dueAfter');
     let includeClosed = !!query.includeDone || !!f.statuses;
@@ -662,7 +667,7 @@ export function createTaskService(ctx: Ctx): TaskInternals {
     return view(actor, db.tasks.get(actor.orgId, cur.id)!);
   }
 
-  async function remove(actor: Actor, id: string): Promise<void> {
+  async function remove(actor: Actor, id: string): Promise<{ auditId: string }> {
     requireWrite(actor);
     const t = loadVisible(actor, id);
     const lead = t.projectId ? db.projects.get(t.orgId, t.projectId)?.leadId ?? null : null;
@@ -670,9 +675,10 @@ export function createTaskService(ctx: Ctx): TaskInternals {
     const aud = audience(t);
     db.tasks.delete(actor.orgId, t.id);
     ctx.internal.cancelTask(actor.orgId, t.id);
-    await audit(ctx, actor, { type: 'task.deleted', entity: 'task', entityId: t.id, summary: `Deleted "${t.title}"`, before: t, undoable: true });
+    const ev = await audit(ctx, actor, { type: 'task.deleted', entity: 'task', entityId: t.id, summary: `Deleted "${t.title}"`, before: t, undoable: true });
     publish(ctx, t.orgId, { type: 'task.deleted', taskId: t.id }, aud);
     ctx.internal.invalidateBriefings(t.orgId);
+    return { auditId: ev.id };
   }
 
   const service: TaskService = {
@@ -729,6 +735,23 @@ export function createTaskService(ctx: Ctx): TaskInternals {
         t.subtasks = t.subtasks.filter((x) => x.id !== subtaskId);
         return `Removed subtask "${s!.title}"`;
       });
+    },
+    async reorderSubtasks(actor, id, ids) {
+      if (!Array.isArray(ids)) v.bad('ids must be an array of subtask ids');
+      const list = ids.map((x, i) => v.str(x, `ids[${i}]`, { max: 64 }));
+      const cur = loadEditable(actor, id);
+      const known = new Set(cur.subtasks.map((s) => s.id));
+      if (new Set(list).size !== list.length) v.bad('ids contains duplicates');
+      if (list.length !== known.size || list.some((x) => !known.has(x))) {
+        throw new AppError('bad_request', 'ids must list exactly the current subtasks of this task', { expected: [...known] });
+      }
+      if (list.every((x, i) => cur.subtasks[i]!.id === x)) return view(actor, cur);
+      const byId = new Map(cur.subtasks.map((s) => [s.id, s]));
+      const next: Task = { ...cur, subtasks: list.map((x) => ({ ...byId.get(x)! })) };
+      const saved = await commit(actor, cur, next, [{ kind: 'subtask', text: `${memberName(cur.orgId, actor.memberId)} reordered the subtasks` }], {
+        auditType: 'task.updated', summary: `Reordered subtasks of "${cur.title}"`,
+      });
+      return view(actor, saved);
     },
     comment,
     async activity(actor, id) {

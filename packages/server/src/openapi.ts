@@ -74,7 +74,7 @@ export function buildOpenApi(routes: RouteDocInfo[], opts: { version: string; se
         in: 'query',
         required: !isOptional(s),
         schema,
-        ...(name === 'status' ? { description: 'Comma-separated list', explode: false, style: 'form' } : {}),
+        ...(name === 'status' || name === 'priority' ? { description: 'Comma-separated list', explode: false, style: 'form' } : {}),
       });
     }
     const op: Json = {

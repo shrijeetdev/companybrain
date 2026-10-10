@@ -255,6 +255,7 @@ export class Service implements GameService {
     const get = () => this.engine.q('SELECT * FROM game_crates WHERE id = ? AND org_id = ? AND member_id = ?')
       .get(crateId, actor.orgId, actor.memberId) as Parameters<Service['crateRow']>[0] | undefined;
     if (!get()) throw new AppError('not_found', 'Crate not found');
+    await this.engine.members(actor.orgId); // fresh roster for any squad-feed events (medals)
     try {
       this.db.transaction(() => {
         const opened = this.engine.openCrate(actor.orgId, actor.memberId, crateId, now);

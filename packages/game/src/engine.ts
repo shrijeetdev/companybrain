@@ -4,7 +4,7 @@
 
 import type Database from 'better-sqlite3';
 import type {
-  AuditEvent, CoreServices, CrateReward, Rarity, RewardEvent, RewardKind, TaskView,
+  AuditEvent, CoreServices, CrateReward, FeedItem, Rarity, RewardEvent, RewardKind, TaskView,
 } from '@companybrain/types';
 import { SYSTEM_MEMBER_ID } from '@companybrain/types';
 import {
@@ -137,7 +137,11 @@ export class Engine {
   private queue: Promise<void> = Promise.resolve();
   /** Rewards created inside the current transaction; published after commit. */
   private pending: RewardEvent[] = [];
+  /** Feed items created inside the current transaction; published org-wide after commit. */
+  private pendingFeed: (FeedItem & { orgId: string })[] = [];
   private names = new Map<string, string>();
+  /** Last known roster per org (from members()), used to address org-wide feed events. */
+  private roster = new Map<string, MemberInfo[]>();
 
   constructor(deps: EngineDeps) {
     this.db = deps.db;
@@ -228,10 +232,12 @@ export class Engine {
     this.q('INSERT OR IGNORE INTO game_processed (org_id, audit_id, at) VALUES (?, ?, ?)').run(e.orgId, e.id, e.at ?? this.clock());
   }
 
-  /** Publish rewards created by the last committed transaction. */
+  /** Publish rewards (to the earner) and feed items (to the squad) created by the last committed transaction. */
   flush(): void {
     const out = this.pending;
+    const feed = this.pendingFeed;
     this.pending = [];
+    this.pendingFeed = [];
     for (const r of out) {
       try {
         this.services.live.publish(r.orgId, { type: 'game.reward', reward: r }, { memberIds: [r.memberId] });
@@ -239,11 +245,29 @@ export class Engine {
         this.log.warn('[game] live publish failed', err);
       }
     }
+    for (const { orgId, ...item } of feed) {
+      try {
+        this.services.live.publish(orgId, { type: 'game.feed', item }, { memberIds: this.feedAudience(orgId, item.memberId) });
+      } catch (err) {
+        this.log.warn('[game] live feed publish failed', err);
+      }
+    }
   }
 
-  /** Discard rewards from a rolled-back transaction. */
+  /** Who sees a feed item live: every active member except guests, who only see their own (same rule as GameService.feed). */
+  feedAudience(orgId: string, memberId: string): string[] {
+    const list = this.roster.get(orgId);
+    if (!list) return [memberId];
+    const ids = new Set(list.filter((m) => m.member.active !== false && (m.role !== 'guest' || m.id === memberId)).map((m) => m.id));
+    ids.add(memberId);
+    ids.delete(SYSTEM_MEMBER_ID);
+    return [...ids];
+  }
+
+  /** Discard rewards and feed items from a rolled-back transaction. */
   discard(): void {
     this.pending = [];
+    this.pendingFeed = [];
   }
 
   private earnersOf(t: TaskSnap, completer: string | null): string[] {
@@ -270,6 +294,7 @@ export class Engine {
       this.log.warn('[game] members.list failed', err);
     }
     for (const m of map.values()) this.names.set(`${orgId}:${m.id}`, m.name);
+    if (map.size) this.roster.set(orgId, [...map.values()]);
     return map;
   }
 
@@ -350,8 +375,10 @@ export class Engine {
   }
 
   feed(orgId: string, memberId: string, kind: RewardKind, xp: number, text: string, at: number): void {
+    const id = newId('feed');
     this.q('INSERT INTO game_feed (id, org_id, member_id, text, kind, xp, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(newId('feed'), orgId, memberId, text, kind, xp, at);
+      .run(id, orgId, memberId, text, kind, xp, at);
+    this.pendingFeed.push({ orgId, id, memberId, text, kind, xp, at });
   }
 
   private name(orgId: string, memberId: string): string {

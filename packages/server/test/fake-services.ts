@@ -106,6 +106,7 @@ export function createFakeServices(opts: FakeOptions = {}) {
     escalateAfterMin: 1440,
     agentStaleAfterMin: 240,
     intakeAutoAck: true,
+    currency: 'USD',
     createdAt: 0,
     updatedAt: 0,
   };
@@ -395,7 +396,9 @@ export function createFakeServices(opts: FakeOptions = {}) {
         write(actor);
         getTask(actor, id);
         tasks.delete(id);
+        record('tasks.remove', actor, id);
         publish(actor.orgId, { type: 'task.deleted', taskId: id });
+        return { auditId: fakeId('aud') };
       },
       async addSubtask(actor, id, title) {
         write(actor);
@@ -415,6 +418,15 @@ export function createFakeServices(opts: FakeOptions = {}) {
         write(actor);
         const t = getTask(actor, id);
         t.subtasks = t.subtasks.filter((x) => x.id !== subId);
+        return t;
+      },
+      async reorderSubtasks(actor, id, ids) {
+        write(actor);
+        record('tasks.reorderSubtasks', actor, id, ids);
+        const t = getTask(actor, id);
+        const byId = new Map(t.subtasks.map((s) => [s.id, s]));
+        if (ids.length !== byId.size || ids.some((x) => !byId.has(x))) throw new AppError('bad_request', 'ids must list exactly the current subtasks of this task');
+        t.subtasks = ids.map((x) => byId.get(x)!);
         return t;
       },
       async comment(actor, id, text, kind) {

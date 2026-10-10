@@ -106,6 +106,15 @@ export function phone(v: unknown, field = 'phone'): string | null {
   return `+${digits}`;
 }
 
+/** ISO 4217 currency code ("usd" → "USD"); must be one the runtime's Intl knows. */
+export function currency(v: unknown, field = 'currency'): string {
+  if (typeof v !== 'string' || !/^[A-Za-z]{3}$/.test(v.trim())) bad(`${field} must be a 3-letter ISO 4217 code, e.g. USD or INR`);
+  const code = (v as string).trim().toUpperCase();
+  const known = (Intl as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('currency');
+  if (known && !known.includes(code)) bad(`${field} "${code}" is not a known ISO 4217 currency`);
+  return code;
+}
+
 export function color(v: unknown, field = 'color'): string {
   if (typeof v !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(v)) bad(`${field} must be a hex color like #6366f1`);
   return v.toLowerCase();

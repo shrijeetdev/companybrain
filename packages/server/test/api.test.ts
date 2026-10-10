@@ -38,11 +38,61 @@ test('task CRUD round-trip through the services', async () => {
   assert.equal(json(bulk).failed.length, 1);
 
   const del = await h.app.inject({ method: 'DELETE', url: `/api/tasks/${t.id}`, headers });
-  assert.equal(del.statusCode, 204);
-  assert.equal(del.body, '');
+  assert.equal(del.statusCode, 200, 'delete returns the audit id (for undo) instead of 204');
+  assert.match(json(del).auditId, /^aud_/);
   const gone = await h.app.inject({ method: 'GET', url: `/api/tasks/${t.id}`, headers });
   assert.equal(gone.statusCode, 404);
   assert.deepEqual(json(gone), { error: { code: 'not_found', message: 'Task not found' } });
+  await h.app.close();
+});
+
+test('task list: priority (comma list) and completedSince are parsed and passed through', async () => {
+  const h = await harness();
+  const headers = { authorization: h.bearer() };
+  const res = await h.app.inject({ method: 'GET', url: '/api/tasks?priority=urgent,high&completedSince=1760000000000&includeDone=1', headers });
+  assert.equal(res.statusCode, 200, res.body);
+  const q = h.fake.calls.find((c) => c.method === 'tasks.list')!.args[0] as Record<string, unknown>;
+  assert.deepEqual(q, { priority: ['urgent', 'high'], completedSince: 1760000000000, includeDone: true });
+  const repeated = await h.app.inject({ method: 'GET', url: '/api/tasks?priority=low&priority=none', headers });
+  assert.equal(repeated.statusCode, 200);
+  assert.deepEqual((h.fake.calls.filter((c) => c.method === 'tasks.list')[1]!.args[0] as Record<string, unknown>).priority, ['low', 'none']);
+  for (const url of ['/api/tasks?priority=extreme', '/api/tasks?completedSince=soon', '/api/tasks?completedSince=-5']) {
+    const bad = await h.app.inject({ method: 'GET', url, headers });
+    assert.equal(bad.statusCode, 400, url);
+    assert.equal(json(bad).error.code, 'bad_request');
+  }
+  await h.app.close();
+});
+
+test('PUT /api/tasks/:id/subtasks/order reorders; ids must be exactly the current set', async () => {
+  const h = await harness();
+  const headers = { authorization: h.bearer() };
+  const t = json(await h.app.inject({ method: 'POST', url: '/api/tasks', headers, payload: { title: 'Launch', subtasks: [{ title: 'a' }, { title: 'b' }, { title: 'c' }] } }));
+  const [a, b, c] = t.subtasks.map((s: { id: string }) => s.id);
+  const ok = await h.app.inject({ method: 'PUT', url: `/api/tasks/${t.id}/subtasks/order`, headers, payload: { ids: [c, a, b] } });
+  assert.equal(ok.statusCode, 200, ok.body);
+  assert.deepEqual(json(ok).subtasks.map((s: { title: string }) => s.title), ['c', 'a', 'b']);
+  const missing = await h.app.inject({ method: 'PUT', url: `/api/tasks/${t.id}/subtasks/order`, headers, payload: { ids: [c, a] } });
+  assert.equal(missing.statusCode, 400);
+  const badId = await h.app.inject({ method: 'PUT', url: `/api/tasks/${t.id}/subtasks/order`, headers, payload: { ids: ['../x'] } });
+  assert.equal(badId.statusCode, 400);
+  const extra = await h.app.inject({ method: 'PUT', url: `/api/tasks/${t.id}/subtasks/order`, headers, payload: { ids: [a, b, c], x: 1 } });
+  assert.equal(extra.statusCode, 400, 'strict body');
+  // Cookie sessions need the CSRF header on PUT too.
+  const csrf = await h.app.inject({ method: 'PUT', url: `/api/tasks/${t.id}/subtasks/order`, headers: { cookie: h.cookie() }, payload: { ids: [a, b, c] } });
+  assert.equal(csrf.statusCode, 403);
+  await h.app.close();
+});
+
+test('org currency round-trips through PATCH /api/org', async () => {
+  const h = await harness();
+  const headers = { authorization: h.bearer() };
+  assert.equal(json(await h.app.inject({ method: 'GET', url: '/api/org', headers })).currency, 'USD');
+  const res = await h.app.inject({ method: 'PATCH', url: '/api/org', headers, payload: { currency: 'INR' } });
+  assert.equal(res.statusCode, 200, res.body);
+  assert.equal(json(res).currency, 'INR');
+  const bad = await h.app.inject({ method: 'PATCH', url: '/api/org', headers, payload: { currency: 'RUPEES' } });
+  assert.equal(bad.statusCode, 400);
   await h.app.close();
 });
 

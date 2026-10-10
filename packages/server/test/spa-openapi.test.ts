@@ -118,5 +118,16 @@ test('openapi.json is a valid OpenAPI 3.1 doc covering every API.md route', asyn
   assert.deepEqual(doc.paths['/api/tasks'].get.security, [{ bearerAuth: [] }]);
   assert.deepEqual(doc.paths['/api/auth/login'].post.security, []);
   assert.equal(doc.paths['/api/tasks'].post.requestBody.content['application/json'].schema.required[0], 'title');
+  // DELETE /api/tasks/{id} documents its { auditId } body (not a 204).
+  const del = doc.paths['/api/tasks/{id}'].delete.responses;
+  assert.equal(del['204'], undefined);
+  const delSchema = doc.components.schemas[del['200'].content['application/json'].schema.$ref.split('/').pop()];
+  assert.deepEqual(delSchema.required, ['auditId']);
+  // Subtask reorder + new list filters + org currency are documented.
+  const order = doc.paths['/api/tasks/{id}/subtasks/order'].put;
+  assert.deepEqual(order.requestBody.content['application/json'].schema.required, ['ids']);
+  const listParams = doc.paths['/api/tasks'].get.parameters.map((p: any) => p.name);
+  for (const n of ['priority', 'completedSince']) assert.ok(listParams.includes(n), `listTasks documents ${n}`);
+  assert.ok(doc.components.schemas.OrgSettings.required.includes('currency'));
   await h.app.close();
 });
