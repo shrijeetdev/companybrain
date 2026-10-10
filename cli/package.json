@@ -1,21 +1,18 @@
 {
   "name": "companybrain",
-  "version": "0.1.0",
-  "description": "Run companybrain with one command.",
+  "version": "2.0.0",
+  "private": true,
   "type": "module",
-  "bin": { "companybrain": "bin/companybrain.ts" },
-  "scripts": {
-    "start": "tsx bin/companybrain.ts"
+  "bin": {
+    "companybrain": "bin/companybrain.ts"
   },
   "dependencies": {
     "@companybrain/types": "file:../packages/types",
-    "@companybrain/core": "file:../packages/core",
+    "@companybrain/nlp": "file:../packages/nlp",
     "@companybrain/db": "file:../packages/db",
-    "@companybrain/queue": "file:../packages/queue",
-    "@companybrain/auth": "file:../packages/auth",
-    "@companybrain/mcp": "file:../packages/mcp",
-    "@companybrain/server": "file:../packages/server",
+    "@companybrain/core": "file:../packages/core",
     "@companybrain/integrations": "file:../packages/integrations",
-    "tsx": "^4.19.2"
+    "@companybrain/mcp": "file:../packages/mcp",
+    "@companybrain/server": "file:../packages/server"
   }
 }

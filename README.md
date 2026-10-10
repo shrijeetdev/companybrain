@@ -22,8 +22,8 @@ For production, use password mode so the login page asks only for **email/userna
 
 ```bash
 COMPANYBRAIN_AUTH_MODE=password
-COMPANYBRAIN_ADMIN_EMAIL=info@vexocore.in
-COMPANYBRAIN_ADMIN_PASSWORD=1234@1234work
+COMPANYBRAIN_ADMIN_EMAIL=you@yourcompany.com
+COMPANYBRAIN_ADMIN_PASSWORD=<choose-a-strong-password>
 COMPANYBRAIN_ADMIN_NAME="Vexocore Admin"
 COMPANYBRAIN_SECURE_COOKIE=true
 ```

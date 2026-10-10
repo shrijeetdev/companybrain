@@ -1,2 +1,2 @@
-export { buildServer, type ServerDeps } from './server';
-export { renderUi } from './web-ui';
+// @companybrain/server — see docs/v2/PLAN.md
+export {};

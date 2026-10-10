@@ -1,6 +1,6 @@
 {
   "name": "@companybrain/mcp",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "main": "src/index.ts",
@@ -9,11 +9,8 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@companybrain/core": "file:../core",
-    "@companybrain/types": "file:../types"
-  },
-  "peerDependencies": {
-    "@companybrain/core": "file:../core",
-    "@companybrain/types": "file:../types"
+    "@companybrain/types": "file:../types",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^4.4.3"
   }
 }

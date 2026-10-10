@@ -1,6 +1,6 @@
 {
   "name": "@companybrain/db",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "main": "src/index.ts",
@@ -10,10 +10,7 @@
   },
   "dependencies": {
     "@companybrain/types": "file:../types",
-    "@supabase/supabase-js": "^2.110.0",
-    "better-sqlite3": "^11.10.0",
-    "drizzle-kit": "^0.31.10",
-    "drizzle-orm": "^0.45.2"
+    "better-sqlite3": "^11.3.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11"
