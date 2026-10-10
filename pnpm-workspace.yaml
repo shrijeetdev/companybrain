@@ -2,15 +2,12 @@ packages:
   - "packages/*"
   - "cli"
 
-# pnpm 11+ requires explicit approval for packages that run install scripts.
-# esbuild is disabled here on purpose: its postinstall self-check spawns its
-# own binary, which fails with EACCES on Hostinger's build sandbox. esbuild is
-# only a devDependency used locally to produce the committed dist/server.js —
-# it is never invoked on the server, so skipping its install script is safe.
+# Native/install-script packages that are allowed to run their build scripts.
+# esbuild's postinstall is skipped on purpose (it fails with EACCES on Hostinger's build
+# sandbox); esbuild/vite are only used locally to produce the committed dist/.
+onlyBuiltDependencies:
+  - better-sqlite3
 allowBuilds:
   better-sqlite3: true
   esbuild: false
   protobufjs: true
-
-# Allow git-based transitive deps (e.g. @whiskeysockets/baileys pulls one in).
-blockExoticSubdeps: false

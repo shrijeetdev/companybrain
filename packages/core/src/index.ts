@@ -1,132 +1,129 @@
-// core — the deployment-agnostic heart. Wires the three ports into domain services and
-// the background workers. Knows nothing about SQLite/Postgres/Redis/Stripe/HTTP.
+// @companybrain/core — services (implements CoreServices), persistent scheduler, reminder engine,
+// notifier fan-out, briefing composer, intake handler, live bus. See docs/v2/WIRING.md.
 
-import { createDatabase, type Database, type DbOptions } from '@companybrain/db';
-import { createQueue, type Queue } from '@companybrain/queue';
-import { createAuth, type Auth } from '@companybrain/auth';
+import type { AuditEvent, CalendarFetcher, CoreServices, Llm, Outbound, Tts } from '@companybrain/types';
+import type { Db } from '@companybrain/db';
+import { noCalendar, noopOutbound, type Ctx, type Internal, type Logger } from './context.js';
+import { createLiveBus } from './live.js';
+import { createReminders } from './reminders.js';
+import { createScheduler, type Scheduler } from './scheduler.js';
+import { createAuditService } from './services/audit.js';
+import { createBriefingService } from './services/briefing.js';
+import { createApiKeyService, createAuthService, createMemberService, createOrgService } from './services/identity.js';
+import { createInboxService } from './services/inbox.js';
+import { createMeetingService } from './services/meetings.js';
+import { createNotificationService } from './services/notifications.js';
+import { createLeadService, createProjectService } from './services/projects.js';
+import { createReportService, createSearchService } from './services/reports.js';
+import { createTaskService } from './services/tasks.js';
 
-import { type Context, type Messenger, type Drafter, consoleMessenger, templateDrafter } from './context';
-import { makeLoops } from './loops';
-import { makeTasks } from './tasks';
-import { makeLeads } from './leads';
-import { makeAgents } from './agents';
-import { makeAutonomy, makeApprovals } from './autonomy';
-import { makeTimeTracking } from './time-tracking';
-import { makeBulkOps } from './bulk';
-import { makeRecurring } from './recurring';
-import { makeSubtasks } from './subtasks';
-import { makeAi } from './ai';
-import { makeApiKeys } from './api-keys';
-import { undoEvent, type UndoResult } from './undo';
-import { registerWorkers } from './workers';
-
-export * from './context';
-export * from './agents';
-export * from './autonomy';
-export * from './undo';
-export { registerWorkers } from './workers';
-export { seedIfEmpty } from './seed';
-export type { CaptureLoopInput } from './loops';
-export type { CreateTaskInput } from './tasks';
-export type { CreateLeadInput } from './leads';
-export * as methods from './methods';
-export * as analytics from './analytics';
+export interface CoreOptions {
+  db: Db;
+  /** default: no-op (all channels report not configured) */
+  outbound?: Outbound;
+  llm?: Llm | null;
+  /** default: throws "calendar fetch not configured" */
+  calendar?: CalendarFetcher;
+  tts?: Tts | null;
+  vapidPublicKey?: string | null;
+  /** default Date.now — tests inject a fake clock */
+  clock?: () => number;
+  log?: Logger;
+  /** Called after every audit event write (awaited; errors are logged, never thrown). */
+  onAudit?: (e: AuditEvent) => void | Promise<void>;
+}
 
 export interface Core {
-  ctx: Context;
-  loops: ReturnType<typeof makeLoops>;
-  tasks: ReturnType<typeof makeTasks>;
-  leads: ReturnType<typeof makeLeads>;
-  agents: ReturnType<typeof makeAgents>;
-  autonomy: ReturnType<typeof makeAutonomy>;
-  approvals: ReturnType<typeof makeApprovals>;
-  timeTracking: ReturnType<typeof makeTimeTracking>;
-  bulk: ReturnType<typeof makeBulkOps>;
-  recurring: ReturnType<typeof makeRecurring>;
-  subtasks: ReturnType<typeof makeSubtasks>;
-  ai: ReturnType<typeof makeAi>;
-  apiKeys: ReturnType<typeof makeApiKeys>;
-  events: { list: Context['db']['events']['list']; undo: (eventId: string) => Promise<UndoResult> };
-  /** Optional server-side LLM injection point (wired in M5); when undefined, leads fall back to heuristics. */
-  llm?: { extractLead?: (note: string) => Promise<Partial<import('@companybrain/types').Lead>> };
+  services: CoreServices;
+  scheduler: { start(intervalMs?: number): void; stop(): Promise<void>; tick(): Promise<number> };
+  /** Used by server for /api/briefing/audio */
+  tts: Tts | null;
 }
 
-/** Build core from already-constructed ports (used when you want to inject test doubles). */
-export function createCoreFromPorts(ports: { db: Database; queue: Queue; auth: Auth; messenger?: Messenger; drafter?: Drafter }): Core {
-  const ctx: Context = {
-    db: ports.db,
-    queue: ports.queue,
-    auth: ports.auth,
-    messenger: ports.messenger ?? consoleMessenger,
-    drafter: ports.drafter ?? templateDrafter,
+const consoleLog: Logger = {
+  info: (...a) => console.error('[info]', ...a),
+  warn: (...a) => console.error('[warn]', ...a),
+  error: (...a) => console.error('[error]', ...a),
+};
+
+export function createCore(opts: CoreOptions): Core {
+  if (!opts?.db) throw new Error('createCore: db is required');
+  const log = opts.log ?? consoleLog;
+  const ctx = {
+    db: opts.db,
+    clock: opts.clock ?? Date.now,
+    log,
+    outbound: opts.outbound ?? noopOutbound,
+    llm: opts.llm ?? null,
+    calendar: opts.calendar ?? noCalendar,
+    tts: opts.tts ?? null,
+    vapidPublicKey: opts.vapidPublicKey ?? null,
+    live: createLiveBus(log),
+    onAudit: opts.onAudit,
+  } as Ctx;
+
+  const tasks = createTaskService(ctx);
+  const notifications = createNotificationService(ctx);
+  const meetings = createMeetingService(ctx);
+  const projects = createProjectService(ctx);
+  const briefing = createBriefingService(ctx);
+
+  const services: CoreServices = {
+    auth: createAuthService(ctx),
+    members: createMemberService(ctx),
+    apiKeys: createApiKeyService(ctx),
+    org: createOrgService(ctx),
+    tasks: tasks.service,
+    projects: projects.service,
+    meetings: meetings.service,
+    notifications: notifications.service,
+    inbox: createInboxService(ctx, tasks),
+    briefing: briefing.service,
+    reports: createReportService(ctx),
+    audit: createAuditService(ctx),
+    leads: createLeadService(ctx),
+    search: createSearchService(ctx),
+    live: ctx.live,
   };
-  return {
-    ctx,
-    loops: makeLoops(ctx),
-    tasks: makeTasks(ctx),
-    leads: makeLeads(ctx),
-    agents: makeAgents(),
-    autonomy: makeAutonomy(ctx),
-    approvals: makeApprovals(ctx),
-    timeTracking: makeTimeTracking(ctx),
-    bulk: makeBulkOps(ctx),
-    recurring: makeRecurring(ctx),
-    subtasks: makeSubtasks(ctx),
-    ai: makeAi(ctx),
-    apiKeys: makeApiKeys(ctx),
-    events: {
-      list: (orgId: string, limit?: number) => ctx.db.events.list(orgId, limit),
-      undo: (eventId: string) => undoEvent(ctx, eventId),
-    },
+  ctx.services = services;
+
+  const reminders = createReminders(ctx, tasks);
+  const internal: Internal = {
+    scheduleTask: reminders.scheduleTask,
+    cancelTask: reminders.cancelTask,
+    scheduleMeeting: reminders.scheduleMeeting,
+    cancelMeeting: reminders.cancelMeeting,
+    scheduleDigest: (m) => reminders.scheduleDigest(m),
+    ensurePeriodic: reminders.ensurePeriodic,
+    scheduleFeedSync: reminders.scheduleFeedSync,
+    views: tasks.views,
+    publishTask: tasks.publishTask,
+    publishTaskDeleted: tasks.publishTaskDeleted,
+    spawnNext: tasks.spawnNext,
+    syncFeed: meetings.syncFeed,
+    deliver: notifications.deliver,
+    composeBriefing: briefing.compose,
+    invalidateBriefings: briefing.invalidate,
   };
+  ctx.internal = internal;
+
+  const scheduler: Scheduler = createScheduler(ctx, reminders.handlers);
+  for (const org of ctx.db.orgs.list()) {
+    try {
+      reminders.ensurePeriodic(org.id);
+    } catch (err) {
+      log.warn('[core] could not ensure periodic jobs for org', org.id, err);
+    }
+  }
+
+  return { services, scheduler, tts: ctx.tts };
 }
 
-export interface BootstrapOptions {
-  db?: DbOptions;
-  /** outbound sender injected by the app (e.g. WhatsApp). Defaults to a logging no-op. */
-  messenger?: Messenger;
-  /** reply drafter injected by the app (LLM-backed). Defaults to a fixed template. */
-  drafter?: Drafter;
-}
-
-export interface Bootstrap {
-  core: Core;
-  db: Database;
-  queue: Queue;
-  auth: Auth;
-  /** start background processing (call in the process that owns the worker) */
-  startWorkers(): Promise<void>;
-  shutdown(): Promise<void>;
-}
-
-/**
- * The one call the app makes. Initializes the embedded SQLite + in-process queue + local
- * auth, builds core, and registers the background workers (the caller starts them, since
- * everything runs in one process).
- */
-export async function bootstrap(opts: BootstrapOptions = {}): Promise<Bootstrap> {
-  const db = createDatabase(opts.db);
-  const queue = createQueue();
-  const auth = createAuth();
-
-  await db.init();
-  await queue.init();
-  await auth.init();
-
-  const core = createCoreFromPorts({ db, queue, auth, messenger: opts.messenger, drafter: opts.drafter });
-  registerWorkers(core.ctx);
-
-  return {
-    core,
-    db,
-    queue,
-    auth,
-    async startWorkers() {
-      await queue.start();
-    },
-    async shutdown() {
-      await queue.close();
-      await db.close();
-    },
-  };
-}
+export { createLiveBus } from './live.js';
+export { hashPassword, verifyPassword } from './password.js';
+export { nextOccurrence, validateRecurrence } from './recurrence.js';
+export { resolveMemberHint, resolveProjectHint, extractMentions } from './services/tasks.js';
+export { systemActor } from './perms.js';
+export { MAX_ATTEMPTS } from './scheduler.js';
+export { OVERDUE_AFTER_MS, OVERDUE_REPEAT_MS, MEETING_REMINDER_MS, formatOffset, inQuietHours } from './reminders.js';
+export type { Logger } from './context.js';

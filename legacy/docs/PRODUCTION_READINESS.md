@@ -68,8 +68,8 @@ Environment variables:
 - `NODE_ENV=production`
 - `COMPANYBRAIN_NO_OPEN=true`
 - `COMPANYBRAIN_AUTH_MODE=password`
-- `COMPANYBRAIN_ADMIN_EMAIL=info@vexocore.in`
-- `COMPANYBRAIN_ADMIN_PASSWORD=1234@1234work`
+- `COMPANYBRAIN_ADMIN_EMAIL=you@yourcompany.com`
+- `COMPANYBRAIN_ADMIN_PASSWORD=<redacted>`
 - `COMPANYBRAIN_ADMIN_NAME=Vexocore Admin`
 - `COMPANYBRAIN_SECURE_COOKIE=true`
 

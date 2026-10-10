@@ -1,101 +1,112 @@
-#!/usr/bin/env -S npx tsx
-// companybrain — ONE app, one command. This single process runs everything: SQLite
-// migrations, an in-process worker (real timers, real chases/briefings), the API, and
-// the embedded web UI. No Docker, no Postgres, no Redis, no separate frontend.
-// `pnpm start` locally; the same command runs it on a server (binds 0.0.0.0).
+#!/usr/bin/env node
+// companybrain — one process: SQLite + scheduler + API + MCP + web UI on one port.
+//
+//   companybrain          start the app (default)
+//   companybrain mcp      MCP over stdio for desktop AI hosts (Claude Desktop, Cursor, …)
+//   companybrain migrate  run database migrations and exit
+//   companybrain backup [dir] [--without-keys]
+//                        hot backup of the database + key files into dir (default ./backups);
+//                        --without-keys leaves out secret.key / signing.key / vapid.json
+//
+// The `mcp` subcommand must never write anything but JSON-RPC to stdout, so it never starts
+// the web server, and all logging goes to stderr.
 
-import { spawn } from 'node:child_process';
-import { platform } from 'node:os';
-import { bootstrap, seedIfEmpty } from '@companybrain/core';
-import { buildServer } from '@companybrain/server';
-import { whatsapp, createMessenger, createBaileysChannel, createLlm } from '@companybrain/integrations';
-import { captureException, flushSentry } from '@companybrain/server/middleware';
+import { existsSync, mkdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-// --- Subcommand dispatch: `companybrain mcp` runs the standalone MCP server. ---
-// Scan argv (not a fixed index): when MCP hosts like Claude Desktop spawn `tsx bin mcp`,
-// the runtime may rewrite argv so `mcp` lands at argv[1] instead of argv[2]. Slicing from
-// index 2 first, then falling back to a full scan, covers both the interactive and
-// spawned-`npx` cases without guessing the layout.
-const mcpArgs = process.argv.slice(2);
-if (mcpArgs[0] === 'mcp' || process.argv.includes('mcp')) {
-  // Hand off to the MCP entrypoint. Dynamic import keeps MCP-only deps out of the
-  // web-app boot path; the web app never loads @companybrain/mcp.
-  //
-  // Do NOT call process.exit() after the import: startMcpServer() returns immediately
-  // after registering a readline listener on stdin — it does NOT block synchronously.
-  // The process stays alive because stdin keeps the event loop busy, and exits on its
-  // own when stdin closes. A process.exit() here would kill it before any line is read.
-  await import('./mcp.js');
-}
+import { openDatabase, resolveDbPath } from '@companybrain/db';
+import { createCalendarFetcher, createLlm, loadIntegrationsConfig } from '@companybrain/integrations';
+import { runMcpStdio } from '@companybrain/mcp';
+import { createApp, createAppServices, stderrLog as log, VERSION } from '../src/app';
+import { backupTo } from '../src/backup';
 
-// --- Process error handlers: catch what would otherwise be silent crashes (H6) ---
-process.on('unhandledRejection', (reason) => {
-  // A swallowed promise is a bug, not a reason to die. Log + report, keep running.
-  console.error('[companybrain] unhandledRejection:', reason);
-  captureException(reason instanceof Error ? reason : new Error(String(reason)));
-});
-
-process.on('uncaughtException', (err) => {
-  // Truly fatal — Node's state is now unreliable. Report, flush, then exit non-zero.
-  console.error('[companybrain] uncaughtException (fatal):', err);
-  captureException(err);
-  flushSentry().finally(() => process.exit(1));
-});
-
-const port = Number(process.env.COMPANYBRAIN_PORT ?? process.env.PORT ?? 4317);
-const host = process.env.COMPANYBRAIN_HOST ?? '0.0.0.0';
-
-// WhatsApp: WHATSAPP_BAILEYS=on uses QR pairing (no Meta app); otherwise the Cloud API
-// is used when WHATSAPP_* creds are present. Either way the worker can reply over WhatsApp.
-const baileys = process.env.WHATSAPP_BAILEYS === 'on' ? createBaileysChannel({ orgId: 'org_local' }) : null;
-const wa = whatsapp.whatsappConfigFromEnv();
-const messenger = baileys ? baileys.messenger : createMessenger({ whatsapp: wa ?? undefined });
-
-// If ANTHROPIC_API_KEY is set, replies are AI-written; otherwise a fixed template is used.
-const drafter = createLlm() ?? undefined;
-
-const boot = await bootstrap({ messenger, drafter });
-await seedIfEmpty(boot.core);
-
-// In-process worker: timers fire chases/briefings inside this same process.
-await boot.startWorkers();
-await boot.queue.schedule('sendBriefing', { orgId: 'org_local' }, 6 * 60 * 60 * 1000);
-
-// Open the WhatsApp socket (prints a QR to scan on first run) if enabled.
-if (baileys) await baileys.start(boot.core);
-
-const app = buildServer({ core: boot.core, auth: boot.auth });
-await app.listen({ port, host });
-
-const shown = host === '0.0.0.0' ? `http://localhost:${port}` : `http://${host}:${port}`;
-const authMode = (boot.auth.mode ?? 'local').toUpperCase();
-console.log(`
-  company\x1b[1mbrain\x1b[0m  ·  running
-
-  ▸ ${shown}
-  ▸ data:  ~/.companybrain/companybrain.sqlite
-  ▸ auth: ${authMode}${authMode === 'KEY' ? ' (session login enabled)' : ' (single-user local mode)'}
-  ▸ single app: SQLite + in-process worker + API + web, no external services
-
-  Ctrl-C to stop.
-`);
-
-// Try to open a browser for local use. On a headless server the spawn just fails (caught).
-if (!process.env.COMPANYBRAIN_NO_OPEN) openBrowser(`http://localhost:${port}`);
-
-function openBrowser(target: string) {
-  const cmd = platform() === 'darwin' ? 'open' : platform() === 'win32' ? 'start' : 'xdg-open';
+// Load ./.env when present (never overrides variables already set by the host).
+if (existsSync('.env')) {
   try {
-    spawn(cmd, [target], { stdio: 'ignore', detached: true, shell: platform() === 'win32' }).unref();
-  } catch {
-    /* headless / CI — the URL is printed above */
+    process.loadEnvFile('.env');
+  } catch (err) {
+    console.error('[companybrain] warn: could not read .env:', err instanceof Error ? err.message : err);
   }
 }
 
-for (const sig of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(sig, async () => {
-    await app.close();
-    await boot.shutdown();
-    process.exit(0);
-  });
+const command = process.argv.slice(2).find((a) => !a.startsWith('-')) ?? 'serve';
+const env = process.env;
+const dbPath = resolveDbPath(env);
+const dataDir = dirname(dbPath);
+mkdirSync(dataDir, { recursive: true });
+
+if (command === 'mcp') {
+  await runMcp();
+} else if (command === 'migrate') {
+  openDatabase(dbPath).close();
+  log.info(`migrations applied → ${dbPath}`);
+} else if (command === 'backup') {
+  await backup(process.argv.slice(3).find((a) => !a.startsWith('-')) ?? 'backups', process.argv.includes('--without-keys'));
+} else if (command === 'serve' || command === 'start') {
+  await serve();
+} else {
+  console.error(`Unknown command "${command}". Use: companybrain [serve|mcp|migrate|backup]`);
+  process.exit(64);
+}
+
+/** Online backup (safe while the app runs) of the SQLite file plus, unless --without-keys, the key files. */
+async function backup(target: string, withoutKeys: boolean): Promise<void> {
+  const { dir, files } = await backupTo(dbPath, dataDir, target, { withoutKeys });
+  log.info(`backup written → ${dir} (${files.join(', ')})`);
+  if (withoutKeys) log.info('key files skipped (--without-keys): keep secret.key / signing.key / vapid.json (or COMPANYBRAIN_SECRET) safe separately — the backup cannot decrypt stored secrets without them');
+  else log.warn('this backup contains secret.key, which decrypts the secrets stored in the database — store it encrypted');
+}
+
+async function runMcp(): Promise<void> {
+  const key = env.COMPANYBRAIN_MCP_KEY?.trim();
+  if (!key) {
+    console.error('COMPANYBRAIN_MCP_KEY is not set. Create an API key in Settings → Connect AI.');
+    process.exit(2);
+  }
+  // Shares the SQLite file with the running web app (WAL). The web app owns background jobs,
+  // so no scheduler and no outbound channels run here.
+  const db = openDatabase(dbPath);
+  const cfg = loadIntegrationsConfig(env, dataDir);
+  const { services } = createAppServices(db, { llm: createLlm(cfg), calendar: createCalendarFetcher(), log });
+  await runMcpStdio(services, key);
+}
+
+async function serve(): Promise<void> {
+  const app = await createApp({ env, dbPath, dataDir, webDir: resolveWebDir(), log });
+  const port = Number(env.PORT ?? env.COMPANYBRAIN_PORT ?? 4317);
+  const host = env.COMPANYBRAIN_HOST ?? '0.0.0.0';
+  await app.server.listen({ port, host });
+  app.startBackground();
+
+  const url = env.COMPANYBRAIN_PUBLIC_URL || `http://localhost:${port}`;
+  log.info(`v${VERSION} running at ${url}  ·  data: ${dbPath}`);
+  if (await app.services.auth.needsSetup()) log.info(`first run — open ${url} to create your company and owner account`);
+
+  let stopping = false;
+  for (const sig of ['SIGINT', 'SIGTERM'] as const) {
+    process.on(sig, async () => {
+      if (stopping) return;
+      stopping = true;
+      log.info(`${sig} received, shutting down…`);
+      setTimeout(() => process.exit(1), 10_000).unref();
+      try {
+        await app.stop();
+      } finally {
+        process.exit(0);
+      }
+    });
+  }
+  process.on('unhandledRejection', (reason) => log.error('unhandledRejection:', reason));
+}
+
+function resolveWebDir(): string | null {
+  if (env.COMPANYBRAIN_WEB_DIR) return resolve(env.COMPANYBRAIN_WEB_DIR);
+  const here = dirname(fileURLToPath(import.meta.url));
+  // Bundled: dist/server.js → dist/web. Source (tsx): cli/bin → ../../dist/web.
+  for (const candidate of [join(here, 'web'), join(here, '..', '..', 'dist', 'web')]) {
+    if (existsSync(join(candidate, 'index.html'))) return candidate;
+  }
+  log.warn('web UI build not found (run `pnpm build`); serving the API only');
+  return null;
 }
