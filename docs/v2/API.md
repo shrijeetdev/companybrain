@@ -137,3 +137,38 @@ Tools (all act as the key's member, scope-checked):
 `get_my_work`, `list_tasks`, `get_task`, `create_task`, `quick_add`, `update_task`, `complete_task`,
 `add_comment`, `handoff`, `list_projects`, `list_team`, `get_briefing`, `list_meetings`,
 `get_notifications`, `search`.
+
+## Game (Tactical Ops) — `services.game` (`AppServices`)
+| Method | Path | Body / Query | Returns |
+|---|---|---|---|
+| GET | `/api/game/hud` | | `Hud` |
+| GET | `/api/game/profile` | `?memberId=` | `PlayerProfile` |
+| GET | `/api/game/leaderboard` | `?period=week\|month\|all` | `Leaderboard` |
+| GET | `/api/game/achievements` | `?memberId=` | `AchievementProgress[]` |
+| GET | `/api/game/challenges` | | `DailyChallenge[]` |
+| GET | `/api/game/crates` | | `Crate[]` |
+| POST | `/api/game/crates/:id/open` | | `Crate` (with `reward`) |
+| GET | `/api/game/inventory` | | `InventoryItem[]` |
+| POST | `/api/game/equip` | `{ title?, frame?, emote? }` | `PlayerProfile` |
+| GET | `/api/game/feed` | `?limit=` | `FeedItem[]` |
+| GET | `/api/game/rewards` | `?limit=` | `RewardEvent[]` (actor's recent) |
+
+Live: `{ type: 'game.reward', reward }` is pushed over `/api/stream` to the rewarded member (and as a feed
+item to the squad) — the UI plays the celebration from it.
+
+## OAuth 2.1 for "paste the URL into Claude/ChatGPT and it connects"
+
+Implemented in `server` (stateless, HMAC-signed with `config.signingSecret`). Access tokens are
+API keys minted through `services.apiKeys.create` (visible + revocable in Settings → API keys).
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/.well-known/oauth-protected-resource` (+ `/.well-known/oauth-protected-resource/mcp`) | RFC 9728: `{ resource: <base>/mcp, authorization_servers: [<base>], scopes_supported: ['read','write'], bearer_methods_supported: ['header'] }` |
+| GET | `/.well-known/oauth-authorization-server` | RFC 8414 metadata: authorize/token/register endpoints, `code_challenge_methods_supported: ['S256']`, `token_endpoint_auth_methods_supported: ['none']`, grant types `authorization_code` |
+| POST | `/oauth/register` | RFC 7591 dynamic client registration. Stateless: `client_id` = signed blob of `{ client_name, redirect_uris }`. Redirect URIs must be https (or http://localhost / 127.0.0.1). |
+| GET | `/oauth/authorize` | Validates client + redirect + PKCE S256, then 302 → SPA `/connect?<same query>` |
+| POST | `/api/oauth/approve` | (session + CSRF) `{ query: <authorize params>, scopes: ('read'\|'write')[], actAs: memberId (self, or an agent the user may manage), approve: boolean }` → `{ redirectTo }` (code or `error=access_denied`) |
+| POST | `/oauth/token` | form or JSON; `authorization_code` + `code_verifier` → `{ access_token, token_type: 'Bearer', scope }`. Codes single-use, 5-min TTL. |
+| — | `/mcp` 401 responses | include `WWW-Authenticate: Bearer resource_metadata="<base>/.well-known/oauth-protected-resource"` |
+
+`GET /api/oauth/client?client_id=` (session) → `{ name, redirectUri host }` so the consent page can show who's asking.
