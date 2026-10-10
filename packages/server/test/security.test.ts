@@ -5,6 +5,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import Fastify from 'fastify';
 import { normalizeTrustProxy } from '../src/server';
+import { redactUrl } from '../src/http';
 import { MAX_STREAMS_PER_MEMBER, registerStream } from '../src/routes/stream';
 import type { ServerDeps } from '../src/types';
 import { harness, until } from './helpers';
@@ -209,6 +210,27 @@ test('L2: briefing audio — human sessions only, 20 syntheses/hour per member, 
   assert.equal((await post({ cookie: h.cookie('owner'), 'x-cb-client': 'web' }, 'hi')).statusCode, 200);
   t += 60 * 60_000;
   assert.equal((await post(web, 'later')).statusCode, 200);
+  await h.app.close();
+});
+
+// ─── L6: webhook secret in the query string is never logged ─────────────────
+
+test('L6: ?secret= (and encoded variants) are redacted by the request log serializer', async () => {
+  assert.equal(redactUrl('/webhooks/email?secret=s3cret&a=b'), '/webhooks/email?secret=[REDACTED]&a=b');
+  assert.equal(redactUrl('/webhooks/email?a=b&%73ecret=s3cret'), '/webhooks/email?a=b&%73ecret=[REDACTED]');
+  assert.equal(redactUrl('/webhooks/email?SECRET=s3cret'), '/webhooks/email?SECRET=[REDACTED]');
+  assert.equal(redactUrl('/webhooks/whatsapp?hub.verify_token=v&hub.challenge=1'), '/webhooks/whatsapp?hub.verify_token=[REDACTED]&hub.challenge=1');
+  assert.equal(redactUrl('/oauth/authorize?client_id=x&state=y'), '/oauth/authorize?client_id=x&state=y');
+
+  // The logger the server actually uses applies it.
+  const h = await harness({ config: { emailWebhookSecret: 'email-hook-secret' }, integrations: { parseEmailWebhook: () => null } });
+  const sym = Object.getOwnPropertySymbols(h.app.log).find((s) => s.description === 'pino.serializers')!;
+  const serializers = (h.app.log as unknown as Record<symbol, { req(r: unknown): { url: string } }>)[sym]!;
+  const out = serializers.req({ method: 'POST', url: '/webhooks/email?secret=email-hook-secret', ip: '1.2.3.4', headers: {} });
+  assert.equal(out.url, '/webhooks/email?secret=[REDACTED]');
+  // And the secret still works in the query string (some providers can't send headers).
+  const r = await h.app.inject({ method: 'POST', url: '/webhooks/email?secret=email-hook-secret', payload: { from: 'a@b.co', subject: 's', text: 't' } });
+  assert.equal(r.statusCode, 200);
   await h.app.close();
 });
 
