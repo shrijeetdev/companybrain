@@ -134,7 +134,15 @@ export function greetingFor(ts = Date.now(), tz = currentTz): string {
 export const TIMEZONES: string[] = (() => {
   try {
     const fn = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf;
-    if (fn) return fn('timeZone');
+    if (fn) {
+      const list = fn('timeZone');
+      return list.includes('UTC') ? list : ['UTC', ...list];
+    }
   } catch { /* ignore */ }
   return ['UTC', 'Europe/London', 'Europe/Berlin', 'Asia/Dubai', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles'];
 })();
+
+/** Options for a timezone <select>: the full list, plus `current` if the platform list lacks it. */
+export function timezoneOptions(current: string | null | undefined): string[] {
+  return current && !TIMEZONES.includes(current) ? [current, ...TIMEZONES] : TIMEZONES;
+}

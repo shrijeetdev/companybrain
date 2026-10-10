@@ -4,7 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, 
 import type { CreateTaskInput, ParsedQuickAdd, Recurrence } from '@companybrain/types';
 import { errorMessage } from '../../api/client';
 import { api, type Preview } from '../../api/endpoints';
-import { flash, useMemberMap, useProjectMap } from '../../api/queries';
+import { flash, useMe, useMemberMap, useProjectMap } from '../../api/queries';
 import { Spinner } from '../../components/ui';
 import { priorityLabel, useLabels } from '../../lib/labels';
 import { sfx } from '../../lib/sfx';
@@ -46,6 +46,7 @@ export const QuickAdd = forwardRef<QuickAddHandle, Props>(function QuickAdd({ de
   const inputRef = useRef<HTMLInputElement>(null);
   const hlRef = useRef<HTMLDivElement>(null);
   const members = useMemberMap();
+  const me = useMe();
   const projects = useProjectMap();
   const { quickAdd } = useTaskActions();
   const debounced = useDebounced(text, 150);
@@ -94,6 +95,11 @@ export const QuickAdd = forwardRef<QuickAddHandle, Props>(function QuickAdd({ de
       setText('');
       setPreview(null);
       flash(task.id, 2200);
+      // A mission deployed to someone else drops out of "Mine" — say where it went.
+      if (!task.assigneeIds.includes(me.id)) {
+        const names = task.assigneeIds.map((id) => members.get(id)?.name ?? 'teammate').join(', ');
+        toast.success(`${L.addVerb === 'Deploy' ? 'Deployed' : 'Added'} “${task.title}” → ${names || 'unassigned'}`);
+      }
       onCreated?.();
     } catch (e) {
       sfx.error();

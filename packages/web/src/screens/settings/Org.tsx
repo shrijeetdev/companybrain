@@ -7,7 +7,7 @@ import { qk, useOrg } from '../../api/queries';
 import { SettingRow, Spinner, Switch } from '../../components/ui';
 import { offsetText } from '../../features/tasks/QuickAdd';
 import { useLabels } from '../../lib/labels';
-import { TIMEZONES } from '../../lib/time';
+import { timezoneOptions } from '../../lib/time';
 import { toast } from '../../lib/toast';
 import { cx } from '../../lib/util';
 
@@ -36,7 +36,7 @@ export function OrgSettingsPanel() {
     <section className="panel panel-pad">
       <SettingRow title="Company name"><input className="input" style={{ width: 240 }} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} aria-label="Company name" /></SettingRow>
       <SettingRow title="Timezone" desc="Default for new people, digests and “end of day”.">
-        <select className="select" style={{ width: 240 }} value={f.timezone} onChange={(e) => setF({ ...f, timezone: e.target.value })} aria-label="Timezone">{TIMEZONES.map((t) => <option key={t} value={t}>{t}</option>)}</select>
+        <select className="select" style={{ width: 240 }} value={f.timezone} onChange={(e) => setF({ ...f, timezone: e.target.value })} aria-label="Timezone">{timezoneOptions(f.timezone).map((t) => <option key={t} value={t}>{t}</option>)}</select>
       </SettingRow>
       <SettingRow title="Workday" desc="All-day tasks are due at the end of the workday.">
         <select className="select" style={{ width: 110 }} value={f.workdayStart} onChange={(e) => setF({ ...f, workdayStart: Number(e.target.value) })} aria-label="Workday start">{Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{hourLabel(h)}</option>)}</select>
