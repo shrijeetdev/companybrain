@@ -19,7 +19,7 @@ import {
   type TaskView,
   type Tts,
 } from '@companybrain/types';
-import { newId, safeTz, type Db } from '@companybrain/db';
+import { defaultPrefs, newId, safeTz, type Db } from '@companybrain/db';
 
 export interface Logger {
   info(...a: unknown[]): void;
@@ -142,8 +142,25 @@ export async function fireAudit(ctx: Ctx, ev: AuditEvent): Promise<void> {
   }
 }
 
+/**
+ * What every teammate may see about a member: no contact details (email/phone) and no
+ * preferences (prefs are replaced by the kind's defaults). Used for org-wide live events and for
+ * guests' member lookups.
+ */
+export function publicMember(m: Member): Member {
+  return { ...m, email: null, phone: null, prefs: defaultPrefs(m.kind) };
+}
+
 export function publish(ctx: Ctx, orgId: string, event: LiveEvent, memberIds?: string[]): void {
   try {
+    if (event.type === 'member.upserted' && !memberIds) {
+      // Org-wide broadcast: the member gets their full record, everyone else the public projection.
+      const self = event.member.id;
+      ctx.live.publish(orgId, event, { memberIds: [self] });
+      const others = ctx.db.members.list(orgId).map((m) => m.id).filter((id) => id !== self);
+      if (others.length) ctx.live.publish(orgId, { type: 'member.upserted', member: publicMember(event.member) }, { memberIds: others });
+      return;
+    }
     ctx.live.publish(orgId, event, memberIds ? { memberIds } : undefined);
   } catch (err) {
     ctx.log.warn('[core] live publish failed', err);

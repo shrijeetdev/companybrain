@@ -93,6 +93,29 @@ test('M1: push subscriptions only accept known push-service endpoints', async ()
   assert.ok(!env.db.push.list(p.orgId, p.id).some((s) => s.endpoint.includes('127.0.0.1')), 'bad subscription deleted');
 });
 
+// ─── M2: member.upserted live events carry no PII ───────────────────────────
+
+test('M2: member.upserted is a public projection for everyone but the member', async () => {
+  const env = makeEnv();
+  const team = await bootstrap(env);
+  const { m: priya, a: priyaA } = await team.add('Priya', 'member', { email: 'priya@acme.io' });
+  const { m: max } = await team.add('Max');
+  const seen: Record<string, any[]> = { priya: [], max: [] };
+  const un1 = env.s.live.subscribe(priya.orgId, priya.id, (e) => e.type === 'member.upserted' && seen.priya!.push(e.member));
+  const un2 = env.s.live.subscribe(max.orgId, max.id, (e) => e.type === 'member.upserted' && seen.max!.push(e.member));
+  await env.s.members.update(priyaA, priya.id, { phone: '+14155550123', prefs: { quietStart: 21 } });
+  un1();
+  un2();
+  assert.equal(seen.max!.length, 1);
+  const pub = seen.max![0]!;
+  assert.equal(pub.id, priya.id);
+  assert.equal(pub.email, null);
+  assert.equal(pub.phone, null);
+  assert.notEqual(pub.prefs.quietStart, 21, 'prefs not leaked');
+  assert.equal(seen.priya!.length, 1);
+  assert.equal(seen.priya![0]!.phone, '+14155550123', 'the member gets their own full record');
+});
+
 // ─── L1: read-only keys ─────────────────────────────────────────────────────
 
 test('L1: a read-only API key cannot mark notifications read', async () => {
