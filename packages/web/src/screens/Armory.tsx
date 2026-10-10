@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'motion/react';
+import { m } from 'motion/react';
 import { Check, Crown, Frame, Lock, Package, Smile } from 'lucide-react';
 import { useState } from 'react';
 import type { Crate, InventoryItem } from '@companybrain/types';
@@ -44,14 +44,14 @@ function Crates() {
       <div className="crate-grid">
         {isLoading && Array.from({ length: 4 }, (_, i) => <div key={i} className="panel panel-pad"><Skeleton h={140} /></div>)}
         {sorted.map((c, i) => (
-          <motion.button key={c.id} className={cx('panel crate-card', `rarity-${c.rarity}`, c.openedAt && 'opened')} onClick={() => setOpening(c)}
+          <m.button key={c.id} className={cx('panel crate-card', `rarity-${c.rarity}`, c.openedAt && 'opened')} onClick={() => setOpening(c)}
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: c.openedAt ? 0.75 : 1, y: 0 }} transition={{ delay: i * 0.04 }} whileHover={c.openedAt ? undefined : { rotate: [0, -2, 2, 0] }}>
             <CrateArt rarity={c.rarity} open={!!c.openedAt} />
             <span className="rarity-label">{c.rarity}</span>
             <span style={{ fontSize: 12.5, fontWeight: 600 }}>{c.openedAt ? c.reward?.name ?? 'Opened' : c.source}</span>
             <span className="faint" style={{ fontSize: 11.5 }}>{c.openedAt ? `opened ${ago(c.openedAt)}` : `earned ${ago(c.earnedAt)}`}</span>
             {!c.openedAt && <span className="btn btn-primary btn-sm" style={{ marginTop: 4 }}><Package /> Open</span>}
-          </motion.button>
+          </m.button>
         ))}
       </div>
       {data?.length === 0 && <div className="panel"><Empty art="📦" title={`No ${L.crates.toLowerCase()} yet`}>Complete {L.tasksLower}, keep your streak and level up to earn them.</Empty></div>}
@@ -122,14 +122,14 @@ function Medals() {
           const locked = !a.unlockedAt;
           const secret = a.achievement.secret && locked;
           return (
-            <motion.div key={a.achievement.id} className={cx('panel medal', `tier-${a.achievement.tier}`, locked && 'locked', secret && 'secret')}
+            <m.div key={a.achievement.id} className={cx('panel medal', `tier-${a.achievement.tier}`, locked && 'locked', secret && 'secret')}
               initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}>
               <span className="medal-icon">{secret ? <Lock size={24} /> : a.achievement.icon}</span>
               <span className="medal-name">{secret ? 'Classified' : a.achievement.name}</span>
               <span className="medal-desc">{secret ? 'Keep playing to reveal this one.' : a.achievement.description}</span>
               {locked && !secret && <><Bar pct={(a.progress / a.achievement.target) * 100} height={4} /><span className="faint num" style={{ fontSize: 11 }}>{a.progress}/{a.achievement.target}</span></>}
               {!locked && <span className="faint" style={{ fontSize: 11 }}>Unlocked {ago(a.unlockedAt!)}</span>}
-            </motion.div>
+            </m.div>
           );
         })}
       </div>

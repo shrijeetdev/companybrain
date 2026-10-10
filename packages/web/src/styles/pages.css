@@ -200,6 +200,8 @@
 .link-art .link-dots i { width: 7px; height: 7px; }
 .connect-title { font-size: 20px; text-align: center; font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; }
 .connect-title b { font-weight: 750; }
+.connect-host { color: var(--text-3); font-weight: 500; white-space: nowrap; }
+.connect-host .mono { font-size: 0.85em; }
 .choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
 @media (max-width: 480px) { .choice-grid { grid-template-columns: 1fr; } }
 .choice { position: relative; display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: var(--r-lg); border: 1px solid var(--border); background: var(--surface-sunken); text-align: left; font-size: 13px; transition: border-color var(--d-2), background var(--d-2); }

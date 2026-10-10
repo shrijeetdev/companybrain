@@ -11,13 +11,14 @@ export interface Integrations extends IntegrationsStatus { mcpUrl: string }
 export interface QrStatus { status: 'disconnected' | 'pairing' | 'connected'; qr: string | null; phone?: string | null }
 export interface Preview { parsed: ParsedQuickAdd; draft: TaskDraft; unresolved: string[] }
 export interface SearchResult { tasks: TaskView[]; projects: Project[]; members: Member[] }
-export interface OAuthClientInfo { name: string; redirectUri?: string; redirectHost?: string }
+/** GET /api/oauth/client — who is asking (consent page). `host` is the redirect URI's host, e.g. "claude.ai". */
+export interface OAuthClientInfo { name: string; host: string; redirectUri: string; redirectUris: string[] }
 export type ProjectInput = Partial<Pick<Project, 'name' | 'emoji' | 'color' | 'description' | 'status' | 'leadId' | 'memberIds' | 'dueAt'>>;
 export type MeetingInput = Partial<Pick<Meeting, 'title' | 'startAt' | 'endAt' | 'allDay' | 'location' | 'url' | 'attendeeIds' | 'notes'>>;
 export type BulkOp = { kind: 'complete' | 'delete' | 'assign' | 'move' | 'status'; value?: unknown };
 
 function taskQuery(q: TaskQuery = {}) {
-  return { ...q, status: q.status?.length ? q.status : undefined } as Record<string, string | number | boolean | string[] | undefined>;
+  return { ...q, status: q.status?.length ? q.status : undefined, priority: q.priority?.length ? q.priority : undefined } as Record<string, string | number | boolean | string[] | undefined>;
 }
 
 export const api = {
@@ -50,13 +51,15 @@ export const api = {
     preview: (text: string) => http.post<Preview>('/api/tasks/preview', { text }),
     bulk: (ids: string[], op: BulkOp) => http.post<{ ok: string[]; failed: { id: string; error: string }[] }>('/api/tasks/bulk', { ids, op }),
     update: (id: string, patch: UpdateTaskInput) => http.patch<TaskView>(`/api/tasks/${id}`, patch),
-    remove: (id: string) => http.del(`/api/tasks/${id}`),
+    /** Returns the audit id — `api.audit.undo(auditId)` restores the task. */
+    remove: (id: string) => http.del<{ auditId: string }>(`/api/tasks/${id}`),
     complete: (id: string) => http.post<TaskView>(`/api/tasks/${id}/complete`),
     reopen: (id: string) => http.post<TaskView>(`/api/tasks/${id}/reopen`),
     nudge: (id: string) => http.post<TaskView>(`/api/tasks/${id}/nudge`),
     addSubtask: (id: string, title: string) => http.post<TaskView>(`/api/tasks/${id}/subtasks`, { title }),
     updateSubtask: (id: string, subId: string, patch: { title?: string; done?: boolean }) => http.patch<TaskView>(`/api/tasks/${id}/subtasks/${subId}`, patch),
     removeSubtask: (id: string, subId: string) => http.del<TaskView>(`/api/tasks/${id}/subtasks/${subId}`),
+    reorderSubtasks: (id: string, ids: string[]) => http.put<TaskView>(`/api/tasks/${id}/subtasks/order`, { ids }),
     activity: (id: string) => http.get<TaskActivity[]>(`/api/tasks/${id}/activity`),
     comment: (id: string, text: string, kind: 'comment' | 'handoff' = 'comment') => http.post<TaskActivity>(`/api/tasks/${id}/comments`, { text, kind }),
   },

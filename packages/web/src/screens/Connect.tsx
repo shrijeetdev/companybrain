@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'motion/react';
+import { m } from 'motion/react';
 import { Check, Eye, Lock, Pencil, Plus, ShieldCheck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { AgentProvider, ApiScope } from '@companybrain/types';
-import { errorMessage } from '../api/client';
+import { ApiError, errorMessage } from '../api/client';
 import { api } from '../api/endpoints';
 import { qk, useMe, useMembers, useOrg } from '../api/queries';
 import { Avatar } from '../components/Avatar';
@@ -37,7 +37,8 @@ export function Connect() {
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState<'approve' | 'deny' | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const host = client?.redirectHost ?? (client?.redirectUri ? new URL(client.redirectUri).host : params.redirect_uri ? safeHost(params.redirect_uri) : '');
+  const host = client?.host || (client?.redirectUri ? safeHost(client.redirectUri) : params.redirect_uri ? safeHost(params.redirect_uri) : '');
+  const appName = client?.name ?? 'This app';
 
   const createAgent = async () => {
     if (!newName.trim()) return;
@@ -55,24 +56,24 @@ export function Connect() {
       const scopes: ApiScope[] = scope === 'write' ? ['read', 'write'] : ['read'];
       const { redirectTo } = await api.oauth.approve({ query: params, scopes, actAs, approve });
       window.location.assign(redirectTo);
-    } catch (e) { setErr(errorMessage(e)); setBusy(null); }
+    } catch (e) { setErr(approveError(e, appName)); setBusy(null); }
   };
 
   return (
     <div className="auth connect">
       <div className="radar" aria-hidden><span className="radar-sweep" /><span className="radar-rings" /></div>
-      <motion.div className="auth-card panel connect-card" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 240, damping: 26 }}>
+      <m.div className="auth-card panel connect-card" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 240, damping: 26 }}>
         <div className="link-art" aria-hidden>
           <BrandMark size={56} />
-          <span className="link-dots">{[0, 1, 2, 3, 4].map((i) => <motion.i key={i} animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.14 }} />)}</span>
+          <span className="link-dots">{[0, 1, 2, 3, 4].map((i) => <m.i key={i} animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.14 }} />)}</span>
           <span className="agent-avatar" style={{ background: providerInfo.color, width: 56, height: 56 }}><ProviderMark provider={provider} size={28} /></span>
         </div>
         {!clientId || error ? (
-          <div className="auth-error" role="alert">{!clientId ? 'This connection link is missing information. Start again from your AI app.' : errorMessage(error)}</div>
+          <div className="auth-error" role="alert">{!clientId ? 'This connection link is missing information. Start again from your AI app.' : clientError(error)}</div>
         ) : !client ? <Skeleton h={120} /> : (
           <>
-            <h1 className="connect-title"><b>{client.name}</b> wants to connect to <b>{org?.name ?? 'your companybrain'}</b></h1>
-            <p className="faint" style={{ textAlign: 'center', fontSize: 13 }}>Signed in as {me.email ?? me.name} · it will return you to <span className="mono">{host}</span></p>
+            <h1 className="connect-title"><b>{client.name}</b> wants to connect{host && <span className="connect-host"> · <span className="mono">{host}</span></span>}</h1>
+            <p className="faint" style={{ textAlign: 'center', fontSize: 13 }}>to <b>{org?.name ?? 'your companybrain'}</b> · signed in as {me.email ?? me.name}{host ? <> · you’ll return to <span className="mono">{host}</span></> : null}</p>
 
             <div className="field-label" style={{ marginTop: 18 }}>Access</div>
             <div className="choice-grid" role="radiogroup" aria-label="Access">
@@ -112,9 +113,24 @@ export function Connect() {
             <p className="faint connect-note"><Lock size={12} /> companybrain never shares your password. You can revoke this connection anytime in Settings → AI & API keys.</p>
           </>
         )}
-      </motion.div>
+      </m.div>
     </div>
   );
+}
+
+/** Explain approve failures; a 400 means the authorize request itself is bad or stale. */
+function approveError(e: unknown, app: string): string {
+  if (e instanceof ApiError && e.status === 400) {
+    const detail = e.message && !/^Something went wrong/.test(e.message) ? ` (${e.message.replace(/\.$/, '')})` : '';
+    return `This connection request is no longer valid${detail}. Go back to ${app} and start connecting again — the link may have expired or been changed.`;
+  }
+  if (e instanceof ApiError && e.status === 403) return `You’re not allowed to connect ${app} that way: ${e.message}`;
+  return errorMessage(e);
+}
+
+function clientError(e: unknown): string {
+  if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return 'This connection link isn’t valid (unknown app or redirect address). Start again from your AI app.';
+  return errorMessage(e);
 }
 
 function safeHost(u: string): string {

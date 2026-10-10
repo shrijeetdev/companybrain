@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { AudioLines, Bell, Bot, CircleCheck, CircleDashed, LogOut, Mail, MessageCircle, QrCode, Smartphone } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { errorMessage } from '../../api/client';
@@ -80,7 +80,7 @@ function WhatsAppCard({ mode, connected, phone, onTest }: { mode: 'cloud' | 'qr'
       <p className="faint" style={{ fontSize: 12.5 }}>Team members message the bot to create tasks; unknown senders land in the Inbox.</p>
       <AnimatePresence mode="wait">
         {pairing && qr?.qr ? (
-          <motion.div key="qr" className="qr-box" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+          <m.div key="qr" className="qr-box" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
             <div className="qr-frame"><img src={qr.qr} alt="WhatsApp pairing QR code" width={200} height={200} /><span className="qr-scan" aria-hidden /></div>
             <ol className="qr-steps">
               <li><Smartphone size={14} /> Open WhatsApp on the bot’s phone</li>
@@ -88,7 +88,7 @@ function WhatsAppCard({ mode, connected, phone, onTest }: { mode: 'cloud' | 'qr'
               <li>Point the camera at this code</li>
             </ol>
             <div className="row faint" style={{ gap: 8, fontSize: 12.5 }}><Spinner size={13} /> Waiting for scan…</div>
-          </motion.div>
+          </m.div>
         ) : null}
       </AnimatePresence>
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>

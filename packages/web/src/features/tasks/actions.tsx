@@ -92,17 +92,39 @@ export function useTaskActions() {
     }
   }, [qc, refreshAfterChange]);
 
+  /** Undo a delete: replay the audit event, then put the task back wherever it is listed. */
+  const restore = useCallback(async (task: TaskView, auditId: string) => {
+    try {
+      await api.audit.undo(auditId);
+      const t = await api.tasks.get(task.id);
+      markLocal(t.id);
+      qc.setQueryData(qk.task(t.id), t);
+      prependTaskToCaches(qc, t, (key) => {
+        const q = key[1] as Record<string, unknown> | undefined;
+        return !!q && (!q.projectId || q.projectId === t.projectId);
+      });
+      void qc.invalidateQueries({ queryKey: qk.tasksAll });
+      void qc.invalidateQueries({ queryKey: qk.audit });
+      refreshAfterChange();
+      sfx.undo();
+      toast.success(<span>Restored <b>“{t.title}”</b></span>);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  }, [qc, refreshAfterChange]);
+
   const remove = useCallback(async (task: TaskView) => {
+    markLocal(task.id);
     removeTaskFromCaches(qc, task.id);
     try {
-      await api.tasks.remove(task.id);
-      toast(`Deleted “${task.title}”`);
+      const { auditId } = await api.tasks.remove(task.id);
+      toast(<span>Deleted <b>“{task.title}”</b></span>, { action: { label: 'Undo', onClick: () => void restore(task, auditId) }, duration: 8000 });
       refreshAfterChange();
     } catch (e) {
       void qc.invalidateQueries({ queryKey: qk.tasksAll });
       toast.error(errorMessage(e));
     }
-  }, [qc, refreshAfterChange]);
+  }, [qc, refreshAfterChange, restore]);
 
   const quickAdd = useCallback(async (text: string, defaults?: Partial<CreateTaskInput>) => {
     const t = await api.tasks.quick(text, defaults);

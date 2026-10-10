@@ -1,4 +1,4 @@
-import { motion } from 'motion/react';
+import { m } from 'motion/react';
 import { Ellipsis, PanelLeftClose, PanelLeft, Plus, Search } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
@@ -31,7 +31,7 @@ function NavLink({ item, badge }: { item: NavItem; badge?: number }) {
   const active = isActive(item.href, loc);
   return (
     <Link href={item.href} aria-current={active ? 'page' : undefined} title={item.label(L)}>
-      {active && <motion.span layoutId="nav-active" className="nav-active" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
+      {active && <m.span layoutId="nav-active" className="nav-active" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
       {item.icon(tactical)}
       <span className="nav-text">{item.label(L)}</span>
       {!!badge && <span className="badge">{badge}</span>}
@@ -72,7 +72,7 @@ function Sidebar() {
                   const href = `/projects/${p.id}`;
                   return (
                     <Link key={p.id} href={href} className="nav-project" aria-current={loc === href ? 'page' : undefined} title={p.name}>
-                      {loc === href && <motion.span layoutId="nav-active" className="nav-active" />}
+                      {loc === href && <m.span layoutId="nav-active" className="nav-active" />}
                       <span className="nav-emoji" aria-hidden>{p.emoji}</span>
                       <span className="nav-text truncate">{p.name}</span>
                       {p.counts.overdue > 0 && <span className="badge" style={{ background: 'var(--danger-soft)', color: 'var(--danger)' }}>{p.counts.overdue}</span>}
@@ -143,7 +143,7 @@ function TabBar() {
           const active = isActive(n.href, loc);
           return (
             <Link key={n.key} href={n.href} aria-current={active ? 'page' : undefined}>
-              {active && <motion.span layoutId="tab-active" className="tab-active" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
+              {active && <m.span layoutId="tab-active" className="tab-active" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
               {n.icon(tactical)}
               <span>{n.label(L)}</span>
               {n.key === 'inbox' && !!inbox?.length && <span className="badge">{inbox.length}</span>}
@@ -155,9 +155,9 @@ function TabBar() {
           <span>More</span>
         </button>
       </nav>
-      <motion.button className="fab" aria-label={L.newTask} onClick={() => ui.quickAdd()} whileTap={{ scale: 0.9 }}>
+      <m.button className="fab" aria-label={L.newTask} onClick={() => ui.quickAdd()} whileTap={{ scale: 0.9 }}>
         <Plus strokeWidth={2.5} style={tactical ? { transform: 'rotate(0deg)' } : undefined} />
-      </motion.button>
+      </m.button>
     </>
   );
 }

@@ -131,6 +131,8 @@
   cursor: grab;
   touch-action: manipulation;
   user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none; /* long-press picks the card up (no iOS callout) */
+  -webkit-tap-highlight-color: transparent;
   display: grid; gap: 8px;
 }
 .card:hover { border-color: var(--border-strong); }
@@ -150,6 +152,11 @@
   opacity: 0.96;
 }
 .drop-slot { height: 6px; border-radius: 3px; background: var(--accent); box-shadow: 0 0 12px var(--accent); margin: -1px 2px; }
+.board.is-dragging { scroll-snap-type: none; cursor: grabbing; }
+.board.is-dragging .card { cursor: grabbing; }
+.board-col-note { font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; font-family: var(--font-body); white-space: nowrap; }
+.board-older { justify-self: center; font-size: 12px; padding: 6px 10px; min-height: 32px; }
+@media (prefers-reduced-motion: reduce) { .card-ghost { rotate: none; } }
 .board-empty { display: grid; place-items: center; min-height: 72px; border: 1.5px dashed var(--border-strong); border-radius: var(--r-md); color: var(--text-3); font-size: 12px; }
 
 /* ─── Task drawer ─────────────────────────────────────────────────────── */
@@ -190,8 +197,12 @@
 .subtask:hover { background: var(--surface-hover); }
 .subtask input { flex: 1; border: 0; background: transparent; outline: none; font-size: 14px; min-width: 0; }
 .subtask.done input { color: var(--text-3); text-decoration: line-through; }
-.subtask .grip { color: var(--text-3); cursor: grab; opacity: 0; width: 16px; }
-.subtask:hover .grip { opacity: 1; }
+.subtask .grip { color: var(--text-3); cursor: grab; opacity: 0; width: 20px; height: 28px; display: grid; place-items: center; flex: none; padding: 0; border: 0; background: none; border-radius: var(--r-sm); touch-action: none; }
+.subtask .grip svg { width: 16px; height: 16px; }
+.subtask .grip:active { cursor: grabbing; }
+.subtask:hover .grip, .subtask .grip:focus-visible { opacity: 1; }
+.subtask .grip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (hover: none) { .subtask .grip { opacity: 0.55; } }
 .subtask-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .waiting-card { padding: 12px 14px; border-radius: var(--r-md); background: var(--warning-soft); border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent); display: grid; gap: 8px; }
 .timeline { display: grid; gap: 2px; position: relative; }

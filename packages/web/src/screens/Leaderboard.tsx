@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'motion/react';
+import { m } from 'motion/react';
 import { Bot, Flame, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'wouter';
@@ -41,13 +41,13 @@ export function Leaderboard() {
         <>
           <div className="podium">
             {podium.map((e, i) => e ? (
-              <motion.div key={`${side}-${period}-${e.member.id}`} className={cx('podium-slot', `p${e.position}`)} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: [0.15, 0, 0.3][i], type: 'spring', stiffness: 200, damping: 20 }}>
+              <m.div key={`${side}-${period}-${e.member.id}`} className={cx('podium-slot', `p${e.position}`)} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: [0.15, 0, 0.3][i], type: 'spring', stiffness: 200, damping: 20 }}>
                 <Who e={e} size={e.position === 1 ? 64 : 52} />
                 <div className="podium-name">{firstName(e.member.name)}</div>
                 <div className="row" style={{ gap: 4, fontSize: 12 }}><Insignia rank={e.rank} size={18} />{e.rank.name}</div>
                 <div className="podium-xp num"><Ticker value={e.xp} /> XP</div>
                 <div className="podium-block num-display">{e.position}</div>
-              </motion.div>
+              </m.div>
             ) : <div key={i} />)}
           </div>
           <div className="panel">
@@ -55,7 +55,7 @@ export function Leaderboard() {
               <span>#</span><span>{side === 'humans' ? 'Operator' : 'AI'}</span><span>XP</span><span className="hide-sm2">On time</span><span className="hide-sm2">Streak</span>
             </div>
             {list.map((e, i) => (
-              <motion.div key={e.member.id} className={cx('lb-row', e.member.id === me.id && 'me')} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}>
+              <m.div key={e.member.id} className={cx('lb-row', e.member.id === me.id && 'me')} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}>
                 <span className="lb-pos">{e.position}</span>
                 <Link href={`/team/${e.member.id}`} className="row" style={{ gap: 10, minWidth: 0 }}>
                   <Who e={e} size={30} />
@@ -67,7 +67,7 @@ export function Leaderboard() {
                 <span className="num" style={{ fontWeight: 700, color: 'var(--xp)' }}>{e.xp.toLocaleString()}</span>
                 <span className="num hide-sm2">{Math.round(e.onTimeRate * 100)}%</span>
                 <span className="num hide-sm2 row" style={{ gap: 3 }}><Flame size={13} style={{ color: 'var(--streak)' }} />{e.streak}</span>
-              </motion.div>
+              </m.div>
             ))}
           </div>
         </>

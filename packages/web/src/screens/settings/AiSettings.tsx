@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { Check, Copy, KeyRound, MousePointerClick, Plus, ShieldCheck, Trash2, TriangleAlert } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { AgentProvider, ApiKey, ApiScope } from '@companybrain/types';
@@ -26,9 +26,9 @@ export function CopyField({ value, label, secret }: { value: string; label: stri
       <code className="truncate" aria-label={label}>{value}</code>
       <button className="btn btn-primary" onClick={() => void copy()} aria-label={`Copy ${label}`}>
         <AnimatePresence mode="wait" initial={false}>
-          <motion.span key={done ? 'y' : 'n'} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+          <m.span key={done ? 'y' : 'n'} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
             {done ? <><Check /> Copied</> : <><Copy /> Copy</>}
-          </motion.span>
+          </m.span>
         </AnimatePresence>
       </button>
     </div>
@@ -106,7 +106,7 @@ export function AiSettings() {
         <div className="ch-top">
           <div className="ch-logos" aria-hidden>
             <BrandMark size={44} />
-            <span className="link-dots">{[0, 1, 2].map((i) => <motion.i key={i} animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.15 }} />)}</span>
+            <span className="link-dots">{[0, 1, 2].map((i) => <m.i key={i} animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.15 }} />)}</span>
             <span className="agent-avatar" style={{ background: app === 'claude' ? '#d97757' : '#10a37f', width: 44, height: 44 }}><ProviderMark provider={app} size={22} /></span>
           </div>
           <div className="grow" style={{ minWidth: 0 }}>
@@ -119,13 +119,13 @@ export function AiSettings() {
         <CopyField value={mcpUrl} label="MCP connector URL" />
         <ol className="steps3">
           {steps.map(([t, d], i) => (
-            <motion.li key={`${app}${i}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
+            <m.li key={`${app}${i}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
               <StepArt step={(i + 1) as 1 | 2 | 3} app={app} />
               <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
                 <span className="step-num num-display">{i + 1}</span>
                 <div><b>{t}</b><div className="faint" style={{ fontSize: 12.5 }}>{d}</div></div>
               </div>
-            </motion.li>
+            </m.li>
           ))}
         </ol>
       </section>

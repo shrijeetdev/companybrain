@@ -7,6 +7,7 @@ import { qk, useOrg } from '../../api/queries';
 import { SettingRow, Spinner, Switch } from '../../components/ui';
 import { offsetText } from '../../features/tasks/QuickAdd';
 import { useLabels } from '../../lib/labels';
+import { COMMON_CURRENCIES, currencyName, formatMoney } from '../../lib/money';
 import { timezoneOptions } from '../../lib/time';
 import { toast } from '../../lib/toast';
 import { cx } from '../../lib/util';
@@ -37,6 +38,11 @@ export function OrgSettingsPanel() {
       <SettingRow title="Company name"><input className="input" style={{ width: 240 }} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} aria-label="Company name" /></SettingRow>
       <SettingRow title="Timezone" desc="Default for new people, digests and “end of day”.">
         <select className="select" style={{ width: 240 }} value={f.timezone} onChange={(e) => setF({ ...f, timezone: e.target.value })} aria-label="Timezone">{timezoneOptions(f.timezone).map((t) => <option key={t} value={t}>{t}</option>)}</select>
+      </SettingRow>
+      <SettingRow title="Currency" desc="Used for deal values in Pipeline and Reports.">
+        <select className="select" style={{ width: 240 }} value={f.currency} onChange={(e) => setF({ ...f, currency: e.target.value })} aria-label="Currency">
+          {[...new Set([f.currency, ...COMMON_CURRENCIES])].map((c) => <option key={c} value={c}>{c} — {currencyName(c)} ({formatMoney(1234.5, c, false)})</option>)}
+        </select>
       </SettingRow>
       <SettingRow title="Workday" desc="All-day tasks are due at the end of the workday.">
         <select className="select" style={{ width: 110 }} value={f.workdayStart} onChange={(e) => setF({ ...f, workdayStart: Number(e.target.value) })} aria-label="Workday start">{Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{hourLabel(h)}</option>)}</select>

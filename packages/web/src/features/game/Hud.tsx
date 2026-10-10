@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { Check, Coins, Flame, Package, Volume2, VolumeX, Zap } from 'lucide-react';
 import { Link } from 'wouter';
-import type { DailyChallenge, Hud, MissionProgress } from '@companybrain/types';
+import type { DailyChallenge, FeedItem, Hud, Member, MissionProgress } from '@companybrain/types';
 import { api } from '../../api/endpoints';
-import { qk, useHud, useMe, useMemberMap } from '../../api/queries';
+import { qk, useFlash, useHud, useMe, useMemberMap } from '../../api/queries';
 import { Avatar } from '../../components/Avatar';
 import { Bar, Ring, Skeleton, Ticker } from '../../components/ui';
 import { useLabels } from '../../lib/labels';
@@ -183,6 +183,19 @@ export function Challenges({ challenges }: { challenges: DailyChallenge[] }) {
   );
 }
 
+function FeedRow({ f, m }: { f: FeedItem; m: Member | undefined }) {
+  const fresh = useFlash(f.id);
+  const first = firstName(m?.name);
+  return (
+    <motion.li className={cx('feed-item', fresh && 'flash')} data-feed-id={f.id} layout initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
+      <Avatar member={m} size={24} />
+      <span className="grow feed-text">{first && f.text.startsWith(first) ? <><b>{first}</b>{f.text.slice(first.length)}</> : f.text}</span>
+      {f.xp > 0 && <span className="xp-pill">+{f.xp}</span>}
+      <span className="faint feed-time">{ago(f.at)}</span>
+    </motion.li>
+  );
+}
+
 export function SquadFeed({ limit = 8 }: { limit?: number }) {
   const L = useLabels();
   const members = useMemberMap();
@@ -193,17 +206,7 @@ export function SquadFeed({ limit = 8 }: { limit?: number }) {
       <ul className="feed-list">
         {!data && Array.from({ length: 4 }, (_, i) => <li key={i} className="feed-item"><Skeleton w={24} h={24} r={12} /><Skeleton w="70%" /></li>)}
         <AnimatePresence initial={false}>
-          {data?.slice(0, limit).map((f) => {
-            const m = members.get(f.memberId);
-            return (
-              <motion.li key={f.id} className="feed-item" layout initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-                <Avatar member={m} size={24} />
-                <span className="grow feed-text">{f.text.startsWith(firstName(m?.name)) ? <><b>{firstName(m?.name)}</b>{f.text.slice(firstName(m?.name).length)}</> : f.text}</span>
-                {f.xp > 0 && <span className="xp-pill">+{f.xp}</span>}
-                <span className="faint feed-time">{ago(f.at)}</span>
-              </motion.li>
-            );
-          })}
+          {data?.slice(0, limit).map((f) => <FeedRow key={f.id} f={f} m={members.get(f.memberId)} />)}
         </AnimatePresence>
         {data && data.length === 0 && <li className="faint" style={{ padding: '8px 20px 16px', fontSize: 13 }}>Quiet on the comms. Complete a {L.taskLower} to light this up.</li>}
       </ul>

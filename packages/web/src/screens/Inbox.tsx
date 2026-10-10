@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { ArrowRight, CalendarClock, Check, Flag, Folder, Sparkles, Users, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { InboxItem, Priority, TaskDraft } from '@companybrain/types';
@@ -82,7 +82,7 @@ function InboxCard({ item }: { item: InboxItem }) {
     catch (e) { toast.error(errorMessage(e)); void qc.invalidateQueries({ queryKey: ['inbox'] }); }
   };
   return (
-    <motion.article layout className={cx('panel inbox-card', fl && 'flash', `ch-${item.channel}`)} initial={{ opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, x: 40, transition: { duration: 0.2 } }}>
+    <m.article layout className={cx('panel inbox-card', fl && 'flash', `ch-${item.channel}`)} initial={{ opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, x: 40, transition: { duration: 0.2 } }}>
       <div className="ib-head">
         <span className={cx('ch-icon', item.channel)}><ChannelIcon channel={item.channel} size={16} /></span>
         <div className="grow" style={{ minWidth: 0 }}>
@@ -122,7 +122,7 @@ function InboxCard({ item }: { item: InboxItem }) {
         )
       )}
       {item.status === 'converted' && item.taskId && <button className="btn btn-sm" onClick={() => ui.openTask(item.taskId!)}>Open {L.taskLower} <ArrowRight /></button>}
-    </motion.article>
+    </m.article>
   );
 }
 
@@ -137,7 +137,7 @@ function DraftEditor({ item, busy, onSave, onCancel }: { item: InboxItem; busy: 
   const refs = { due: useRef<HTMLButtonElement>(null), who: useRef<HTMLButtonElement>(null), pri: useRef<HTMLButtonElement>(null), proj: useRef<HTMLButtonElement>(null) };
   const proj = projects?.find((p) => p.id === d.projectId);
   return (
-    <motion.div className="draft" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+    <m.div className="draft" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
       <input className="input" value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} aria-label="Title" autoFocus />
       <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
         <button ref={refs.due} className="chip chip-btn chip-lg" onClick={() => setOpen('due')}><CalendarClock />{d.dueAt ? fmtDue(d.dueAt, !!d.dueAllDay) : 'Due date'}</button>
@@ -153,6 +153,6 @@ function DraftEditor({ item, busy, onSave, onCancel }: { item: InboxItem; busy: 
         <button className="btn btn-sm" onClick={onCancel}>Cancel</button>
         <button className="btn btn-primary btn-sm" disabled={busy || !d.title.trim()} onClick={() => onSave(d)}><Check /> Create {L.taskLower}</button>
       </div>
-    </motion.div>
+    </m.div>
   );
 }

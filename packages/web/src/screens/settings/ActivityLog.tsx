@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'motion/react';
+import { m } from 'motion/react';
 import { Undo2 } from 'lucide-react';
 import type { AuditEvent } from '@companybrain/types';
 import { errorMessage } from '../../api/client';
@@ -34,14 +34,14 @@ export function ActivityLog() {
       {data?.map((e, i) => {
         const actor = members.get(e.actorId);
         return (
-          <motion.div key={e.id} className="list-row" initial={{ opacity: 0 }} animate={{ opacity: e.undoneAt ? 0.55 : 1 }} transition={{ delay: Math.min(i, 12) * 0.02 }}>
+          <m.div key={e.id} className="list-row" initial={{ opacity: 0 }} animate={{ opacity: e.undoneAt ? 0.55 : 1 }} transition={{ delay: Math.min(i, 12) * 0.02 }}>
             <Avatar member={actor} size={28} />
             <div className="grow" style={{ minWidth: 0 }}>
               <div style={{ fontSize: 13.5, textDecoration: e.undoneAt ? 'line-through' : undefined }}>{e.summary}</div>
               <div className="faint" style={{ fontSize: 12 }}><span className="mono">{e.type}</span> · <span title={`${fmtDate(e.at)} ${fmtTime(e.at)}`}>{ago(e.at)}</span>{e.undoneAt ? ` · undone ${ago(e.undoneAt)}` : ''}</div>
             </div>
             {e.undoable && !e.undoneAt && <button className="btn btn-sm" onClick={() => void undo(e)}><Undo2 /> Undo</button>}
-          </motion.div>
+          </m.div>
         );
       })}
     </section>

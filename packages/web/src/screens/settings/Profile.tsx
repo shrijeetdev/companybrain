@@ -4,6 +4,7 @@ import { api } from '../../api/endpoints';
 import { useUpdateMe } from '../../api/me';
 import { useMe } from '../../api/queries';
 import { Avatar } from '../../components/Avatar';
+import { PHONE_HINT, PhoneField, phoneProblem, phoneServerError } from '../../components/PhoneField';
 import { timezoneOptions } from '../../lib/time';
 import { toast } from '../../lib/toast';
 import { cx } from '../../lib/util';
@@ -15,10 +16,18 @@ export function Profile() {
   const updateMe = useUpdateMe();
   const [f, setF] = useState({ name: me.name, title: me.title ?? '', phone: me.phone ?? '', timezone: me.timezone });
   const [pw, setPw] = useState({ current: '', next: '' });
+  const [phoneErr, setPhoneErr] = useState<string | null>(null);
   const dirty = f.name !== me.name || f.title !== (me.title ?? '') || f.phone !== (me.phone ?? '') || f.timezone !== me.timezone;
+  const phoneBad = !!phoneProblem(f.phone);
   const save = async () => {
-    const m = await updateMe({ name: f.name.trim(), title: f.title.trim() || null, phone: f.phone.trim() || null, timezone: f.timezone });
-    if (m) toast.success('Profile saved');
+    setPhoneErr(null);
+    const m = await updateMe({ name: f.name.trim(), title: f.title.trim() || null, phone: f.phone.trim() || null, timezone: f.timezone }, {
+      onError: (e) => { const msg = phoneServerError(e); if (msg) setPhoneErr(msg); return !!msg; },
+    });
+    if (m) {
+      setF((cur) => ({ ...cur, phone: m.phone ?? '' })); // server normalizes to +digits
+      toast.success('Profile saved');
+    }
   };
   const changePw = async () => {
     try { await api.me.password(pw.current, pw.next); setPw({ current: '', next: '' }); toast.success('Password changed — other sessions were signed out'); }
@@ -39,11 +48,11 @@ export function Profile() {
         <div className="form-grid">
           <div className="field"><label htmlFor="pn">Name</label><input id="pn" className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
           <div className="field"><label htmlFor="pt">Title</label><input id="pt" className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="Founder & CEO" /></div>
-          <div className="field"><label htmlFor="pp">WhatsApp number</label><input id="pp" className="input" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="+91 98200 11001" inputMode="tel" /><span className="field-hint">Messages from this number become your tasks.</span></div>
+          <PhoneField id="pp" value={f.phone} onChange={(phone) => { setF({ ...f, phone }); setPhoneErr(null); }} serverError={phoneErr} hint={`${PHONE_HINT}. Messages from this number become your tasks.`} />
           <div className="field"><label htmlFor="ptz">Timezone</label><select id="ptz" className="select" value={f.timezone} onChange={(e) => setF({ ...f, timezone: e.target.value })}>{timezoneOptions(f.timezone).map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}</select></div>
           <div className="field"><label>Email</label><input className="input" value={me.email ?? ''} disabled /><span className="field-hint">Ask an admin to change your login email.</span></div>
         </div>
-        <div className="row" style={{ justifyContent: 'flex-end' }}><button className="btn btn-primary" disabled={!dirty || !f.name.trim()} onClick={() => void save()}>Save changes</button></div>
+        <div className="row" style={{ justifyContent: 'flex-end' }}><button className="btn btn-primary" disabled={!dirty || !f.name.trim() || phoneBad} onClick={() => void save()}>Save changes</button></div>
       </section>
       <section className="panel panel-pad stack">
         <h3 style={{ fontSize: 15 }}>Password</h3>
