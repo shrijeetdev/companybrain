@@ -183268,7 +183268,9 @@ async function buildServer(deps) {
   }
   await app.register(import_rate_limit.default, { global: false });
   const authIds = /* @__PURE__ */ new WeakMap();
-  const globalLimit = makeLimiter(app, { max: 300, windowMs: MINUTE, key: actorOrIp, prefix: "g" });
+  const memberLimit = makeLimiter(app, { max: 1200, windowMs: MINUTE, key: actorOrIp, prefix: "gm" });
+  const anonLimit = makeLimiter(app, { max: 300, windowMs: MINUTE, key: actorOrIp, prefix: "g" });
+  const globalLimit = (req, reply) => req.actor ? memberLimit(req, reply) : anonLimit(req, reply);
   const authIdLimit = makeLimiter(app, { max: 10, windowMs: MINUTE, prefix: "auth", key: (req) => `${req.ip}|${authIds.get(req) ?? ""}` });
   const authIpLimit = makeLimiter(app, { max: 60, windowMs: MINUTE, prefix: "auth-ip", key: (req) => req.ip });
   const authLimit = async (req, identifier, reply) => {

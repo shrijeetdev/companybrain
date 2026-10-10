@@ -11,6 +11,7 @@ const dataDir = process.env.E2E_DATA_DIR ?? mkdtempSync(join(tmpdir(), 'cb-e2e-'
 
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
@@ -19,6 +20,7 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
     trace: 'retain-on-failure',
+    storageState: 'e2e/.auth/state.json',
     screenshot: 'only-on-failure',
     ...(process.env.PW_CHROMIUM_PATH ? { launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH } } : {}),
   },

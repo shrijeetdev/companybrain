@@ -25,3 +25,4 @@ dist/*.map
 .claude/worktrees/
 test-results/
 playwright-report/
+e2e/.auth/

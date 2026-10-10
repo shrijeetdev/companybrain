@@ -133,7 +133,11 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   // ─── Rate limiting (registered AND awaited) ─────────────────────────────
   await app.register(rateLimit, { global: false });
   const authIds = new WeakMap<FastifyRequest, string>();
-  const globalLimit = makeLimiter(app, { max: 300, windowMs: MINUTE, key: actorOrIp, prefix: 'g' });
+  // Signed-in members get more headroom: the live dashboard refetches on every team event.
+  // Anonymous traffic (by IP) stays tight.
+  const memberLimit = makeLimiter(app, { max: 1200, windowMs: MINUTE, key: actorOrIp, prefix: 'gm' });
+  const anonLimit = makeLimiter(app, { max: 300, windowMs: MINUTE, key: actorOrIp, prefix: 'g' });
+  const globalLimit: typeof memberLimit = (req, reply) => (req.actor ? memberLimit(req, reply) : anonLimit(req, reply));
   const authIdLimit = makeLimiter(app, { max: 10, windowMs: MINUTE, prefix: 'auth', key: (req) => `${req.ip}|${authIds.get(req) ?? ''}` });
   const authIpLimit = makeLimiter(app, { max: 60, windowMs: MINUTE, prefix: 'auth-ip', key: (req) => req.ip });
   const authLimit = async (req: FastifyRequest, identifier: string, reply: import('fastify').FastifyReply) => {

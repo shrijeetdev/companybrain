@@ -1,10 +1,8 @@
 // End-to-end: the production build (`node server.js`) driven in a real browser.
-// One server + DB is shared by both projects (desktop, mobile): the first run does the setup
-// wizard, later runs log in.
+// Signed in once by e2e/global-setup.ts (which runs the real setup wizard); every test reuses
+// that session, like a returning user.
 
 import { test, expect, type Page } from '@playwright/test';
-
-const OWNER = { email: 'commander@vexocore.test', password: 'Sup3r-secret!' };
 
 async function enter(page: Page) {
   const problems: string[] = [];
@@ -14,31 +12,7 @@ async function enter(page: Page) {
     if (r.status() >= 500) problems.push(`HTTP ${r.status()} ${r.url()}`);
   });
   await page.goto('/');
-  const state = await page.evaluate(async () => (await fetch('/api/auth/state')).json());
-  if (state.needsSetup) {
-    await page.fill('input[placeholder="Vexocore"]', 'Vexocore');
-    await page.click('button.btn-primary');
-    await page.fill('input[autocomplete="name"]', 'Shrijeet');
-    await page.fill('input[type=email]', OWNER.email);
-    await page.fill('input[type=password]', OWNER.password);
-    await page.click('button.btn-primary');
-  } else if (!state.authenticated) {
-    await page.fill('input[type=email]', OWNER.email);
-    await page.fill('input[type=password]', OWNER.password);
-    await page.click('button.btn-primary');
-  }
   await expect(page.locator('.app')).toBeVisible({ timeout: 15_000 });
-  // Seed a teammate + an AI agent once (idempotent by name).
-  await page.evaluate(async () => {
-    const H = { 'Content-Type': 'application/json', 'X-CB-Client': 'web' };
-    const members = await (await fetch('/api/members')).json();
-    if (!members.some((m: { name: string }) => m.name === 'Priya Sharma')) {
-      await fetch('/api/members', { method: 'POST', headers: H, body: JSON.stringify({ kind: 'human', role: 'member', name: 'Priya Sharma', email: 'priya@vexocore.test', password: 'Passw0rd-123', timezone: 'UTC' }) });
-      await fetch('/api/members', { method: 'POST', headers: H, body: JSON.stringify({ kind: 'agent', role: 'agent', name: 'Claude', agent: { provider: 'claude' } }) });
-      await fetch('/api/projects', { method: 'POST', headers: H, body: JSON.stringify({ name: 'Website' }) });
-    }
-    await fetch('/api/me', { method: 'PATCH', headers: H, body: JSON.stringify({ prefs: { briefingVoice: 'button' } }) });
-  });
   return problems;
 }
 

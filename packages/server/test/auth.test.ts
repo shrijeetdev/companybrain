@@ -174,10 +174,10 @@ test('rate limiting: login 10/min per IP+identifier → 429', async () => {
   await h.app.close();
 });
 
-test('rate limiting: global 300/min keyed by actor, else IP → 429', async () => {
+test('rate limiting: 1200/min per signed-in member, 300/min per anonymous IP → 429', async () => {
   const h = await harness();
   const cookie = h.cookie();
-  for (let i = 0; i < 300; i++) {
+  for (let i = 0; i < 1200; i++) {
     const r = await h.app.inject({ method: 'GET', url: '/api/notifications/count', headers: { cookie } });
     assert.equal(r.statusCode, 200, `request ${i + 1}`);
   }
