@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "typecheck": "tsc --noEmit -p .",
+    "mock": "tsx dev/mock-api.ts",
+    "shots": "node dev/shoot.mjs"
   },
   "dependencies": {
     "@companybrain/types": "file:../types",
