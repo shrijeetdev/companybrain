@@ -313,7 +313,8 @@ export type JobKind =
   | 'member.digest'      // payload: { memberId }
   | 'agent.staleScan'    // payload: {}
   | 'calendar.sync'      // payload: { feedId }
-  | 'email.poll';        // payload: {}
+  | 'email.poll'         // payload: {}
+  | 'notification.deliver'; // payload: { notificationId }  (external fan-out; held until quiet hours end)
 
 export interface Job {
   id: string;
@@ -671,6 +672,8 @@ export interface AuthService {
   needsSetup(): Promise<boolean>;
   /** First-run: create the org + owner account. Fails if already set up. */
   setup(input: { orgName: string; name: string; email: string; password: string; timezone: string }): Promise<{ token: string; member: Member; expiresAt: number }>;
+  /** The deployment's (single) org id, or null before first-run setup. Used to route inbound messages. */
+  orgId(): Promise<string | null>;
 }
 
 export interface ApiKeyService {
@@ -690,6 +693,8 @@ export interface NotificationService {
   vapidPublicKey(): string | null;
   /** Internal: create + fan out (in-app, push, WhatsApp, email) respecting prefs/quiet hours. */
   notify(orgId: string, memberId: string, n: Omit<Notification, 'id' | 'orgId' | 'memberId' | 'readAt' | 'createdAt'>): Promise<Notification>;
+  /** Send a short test message to the actor on one channel (whatsapp → phone, email → email, push → all subscriptions). */
+  sendTest(actor: Actor, channel: 'whatsapp' | 'email' | 'push'): Promise<{ ok: boolean; error?: string }>;
 }
 
 export interface MeetingService {
