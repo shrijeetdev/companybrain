@@ -237,7 +237,8 @@ test('createWhatsAppQr: QR → connected → inbound → reply → logout clears
   );
   await qr.start();
   ev.emit('connection.update', { qr: 'pairing-code-123' });
-  await new Promise((r) => setTimeout(r, 50));
+  // PNG encoding is async; wait for it rather than guessing a delay (slow under a loaded CI box).
+  for (let i = 0; i < 300 && !qr.status().qr; i++) await new Promise((r) => setTimeout(r, 10));
   const pairing = qr.status();
   assert.equal(pairing.status, 'pairing');
   assert.match(pairing.qr ?? '', /^data:image\/png;base64,/);
