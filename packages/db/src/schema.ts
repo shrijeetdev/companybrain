@@ -335,6 +335,16 @@ export const MIGRATIONS: Migration[] = [
       importV1(db);
     },
   },
+  {
+    version: 3,
+    name: 'member prefs: theme + sound defaults',
+    up(db) {
+      db.exec(`
+        UPDATE members SET prefs = json_set(prefs, '$.theme', 'tactical') WHERE json_type(prefs, '$.theme') IS NULL;
+        UPDATE members SET prefs = json_set(prefs, '$.sound', json('true')) WHERE json_type(prefs, '$.sound') IS NULL;
+      `);
+    },
+  },
 ];
 
 /** v1 table names that conflict with (or are superseded by) v2. Renamed to v1_* before v2 schema. */
