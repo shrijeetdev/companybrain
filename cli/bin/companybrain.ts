@@ -26,6 +26,8 @@ import {
   createWhatsAppQr,
   createEmailPoller,
   integrationsStatus,
+  whatsappCloud,
+  parseInboundEmailWebhook,
   type WhatsAppQr,
 } from '@companybrain/integrations';
 import { handleMcpHttp, runMcpStdio } from '@companybrain/mcp';
@@ -110,6 +112,12 @@ async function serve(): Promise<void> {
       status: () => integrationsStatus(cfg, whatsappQr),
       whatsappQr,
       onInbound: inbound,
+      whatsappWebhook: {
+        verifyChallenge: (q) => whatsappCloud.verifyChallenge(cfg, q),
+        verifySignature: (raw, sig) => whatsappCloud.verifySignature(cfg, raw, sig),
+        parse: (body) => whatsappCloud.parseWebhook(body),
+      },
+      parseEmailWebhook: parseInboundEmailWebhook,
       sendTest: (actor, channel) => services.notifications.sendTest(actor, channel),
     },
     mcp: { handleHttp: handleMcpHttp },
