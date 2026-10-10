@@ -172,18 +172,18 @@ test('OAuth registration + authorize validation', async () => {
     assert.equal(r.statusCode, 400, JSON.stringify(p));
     assert.equal(r.headers.location, undefined);
   }
-  // Trusted redirect, bad request → error redirect with state passthrough.
+  // Registered redirect but a bad request → still an error page, never a redirect (M4: anyone can
+  // register a client, so error redirects would be an open redirector).
   for (const [p, err] of [
     [{ ...good, code_challenge_method: 'plain' }, 'invalid_request'],
     [{ ...good, code_challenge: '' }, 'invalid_request'],
     [{ ...good, response_type: 'token' }, 'unsupported_response_type'],
   ] as const) {
     const r = await h.app.inject({ method: 'GET', url: authorizeUrl(p as Record<string, string>) });
-    assert.equal(r.statusCode, 302);
-    const loc = new URL(String(r.headers.location));
-    assert.equal(`${loc.origin}${loc.pathname}`, REDIRECT);
-    assert.equal(loc.searchParams.get('error'), err);
-    assert.equal(loc.searchParams.get('state'), 's1');
+    assert.equal(r.statusCode, 400);
+    assert.equal(r.headers.location, undefined);
+    assert.match(String(r.headers['content-type']), /^text\/html/);
+    assert.ok(r.body.includes(err));
   }
   // A client registered with a different secret is rejected.
   const other = await harness({ config: { signingSecret: 'another-secret-entirely-xyz' } });

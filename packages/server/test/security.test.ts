@@ -145,6 +145,39 @@ test('M2: at most 5 concurrent streams per member — a new one closes the oldes
   await h.app.close();
 });
 
+// ─── M4: OAuth open redirect ────────────────────────────────────────────────
+
+test('M4: /oauth/authorize never redirects on a validation error (audit repro); approve validation errors are 400s', async () => {
+  const h = await harness();
+  // An attacker registers a client for their own site (DCR is open)…
+  const reg = await h.app.inject({ method: 'POST', url: '/oauth/register', payload: { client_name: 'Claude', redirect_uris: ['https://evil.example/cb'] } });
+  const cid = JSON.parse(reg.body).client_id as string;
+  // …and links victims to an authorize URL that fails validation.
+  for (const qs of [
+    `client_id=${encodeURIComponent(cid)}&response_type=token`,
+    `client_id=${encodeURIComponent(cid)}&response_type=code`,
+    `client_id=${encodeURIComponent(cid)}&response_type=code&code_challenge=${'a'.repeat(43)}&code_challenge_method=plain`,
+    `client_id=${encodeURIComponent(cid)}&response_type=code&redirect_uri=${encodeURIComponent('https://evil.example/cb2')}`,
+    `client_id=garbage&redirect_uri=${encodeURIComponent('https://evil.example/cb')}`,
+    `client_id=${encodeURIComponent(cid)}&response_type=token&state=${encodeURIComponent('<script>alert(1)</script>')}&error_description=${encodeURIComponent('<img src=x onerror=alert(1)>')}`,
+  ]) {
+    const r = await h.app.inject({ method: 'GET', url: `/oauth/authorize?${qs}` });
+    assert.equal(r.statusCode, 400, qs);
+    assert.equal(r.headers.location, undefined, `no redirect for ${qs}`);
+    assert.match(String(r.headers['content-type']), /^text\/html/);
+    assert.ok(!r.body.includes('evil.example') && !r.body.includes('<script>') && !r.body.includes('<img'), 'nothing reflected unescaped');
+    assert.match(String(r.headers['content-security-policy']), /default-src 'none'/);
+  }
+  // Consent API: a bad query is a 400, not a redirectTo.
+  const bad = await h.app.inject({
+    method: 'POST', url: '/api/oauth/approve', headers: { cookie: h.cookie(), 'x-cb-client': 'web' },
+    payload: { query: { client_id: cid, response_type: 'token' }, scopes: ['read'], actAs: h.fake.members.owner.id, approve: false },
+  });
+  assert.equal(bad.statusCode, 400);
+  assert.equal(JSON.parse(bad.body).redirectTo, undefined);
+  await h.app.close();
+});
+
 test('H1: normalizeTrustProxy never passes Fastify trust-everything `true`', () => {
   assert.equal(normalizeTrustProxy(true), 1);
   assert.equal(normalizeTrustProxy(false), false);
