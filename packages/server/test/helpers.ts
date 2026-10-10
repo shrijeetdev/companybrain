@@ -29,6 +29,7 @@ export function makeWebDir(): string {
   writeFileSync(join(dir, 'index.html'), '<!doctype html><html><body><div id="root">SPA_INDEX</div></body></html>');
   writeFileSync(join(dir, 'assets', 'app-abc123.js'), 'console.log("app")');
   writeFileSync(join(dir, 'sw.js'), 'self.addEventListener("fetch", () => {})');
+  writeFileSync(join(dir, 'theme-init.js'), '/* theme */');
   writeFileSync(join(dir, 'manifest.webmanifest'), '{"name":"companybrain"}');
   return dir;
 }

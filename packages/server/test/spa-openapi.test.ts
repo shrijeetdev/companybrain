@@ -33,6 +33,12 @@ test('SPA: static files with cache policy, client-side route fallback, JSON 404 
   assert.match(String(sw.headers['content-type']), /^(text|application)\/javascript/);
   assert.equal(sw.headers['cache-control'], 'no-cache');
   assert.equal(sw.headers['service-worker-allowed'], '/');
+  // The no-flash theme bootstrap is an external same-origin script (CSP script-src 'self'), never cached stale.
+  const ti = await h.app.inject({ method: 'GET', url: '/theme-init.js' });
+  assert.equal(ti.statusCode, 200);
+  assert.match(String(ti.headers['content-type']), /^(text|application)\/javascript/);
+  assert.equal(ti.headers['cache-control'], 'no-cache');
+  assert.match(String(ti.headers['content-security-policy']), /script-src 'self'(;|$)/);
   const mf = await h.app.inject({ method: 'GET', url: '/manifest.webmanifest' });
   assert.match(String(mf.headers['content-type']), /^application\/manifest\+json/);
 
