@@ -3,37 +3,86 @@
 
 import { createHash } from 'node:crypto';
 import type { InboundMessage } from '@companybrain/types';
-import { bestBody } from './text';
+import { bestBody, MAX_HTML_BODY, MAX_TEXT_BODY } from './text';
+import {
+  aligned,
+  authenticatedByHeader,
+  dkimSignatureDomain,
+  domainOf,
+  MAX_AUTH_RESULTS,
+  MAX_HEADER_VALUE,
+  receivedSpfPassDomain,
+  type EmailAuthOptions,
+} from './auth';
+
+/** RFC 5321 path limit; a From header longer than this is truncated before parsing. */
+export const MAX_FROM = 320;
+/** Raw header blocks (SendGrid `headers`, Mailgun `message-headers`) are capped before parsing. */
+const MAX_HEADER_BLOCK = 64 * 1024;
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() !== '' ? v : null);
 
-/** Parse "Raj Kumar <raj@x.com>" / "raj@x.com" / '"Kumar, Raj" <raj@x.com>' → address + name. */
-export function parseAddress(raw: string | null | undefined): { address: string; name: string | null } | null {
-  if (!raw) return null;
-  const s = raw.trim();
-  const angle = /^(.*?)<\s*([^<>\s]+@[^<>\s]+)\s*>\s*$/.exec(s);
-  if (angle) {
-    const name = angle[1]!.trim().replace(/^"(.*)"$/, '$1').trim();
-    return { address: angle[2]!.toLowerCase(), name: name || null };
-  }
-  const bare = /([^\s<>"',;:]+@[^\s<>"',;:]+\.[^\s<>"',;:]+)/.exec(s);
-  if (!bare) return null;
-  return { address: bare[1]!.toLowerCase(), name: null };
+const ADDR_STOP = new Set([' ', '\t', '\r', '\n', '<', '>', '"', "'", ',', ';', ':']);
+
+/** local@domain.tld with exactly one '@', a dot inside the domain, no separators. Linear. */
+function validAddress(a: string): boolean {
+  if (a.length < 5 || a.length > 254) return false;
+  for (const ch of a) if (ADDR_STOP.has(ch)) return false;
+  const at = a.indexOf('@');
+  if (at <= 0 || at !== a.lastIndexOf('@')) return false;
+  const domain = a.slice(at + 1);
+  const dot = domain.indexOf('.');
+  return dot > 0 && !domain.endsWith('.');
 }
 
-/** Find a header value in a raw header block ("Name: value\r\n…"), unfolding continuations. */
-function headerFromRaw(raw: string | null, name: string): string | null {
+/**
+ * Parse "Raj Kumar <raj@x.com>" / "raj@x.com" / '"Kumar, Raj" <raj@x.com>' → address + name.
+ * No backtracking regexes: input is capped at MAX_FROM chars and scanned with indexOf/split.
+ */
+export function parseAddress(raw: string | null | undefined): { address: string; name: string | null } | null {
   if (!raw) return null;
-  const unfolded = raw.replace(/\r?\n[ \t]+/g, ' ');
-  const re = new RegExp(`^${name}:\\s*(.+)$`, 'im');
-  return re.exec(unfolded)?.[1]?.trim() ?? null;
+  const s = raw.slice(0, MAX_FROM).trim();
+  if (s.endsWith('>')) {
+    const lt = s.lastIndexOf('<');
+    if (lt >= 0) {
+      const inner = s.slice(lt + 1, -1).trim().toLowerCase();
+      if (validAddress(inner)) {
+        let name = s.slice(0, lt).trim();
+        if (name.length >= 2 && name.startsWith('"') && name.endsWith('"')) name = name.slice(1, -1).trim();
+        return { address: inner, name: name || null };
+      }
+    }
+  }
+  for (const tok of s.split(/[\s<>"',;:]+/)) {
+    if (tok && validAddress(tok)) return { address: tok.toLowerCase(), name: null };
+  }
+  return null;
 }
+
+/** Raw header block → [lowercased name, value][] in order (folded lines joined). Linear. */
+function headersFromRaw(raw: string | null): [string, string][] {
+  if (!raw) return [];
+  const out: [string, string][] = [];
+  for (const line of raw.slice(0, MAX_HEADER_BLOCK).split(/\r?\n/)) {
+    if ((line.startsWith(' ') || line.startsWith('\t')) && out.length) {
+      const last = out[out.length - 1]!;
+      if (last[1].length < MAX_AUTH_RESULTS) last[1] += ' ' + line.trim();
+      continue;
+    }
+    const colon = line.indexOf(':');
+    if (colon <= 0) continue;
+    out.push([line.slice(0, colon).trim().toLowerCase(), line.slice(colon + 1).trim()]);
+  }
+  return out;
+}
+
+const cap = (v: string | null, n = MAX_HEADER_VALUE): string | null => (v && v.length > n ? v.slice(0, n) : v);
 
 function parseDate(v: unknown): number | null {
   if (typeof v === 'number' && Number.isFinite(v)) return v < 1e12 ? v * 1000 : v;
-  const s = str(v);
+  const s = str(v)?.slice(0, 200);
   if (!s) return null;
   if (/^\d+(\.\d+)?$/.test(s)) {
     const n = Number(s);
@@ -61,7 +110,11 @@ interface Extracted {
   html: string | null;
   messageId: string | null;
   date: number | null;
+  /** Provider-specific sender-authentication verdict for a given From address. */
+  verify(from: string, opts: EmailAuthOptions): boolean;
 }
+
+const first = (hs: [string, string][], name: string) => hs.find(([k]) => k === name)?.[1] ?? null;
 
 function extract(b: Obj): Extracted | null {
   // Postmark: PascalCase fields.
@@ -77,50 +130,71 @@ function extract(b: Obj): Extracted | null {
       html: str(b.HtmlBody),
       messageId: str(midHeader?.Value) ?? str(b.MessageID),
       date: parseDate(b.Date),
+      verify(from, opts) {
+        const hs: [string, string][] = headers
+          .filter((h): h is Obj => isObj(h) && typeof h.Name === 'string' && typeof h.Value === 'string')
+          .slice(0, 500)
+          .map((h) => [(h.Name as string).toLowerCase(), (h.Value as string).slice(0, MAX_AUTH_RESULTS)]);
+        if (authenticatedByHeader(first(hs, 'authentication-results'), from, opts)) return true;
+        // SpamAssassin's DKIM_VALID_AU = a valid DKIM signature from the author's (From) domain.
+        if ((first(hs, 'x-spam-tests') ?? '').split(/[\s,]+/).includes('DKIM_VALID_AU')) return true;
+        return aligned(receivedSpfPassDomain(first(hs, 'received-spf')), domainOf(from));
+      },
     };
   }
   // Mailgun routes (forward/store): "body-plain", "stripped-text", "Message-Id", "message-headers".
   if ('body-plain' in b || 'stripped-text' in b || 'body-html' in b || 'message-headers' in b) {
-    let mid = str(b['Message-Id']) ?? str(b['message-id']);
-    if (!mid) {
-      const mh = b['message-headers'];
-      let pairs: unknown = mh;
-      if (typeof mh === 'string') {
-        try {
-          pairs = JSON.parse(mh);
-        } catch {
-          pairs = null;
-        }
-      }
-      if (Array.isArray(pairs)) {
-        const p = pairs.find((x) => Array.isArray(x) && typeof x[0] === 'string' && x[0].toLowerCase() === 'message-id');
-        mid = Array.isArray(p) ? str(p[1]) : null;
+    const mh = b['message-headers'];
+    let pairs: unknown = mh;
+    if (typeof mh === 'string') {
+      try {
+        pairs = JSON.parse(mh.slice(0, MAX_HEADER_BLOCK * 4));
+      } catch {
+        pairs = null;
       }
     }
+    const hs: [string, string][] = Array.isArray(pairs)
+      ? pairs
+          .slice(0, 500)
+          .filter((x): x is [string, string] => Array.isArray(x) && typeof x[0] === 'string' && typeof x[1] === 'string')
+          .map(([k, v]) => [k.toLowerCase(), v.slice(0, MAX_AUTH_RESULTS)])
+      : [];
+    const mid = str(b['Message-Id']) ?? str(b['message-id']) ?? str(first(hs, 'message-id'));
+    const sender = str(b.sender);
     return {
-      from: str(b.from) ?? str(b.From) ?? str(b.sender),
+      from: str(b.from) ?? str(b.From) ?? sender,
       subject: str(b.subject) ?? str(b.Subject),
       text: str(b['stripped-text']) ?? str(b['body-plain']),
       html: str(b['stripped-html']) ?? str(b['body-html']),
       messageId: mid,
       date: parseDate(b.timestamp) ?? parseDate(b.Date),
+      verify(from, opts) {
+        if (authenticatedByHeader(first(hs, 'authentication-results'), from, opts)) return true;
+        const fd = domainOf(from);
+        const spf = (str(b['X-Mailgun-Spf']) ?? first(hs, 'x-mailgun-spf') ?? '').trim().toLowerCase();
+        if (spf === 'pass' && aligned(domainOf(sender), fd)) return true;
+        const dkim = (str(b['X-Mailgun-Dkim-Check-Result']) ?? first(hs, 'x-mailgun-dkim-check-result') ?? '').trim().toLowerCase();
+        return dkim === 'pass' && aligned(dkimSignatureDomain(first(hs, 'dkim-signature')), fd);
+      },
     };
   }
   // SendGrid Inbound Parse (fields posted as form/JSON: from, subject, text, html, headers string, envelope).
   // Cloudflare Email Workers / generic: from, to, subject, text, html, messageId, date.
-  const headers = str(b.headers);
-  let from = str(b.from);
-  if (!from && isObj(b.from)) from = str(b.from.address) ?? str(b.from.email);
-  if (!from && str(b.envelope)) {
+  const hs = headersFromRaw(str(b.headers));
+  let envelopeFrom: string | null = null;
+  if (str(b.envelope)) {
     try {
-      const env = JSON.parse(b.envelope as string) as Obj;
-      from = str(env.from);
+      const env = JSON.parse((b.envelope as string).slice(0, MAX_HEADER_VALUE * 8)) as unknown;
+      envelopeFrom = isObj(env) ? str(env.from) : null;
     } catch {
       /* ignore */
     }
-  } else if (!from && isObj(b.envelope)) {
-    from = str(b.envelope.from);
+  } else if (isObj(b.envelope)) {
+    envelopeFrom = str(b.envelope.from);
   }
+  let from = str(b.from);
+  if (!from && isObj(b.from)) from = str(b.from.address) ?? str(b.from.email);
+  if (!from) from = envelopeFrom;
   const fromName = isObj(b.from) ? str(b.from.name) : null;
   return {
     from,
@@ -128,13 +202,31 @@ function extract(b: Obj): Extracted | null {
     subject: str(b.subject),
     text: str(b.text) ?? str(b.plain) ?? str(b.body),
     html: str(b.html),
-    messageId: str(b.messageId) ?? str(b.message_id) ?? str(b['Message-ID']) ?? headerFromRaw(headers, 'Message-ID'),
-    date: parseDate(b.date) ?? parseDate(headerFromRaw(headers, 'Date')),
+    messageId: str(b.messageId) ?? str(b.message_id) ?? str(b['Message-ID']) ?? str(first(hs, 'message-id')),
+    date: parseDate(b.date) ?? parseDate(first(hs, 'date')),
+    verify(fromAddr, opts) {
+      // A forwarder you control (e.g. a Cloudflare Email Worker) that verified the message itself.
+      if (b.authenticated === true) return true;
+      if (authenticatedByHeader(first(hs, 'authentication-results'), fromAddr, opts)) return true;
+      const fd = domainOf(fromAddr);
+      // SendGrid Inbound Parse: `SPF` = "pass" (envelope sender), `dkim` = "{@a.com : pass, @b.com : fail}".
+      if (str(b.SPF)?.trim().toLowerCase() === 'pass' && aligned(domainOf(envelopeFrom), fd)) return true;
+      const dkim = str(b.dkim)?.slice(0, MAX_AUTH_RESULTS) ?? '';
+      for (const part of dkim.replace(/[{}]/g, '').split(',')) {
+        const [dom, res] = part.split(':').map((x) => x.trim().toLowerCase());
+        if (res === 'pass' && aligned(domainOf(dom), fd)) return true;
+      }
+      return false;
+    },
   };
 }
 
-/** Normalize a provider webhook body into an InboundMessage. null when unusable. */
-export function parseInboundEmailWebhook(body: unknown): InboundMessage | null {
+/**
+ * Normalize a provider webhook body into an InboundMessage. null when unusable.
+ * `authenticated` is true only when the provider vouches for the From address (see ./auth.ts),
+ * or when `opts.trustUnverifiedSenders` is set (unsafe).
+ */
+export function parseInboundEmailWebhook(body: unknown, opts: EmailAuthOptions = {}): InboundMessage | null {
   let b: unknown = body;
   if (Buffer.isBuffer(b)) b = b.toString('utf8');
   if (typeof b === 'string') {
@@ -149,16 +241,25 @@ export function parseInboundEmailWebhook(body: unknown): InboundMessage | null {
   if (!e) return null;
   const addr = parseAddress(e.from);
   if (!addr) return null;
-  const subject = e.subject?.trim() || null;
-  const text = bestBody(e.text, e.html) || subject || '';
+  const subject = cap(e.subject)?.trim() || null;
+  const text = bestBody(cap(e.text, MAX_TEXT_BODY), cap(e.html, MAX_HTML_BODY)) || subject || '';
   if (!text) return null;
+  let authenticated = !!opts.trustUnverifiedSenders;
+  if (!authenticated) {
+    try {
+      authenticated = e.verify(addr.address, opts);
+    } catch {
+      authenticated = false;
+    }
+  }
   return {
     channel: 'email',
     from: addr.address,
-    fromName: e.fromName?.trim() || addr.name,
+    fromName: cap(e.fromName ?? null, 200)?.trim() || addr.name,
     subject,
     text,
-    externalId: cleanMessageId(e.messageId) ?? fallbackId(addr.address, subject, text),
+    externalId: cleanMessageId(cap(e.messageId)) ?? fallbackId(addr.address, subject, text),
     receivedAt: e.date ?? Date.now(),
+    authenticated,
   };
 }

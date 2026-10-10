@@ -64,7 +64,7 @@ test('intake: unknown sender → inbox item with suggestion + owner notification
   const ack = await env.s.inbox.ingest(orgId, wa('+15550009999', 'Also tables', { fromName: 'Dana Client' }));
   assert.match(ack.reply!, /Thanks, Dana — we received your message/);
 
-  const em = await env.s.inbox.ingest(orgId, { channel: 'email', from: 'Priya <PRIYA@ACME.IO>', fromName: 'Priya', subject: 'Renew domain', text: 'The domain expires soon.\nPlease renew.', externalId: '<m1@mail>', receivedAt: T0 });
+  const em = await env.s.inbox.ingest(orgId, { channel: 'email', from: 'Priya <PRIYA@ACME.IO>', fromName: 'Priya', subject: 'Renew domain', text: 'The domain expires soon.\nPlease renew.', externalId: '<m1@mail>', receivedAt: T0, authenticated: true });
   assert.ok(em.task);
   assert.equal(em.task!.title, 'Renew domain');
   assert.match(em.task!.notes, /expires soon/);

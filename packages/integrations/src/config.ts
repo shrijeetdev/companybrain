@@ -56,6 +56,13 @@ export interface IntegrationsConfig {
   /** null = outbound email not configured. */
   smtp: SmtpConfig | null;
   emailWebhookSecret: string | null;
+  /** Inbound-email sender verification (anti-spoofing), see email/auth.ts. */
+  emailAuth: {
+    /** EMAIL_AUTHSERV_ID: required authserv-id of the topmost Authentication-Results header (IMAP + webhooks). */
+    authservId: string | null;
+    /** EMAIL_TRUST_UNVERIFIED_SENDERS=true — UNSAFE: treat every email sender as verified. Default false. */
+    trustUnverifiedSenders: boolean;
+  };
   vapid: { publicKey: string | null; privateKey: string | null; subject: string };
   llm: LlmConfig | null;
   tts: TtsConfig | null;
@@ -221,6 +228,10 @@ export function loadIntegrationsConfig(env: NodeJS.ProcessEnv = process.env, dat
     imap,
     smtp,
     emailWebhookSecret: str(env, 'EMAIL_WEBHOOK_SECRET'),
+    emailAuth: {
+      authservId: str(env, 'EMAIL_AUTHSERV_ID')?.toLowerCase() ?? null,
+      trustUnverifiedSenders: bool(env, 'EMAIL_TRUST_UNVERIFIED_SENDERS', false),
+    },
     vapid,
     llm,
     tts,

@@ -4,12 +4,14 @@
 //   companybrain          start the app (default)
 //   companybrain mcp      MCP over stdio for desktop AI hosts (Claude Desktop, Cursor, …)
 //   companybrain migrate  run database migrations and exit
-//   companybrain backup [dir]  hot backup of the database + keys into dir (default ./backups)
+//   companybrain backup [dir] [--without-keys]
+//                        hot backup of the database + key files into dir (default ./backups);
+//                        --without-keys leaves out secret.key / signing.key / vapid.json
 //
 // The `mcp` subcommand must never write anything but JSON-RPC to stdout, so it never starts
 // the web server, and all logging goes to stderr.
 
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,6 +19,7 @@ import { openDatabase, resolveDbPath } from '@companybrain/db';
 import { createCalendarFetcher, createLlm, loadIntegrationsConfig } from '@companybrain/integrations';
 import { runMcpStdio } from '@companybrain/mcp';
 import { createApp, createAppServices, stderrLog as log, VERSION } from '../src/app';
+import { backupTo } from '../src/backup';
 
 // Load ./.env when present (never overrides variables already set by the host).
 if (existsSync('.env')) {
@@ -39,7 +42,7 @@ if (command === 'mcp') {
   openDatabase(dbPath).close();
   log.info(`migrations applied → ${dbPath}`);
 } else if (command === 'backup') {
-  await backup(process.argv.slice(3).find((a) => !a.startsWith('-')) ?? 'backups');
+  await backup(process.argv.slice(3).find((a) => !a.startsWith('-')) ?? 'backups', process.argv.includes('--without-keys'));
 } else if (command === 'serve' || command === 'start') {
   await serve();
 } else {
@@ -47,18 +50,12 @@ if (command === 'mcp') {
   process.exit(64);
 }
 
-/** Online backup (safe while the app runs) of the SQLite file plus the key files next to it. */
-async function backup(target: string): Promise<void> {
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const dir = resolve(target, `companybrain-${stamp}`);
-  mkdirSync(dir, { recursive: true, mode: 0o700 });
-  const db = openDatabase(dbPath);
-  await db.sqlite.backup(join(dir, 'companybrain.sqlite'));
-  db.close();
-  for (const f of ['secret.key', 'signing.key', 'vapid.json']) {
-    if (existsSync(join(dataDir, f))) copyFileSync(join(dataDir, f), join(dir, f));
-  }
-  log.info(`backup written → ${dir}`);
+/** Online backup (safe while the app runs) of the SQLite file plus, unless --without-keys, the key files. */
+async function backup(target: string, withoutKeys: boolean): Promise<void> {
+  const { dir, files } = await backupTo(dbPath, dataDir, target, { withoutKeys });
+  log.info(`backup written → ${dir} (${files.join(', ')})`);
+  if (withoutKeys) log.info('key files skipped (--without-keys): keep secret.key / signing.key / vapid.json (or COMPANYBRAIN_SECRET) safe separately — the backup cannot decrypt stored secrets without them');
+  else log.warn('this backup contains secret.key, which decrypts the secrets stored in the database — store it encrypted');
 }
 
 async function runMcp(): Promise<void> {

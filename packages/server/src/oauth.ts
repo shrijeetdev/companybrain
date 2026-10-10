@@ -94,12 +94,12 @@ export interface AuthorizeParams {
   resource: string | null;
 }
 
-type AuthorizeCheck =
-  | { ok: true; p: AuthorizeParams }
-  /** Client/redirect can't be trusted → show an error, never redirect. */
-  | { ok: false; fatal: true; error: string; description: string }
-  /** Trusted redirect → send the error back to the client. */
-  | { ok: false; fatal: false; redirectTo: string };
+/**
+ * Validation failures never redirect (not even to a registered redirect_uri): anyone can register
+ * a client, so an error redirect would be an open redirector. Only the user's explicit
+ * approve/deny on the consent page sends the browser back to the client.
+ */
+type AuthorizeCheck = { ok: true; p: AuthorizeParams } | { ok: false; error: string; description: string };
 
 function pick(q: Record<string, unknown>, k: string): string | null {
   const v = q[k];
@@ -113,25 +113,21 @@ export function withParams(uri: string, params: Record<string, string | null | u
   return url.toString();
 }
 
-export function checkAuthorize(secret: string, q: Record<string, unknown>, issuer: string): AuthorizeCheck {
+export function checkAuthorize(secret: string, q: Record<string, unknown>, _issuer?: string): AuthorizeCheck {
+  const fail = (error: string, description: string): AuthorizeCheck => ({ ok: false, error, description });
   const clientId = pick(q, 'client_id');
   const client = verifyClientId(secret, clientId);
-  if (!clientId || !client) return { ok: false, fatal: true, error: 'invalid_client', description: 'Unknown or invalid client_id' };
+  if (!clientId || !client) return fail('invalid_client', 'Unknown or invalid client_id');
   let redirectUri = pick(q, 'redirect_uri');
   if (!redirectUri) {
-    if (client.redirectUris.length !== 1) return { ok: false, fatal: true, error: 'invalid_request', description: 'redirect_uri is required' };
+    if (client.redirectUris.length !== 1) return fail('invalid_request', 'redirect_uri is required');
     redirectUri = client.redirectUris[0]!;
   }
   // Exact string match against the registered list.
   if (!client.redirectUris.includes(redirectUri) || !isAllowedRedirectUri(redirectUri)) {
-    return { ok: false, fatal: true, error: 'invalid_request', description: 'redirect_uri is not registered for this client' };
+    return fail('invalid_request', 'redirect_uri is not registered for this client');
   }
   const state = pick(q, 'state');
-  const fail = (error: string, description: string): AuthorizeCheck => ({
-    ok: false,
-    fatal: false,
-    redirectTo: withParams(redirectUri, { error, error_description: description, state, iss: issuer }),
-  });
   if (state !== null && state.length > 1024) return fail('invalid_request', 'state too long');
   if (pick(q, 'response_type') !== 'code') return fail('unsupported_response_type', 'response_type must be "code"');
   const challenge = pick(q, 'code_challenge');
@@ -200,6 +196,22 @@ function eq(a: string, b: string): boolean {
 }
 
 // ─── Public endpoints (/.well-known/*, /oauth/*) ────────────────────────────
+
+const HTML_ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => HTML_ESC[c]!);
+
+/** Minimal, self-contained HTML error page for browser-facing OAuth errors (never redirects). */
+export function oauthErrorPage(reply: FastifyReply, status: number, error: string, description: string) {
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connection failed</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1rem;color:#222}code{background:#f2f2f2;padding:.1em .3em;border-radius:4px}</style></head>
+<body><h1>Could not connect</h1><p>${escapeHtml(description)}</p><p><code>${escapeHtml(error)}</code></p><p>Close this window and try connecting again from your AI app.</p></body></html>`;
+  return reply
+    .code(status)
+    .header('cache-control', 'no-store')
+    .header('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+    .type('text/html; charset=utf-8')
+    .send(body);
+}
 
 function oauthError(reply: FastifyReply, status: number, error: string, description: string) {
   return reply
@@ -328,10 +340,7 @@ export async function registerOAuthPublic(app: FastifyInstance, deps: ServerDeps
     oauth.get('/oauth/authorize', async (req, reply) => {
       const q = (req.query ?? {}) as Record<string, unknown>;
       const check = checkAuthorize(secret, q, baseUrl(deps.config.publicUrl, req));
-      if (!check.ok) {
-        if (check.fatal) return oauthError(reply, 400, check.error, check.description);
-        return reply.redirect(check.redirectTo, 302);
-      }
+      if (!check.ok) return oauthErrorPage(reply, 400, check.error, check.description);
       const p = check.p;
       const qs = new URLSearchParams();
       qs.set('response_type', 'code');
@@ -406,10 +415,7 @@ export function oauthApiRoutes(deps: ServerDeps, store: CodeStore): RouteDef[] {
       handler: async ({ actor, req, body }) => {
         if (actor.via !== 'session') throw new AppError('forbidden', 'OAuth approval requires a signed-in web session');
         const check = checkAuthorize(secret, body.query, baseUrl(deps.config.publicUrl, req));
-        if (!check.ok) {
-          if (check.fatal) throw new AppError('bad_request', check.description, { error: check.error });
-          return { redirectTo: check.redirectTo };
-        }
+        if (!check.ok) throw new AppError('bad_request', check.description, { error: check.error });
         const p = check.p;
         const iss = baseUrl(deps.config.publicUrl, req);
         if (!body.approve) {

@@ -20,6 +20,25 @@ import { baseUrl } from './origin';
 
 export const BODY_LIMIT = 1_048_576; // 1 MB
 const MINUTE = 60_000;
+/** Login/setup attempts per normalized identifier (any IP) per window. */
+export const LOGIN_ACCOUNT_MAX = 30;
+export const LOGIN_ACCOUNT_WINDOW_MS = 15 * MINUTE;
+
+/** Login identifiers are compared case-insensitively: normalize before keying rate limits. */
+export function normalizeIdentifier(identifier: string): string {
+  return String(identifier ?? '').normalize('NFKC').trim().toLowerCase().slice(0, 320);
+}
+
+/**
+ * Fastify's `trustProxy: true` trusts EVERY hop of X-Forwarded-For, so a client-chosen header
+ * becomes `req.ip`. `true` therefore means exactly one trusted hop (the reverse proxy in front of
+ * us). Numbers (hop counts) and IP/CIDR lists pass through unchanged.
+ */
+export function normalizeTrustProxy(v: boolean | number | string | string[] | undefined | null): false | number | string | string[] {
+  if (v === true) return 1;
+  if (v === false || v === undefined || v === null || v === '') return false;
+  return v;
+}
 
 /** Content-Security-Policy for the Vite React SPA served from the same origin. */
 export const CSP_DIRECTIVES: Record<string, string[]> = {
@@ -75,7 +94,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
         },
       },
     },
-    trustProxy: cfg.trustProxy as boolean,
+    trustProxy: normalizeTrustProxy(cfg.trustProxy),
     bodyLimit: BODY_LIMIT,
     genReqId: () => randomUUID(),
     requestIdHeader: false,
@@ -140,10 +159,16 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   const globalLimit: typeof memberLimit = (req, reply) => (req.actor ? memberLimit(req, reply) : anonLimit(req, reply));
   const authIdLimit = makeLimiter(app, { max: 10, windowMs: MINUTE, prefix: 'auth', key: (req) => `${req.ip}|${authIds.get(req) ?? ''}` });
   const authIpLimit = makeLimiter(app, { max: 60, windowMs: MINUTE, prefix: 'auth-ip', key: (req) => req.ip });
+  // Per-account limit that ignores the client IP entirely, so rotating source addresses (or a
+  // spoofable X-Forwarded-For) cannot be used to brute-force one account.
+  const authAccountLimit = makeLimiter(app, {
+    max: LOGIN_ACCOUNT_MAX, windowMs: LOGIN_ACCOUNT_WINDOW_MS, prefix: 'auth-acct', key: (req) => authIds.get(req) ?? '',
+  });
   const authLimit = async (req: FastifyRequest, identifier: string, reply: import('fastify').FastifyReply) => {
-    authIds.set(req, identifier.trim().toLowerCase());
+    authIds.set(req, normalizeIdentifier(identifier));
     await authIpLimit(req, reply);
     await authIdLimit(req, reply);
+    await authAccountLimit(req, reply);
   };
 
   const identify = makeIdentify(deps);

@@ -15,7 +15,7 @@ test('notifications.sendTest: per-channel checks and delivery to the actor', asy
   const push = await env.s.notifications.sendTest(pA, 'push');
   assert.equal(push.ok, false);
   assert.match(push.error!, /No push subscriptions/);
-  await env.s.notifications.subscribePush(pA, { endpoint: 'https://push.example/p1', keys: { p256dh: 'k', auth: 'a' } }, 'ua');
+  await env.s.notifications.subscribePush(pA, { endpoint: 'https://fcm.googleapis.com/fcm/send/p1', keys: { p256dh: 'k', auth: 'a' } }, 'ua');
   assert.deepEqual(await env.s.notifications.sendTest(pA, 'push'), { ok: true });
   const { a: noPhoneA } = await team.add('Max');
   assert.match((await env.s.notifications.sendTest(noPhoneA, 'whatsapp')).error!, /phone number/);

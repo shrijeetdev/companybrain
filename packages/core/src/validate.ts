@@ -92,12 +92,18 @@ export function email(v: unknown, field = 'email'): string {
   return s;
 }
 
+/**
+ * Phone numbers are stored in E.164 (`+<country code><number>`, 8–15 digits) so inbound WhatsApp
+ * senders can be matched exactly. A leading `00` is accepted for `+`; a number without a country
+ * code is rejected (it can't be matched safely).
+ */
 export function phone(v: unknown, field = 'phone'): string | null {
   const s = optStr(v, field, 32);
   if (s === null) return null;
-  if (!/^\+?[0-9 ()-]{6,24}$/.test(s) || s.replace(/\D/g, '').length < 6) bad(`${field} is not a valid phone number`);
-  const digits = s.replace(/\D/g, '');
-  return s.startsWith('+') ? `+${digits}` : digits;
+  if (!/^(\+|00)[0-9 ().-]{6,28}$/.test(s)) bad(`${field} must be an international number with country code, e.g. +919876543210`);
+  const digits = s.replace(/\D/g, '').replace(/^00/, '');
+  if (digits.length < 8 || digits.length > 15 || digits.startsWith('0')) bad(`${field} must be an international number with country code, e.g. +919876543210`);
+  return `+${digits}`;
 }
 
 export function color(v: unknown, field = 'color'): string {

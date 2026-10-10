@@ -129,10 +129,25 @@ export function safeEqual(a: string, b: string): boolean {
 }
 
 /** Strip secrets (URL-embedded MCP keys, `?secret=`) from URLs before logging. */
+const SECRET_PARAMS = new Set(['secret', 'key', 'token', 'hub.verify_token', 'access_token', 'code', 'code_verifier']);
+
 export function redactUrl(url: string): string {
-  let out = url.replace(/(\/mcp\/k\/)[^/?#]+/i, '$1[REDACTED]');
-  out = out.replace(/([?&](?:secret|key|token|hub\.verify_token)=)[^&#]*/gi, '$1[REDACTED]');
-  return out;
+  const out = url.replace(/(\/mcp\/k\/)[^/?#]+/i, '$1[REDACTED]');
+  const q = out.indexOf('?');
+  if (q < 0) return out;
+  // Compare DECODED parameter names, so `?%73ecret=` can't slip past the redaction.
+  const params = out.slice(q + 1).split('&').map((pair) => {
+    const eq = pair.indexOf('=');
+    if (eq < 0) return pair;
+    let name = pair.slice(0, eq);
+    try {
+      name = decodeURIComponent(name.replace(/\+/g, ' '));
+    } catch {
+      /* keep raw */
+    }
+    return SECRET_PARAMS.has(name.trim().toLowerCase()) ? `${pair.slice(0, eq)}=[REDACTED]` : pair;
+  });
+  return `${out.slice(0, q)}?${params.join('&')}`;
 }
 
 /** Normalised view of a path, used ONLY to decide how to render a 404 (never for auth). */

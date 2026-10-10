@@ -255,3 +255,17 @@ test('v1 import: users, tasks, loops, leads; v1 tables renamed; idempotent', () 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('M5: findByPhone matches the full E.164 digits only (no last-10-digit matching)', () => {
+  const db = openDatabase(':memory:', { secret: 'x' });
+  const org = seedOrg(db);
+  const india = seedMember(db, org, { phone: '+919876543210' });
+  seedMember(db, org, { phone: '+447700900123' });
+  assert.deepEqual(db.members.findByPhone(org, '919876543210').map((m) => m.id), [india.id], 'Cloud API wa_id (no +)');
+  assert.deepEqual(db.members.findByPhone(org, '+91 98765-43210').map((m) => m.id), [india.id]);
+  assert.deepEqual(db.members.findByPhone(org, '19876543210'), [], 'same last 10 digits, other country');
+  assert.deepEqual(db.members.findByPhone(org, '9876543210'), [], 'missing country code');
+  assert.deepEqual(db.members.findByPhone(org, '4419876543210'), []);
+  assert.deepEqual(db.members.findByPhone(org, '17700900123'), []);
+  db.close();
+});

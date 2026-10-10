@@ -2,8 +2,8 @@
 
 import type { Report, ReportService, SearchService, Task } from '@companybrain/types';
 import { localDateKey, safeTz, startOfLocalDay } from '@companybrain/db';
-import { actorTz, type Ctx } from '../context.js';
-import { visibility } from '../perms.js';
+import { actorTz, publicMember, type Ctx } from '../context.js';
+import { forbidden, visibility } from '../perms.js';
 import * as v from '../validate.js';
 
 const round = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
@@ -12,6 +12,7 @@ export function createReportService(ctx: Ctx): ReportService {
   const { db } = ctx;
   return {
     async get(actor, windowDays) {
+      if (actor.role === 'guest') forbidden('Guests cannot see team reports');
       const days = windowDays === undefined || windowDays === null ? 30 : v.int(windowDays, 'days', 1, 365);
       const t0 = ctx.clock();
       const org = db.orgs.get(actor.orgId);
@@ -97,7 +98,13 @@ export function createSearchService(ctx: Ctx): SearchService {
       const lc = query.toLowerCase();
       const tasks = ctx.internal.views(actor.orgId, db.tasks.query(actor.orgId, { visibility: visibility(actor), search: query, order: 'updated', limit: n }), actorTz(ctx, actor));
       const projects = db.projects.list(actor.orgId, { visibility: visibility(actor), includeArchived: true }).filter((p) => p.name.toLowerCase().includes(lc) || p.description.toLowerCase().includes(lc)).slice(0, n);
-      const members = db.members.list(actor.orgId).filter((m) => m.name.toLowerCase().includes(lc) || (m.email ?? '').toLowerCase().includes(lc) || (m.title ?? '').toLowerCase().includes(lc)).slice(0, n);
+      const guest = actor.role === 'guest';
+      const members = db.members
+        .list(actor.orgId)
+        // Guests can't search by (or see) email addresses.
+        .filter((m) => m.name.toLowerCase().includes(lc) || (!guest && (m.email ?? '').toLowerCase().includes(lc)) || (m.title ?? '').toLowerCase().includes(lc))
+        .slice(0, n)
+        .map((m) => (guest && m.id !== actor.memberId ? publicMember(m) : m));
       return { tasks, projects, members };
     },
   };

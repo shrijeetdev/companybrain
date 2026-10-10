@@ -883,13 +883,13 @@ var require_shared = __commonJS({
       });
       return response;
     };
-    module.exports.callbackPromise = (resolve5, reject) => function() {
+    module.exports.callbackPromise = (resolve6, reject) => function() {
       let args = Array.from(arguments);
       let err = args.shift();
       if (err) {
         reject(err);
       } else {
-        resolve5(...args);
+        resolve6(...args);
       }
     };
     module.exports.parseDataURI = (uri) => {
@@ -951,8 +951,8 @@ var require_shared = __commonJS({
     module.exports.resolveContent = (data, key, callback) => {
       let promise2;
       if (!callback) {
-        promise2 = new Promise((resolve5, reject) => {
-          callback = module.exports.callbackPromise(resolve5, reject);
+        promise2 = new Promise((resolve6, reject) => {
+          callback = module.exports.callbackPromise(resolve6, reject);
         });
       }
       let content = data && data[key] && data[key].content || data[key];
@@ -4859,8 +4859,8 @@ var require_mime_node = __commonJS({
       build(callback) {
         let promise2;
         if (!callback) {
-          promise2 = new Promise((resolve5, reject) => {
-            callback = shared.callbackPromise(resolve5, reject);
+          promise2 = new Promise((resolve6, reject) => {
+            callback = shared.callbackPromise(resolve6, reject);
           });
         }
         let stream = this.createReadStream();
@@ -7056,8 +7056,8 @@ var require_mailer = __commonJS({
       sendMail(data, callback = null) {
         let promise2;
         if (!callback) {
-          promise2 = new Promise((resolve5, reject) => {
-            callback = shared.callbackPromise(resolve5, reject);
+          promise2 = new Promise((resolve6, reject) => {
+            callback = shared.callbackPromise(resolve6, reject);
           });
         }
         if (typeof this.getSocket === "function") {
@@ -7705,7 +7705,7 @@ var require_smtp_connection = __commonJS({
           let handler = this.customAuth.get(this._authMethod);
           let lastResponse;
           let returned = false;
-          let resolve5 = () => {
+          let resolve6 = () => {
             if (returned) {
               return;
             }
@@ -7739,8 +7739,8 @@ var require_smtp_connection = __commonJS({
             sendCommand: (cmd, done) => {
               let promise2;
               if (!done) {
-                promise2 = new Promise((resolve6, reject2) => {
-                  done = shared.callbackPromise(resolve6, reject2);
+                promise2 = new Promise((resolve7, reject2) => {
+                  done = shared.callbackPromise(resolve7, reject2);
                 });
               }
               this._responseActions.push((str5) => {
@@ -7765,11 +7765,11 @@ var require_smtp_connection = __commonJS({
               setImmediate(() => this._sendCommand(cmd));
               return promise2;
             },
-            resolve: resolve5,
+            resolve: resolve6,
             reject
           });
           if (handlerResponse && typeof handlerResponse.catch === "function") {
-            handlerResponse.then(resolve5).catch(reject);
+            handlerResponse.then(resolve6).catch(reject);
           }
           return;
         }
@@ -10452,8 +10452,8 @@ var require_smtp_pool = __commonJS({
       verify(callback) {
         let promise2;
         if (!callback) {
-          promise2 = new Promise((resolve5, reject) => {
-            callback = shared.callbackPromise(resolve5, reject);
+          promise2 = new Promise((resolve6, reject) => {
+            callback = shared.callbackPromise(resolve6, reject);
           });
         }
         let auth = new PoolResource(this).auth;
@@ -10804,8 +10804,8 @@ var require_smtp_transport = __commonJS({
       verify(callback) {
         let promise2;
         if (!callback) {
-          promise2 = new Promise((resolve5, reject) => {
-            callback = shared.callbackPromise(resolve5, reject);
+          promise2 = new Promise((resolve6, reject) => {
+            callback = shared.callbackPromise(resolve6, reject);
           });
         }
         this.getSocket(this.options, (err, socketOptions) => {
@@ -11422,8 +11422,8 @@ var require_ses_transport = __commonJS({
       verify(callback) {
         let promise2;
         if (!callback) {
-          promise2 = new Promise((resolve5, reject) => {
-            callback = shared.callbackPromise(resolve5, reject);
+          promise2 = new Promise((resolve6, reject) => {
+            callback = shared.callbackPromise(resolve6, reject);
           });
         }
         const cb = (err) => {
@@ -11522,8 +11522,8 @@ var require_nodemailer = __commonJS({
         apiUrl = false;
       }
       if (!callback) {
-        promise2 = new Promise((resolve5, reject) => {
-          callback = shared.callbackPromise(resolve5, reject);
+        promise2 = new Promise((resolve6, reject) => {
+          callback = shared.callbackPromise(resolve6, reject);
         });
       }
       if (ETHEREAL_CACHE && testAccount) {
@@ -14720,7 +14720,7 @@ var require_buffer = __commonJS({
       const isCompatible = typeof data === "object" && data.constructor.name === "EncoderBuffer" && typeof data.length === "number" && typeof data.join === "function";
       return isCompatible;
     };
-    EncoderBuffer.prototype.join = function join7(out, offset) {
+    EncoderBuffer.prototype.join = function join8(out, offset) {
       if (!out)
         out = Buffer2.alloc(this.length);
       if (!offset)
@@ -15769,12 +15769,12 @@ var require_der3 = __commonJS({
       }
       if (subident & 128)
         identifiers.push(ident);
-      const first = identifiers[0] / 40 | 0;
+      const first2 = identifiers[0] / 40 | 0;
       const second = identifiers[0] % 40;
       if (relative)
         result = identifiers;
       else
-        result = [first, second].concat(identifiers.slice(1));
+        result = [first2, second].concat(identifiers.slice(1));
       if (values) {
         let tmp = values[result.join(" ")];
         if (tmp === void 0)
@@ -18243,8 +18243,8 @@ var require_helpers = __commonJS({
     function req(url3, opts = {}) {
       const href = typeof url3 === "string" ? url3 : url3.href;
       const req2 = (href.startsWith("https:") ? https2 : http2).request(url3, opts);
-      const promise2 = new Promise((resolve5, reject) => {
-        req2.once("response", resolve5).once("error", reject).end();
+      const promise2 = new Promise((resolve6, reject) => {
+        req2.once("response", resolve6).once("error", reject).end();
       });
       req2.then = promise2.then.bind(promise2);
       return req2;
@@ -18421,7 +18421,7 @@ var require_parse_proxy_response = __commonJS({
     var debug_1 = __importDefault(require_src());
     var debug = (0, debug_1.default)("https-proxy-agent:parse-proxy-response");
     function parseProxyResponse(socket) {
-      return new Promise((resolve5, reject) => {
+      return new Promise((resolve6, reject) => {
         let buffersLength = 0;
         const buffers = [];
         function read() {
@@ -18487,7 +18487,7 @@ var require_parse_proxy_response = __commonJS({
           }
           debug("got proxy server response: %o %o", firstLine2, headers);
           cleanup();
-          resolve5({
+          resolve6({
             connect: {
               statusCode,
               statusText,
@@ -18883,7 +18883,7 @@ var require_web_push_lib = __commonJS({
       } catch (err) {
         return Promise.reject(err);
       }
-      return new Promise(function(resolve5, reject) {
+      return new Promise(function(resolve6, reject) {
         const httpsOptions = {};
         const urlParts = url3.parse(requestDetails.endpoint);
         httpsOptions.hostname = urlParts.hostname;
@@ -18916,7 +18916,7 @@ var require_web_push_lib = __commonJS({
                 requestDetails.endpoint
               ));
             } else {
-              resolve5({
+              resolve6({
                 statusCode: pushResponse.statusCode,
                 body: responseText,
                 headers: pushResponse.headers
@@ -23347,10 +23347,10 @@ var require_browser2 = __commonJS({
           text = canvas;
           canvas = void 0;
         }
-        return new Promise(function(resolve5, reject) {
+        return new Promise(function(resolve6, reject) {
           try {
             const data = QRCode2.create(text, opts);
-            resolve5(renderFunc(data, canvas, opts));
+            resolve6(renderFunc(data, canvas, opts));
           } catch (e) {
             reject(e);
           }
@@ -23431,11 +23431,11 @@ var require_server = __commonJS({
     }
     function render(renderFunc, text, params) {
       if (!params.cb) {
-        return new Promise(function(resolve5, reject) {
+        return new Promise(function(resolve6, reject) {
           try {
             const data = QRCode2.create(text, params.opts);
             return renderFunc(data, params.opts, function(err, data2) {
-              return err ? reject(err) : resolve5(data2);
+              return err ? reject(err) : resolve6(data2);
             });
           } catch (e) {
             reject(e);
@@ -24416,9 +24416,9 @@ var require_redaction = __commonJS({
       const { paths, censor, remove } = handle(opts);
       const shape = paths.reduce((o, str5) => {
         rx2.lastIndex = 0;
-        const first = rx2.exec(str5);
+        const first2 = rx2.exec(str5);
         const next = rx2.exec(str5);
-        let ns = first[1] !== void 0 ? first[1].replace(/^(?:"|'|`)(.*)(?:"|'|`)$/, "$1") : first[0];
+        let ns = first2[1] !== void 0 ? first2[1].replace(/^(?:"|'|`)(.*)(?:"|'|`)$/, "$1") : first2[0];
         if (ns === "*") {
           ns = wildcardFirstSym;
         }
@@ -25488,7 +25488,7 @@ var require_thread_stream = __commonJS({
     var { version: version2 } = require_package2();
     var { EventEmitter } = __require("events");
     var { Worker } = __require("worker_threads");
-    var { join: join7 } = __require("path");
+    var { join: join8 } = __require("path");
     var { pathToFileURL } = __require("url");
     var { wait } = require_wait();
     var {
@@ -25539,7 +25539,7 @@ var require_thread_stream = __commonJS({
     function createWorker(stream, opts) {
       const { filename, workerData } = opts;
       const bundlerOverrides = "__bundlerPathsOverrides" in globalThis ? globalThis.__bundlerPathsOverrides : {};
-      const toExecute = bundlerOverrides["thread-stream-worker"] || join7(__dirname, "lib", "worker.js");
+      const toExecute = bundlerOverrides["thread-stream-worker"] || join8(__dirname, "lib", "worker.js");
       const worker = new Worker(toExecute, {
         ...opts.workerOpts,
         name: opts.workerOpts?.name || "thread-stream",
@@ -26005,9 +26005,9 @@ var require_transport = __commonJS({
   "node_modules/.pnpm/pino@10.3.1/node_modules/pino/lib/transport.js"(exports, module) {
     "use strict";
     var { createRequire } = __require("module");
-    var { existsSync: existsSync5 } = __require("node:fs");
+    var { existsSync: existsSync6 } = __require("node:fs");
     var getCallers = require_caller();
-    var { join: join7, isAbsolute, sep: sep2 } = __require("node:path");
+    var { join: join8, isAbsolute, sep: sep2 } = __require("node:path");
     var { fileURLToPath: fileURLToPath2 } = __require("node:url");
     var sleep = require_atomic_sleep();
     var onExit = require_on_exit_leak_free();
@@ -26079,12 +26079,12 @@ var require_transport = __commonJS({
           return false;
         }
       }
-      return isAbsolute(path) && !existsSync5(path);
+      return isAbsolute(path) && !existsSync6(path);
     }
     function stripQuotes(value) {
-      const first = value[0];
+      const first2 = value[0];
       const last = value[value.length - 1];
-      if (first === '"' && last === '"' || first === "'" && last === "'") {
+      if (first2 === '"' && last === '"' || first2 === "'" && last === "'") {
         return value.slice(1, -1);
       }
       return value;
@@ -26160,7 +26160,7 @@ var require_transport = __commonJS({
         throw new Error("only one of target or targets can be specified");
       }
       if (targets) {
-        target = bundlerOverrides["pino-worker"] || join7(__dirname, "worker.js");
+        target = bundlerOverrides["pino-worker"] || join8(__dirname, "worker.js");
         options.targets = targets.filter((dest) => dest.target).map((dest) => {
           return {
             ...dest,
@@ -26178,7 +26178,7 @@ var require_transport = __commonJS({
           });
         });
       } else if (pipeline) {
-        target = bundlerOverrides["pino-worker"] || join7(__dirname, "worker.js");
+        target = bundlerOverrides["pino-worker"] || join8(__dirname, "worker.js");
         options.pipelines = [pipeline.map((dest) => {
           return {
             ...dest,
@@ -26201,7 +26201,7 @@ var require_transport = __commonJS({
           return origin;
         }
         if (origin === "pino/file") {
-          return join7(__dirname, "..", "file.js");
+          return join8(__dirname, "..", "file.js");
         }
         let fixTarget2;
         for (const filePath of callers) {
@@ -27181,7 +27181,7 @@ var require_safe_stable_stringify = __commonJS({
               return circularValue;
             }
             let res = "";
-            let join7 = ",";
+            let join8 = ",";
             const originalIndentation = indentation;
             if (Array.isArray(value)) {
               if (value.length === 0) {
@@ -27195,7 +27195,7 @@ var require_safe_stable_stringify = __commonJS({
                 indentation += spacer;
                 res += `
 ${indentation}`;
-                join7 = `,
+                join8 = `,
 ${indentation}`;
               }
               const maximumValuesToStringify = Math.min(value.length, maximumBreadth);
@@ -27203,13 +27203,13 @@ ${indentation}`;
               for (; i < maximumValuesToStringify - 1; i++) {
                 const tmp2 = stringifyFnReplacer(String(i), value, stack, replacer, spacer, indentation);
                 res += tmp2 !== void 0 ? tmp2 : "null";
-                res += join7;
+                res += join8;
               }
               const tmp = stringifyFnReplacer(String(i), value, stack, replacer, spacer, indentation);
               res += tmp !== void 0 ? tmp : "null";
               if (value.length - 1 > maximumBreadth) {
                 const removedKeys = value.length - maximumBreadth - 1;
-                res += `${join7}"... ${getItemCount(removedKeys)} not stringified"`;
+                res += `${join8}"... ${getItemCount(removedKeys)} not stringified"`;
               }
               if (spacer !== "") {
                 res += `
@@ -27230,7 +27230,7 @@ ${originalIndentation}`;
             let separator = "";
             if (spacer !== "") {
               indentation += spacer;
-              join7 = `,
+              join8 = `,
 ${indentation}`;
               whitespace = " ";
             }
@@ -27244,13 +27244,13 @@ ${indentation}`;
               const tmp = stringifyFnReplacer(key2, value, stack, replacer, spacer, indentation);
               if (tmp !== void 0) {
                 res += `${separator}${strEscape(key2)}:${whitespace}${tmp}`;
-                separator = join7;
+                separator = join8;
               }
             }
             if (keyLength > maximumBreadth) {
               const removedKeys = keyLength - maximumBreadth;
               res += `${separator}"...":${whitespace}"${getItemCount(removedKeys)} not stringified"`;
-              separator = join7;
+              separator = join8;
             }
             if (spacer !== "" && separator.length > 1) {
               res = `
@@ -27291,7 +27291,7 @@ ${originalIndentation}`;
             }
             const originalIndentation = indentation;
             let res = "";
-            let join7 = ",";
+            let join8 = ",";
             if (Array.isArray(value)) {
               if (value.length === 0) {
                 return "[]";
@@ -27304,7 +27304,7 @@ ${originalIndentation}`;
                 indentation += spacer;
                 res += `
 ${indentation}`;
-                join7 = `,
+                join8 = `,
 ${indentation}`;
               }
               const maximumValuesToStringify = Math.min(value.length, maximumBreadth);
@@ -27312,13 +27312,13 @@ ${indentation}`;
               for (; i < maximumValuesToStringify - 1; i++) {
                 const tmp2 = stringifyArrayReplacer(String(i), value[i], stack, replacer, spacer, indentation);
                 res += tmp2 !== void 0 ? tmp2 : "null";
-                res += join7;
+                res += join8;
               }
               const tmp = stringifyArrayReplacer(String(i), value[i], stack, replacer, spacer, indentation);
               res += tmp !== void 0 ? tmp : "null";
               if (value.length - 1 > maximumBreadth) {
                 const removedKeys = value.length - maximumBreadth - 1;
-                res += `${join7}"... ${getItemCount(removedKeys)} not stringified"`;
+                res += `${join8}"... ${getItemCount(removedKeys)} not stringified"`;
               }
               if (spacer !== "") {
                 res += `
@@ -27331,7 +27331,7 @@ ${originalIndentation}`;
             let whitespace = "";
             if (spacer !== "") {
               indentation += spacer;
-              join7 = `,
+              join8 = `,
 ${indentation}`;
               whitespace = " ";
             }
@@ -27340,7 +27340,7 @@ ${indentation}`;
               const tmp = stringifyArrayReplacer(key2, value[key2], stack, replacer, spacer, indentation);
               if (tmp !== void 0) {
                 res += `${separator}${strEscape(key2)}:${whitespace}${tmp}`;
-                separator = join7;
+                separator = join8;
               }
             }
             if (spacer !== "" && separator.length > 1) {
@@ -27398,20 +27398,20 @@ ${originalIndentation}`;
               indentation += spacer;
               let res2 = `
 ${indentation}`;
-              const join8 = `,
+              const join9 = `,
 ${indentation}`;
               const maximumValuesToStringify = Math.min(value.length, maximumBreadth);
               let i = 0;
               for (; i < maximumValuesToStringify - 1; i++) {
                 const tmp2 = stringifyIndent(String(i), value[i], stack, spacer, indentation);
                 res2 += tmp2 !== void 0 ? tmp2 : "null";
-                res2 += join8;
+                res2 += join9;
               }
               const tmp = stringifyIndent(String(i), value[i], stack, spacer, indentation);
               res2 += tmp !== void 0 ? tmp : "null";
               if (value.length - 1 > maximumBreadth) {
                 const removedKeys = value.length - maximumBreadth - 1;
-                res2 += `${join8}"... ${getItemCount(removedKeys)} not stringified"`;
+                res2 += `${join9}"... ${getItemCount(removedKeys)} not stringified"`;
               }
               res2 += `
 ${originalIndentation}`;
@@ -27427,16 +27427,16 @@ ${originalIndentation}`;
               return '"[Object]"';
             }
             indentation += spacer;
-            const join7 = `,
+            const join8 = `,
 ${indentation}`;
             let res = "";
             let separator = "";
             let maximumPropertiesToStringify = Math.min(keyLength, maximumBreadth);
             if (isTypedArrayWithEntries(value)) {
-              res += stringifyTypedArray(value, join7, maximumBreadth);
+              res += stringifyTypedArray(value, join8, maximumBreadth);
               keys = keys.slice(value.length);
               maximumPropertiesToStringify -= value.length;
-              separator = join7;
+              separator = join8;
             }
             if (deterministic) {
               keys = sort(keys, comparator);
@@ -27447,13 +27447,13 @@ ${indentation}`;
               const tmp = stringifyIndent(key2, value[key2], stack, spacer, indentation);
               if (tmp !== void 0) {
                 res += `${separator}${strEscape(key2)}: ${tmp}`;
-                separator = join7;
+                separator = join8;
               }
             }
             if (keyLength > maximumBreadth) {
               const removedKeys = keyLength - maximumBreadth;
               res += `${separator}"...": "${getItemCount(removedKeys)} not stringified"`;
-              separator = join7;
+              separator = join8;
             }
             if (separator !== "") {
               res = `
@@ -47195,13 +47195,13 @@ var require_encoding_convert = __commonJS({
       var i = 0;
       var len = data && data.length;
       var isLE = false;
-      var first = true;
+      var first2 = true;
       var c1, c2;
       while (i < len) {
         c1 = data[i++];
         c2 = data[i++];
-        if (first && i === 2) {
-          first = false;
+        if (first2 && i === 2) {
+          first2 = false;
           if (c1 === 254 && c2 === 255) {
             isLE = false;
           } else if (c1 === 255 && c2 === 254) {
@@ -47234,13 +47234,13 @@ var require_encoding_convert = __commonJS({
       var i = 0;
       var len = data && data.length;
       var isLE = false;
-      var first = true;
+      var first2 = true;
       var c1, c2;
       while (i < len) {
         c1 = data[i++];
         c2 = data[i++];
-        if (first && i === 2) {
-          first = false;
+        if (first2 && i === 2) {
+          first2 = false;
           if (c1 === 254 && c2 === 255) {
             isLE = false;
           } else if (c1 === 255 && c2 === 254) {
@@ -47307,13 +47307,13 @@ var require_encoding_convert = __commonJS({
       var i = 0;
       var len = data && data.length;
       var isLE = false;
-      var first = true;
+      var first2 = true;
       var c1, c2;
       while (i < len) {
         c1 = data[i++];
         c2 = data[i++];
-        if (first && i === 2) {
-          first = false;
+        if (first2 && i === 2) {
+          first2 = false;
           if (c1 === 254 && c2 === 255) {
             isLE = false;
           } else if (c1 === 255 && c2 === 254) {
@@ -53726,9 +53726,9 @@ var require_imap_stream = __commonJS({
                   }
                   if (payload.length) {
                     let trailingAfterLine = lineStart < chunk.length || this.inputQueue.length > 0;
-                    await new Promise((resolve5) => {
-                      this.pendingPush = resolve5;
-                      this.push({ payload, literals, next: resolve5, trailingAfterLine });
+                    await new Promise((resolve6) => {
+                      this.pendingPush = resolve6;
+                      this.push({ payload, literals, next: resolve6, trailingAfterLine });
                     });
                     this.pendingPush = null;
                     if (this.destroyed) {
@@ -53783,7 +53783,7 @@ var require_imap_stream = __commonJS({
           this.releaseInput(data);
           processedCount++;
           if (processedCount % 10 === 0) {
-            await new Promise((resolve5) => setImmediate(resolve5));
+            await new Promise((resolve6) => setImmediate(resolve6));
           }
         }
       }
@@ -53846,9 +53846,9 @@ var require_imap_stream = __commonJS({
         this.literals = [];
         this.responseBytes = 0;
         if (typeof this.pendingPush === "function") {
-          const resolve5 = this.pendingPush;
+          const resolve6 = this.pendingPush;
           this.pendingPush = null;
-          resolve5();
+          resolve6();
         }
         this.releaseInput(this.activeInput);
         this.activeInput = null;
@@ -57290,23 +57290,23 @@ var require_helpers2 = __commonJS({
   "node_modules/.pnpm/ip-address@10.7.3/node_modules/ip-address/dist/v6/helpers.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.escapeHtml = escapeHtml;
+    exports.escapeHtml = escapeHtml2;
     exports.spanAllZeroes = spanAllZeroes;
     exports.spanAll = spanAll;
     exports.spanLeadingZeroes = spanLeadingZeroes;
     exports.simpleGroup = simpleGroup;
-    function escapeHtml(s2) {
+    function escapeHtml2(s2) {
       return s2.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     }
     function spanAllZeroes(s2) {
-      return escapeHtml(s2).replace(/(0+)/g, '<span class="zero">$1</span>');
+      return escapeHtml2(s2).replace(/(0+)/g, '<span class="zero">$1</span>');
     }
     function spanAll(s2, offset = 0) {
       const letters = s2.split("");
-      return letters.map((n, i) => `<span class="digit value-${escapeHtml(n)} position-${i + offset}">${spanAllZeroes(n)}</span>`).join("");
+      return letters.map((n, i) => `<span class="digit value-${escapeHtml2(n)} position-${i + offset}">${spanAllZeroes(n)}</span>`).join("");
     }
     function spanLeadingZeroesSimple(group) {
-      return escapeHtml(group).replace(/^(0+)/, '<span class="zero">$1</span>');
+      return escapeHtml2(group).replace(/^(0+)/, '<span class="zero">$1</span>');
     }
     function spanLeadingZeroes(address) {
       const groups = address.split(":");
@@ -58081,22 +58081,22 @@ var require_ipv6 = __commonJS({
         let groups = [];
         const halves = address.split("::");
         if (halves.length === 2) {
-          let first = halves[0].split(":");
+          let first2 = halves[0].split(":");
           let last = halves[1].split(":");
-          if (first.length === 1 && first[0] === "") {
-            first = [];
+          if (first2.length === 1 && first2[0] === "") {
+            first2 = [];
           }
           if (last.length === 1 && last[0] === "") {
             last = [];
           }
-          const remaining = this.groups - (first.length + last.length);
+          const remaining = this.groups - (first2.length + last.length);
           if (!remaining) {
             throw new address_error_1.AddressError("Error parsing groups");
           }
           this.elidedGroups = remaining;
-          this.elisionBegin = first.length;
-          this.elisionEnd = first.length + this.elidedGroups;
-          groups = groups.concat(first);
+          this.elisionBegin = first2.length;
+          this.elisionEnd = first2.length + this.elidedGroups;
+          groups = groups.concat(first2);
           for (let i = 0; i < remaining; i++) {
             groups.push("0");
           }
@@ -58960,11 +58960,11 @@ var require_socksclient = __commonJS({
     "use strict";
     var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
       function adopt(value) {
-        return value instanceof P ? value : new P(function(resolve5) {
-          resolve5(value);
+        return value instanceof P ? value : new P(function(resolve6) {
+          resolve6(value);
         });
       }
-      return new (P || (P = Promise))(function(resolve5, reject) {
+      return new (P || (P = Promise))(function(resolve6, reject) {
         function fulfilled(value) {
           try {
             step2(generator.next(value));
@@ -58980,7 +58980,7 @@ var require_socksclient = __commonJS({
           }
         }
         function step2(result) {
-          result.done ? resolve5(result.value) : adopt(result.value).then(fulfilled, rejected);
+          result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
         }
         step2((generator = generator.apply(thisArg, _arguments || [])).next());
       });
@@ -59014,13 +59014,13 @@ var require_socksclient = __commonJS({
        * @returns { Promise }
        */
       static createConnection(options, callback) {
-        return new Promise((resolve5, reject) => {
+        return new Promise((resolve6, reject) => {
           try {
             (0, helpers_1.validateSocksClientOptions)(options, ["connect"]);
           } catch (err) {
             if (typeof callback === "function") {
               callback(err);
-              return resolve5(err);
+              return resolve6(err);
             } else {
               return reject(err);
             }
@@ -59031,16 +59031,16 @@ var require_socksclient = __commonJS({
             client.removeAllListeners();
             if (typeof callback === "function") {
               callback(null, info);
-              resolve5(info);
+              resolve6(info);
             } else {
-              resolve5(info);
+              resolve6(info);
             }
           });
           client.once("error", (err) => {
             client.removeAllListeners();
             if (typeof callback === "function") {
               callback(err);
-              resolve5(err);
+              resolve6(err);
             } else {
               reject(err);
             }
@@ -59057,13 +59057,13 @@ var require_socksclient = __commonJS({
        * @returns { Promise }
        */
       static createConnectionChain(options, callback) {
-        return new Promise((resolve5, reject) => __awaiter(this, void 0, void 0, function* () {
+        return new Promise((resolve6, reject) => __awaiter(this, void 0, void 0, function* () {
           try {
             (0, helpers_1.validateSocksClientChainOptions)(options);
           } catch (err) {
             if (typeof callback === "function") {
               callback(err);
-              return resolve5(err);
+              return resolve6(err);
             } else {
               return reject(err);
             }
@@ -59089,14 +59089,14 @@ var require_socksclient = __commonJS({
             }
             if (typeof callback === "function") {
               callback(null, { socket: sock });
-              resolve5({ socket: sock });
+              resolve6({ socket: sock });
             } else {
-              resolve5({ socket: sock });
+              resolve6({ socket: sock });
             }
           } catch (err) {
             if (typeof callback === "function") {
               callback(err);
-              resolve5(err);
+              resolve6(err);
             } else {
               reject(err);
             }
@@ -59728,7 +59728,7 @@ var require_connection_deadline = __commonJS({
         try {
           return await Promise.race([
             promise2,
-            new Promise((resolve5, reject) => {
+            new Promise((resolve6, reject) => {
               timer = setTimeout(() => reject(this.error()), this.remaining());
             })
           ]);
@@ -59809,7 +59809,7 @@ var require_proxy_connection = __commonJS({
         throw deadline.error();
       }
       let socket = null;
-      return await new Promise((resolve5, reject) => {
+      return await new Promise((resolve6, reject) => {
         let settled = false;
         let timer = null;
         let headers = "";
@@ -59861,7 +59861,7 @@ var require_proxy_connection = __commonJS({
         function succeed() {
           settled = true;
           cleanup();
-          resolve5(socket);
+          resolve6(socket);
         }
         function onEarlyClose() {
           fail(proxyError("Proxy closed the connection before the tunnel was established", "EPROXY"));
@@ -60378,7 +60378,7 @@ var require_tools2 = __commonJS({
     var libmime = require_libmime();
     var { resolveCharset } = require_charsets2();
     var { compiler } = require_imap_handler();
-    var { createHash: createHash6 } = __require("crypto");
+    var { createHash: createHash7 } = __require("crypto");
     var { JPDecoder } = require_jp_decoder();
     var iconv = require_lib2();
     var FLAG_COLORS = ["red", "orange", "yellow", "green", "blue", "purple", "grey"];
@@ -61008,7 +61008,7 @@ var require_tools2 = __commonJS({
             } catch {
             }
           }
-          map2.id = map2.emailId || createHash6("md5").update([path, mailbox.uidValidity?.toString() || "", map2.uid.toString()].join(":")).digest("hex");
+          map2.id = map2.emailId || createHash7("md5").update([path, mailbox.uidValidity?.toString() || "", map2.uid.toString()].join(":")).digest("hex");
         }
         if (map2.flags) {
           let flagColor = tools.getFlagColor(map2.flags);
@@ -61497,24 +61497,24 @@ var require_tools2 = __commonJS({
             }
             continue;
           }
-          let first = Number(entry.substr(0, colon));
+          let first2 = Number(entry.substr(0, colon));
           let second = Number(entry.substr(colon + 1));
-          if (!tools.isValidSequenceValue(first) || !tools.isValidSequenceValue(second)) {
+          if (!tools.isValidSequenceValue(first2) || !tools.isValidSequenceValue(second)) {
             continue;
           }
-          if (first === second) {
-            result.push(first);
+          if (first2 === second) {
+            result.push(first2);
             continue;
           }
           let remaining = EXPANDED_RANGE_LIMIT - result.length;
-          if (first < second) {
-            let last = Math.min(second, first + remaining - 1);
-            for (let i = first; i <= last; i++) {
+          if (first2 < second) {
+            let last = Math.min(second, first2 + remaining - 1);
+            for (let i = first2; i <= last; i++) {
               result.push(i);
             }
           } else {
-            let last = Math.max(second, first - remaining + 1);
-            for (let i = first; i >= last; i--) {
+            let last = Math.max(second, first2 - remaining + 1);
+            for (let i = first2; i >= last; i--) {
               result.push(i);
             }
           }
@@ -63493,12 +63493,12 @@ var require_fetch2 = __commonJS({
                 messages.count++;
                 let formatted = await formatMessageResponse(untagged, mailbox);
                 if (typeof options.onUntaggedFetch === "function") {
-                  await new Promise((resolve5, reject) => {
+                  await new Promise((resolve6, reject) => {
                     options.onUntaggedFetch(formatted, (err) => {
                       if (err) {
                         reject(err);
                       } else {
-                        resolve5();
+                        resolve6();
                       }
                     });
                   });
@@ -64325,13 +64325,13 @@ var require_search = __commonJS({
                     results.add(value);
                     continue;
                   }
-                  let first = resolveId(part.substr(0, colon));
+                  let first2 = resolveId(part.substr(0, colon));
                   let second = resolveId(part.substr(colon + 1));
-                  if (!isValidSequenceValue(first) || !isValidSequenceValue(second)) {
+                  if (!isValidSequenceValue(first2) || !isValidSequenceValue(second)) {
                     discarded = true;
                     continue;
                   }
-                  for (let id = Math.min(first, second); id <= Math.max(first, second); id++) {
+                  for (let id = Math.min(first2, second); id <= Math.max(first2, second); id++) {
                     if (overBudget()) {
                       truncated = true;
                       break sequenceSetLoop;
@@ -64875,14 +64875,14 @@ var require_idle = __commonJS({
               connection.preCheck = false;
             }
             while (preCheckWaitQueue.length) {
-              let { resolve: resolve5 } = preCheckWaitQueue.shift();
-              resolve5();
+              let { resolve: resolve6 } = preCheckWaitQueue.shift();
+              resolve6();
             }
           }
         };
         let connectionPreCheck = () => {
-          let handler = guardedPromise((resolve5, reject) => {
-            preCheckWaitQueue.push({ resolve: resolve5, reject });
+          let handler = guardedPromise((resolve6, reject) => {
+            preCheckWaitQueue.push({ resolve: resolve6, reject });
           });
           connection.log.trace({
             msg: "Requesting IDLE break",
@@ -64940,8 +64940,8 @@ var require_idle = __commonJS({
           connection.preCheck = false;
         }
         while (preCheckWaitQueue.length) {
-          let { resolve: resolve5 } = preCheckWaitQueue.shift();
-          resolve5();
+          let { resolve: resolve6 } = preCheckWaitQueue.shift();
+          resolve6();
         }
       }
     }
@@ -64989,7 +64989,7 @@ var require_idle = __commonJS({
       let interval = maxIdleTime ? Math.min(NOOP_INTERVAL, maxIdleTime) : NOOP_INTERVAL;
       let releaseIdling = claimIdling(connection);
       try {
-        await new Promise((resolve5) => {
+        await new Promise((resolve6) => {
           const cancel = () => {
             if (session.cancelled) {
               return;
@@ -64997,7 +64997,7 @@ var require_idle = __commonJS({
             session.cancelled = true;
             clearTimeout(session.timer);
             session.timer = null;
-            resolve5();
+            resolve6();
           };
           session.preCheck = async () => {
             connection.log.debug({ msg: `Breaking NOOP loop`, cid: connection.id });
@@ -65779,8 +65779,8 @@ var require_imap_flow = __commonJS({
         }
         let tag = (++this.tagCounter).toString(16).toUpperCase();
         options = options || {};
-        return guardedPromise((resolve5, reject) => {
-          this.requestTagMap.set(tag, { command: command2, attributes, options, resolve: resolve5, reject });
+        return guardedPromise((resolve6, reject) => {
+          this.requestTagMap.set(tag, { command: command2, attributes, options, resolve: resolve6, reject });
           this.requestQueue.push({ tag, command: command2, attributes, options });
           this.trySend().catch((err) => logConnectionError(this, "Failed to dispatch command", err));
         });
@@ -65888,11 +65888,11 @@ var require_imap_flow = __commonJS({
        */
       async throttleWait(delay) {
         delay = Math.min(Math.max(Number(delay) || 0, 0), MAX_THROTTLE_DELAY);
-        return await new Promise((resolve5) => {
-          let entry = { resolve: resolve5 };
+        return await new Promise((resolve6) => {
+          let entry = { resolve: resolve6 };
           entry.timer = setTimeout(() => {
             this._throttleWaits.delete(entry);
-            resolve5(false);
+            resolve6(false);
           }, delay);
           unrefTimer(entry.timer);
           this._throttleWaits.add(entry);
@@ -65921,7 +65921,7 @@ var require_imap_flow = __commonJS({
           }
           processedCount++;
           if (processedCount % 10 === 0) {
-            await new Promise((resolve5) => setImmediate(resolve5));
+            await new Promise((resolve6) => setImmediate(resolve6));
           }
         }
       }
@@ -66082,7 +66082,7 @@ var require_imap_flow = __commonJS({
         switch ((parsed.command || "").toUpperCase()) {
           case "OK":
           case "BYE":
-            await new Promise((resolve5) => request.resolve({ response: parsed, next: resolve5, hasTrailingData }));
+            await new Promise((resolve6) => request.resolve({ response: parsed, next: resolve6, hasTrailingData }));
             break;
           case "NO":
           case "BAD": {
@@ -66100,7 +66100,7 @@ var require_imap_flow = __commonJS({
               err.responseText = txt;
               if (err.responseStatus === "NO" && txt.includes("Some of the requested messages no longer exist")) {
                 this.log.warn({ msg: "Partial FETCH response", cid: this.id, err });
-                await new Promise((resolve5) => request.resolve({ response: parsed, next: resolve5 }));
+                await new Promise((resolve6) => request.resolve({ response: parsed, next: resolve6 }));
                 break;
               }
               let throttleDelay = false;
@@ -66325,7 +66325,7 @@ var require_imap_flow = __commonJS({
               }
               processedChunks++;
               if (processedChunks % 100 === 0) {
-                await new Promise((resolve5) => setImmediate(resolve5));
+                await new Promise((resolve6) => setImmediate(resolve6));
                 if (!this.writeSocket) {
                   break;
                 }
@@ -66402,7 +66402,7 @@ var require_imap_flow = __commonJS({
         if (injectedTail && injectedTail.length) {
           throw failSTARTTLSInjection();
         }
-        let upgraded = await new Promise((resolve5, reject) => {
+        let upgraded = await new Promise((resolve6, reject) => {
           let socketPlain = this.socket;
           let opts = Object.assign(
             {
@@ -66439,7 +66439,7 @@ var require_imap_flow = __commonJS({
               this.closeAfter();
               return reject(err);
             }
-            resolve5(result);
+            resolve6(result);
           };
           this._upgradeReject = settle;
           socketPlain.once("error", settle);
@@ -66551,10 +66551,10 @@ var require_imap_flow = __commonJS({
         }
         this.startSession().then(() => {
           if (typeof this.initialResolve === "function") {
-            let resolve5 = this.initialResolve;
+            let resolve6 = this.initialResolve;
             this.initialResolve = false;
             this.initialReject = false;
-            return resolve5();
+            return resolve6();
           }
         }).catch((err) => {
           this.log.error({ err, cid: this.id });
@@ -66851,7 +66851,7 @@ var require_imap_flow = __commonJS({
             throw error51;
           }
         }
-        let connectPromise = guardedPromise((resolve5, reject) => {
+        let connectPromise = guardedPromise((resolve6, reject) => {
           this.connectTimeout = setTimeout(() => {
             let err = deadline.error();
             this.log.error({ err, cid: this.id });
@@ -66901,7 +66901,7 @@ var require_imap_flow = __commonJS({
               this.setSocketHandlers();
               this.setEventHandlers();
               this.socket.pipe(this.streamer);
-              this.initialResolve = resolve5;
+              this.initialResolve = resolve6;
               this.initialReject = reject;
             } catch (ex) {
               reject(ex);
@@ -67878,17 +67878,17 @@ var require_imap_flow = __commonJS({
         let aborted2 = false;
         let push = false;
         let rowQueue = [];
-        let getNext = () => new Promise((resolve5, reject) => {
+        let getNext = () => new Promise((resolve6, reject) => {
           let check2 = () => {
             if (rowQueue.length) {
               let entry = rowQueue.shift();
               if (entry.err) {
                 return reject(entry.err);
               }
-              return resolve5(entry.value);
+              return resolve6(entry.value);
             }
             if (finished) {
-              return resolve5(null);
+              return resolve6(null);
             }
             push = () => {
               push = false;
@@ -68244,7 +68244,7 @@ var require_imap_flow = __commonJS({
             }
             if (writeChunk(chunk2) === false) {
               try {
-                await new Promise((resolve5, reject) => {
+                await new Promise((resolve6, reject) => {
                   const finish = (err) => {
                     for (let event of ["drain", "error", "close"]) {
                       stream.removeListener(event, finish);
@@ -68252,7 +68252,7 @@ var require_imap_flow = __commonJS({
                     if (err) {
                       reject(err);
                     } else {
-                      resolve5();
+                      resolve6();
                     }
                   };
                   stream.once("drain", finish);
@@ -68509,10 +68509,10 @@ var require_imap_flow = __commonJS({
             }
             processedCount++;
             if (processedCount % 5 === 0) {
-              await new Promise((resolve6) => setImmediate(resolve6));
+              await new Promise((resolve7) => setImmediate(resolve7));
             }
             const lock = this.locks.shift();
-            const { resolve: resolve5, reject, path, options, lockId } = lock;
+            const { resolve: resolve6, reject, path, options, lockId } = lock;
             if (lock.acquireTimer) {
               clearTimeout(lock.acquireTimer);
               lock.acquireTimer = null;
@@ -68573,7 +68573,7 @@ var require_imap_flow = __commonJS({
               this.currentLock = lock;
               armHeldTimer();
               this.autoidle();
-              resolve5({ path, release });
+              resolve6({ path, release });
             };
             if (this.mailbox && this.mailbox.path === path && !!this.mailbox.readOnly === !!options.readOnly) {
               this.log.trace({
@@ -68663,8 +68663,8 @@ var require_imap_flow = __commonJS({
             ...this.currentLock.options?.description && { description: this.currentLock.options?.description }
           } : null
         });
-        let lockPromise = guardedPromise((resolve5, reject) => {
-          let lockEntry = { resolve: resolve5, reject, path, options, lockId };
+        let lockPromise = guardedPromise((resolve6, reject) => {
+          let lockEntry = { resolve: resolve6, reject, path, options, lockId };
           this.locks.push(lockEntry);
           if (Number(options.acquireTimeout) > 0) {
             lockEntry.acquireTimer = setTimeout(() => {
@@ -84261,13 +84261,13 @@ var require_encoding_convert2 = __commonJS({
       var i = 0;
       var len = data && data.length;
       var isLE = false;
-      var first = true;
+      var first2 = true;
       var c1, c2;
       while (i < len) {
         c1 = data[i++];
         c2 = data[i++];
-        if (first && i === 2) {
-          first = false;
+        if (first2 && i === 2) {
+          first2 = false;
           if (c1 === 254 && c2 === 255) {
             isLE = false;
           } else if (c1 === 255 && c2 === 254) {
@@ -84300,13 +84300,13 @@ var require_encoding_convert2 = __commonJS({
       var i = 0;
       var len = data && data.length;
       var isLE = false;
-      var first = true;
+      var first2 = true;
       var c1, c2;
       while (i < len) {
         c1 = data[i++];
         c2 = data[i++];
-        if (first && i === 2) {
-          first = false;
+        if (first2 && i === 2) {
+          first2 = false;
           if (c1 === 254 && c2 === 255) {
             isLE = false;
           } else if (c1 === 255 && c2 === 254) {
@@ -84373,13 +84373,13 @@ var require_encoding_convert2 = __commonJS({
       var i = 0;
       var len = data && data.length;
       var isLE = false;
-      var first = true;
+      var first2 = true;
       var c1, c2;
       while (i < len) {
         c1 = data[i++];
         c2 = data[i++];
-        if (first && i === 2) {
-          first = false;
+        if (first2 && i === 2) {
+          first2 = false;
           if (c1 === 254 && c2 === 255) {
             isLE = false;
           } else if (c1 === 255 && c2 === 254) {
@@ -89197,17 +89197,17 @@ var require_headers2 = __commonJS({
         }
         let rawLines = this.headers.toString("binary").replace(/[\r\n]+$/, "").split(/\r?\n/);
         let i = 1;
-        let first = rawLines[0];
+        let first2 = rawLines[0];
         while (i < rawLines.length && this._isFoldingChar(rawLines[i].charAt(0))) {
-          first += "\r\n" + rawLines[i++];
+          first2 += "\r\n" + rawLines[i++];
         }
         let lines = [];
-        if (/^From /i.test(first)) {
-          this.mbox = first;
-        } else if (/^POST /i.test(first)) {
-          this.http = first;
+        if (/^From /i.test(first2)) {
+          this.mbox = first2;
+        } else if (/^POST /i.test(first2)) {
+          this.http = first2;
         } else {
-          lines.push({ key: this._normalizeHeader(first.substr(0, first.indexOf(":"))), line: first });
+          lines.push({ key: this._normalizeHeader(first2.substr(0, first2.indexOf(":"))), line: first2 });
         }
         for (; i < rawLines.length; i++) {
           let currentLine = rawLines[i];
@@ -89262,7 +89262,7 @@ var require_mime_node3 = __commonJS({
       /** @type {any} */
       libmime.Libmime
     );
-    function stripComments(value) {
+    function stripComments2(value) {
       if (value.indexOf("(") < 0) {
         return value;
       }
@@ -89368,7 +89368,7 @@ var require_mime_node3 = __commonJS({
           /** @type {StructuredHeader} */
           this._parsedContentType
         );
-        this.encoding = stripComments(headers.getFirst("Content-Transfer-Encoding")).toLowerCase().trim();
+        this.encoding = stripComments2(headers.getFirst("Content-Transfer-Encoding")).toLowerCase().trim();
         this.contentType = (parsedContentType.value || "").toLowerCase().trim() || false;
         this.charset = parsedContentType.params.charset || false;
         this.disposition = (parsedContentDisposition.value || "").toLowerCase().trim() || false;
@@ -92118,11 +92118,11 @@ var require_core = __commonJS({
     function mapOuter(r, f) {
       return r.matched ? f(r) : r;
     }
-    function ab(pa, pb, join7) {
-      return (data, i) => mapOuter(pa(data, i), (ma) => mapInner(pb(data, ma.position), (vb, j) => join7(ma.value, vb, data, i, j)));
+    function ab(pa, pb, join8) {
+      return (data, i) => mapOuter(pa(data, i), (ma) => mapInner(pb(data, ma.position), (vb, j) => join8(ma.value, vb, data, i, j)));
     }
-    function abc(pa, pb, pc, join7) {
-      return (data, i) => mapOuter(pa(data, i), (ma) => mapOuter(pb(data, ma.position), (mb) => mapInner(pc(data, mb.position), (vc, j) => join7(ma.value, mb.value, vc, data, i, j))));
+    function abc(pa, pb, pc, join8) {
+      return (data, i) => mapOuter(pa(data, i), (ma) => mapOuter(pb(data, ma.position), (mb) => mapInner(pc(data, mb.position), (vc, j) => join8(ma.value, mb.value, vc, data, i, j))));
     }
     function action(f) {
       return (data, i) => {
@@ -92226,7 +92226,7 @@ var require_core = __commonJS({
     function fail(data, i) {
       return { matched: false };
     }
-    function first(...ps) {
+    function first2(...ps) {
       return (data, i) => {
         for (const p of ps) {
           const result = p(data, i);
@@ -92519,7 +92519,7 @@ ${parserPosition(data, result.position, formatToken)}`);
     exports.between = middle;
     exports.chain = chain;
     exports.chainReduce = chainReduce;
-    exports.choice = first;
+    exports.choice = first2;
     exports.condition = condition;
     exports.decide = decide;
     exports.discard = skip;
@@ -92530,7 +92530,7 @@ ${parserPosition(data, result.position, formatToken)}`);
     exports.error = error51;
     exports.fail = fail;
     exports.filter = filter;
-    exports.first = first;
+    exports.first = first2;
     exports.flatten = flatten;
     exports.flatten1 = flatten1;
     exports.guard = filter;
@@ -92551,7 +92551,7 @@ ${parserPosition(data, result.position, formatToken)}`);
     exports.not = not;
     exports.of = emit;
     exports.option = option;
-    exports.or = first;
+    exports.or = first2;
     exports.otherwise = eitherOr;
     exports.parse = parse4;
     exports.parserPosition = parserPosition;
@@ -98452,12 +98452,12 @@ var require_html_to_text = __commonJS({
           this.nextLineWords.push(word);
           this.nextLineAvailableChars -= cost;
         } else {
-          const [first, ...rest] = this.splitLongWord(word);
+          const [first2, ...rest] = this.splitLongWord(word);
           if (!isLineStart) {
             this.startNewLine();
           }
-          this.nextLineWords.push(first);
-          this.nextLineAvailableChars -= first.length;
+          this.nextLineWords.push(first2);
+          this.nextLineAvailableChars -= first2.length;
           for (const part of rest) {
             this.startNewLine();
             this.nextLineWords.push(part);
@@ -103209,8 +103209,8 @@ var require_simple_parser = __commonJS({
       }
       let promise2;
       if (!callback) {
-        promise2 = new Promise((resolve5, reject) => {
-          callback = callbackPromise(resolve5, reject);
+        promise2 = new Promise((resolve6, reject) => {
+          callback = callbackPromise(resolve6, reject);
         });
       }
       let settled = false;
@@ -103308,13 +103308,13 @@ var require_simple_parser = __commonJS({
       }
       return promise2;
     };
-    function callbackPromise(resolve5, reject) {
+    function callbackPromise(resolve6, reject) {
       return function(...args) {
         let err = args.shift();
         if (err) {
           reject(err);
         } else {
-          resolve5(...args);
+          resolve6(...args);
         }
       };
     }
@@ -106285,7 +106285,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref2];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve5.call(this, root, ref2);
+      let _sch = resolve6.call(this, root, ref2);
       if (_sch === void 0) {
         const schema = (_a3 = root.localRefs) === null || _a3 === void 0 ? void 0 : _a3[ref2];
         const { schemaId } = this.opts;
@@ -106312,7 +106312,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve5(root, ref2) {
+    function resolve6(root, ref2) {
       let sch;
       while (typeof (sch = this.refs[ref2]) == "string")
         ref2 = sch;
@@ -106943,7 +106943,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve5(baseURI, relativeURI, options) {
+    function resolve6(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse4(baseURI, schemelessOptions), parse4(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
@@ -107201,7 +107201,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve5,
+      resolve: resolve6,
       resolveComponent,
       equal,
       serialize,
@@ -110561,41 +110561,41 @@ var require_queue = __commonJS({
       queue.drained = drained;
       return queue;
       function push(value) {
-        var p = new Promise(function(resolve5, reject) {
+        var p = new Promise(function(resolve6, reject) {
           pushCb(value, function(err, result) {
             if (err) {
               reject(err);
               return;
             }
-            resolve5(result);
+            resolve6(result);
           });
         });
         p.catch(noop);
         return p;
       }
       function unshift(value) {
-        var p = new Promise(function(resolve5, reject) {
+        var p = new Promise(function(resolve6, reject) {
           unshiftCb(value, function(err, result) {
             if (err) {
               reject(err);
               return;
             }
-            resolve5(result);
+            resolve6(result);
           });
         });
         p.catch(noop);
         return p;
       }
       function drained() {
-        var p = new Promise(function(resolve5) {
+        var p = new Promise(function(resolve6) {
           process.nextTick(function() {
             if (queue.idle()) {
-              resolve5();
+              resolve6();
             } else {
               var previousDrain = queue.drain;
               queue.drain = function() {
                 if (typeof previousDrain === "function") previousDrain();
-                resolve5();
+                resolve6();
                 queue.drain = previousDrain;
               };
             }
@@ -110938,8 +110938,8 @@ var require_create_promise = __commonJS({
         reject: null,
         promise: null
       };
-      obj.promise = new Promise((resolve5, reject) => {
-        obj.resolve = resolve5;
+      obj.promise = new Promise((resolve6, reject) => {
+        obj.resolve = resolve6;
         obj.reject = reject;
       });
       return obj;
@@ -111208,11 +111208,11 @@ var require_thenify = __commonJS({
         return;
       }
       debug("thenify");
-      return (resolve5, reject) => {
+      return (resolve6, reject) => {
         const p = this._loadRegistered();
         return p.then(() => {
           this[kThenifyDoNotWrap] = true;
-          return resolve5(this._server);
+          return resolve6(this._server);
         }, reject);
       };
     }
@@ -111349,12 +111349,12 @@ var require_boot = __commonJS({
     inherits(Boot, EE);
     if ("asyncDispose" in Symbol) {
       Boot.prototype[Symbol.asyncDispose] = function() {
-        return new Promise((resolve5, reject) => {
+        return new Promise((resolve6, reject) => {
           this.close((err) => {
             if (err) {
               return reject(err);
             }
-            resolve5();
+            resolve6();
           });
         });
       };
@@ -111501,12 +111501,12 @@ var require_boot = __commonJS({
           throw new AVV_ERR_CALLBACK_NOT_FN("close", typeof func);
         }
       } else {
-        promise2 = new Promise(function(resolve5, reject) {
+        promise2 = new Promise(function(resolve6, reject) {
           func = function(err) {
             if (err) {
               return reject(err);
             }
-            resolve5();
+            resolve6();
           };
         });
       }
@@ -111526,7 +111526,7 @@ var require_boot = __commonJS({
         queueMicrotask(this.start.bind(this));
         return;
       }
-      return new Promise((resolve5, reject) => {
+      return new Promise((resolve6, reject) => {
         this._readyQ.push(readyPromiseCB);
         this.start();
         const relativeContext = this._current[0].server;
@@ -111534,7 +111534,7 @@ var require_boot = __commonJS({
           if (err) {
             reject(err);
           } else {
-            resolve5(relativeContext);
+            resolve6(relativeContext);
           }
           process.nextTick(done);
         }
@@ -112809,8 +112809,8 @@ var require_promise = __commonJS({
     var { kTestInternals } = require_symbols3();
     function withResolvers() {
       let res, rej;
-      const promise2 = new Promise((resolve5, reject) => {
-        res = resolve5;
+      const promise2 = new Promise((resolve6, reject) => {
+        res = resolve6;
         rej = reject;
       });
       return { promise: promise2, resolve: res, reject: rej };
@@ -112909,15 +112909,15 @@ var require_server2 = __commonJS({
         if (cb === void 0) {
           const listening = listenPromise.call(this, server, listenOptions);
           return listening.then((address) => {
-            const { promise: promise2, resolve: resolve5 } = PonyPromise.withResolvers();
+            const { promise: promise2, resolve: resolve6 } = PonyPromise.withResolvers();
             if (host === "localhost") {
               multipleBindings.call(this, server, httpHandler, options, listenOptions, () => {
                 this[kState].listening = true;
-                resolve5(address);
+                resolve6(address);
                 onListenHookRunner(this);
               });
             } else {
-              resolve5(address);
+              resolve6(address);
               onListenHookRunner(this);
             }
             return promise2;
@@ -113044,7 +113044,7 @@ var require_server2 = __commonJS({
       }
       return this.ready().then(() => {
         if (this[kState].aborted) return;
-        const { promise: promise2, resolve: resolve5, reject } = PonyPromise.withResolvers();
+        const { promise: promise2, resolve: resolve6, reject } = PonyPromise.withResolvers();
         const errEventHandler = (err) => {
           cleanup();
           this[kState].listening = false;
@@ -113053,7 +113053,7 @@ var require_server2 = __commonJS({
         const listeningEventHandler = () => {
           cleanup();
           this[kState].listening = true;
-          resolve5(logServerAddress.call(
+          resolve6(logServerAddress.call(
             this,
             server,
             listenOptions.listenTextResolver || defaultResolveServerListeningText
@@ -115698,8 +115698,8 @@ var require_ipaddr = __commonJS({
           zoneId
         };
       }
-      function matchCIDR(first, second, partSize, cidrBits) {
-        if (first.length !== second.length) {
+      function matchCIDR(first2, second, partSize, cidrBits) {
+        if (first2.length !== second.length) {
           throw new Error("ipaddr: cannot match CIDR for objects with different lengths");
         }
         let part = 0;
@@ -115709,7 +115709,7 @@ var require_ipaddr = __commonJS({
           if (shift < 0) {
             shift = 0;
           }
-          if (first[part] >> shift !== second[part] >> shift) {
+          if (first2[part] >> shift !== second[part] >> shift) {
             return false;
           }
           cidrBits -= partSize;
@@ -119075,9 +119075,9 @@ var require_serialize = __commonJS({
     function serializeElements(cxt) {
       const { gen, schema, data } = cxt;
       gen.add(names_1.default.json, (0, codegen_1.str)`[`);
-      const first = gen.let("first", true);
+      const first2 = gen.let("first", true);
       gen.forOf("el", data, (el) => {
-        addComma(cxt, first);
+        addComma(cxt, first2);
         serializeCode({ ...cxt, schema: schema.elements, data: el });
       });
       gen.add(names_1.default.json, (0, codegen_1.str)`]`);
@@ -119085,13 +119085,13 @@ var require_serialize = __commonJS({
     function serializeValues(cxt) {
       const { gen, schema, data } = cxt;
       gen.add(names_1.default.json, (0, codegen_1.str)`{`);
-      const first = gen.let("first", true);
-      gen.forIn("key", data, (key) => serializeKeyValue(cxt, key, schema.values, first));
+      const first2 = gen.let("first", true);
+      gen.forIn("key", data, (key) => serializeKeyValue(cxt, key, schema.values, first2));
       gen.add(names_1.default.json, (0, codegen_1.str)`}`);
     }
-    function serializeKeyValue(cxt, key, schema, first) {
+    function serializeKeyValue(cxt, key, schema, first2) {
       const { gen, data } = cxt;
-      addComma(cxt, first);
+      addComma(cxt, first2);
       serializeString({ ...cxt, data: key });
       gen.add(names_1.default.json, (0, codegen_1.str)`:`);
       const value = gen.const("value", (0, codegen_1._)`${data}${(0, codegen_1.getProperty)(key)}`);
@@ -119124,16 +119124,16 @@ var require_serialize = __commonJS({
       const props = keys(properties);
       const optProps = keys(optionalProperties);
       const allProps = allProperties(props.concat(optProps));
-      let first = !discriminator;
+      let first2 = !discriminator;
       let firstProp;
       for (const key of props) {
-        if (first)
-          first = false;
+        if (first2)
+          first2 = false;
         else
           gen.add(names_1.default.json, (0, codegen_1.str)`,`);
         serializeProperty(key, properties[key], keyValue(key));
       }
-      if (first)
+      if (first2)
         firstProp = gen.let("first", true);
       for (const key of optProps) {
         const value = keyValue(key);
@@ -119212,9 +119212,9 @@ var require_serialize = __commonJS({
     function serializeEmpty({ gen, data }) {
       gen.add(names_1.default.json, (0, codegen_1._)`JSON.stringify(${data})`);
     }
-    function addComma({ gen }, first) {
-      if (first) {
-        gen.if(first, () => gen.assign(first, false), () => gen.add(names_1.default.json, (0, codegen_1.str)`,`));
+    function addComma({ gen }, first2) {
+      if (first2) {
+        gen.if(first2, () => gen.assign(first2, false), () => gen.add(names_1.default.json, (0, codegen_1.str)`,`));
       } else {
         gen.add(names_1.default.json, (0, codegen_1.str)`,`);
       }
@@ -122133,8 +122133,8 @@ const asInteger = serializer.asInteger.bind(serializer)
         } else {
           name = "";
         }
-        const first = validate.errors[0];
-        const err = new Error(`${name}schema is invalid: data${first.instancePath} ${first.message}`);
+        const first2 = validate.errors[0];
+        const err = new Error(`${name}schema is invalid: data${first2.instancePath} ${first2.message}`);
         err.errors = isValidSchema.errors;
         throw err;
       }
@@ -124332,10 +124332,10 @@ var require_range = __commonJS({
           throw new TypeError(`Invalid SemVer Range: ${this.raw}`);
         }
         if (this.set.length > 1) {
-          const first = this.set[0];
+          const first2 = this.set[0];
           this.set = this.set.filter((c) => !isNullSet(c[0]));
           if (this.set.length === 0) {
-            this.set = [first];
+            this.set = [first2];
           } else if (this.set.length > 1) {
             for (const c of this.set) {
               if (c.length === 1 && isAny(c[0])) {
@@ -125071,26 +125071,26 @@ var require_simplify = __commonJS({
     var compare = require_compare();
     module.exports = (versions, range, options) => {
       const set2 = [];
-      let first = null;
+      let first2 = null;
       let prev = null;
       const v = versions.sort((a, b) => compare(a, b, options));
       for (const version2 of v) {
         const included = satisfies(version2, range, options);
         if (included) {
           prev = version2;
-          if (!first) {
-            first = version2;
+          if (!first2) {
+            first2 = version2;
           }
         } else {
           if (prev) {
-            set2.push([first, prev]);
+            set2.push([first2, prev]);
           }
           prev = null;
-          first = null;
+          first2 = null;
         }
       }
-      if (first) {
-        set2.push([first, null]);
+      if (first2) {
+        set2.push([first2, null]);
       }
       const ranges = [];
       for (const [min, max] of set2) {
@@ -132524,9 +132524,9 @@ var require_light_my_request = __commonJS({
         const res = new Response2(req, callback);
         return makeRequest(dispatchFunc, server, req, res);
       } else {
-        return new Promise((resolve5, reject) => {
+        return new Promise((resolve6, reject) => {
           const req = new RequestConstructor(options);
-          const res = new Response2(req, resolve5, reject);
+          const res = new Response2(req, resolve6, reject);
           makeRequest(dispatchFunc, server, req, res);
         });
       }
@@ -134596,9 +134596,9 @@ var require_rate_limit = __commonJS({
         throw new Error("The configured rate-limit store does not implement a `read` method, which is required to use `{ increment: false }`");
       }
       try {
-        const res = await new Promise((resolve5, reject) => {
+        const res = await new Promise((resolve6, reject) => {
           store[storeMethod](key, (err, res2) => {
-            err ? reject(err) : resolve5(res2);
+            err ? reject(err) : resolve6(res2);
           }, timeWindow, max);
         });
         current = res.current;
@@ -135113,7 +135113,7 @@ var require_index_min = __commonJS({
       var yi = (n, { windowsPathsNoEscape: t = false, magicalBraces: e = false } = {}) => e ? t ? n.replace(/[?*()[\]{}]/g, "[$&]") : n.replace(/[?*()[\]\\{}]/g, "\\$&") : t ? n.replace(/[?*()[\]]/g, "[$&]") : n.replace(/[?*()[\]\\]/g, "\\$&");
       Ft.escape = yi;
     });
-    var H = R((g) => {
+    var H2 = R((g) => {
       "use strict";
       Object.defineProperty(g, "__esModule", { value: true });
       g.unescape = g.escape = g.AST = g.Minimatch = g.match = g.makeRe = g.braceExpand = g.defaults = g.filter = g.GLOBSTAR = g.sep = g.minimatch = void 0;
@@ -137103,7 +137103,7 @@ globstar while`, t, d, e, u, m), this.matchOne(t.slice(d), e.slice(u), s2)) retu
       "use strict";
       Object.defineProperty(te, "__esModule", { value: true });
       te.Pattern = void 0;
-      var xr = H(), Tr = (n) => n.length >= 1, Cr = (n) => n.length >= 1, Rr = Symbol.for("nodejs.util.inspect.custom"), Ce = class n {
+      var xr = H2(), Tr = (n) => n.length >= 1, Cr = (n) => n.length >= 1, Rr = Symbol.for("nodejs.util.inspect.custom"), Ce = class n {
         #t;
         #s;
         #n;
@@ -137187,7 +137187,7 @@ globstar while`, t, d, e, u, m), this.matchOne(t.slice(d), e.slice(u), s2)) retu
       "use strict";
       Object.defineProperty(ee, "__esModule", { value: true });
       ee.Ignore = void 0;
-      var Ps = H(), Ar = Re(), kr = typeof process == "object" && process && typeof process.platform == "string" ? process.platform : "linux", Ae = class {
+      var Ps = H2(), Ar = Re(), kr = typeof process == "object" && process && typeof process.platform == "string" ? process.platform : "linux", Ae = class {
         relative;
         relativeChildren;
         absolute;
@@ -137227,7 +137227,7 @@ globstar while`, t, d, e, u, m), this.matchOne(t.slice(d), e.slice(u), s2)) retu
       "use strict";
       Object.defineProperty(z2, "__esModule", { value: true });
       z2.Processor = z2.SubWalks = z2.MatchRecord = z2.HasWalkedCache = void 0;
-      var Ds = H(), se = class n {
+      var Ds = H2(), se = class n {
         store;
         constructor(t = /* @__PURE__ */ new Map()) {
           this.store = t;
@@ -137570,7 +137570,7 @@ globstar while`, t, d, e, u, m), this.matchOne(t.slice(d), e.slice(u), s2)) retu
       "use strict";
       Object.defineProperty(oe, "__esModule", { value: true });
       oe.Glob = void 0;
-      var Dr = H(), Fr = __require("node:url"), ne = Ms(), jr = Re(), he = Ls(), Nr = typeof process == "object" && process && typeof process.platform == "string" ? process.platform : "linux", Fe = class {
+      var Dr = H2(), Fr = __require("node:url"), ne = Ms(), jr = Re(), he = Ls(), Nr = typeof process == "object" && process && typeof process.platform == "string" ? process.platform : "linux", Fe = class {
         absolute;
         cwd;
         root;
@@ -137650,7 +137650,7 @@ globstar while`, t, d, e, u, m), this.matchOne(t.slice(d), e.slice(u), s2)) retu
       "use strict";
       Object.defineProperty(ae, "__esModule", { value: true });
       ae.hasMagic = void 0;
-      var Lr = H(), Wr = (n, t = {}) => {
+      var Lr = H2(), Wr = (n, t = {}) => {
         Array.isArray(n) || (n = [n]);
         for (let e of n) if (new Lr.Minimatch(e, t).hasMagic()) return true;
         return false;
@@ -137664,10 +137664,10 @@ globstar while`, t, d, e, u, m), this.matchOne(t.slice(d), e.slice(u), s2)) retu
     exports.globSync = We;
     exports.globIterateSync = Tt;
     exports.globIterate = Be;
-    var Ws = H();
+    var Ws = H2();
     var tt = je();
     var Br = Ne();
-    var Is = H();
+    var Is = H2();
     Object.defineProperty(exports, "escape", { enumerable: true, get: function() {
       return Is.escape;
     } });
@@ -137898,8 +137898,8 @@ var require_escape_html = __commonJS({
   "node_modules/.pnpm/escape-html@1.0.3/node_modules/escape-html/index.js"(exports, module) {
     "use strict";
     var matchHtmlRegExp = /["'&<>]/;
-    module.exports = escapeHtml;
-    function escapeHtml(string4) {
+    module.exports = escapeHtml2;
+    function escapeHtml2(string4) {
       var str5 = "" + string4;
       var match = matchHtmlRegExp.exec(str5);
       if (!match) {
@@ -138807,7 +138807,7 @@ var require_send = __commonJS({
     var stream = __require("node:stream");
     var debug = __require("node:util").debuglog("send");
     var decode3 = require_fast_decode_uri_component();
-    var escapeHtml = require_escape_html();
+    var escapeHtml2 = require_escape_html();
     var mime = require_mime();
     var ms = require_dist8();
     var { collapseLeadingSlashes } = require_collapseLeadingSlashes();
@@ -138820,9 +138820,9 @@ var require_send = __commonJS({
     var { parseTokenList } = require_parseTokenList();
     var { createHttpError } = require_createHttpError();
     var extname = path.extname;
-    var join7 = path.join;
+    var join8 = path.join;
     var normalize = path.normalize;
-    var resolve5 = path.resolve;
+    var resolve6 = path.resolve;
     var sep2 = path.sep;
     var Readable2 = stream.Readable;
     var BYTES_RANGE_REGEXP = /^ *bytes=/;
@@ -138869,7 +138869,7 @@ var require_send = __commonJS({
       const lastModified = options.lastModified !== void 0 ? Boolean(options.lastModified) : true;
       const maxage = normalizeMaxAge(options.maxAge ?? options.maxage);
       const maxContentRangeChunkSize = options.maxContentRangeChunkSize !== void 0 ? Number(options.maxContentRangeChunkSize) : null;
-      const root = options.root ? resolve5(options.root) : null;
+      const root = options.root ? resolve6(options.root) : null;
       const highWaterMark = Number.isSafeInteger(options.highWaterMark) && options.highWaterMark > 0 ? options.highWaterMark : null;
       return {
         acceptRanges,
@@ -138907,14 +138907,14 @@ var require_send = __commonJS({
           return { statusCode: 403 };
         }
         parts = path2.split(sep2);
-        path2 = normalize(join7(root, path2));
+        path2 = normalize(join8(root, path2));
       } else {
         if (UP_PATH_REGEXP.test(path2)) {
           debug('malicious path "%s"', path2);
           return { statusCode: 403 };
         }
         parts = normalize(path2).split(sep2);
-        path2 = resolve5(path2);
+        path2 = resolve6(path2);
       }
       return { path: path2, parts };
     }
@@ -139010,9 +139010,9 @@ var require_send = __commonJS({
       );
     }
     function tryStat(path2) {
-      return new Promise((resolve6) => {
+      return new Promise((resolve7) => {
         fs.stat(path2, function onstat(error51, stat) {
-          resolve6({ error: error51, stat });
+          resolve7({ error: error51, stat });
         });
       });
     }
@@ -139170,7 +139170,7 @@ var require_send = __commonJS({
         return sendError2(403);
       }
       const loc = encodeURI(collapseLeadingSlashes(options.path + "/"));
-      const doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml(loc));
+      const doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml2(loc));
       const headers = {};
       headers["Content-Type"] = "text/html; charset=utf-8";
       headers["Content-Length"] = doc[1];
@@ -139190,7 +139190,7 @@ var require_send = __commonJS({
       let err;
       for (let i = 0; i < options.index.length; i++) {
         const index = options.index[i];
-        const p = join7(path2, index);
+        const p = join8(path2, index);
         const { error: error51, stat } = await tryStat(p);
         if (error51) {
           err = error51;
@@ -140353,8 +140353,8 @@ var require_static = __commonJS({
 });
 
 // cli/bin/companybrain.ts
-import { copyFileSync, existsSync as existsSync4, mkdirSync as mkdirSync3 } from "node:fs";
-import { dirname as dirname4, join as join6, resolve as resolve4 } from "node:path";
+import { existsSync as existsSync5, mkdirSync as mkdirSync4 } from "node:fs";
+import { dirname as dirname4, join as join7, resolve as resolve5 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // packages/db/src/index.ts
@@ -141361,14 +141361,14 @@ function memberRepo(db) {
       const r = db.prepare("SELECT * FROM members WHERE org_id=? AND email_lc=? ORDER BY active DESC, created_at LIMIT 1").get(orgId, e);
       return r ? rowToMember(r) : null;
     },
-    /** Match by phone digits; also tolerates a missing/extra country code (suffix match ≥ 8 digits). */
+    /**
+     * Exact E.164 match: all digits including the country code must be equal. No suffix /
+     * "last 10 digits" matching — +44 7700 900123 must never match +1 …7700900123.
+     */
     findByPhone(orgId, phone2) {
       const d = phoneDigits(phone2);
       if (!d) return [];
-      const exact = db.prepare("SELECT * FROM members WHERE org_id=? AND active=1 AND phone_digits=?").all(orgId, d).map(rowToMember);
-      if (exact.length || d.length < 8) return exact;
-      const tail = d.slice(-10);
-      return db.prepare("SELECT * FROM members WHERE org_id=? AND active=1 AND phone_digits IS NOT NULL AND length(phone_digits) >= 8 AND (phone_digits LIKE '%' || ? OR ? LIKE '%' || phone_digits)").all(orgId, tail, d).map(rowToMember);
+      return db.prepare("SELECT * FROM members WHERE org_id=? AND active=1 AND phone_digits=?").all(orgId, d).map(rowToMember);
     },
     countActive(orgId, role) {
       return db.prepare("SELECT COUNT(*) c FROM members WHERE org_id=? AND role=? AND active=1").get(orgId, role).c;
@@ -142425,6 +142425,10 @@ function loadIntegrationsConfig(env2 = process.env, dataDir2) {
     imap,
     smtp,
     emailWebhookSecret: str(env2, "EMAIL_WEBHOOK_SECRET"),
+    emailAuth: {
+      authservId: str(env2, "EMAIL_AUTHSERV_ID")?.toLowerCase() ?? null,
+      trustUnverifiedSenders: bool(env2, "EMAIL_TRUST_UNVERIFIED_SENDERS", false)
+    },
     vapid,
     llm,
     tts
@@ -142557,6 +142561,52 @@ function createMailer(cfg, deps = {}) {
 var import_web_push = __toESM(require_src2(), 1);
 import { chmodSync as chmodSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, renameSync, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join4 } from "node:path";
+
+// packages/types/src/index.ts
+var SYSTEM_MEMBER_ID = "system";
+var ROLE_RANK = {
+  guest: 0,
+  agent: 1,
+  member: 2,
+  manager: 3,
+  admin: 4,
+  owner: 5
+};
+var AppError = class extends Error {
+  constructor(code, message, details) {
+    super(message);
+    this.code = code;
+    this.details = details;
+    this.name = "AppError";
+  }
+};
+var HTTP_STATUS = {
+  bad_request: 400,
+  unauthorized: 401,
+  forbidden: 403,
+  not_found: 404,
+  conflict: 409,
+  rate_limited: 429,
+  internal: 500
+};
+var PUSH_SERVICE_HOSTS = ["fcm.googleapis.com", "android.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com"];
+var PUSH_SERVICE_HOST_SUFFIXES = [".push.services.mozilla.com", ".notify.windows.com", ".push.apple.com"];
+function isAllowedPushEndpoint(endpoint) {
+  if (typeof endpoint !== "string" || endpoint.length > 2048) return false;
+  let u;
+  try {
+    u = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:" || u.username || u.password) return false;
+  if (u.port !== "" && u.port !== "443") return false;
+  const host = u.hostname.toLowerCase();
+  if (PUSH_SERVICE_HOSTS.includes(host)) return true;
+  return PUSH_SERVICE_HOST_SUFFIXES.some((s2) => host.endsWith(s2) && host.length > s2.length && /^[a-z0-9.-]+$/.test(host));
+}
+
+// packages/integrations/src/push.ts
 var cache = /* @__PURE__ */ new Map();
 var isB64Url = (s2) => typeof s2 === "string" && /^[A-Za-z0-9_-]{20,}$/.test(s2);
 function getVapidKeys(cfg) {
@@ -142593,7 +142643,7 @@ async function sendPush(keys, subject, sub, payload, deps = {}) {
   const log = deps.log ?? defaultLogger;
   const send = deps.send ?? ((s2, p, o) => import_web_push.default.sendNotification(s2, p, o));
   try {
-    if (!sub?.endpoint || !/^https:\/\//.test(sub.endpoint) || !sub.keys?.p256dh || !sub.keys?.auth) return "gone";
+    if (!sub?.endpoint || !isAllowedPushEndpoint(sub.endpoint) || !sub.keys?.p256dh || !sub.keys?.auth) return "gone";
     await send(sub, JSON.stringify(payload), {
       vapidDetails: { subject, publicKey: keys.publicKey, privateKey: keys.privateKey },
       TTL: 24 * 60 * 60,
@@ -143068,8 +143118,11 @@ var ENTITIES = {
   rdquo: "\u201D",
   ldquo: "\u201C"
 };
+var MAX_TEXT_BODY = 200 * 1024;
+var MAX_HTML_BODY = 300 * 1024;
+var MAX_HEURISTIC_LINE = 300;
 function decodeEntities(s2) {
-  return s2.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => {
+  return s2.replace(/&(#x[0-9a-f]{1,8}|#\d{1,8}|[a-z]{1,10});/gi, (m, e) => {
     if (e[0] === "#") {
       const code = e[1] === "x" || e[1] === "X" ? Number.parseInt(e.slice(2), 16) : Number.parseInt(e.slice(1), 10);
       return Number.isFinite(code) && code > 0 && code <= 1114111 ? String.fromCodePoint(code) : m;
@@ -143077,20 +143130,66 @@ function decodeEntities(s2) {
     return ENTITIES[e.toLowerCase()] ?? m;
   });
 }
-function htmlToText(html) {
-  let h = html;
-  h = h.replace(/<!--[\s\S]*?-->/g, "");
-  h = h.replace(/<(script|style|head|title)\b[\s\S]*?<\/\1\s*>/gi, "");
-  h = h.replace(/<blockquote\b[\s\S]*?<\/blockquote\s*>/gi, "");
-  h = h.replace(/<div[^>]*class=["'][^"']*(gmail_quote|moz-cite-prefix|yahoo_quoted)[^"']*["'][\s\S]*$/i, "");
-  h = h.replace(/<div[^>]*id=["'](divRplyFwdMsg|appendonsend)["'][\s\S]*$/i, "");
-  h = h.replace(/<br\s*\/?>/gi, "\n");
-  h = h.replace(/<li\b[^>]*>/gi, "\n\u2022 ");
-  h = h.replace(/<\/(p|div|h[1-6]|tr|table|ul|ol|section|article|header|footer)\s*>/gi, "\n");
-  h = h.replace(/<(p|div|h[1-6]|tr|table|ul|ol)\b[^>]*>/gi, "\n");
-  h = h.replace(/<[^>]+>/g, "");
-  h = decodeEntities(h);
-  return h.split("\n").map((l) => l.replace(/[ \t ]+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+var SKIP_CONTENT = /* @__PURE__ */ new Set(["script", "style", "head", "title"]);
+var BLOCK_CLOSE = /* @__PURE__ */ new Set(["p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "table", "ul", "ol", "section", "article", "header", "footer"]);
+var BLOCK_OPEN = /* @__PURE__ */ new Set(["p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "table", "ul", "ol"]);
+var QUOTE_MARKERS = ["gmail_quote", "moz-cite-prefix", "yahoo_quoted", "divrplyfwdmsg", "appendonsend"];
+var isNameChar = (c) => c >= 48 && c <= 57 || c >= 65 && c <= 90 || c >= 97 && c <= 122;
+function htmlToText(input) {
+  const html = input.length > MAX_HTML_BODY ? input.slice(0, MAX_HTML_BODY) : input;
+  const lower = html.toLowerCase();
+  const n = html.length;
+  const out = [];
+  const skipPastClose = (name, from) => {
+    const c = lower.indexOf(`</${name}`, from);
+    if (c < 0) return n;
+    const gt = lower.indexOf(">", c);
+    return gt < 0 ? n : gt + 1;
+  };
+  let i = 0;
+  while (i < n) {
+    const lt = html.indexOf("<", i);
+    if (lt < 0) {
+      out.push(html.slice(i));
+      break;
+    }
+    if (lt > i) out.push(html.slice(i, lt));
+    if (html.startsWith("<!--", lt)) {
+      const end = html.indexOf("-->", lt + 4);
+      if (end < 0) break;
+      i = end + 3;
+      continue;
+    }
+    const gt = html.indexOf(">", lt + 1);
+    if (gt < 0) {
+      out.push(html.slice(lt));
+      break;
+    }
+    let p = lt + 1;
+    const closing = html.charCodeAt(p) === 47;
+    if (closing) p++;
+    const nameStart = p;
+    while (p < gt && isNameChar(html.charCodeAt(p))) p++;
+    const name = lower.slice(nameStart, p);
+    i = gt + 1;
+    if (!name) continue;
+    if (closing) {
+      if (BLOCK_CLOSE.has(name)) out.push("\n");
+      continue;
+    }
+    if (SKIP_CONTENT.has(name) || name === "blockquote") {
+      i = skipPastClose(name, i);
+      continue;
+    }
+    if (name === "div") {
+      const attrs = lower.slice(p, Math.min(gt, p + 4096));
+      if (QUOTE_MARKERS.some((m) => attrs.includes(m))) break;
+    }
+    if (name === "br") out.push("\n");
+    else if (name === "li") out.push("\n\u2022 ");
+    else if (BLOCK_OPEN.has(name)) out.push("\n");
+  }
+  return decodeEntities(out.join("")).split("\n").map((l) => l.replace(/[ \t ]+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 var CUT_PATTERNS = [
   /^-{2,}\s*Original Message\s*-{2,}/i,
@@ -143103,31 +143202,132 @@ var CUT_PATTERNS = [
   /^Get Outlook for (iOS|Android)/i,
   /^Sent from (Mail|Outlook|Yahoo Mail|Gmail) for/i
 ];
-function stripQuotedReply(text) {
+function stripQuotedReply(input) {
+  const text = input.length > MAX_TEXT_BODY ? input.slice(0, MAX_TEXT_BODY) : input;
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
   const out = [];
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const line = raw.trim();
-    if (CUT_PATTERNS.some((re) => re.test(line))) break;
-    if (/^On\s.+\swrote:$/i.test(line)) break;
-    if (/^On\s.+/i.test(line) && !/wrote:/i.test(line) && /^\S*.*wrote:$/i.test((lines[i + 1] ?? "").trim()) && line.length < 200) {
-      const joined = `${line} ${(lines[i + 1] ?? "").trim()}`;
-      if (/^On\s.+\swrote:$/i.test(joined)) break;
-    }
-    if (/^(Am\s.+schrieb.+|Le\s.+a écrit\s?|El\s.+escribió)\s?:$/i.test(line)) break;
-    if (/^From:\s/i.test(line)) {
-      const next = lines.slice(i + 1, i + 5).map((l) => l.trim());
-      if (next.some((l) => /^(Sent|Date):\s/i.test(l))) break;
+    if (line.length <= MAX_HEURISTIC_LINE) {
+      if (CUT_PATTERNS.some((re) => re.test(line))) break;
+      if (/^On\s.+\swrote:$/i.test(line)) break;
+      const next = (lines[i + 1] ?? "").trim();
+      if (next.length <= MAX_HEURISTIC_LINE && /^On\s/i.test(line) && !/wrote:/i.test(line) && /wrote:$/i.test(next)) {
+        const joined = `${line} ${next}`;
+        if (/^On\s.+\swrote:$/i.test(joined)) break;
+      }
+      if (/^(Am\s.+schrieb.+|Le\s.+a écrit\s?|El\s.+escribió)\s?:$/i.test(line)) break;
+      if (/^From:\s/i.test(line)) {
+        const block = lines.slice(i + 1, i + 5).map((l) => l.trim());
+        if (block.some((l) => /^(Sent|Date):\s/i.test(l))) break;
+      }
     }
     if (line.startsWith(">")) continue;
-    out.push(raw.replace(/\s+$/, ""));
+    out.push(raw.trimEnd());
   }
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 function bestBody(text, html) {
-  const base = text && text.trim() ? text : html ? htmlToText(html) : "";
+  const t = text && text.trim() ? text.slice(0, MAX_TEXT_BODY) : "";
+  const base = t || (html ? htmlToText(html.slice(0, MAX_HTML_BODY)) : "");
   return stripQuotedReply(base);
+}
+
+// packages/integrations/src/email/auth.ts
+var MAX_AUTH_RESULTS = 4096;
+var MAX_HEADER_VALUE = 1024;
+function stripComments(s2) {
+  let depth = 0;
+  let out = "";
+  for (let i = 0; i < s2.length; i++) {
+    const c = s2[i];
+    if (c === "\\" && depth > 0) {
+      i++;
+      continue;
+    }
+    if (c === "(") depth++;
+    else if (c === ")" && depth > 0) depth--;
+    else if (depth === 0) out += c;
+  }
+  return out;
+}
+function parseAuthenticationResults(value) {
+  const v = stripComments(value.slice(0, MAX_AUTH_RESULTS).replace(/\r?\n[ \t]*/g, " "));
+  const parts = v.split(";");
+  const authservId = (parts[0] ?? "").trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+  const results = [];
+  for (const part of parts.slice(1)) {
+    const tokens = part.trim().split(/\s+/).filter(Boolean);
+    const first2 = tokens[0];
+    if (!first2) continue;
+    const eq2 = first2.indexOf("=");
+    if (eq2 <= 0) continue;
+    const method = first2.slice(0, eq2).split("/")[0].toLowerCase();
+    const result = first2.slice(eq2 + 1).toLowerCase();
+    const props = {};
+    for (const t of tokens.slice(1)) {
+      const e = t.indexOf("=");
+      if (e <= 0) continue;
+      const key = t.slice(0, e).toLowerCase();
+      if (!key.includes(".")) continue;
+      props[key] = t.slice(e + 1).replace(/^"|"$/g, "").toLowerCase();
+    }
+    results.push({ method, result, props });
+  }
+  return { authservId, results };
+}
+function domainOf(v) {
+  if (!v) return null;
+  const s2 = v.trim().toLowerCase().replace(/^<|>$/g, "");
+  const at = s2.lastIndexOf("@");
+  const d = (at >= 0 ? s2.slice(at + 1) : s2).replace(/\.$/, "");
+  return d && d.includes(".") ? d : null;
+}
+function aligned(authDomain, fromDomain) {
+  if (!authDomain || !fromDomain) return false;
+  return authDomain === fromDomain || fromDomain.endsWith(`.${authDomain}`);
+}
+function resultsVouchFor(results, from) {
+  const fd = domainOf(from);
+  if (!fd) return false;
+  for (const r of results) {
+    if (r.result !== "pass") continue;
+    if (r.method === "dmarc") {
+      const hf = r.props["header.from"];
+      if (!hf || domainOf(hf) === fd) return true;
+    } else if (r.method === "dkim") {
+      if (aligned(domainOf(r.props["header.d"]), fd) || aligned(domainOf(r.props["header.i"]), fd)) return true;
+    } else if (r.method === "spf") {
+      if (aligned(domainOf(r.props["smtp.mailfrom"]), fd)) return true;
+    }
+  }
+  return false;
+}
+function authenticatedByHeader(topmost, from, opts = {}) {
+  if (!topmost) return false;
+  const ar = parseAuthenticationResults(topmost);
+  const want = opts.authservId?.trim().toLowerCase();
+  if (want && ar.authservId !== want) return false;
+  return resultsVouchFor(ar.results, from);
+}
+function dkimSignatureDomain(sig) {
+  if (!sig) return null;
+  for (const tag of sig.slice(0, MAX_AUTH_RESULTS).split(";")) {
+    const eq2 = tag.indexOf("=");
+    if (eq2 > 0 && tag.slice(0, eq2).trim().toLowerCase() === "d") return domainOf(tag.slice(eq2 + 1).replace(/\s+/g, ""));
+  }
+  return null;
+}
+function receivedSpfPassDomain(v) {
+  if (!v) return null;
+  const s2 = v.slice(0, MAX_HEADER_VALUE).trim();
+  if (!/^pass\b/i.test(s2)) return null;
+  const at = s2.toLowerCase().indexOf("envelope-from=");
+  if (at < 0) return null;
+  const rest = s2.slice(at + "envelope-from=".length).replace(/^["<\s]+/, "");
+  const end = rest.search(/[\s;">]/);
+  return domainOf(end < 0 ? rest : rest.slice(0, end));
 }
 
 // packages/integrations/src/email/poller.ts
@@ -143156,10 +143356,21 @@ function isAutomated(mail) {
   if (/^(mailer-daemon|postmaster|no-?reply|do-?not-?reply)@/i.test(from)) return true;
   return false;
 }
-function mailToInbound(mail, fallbackId2) {
+function topmostAuthenticationResults(mail) {
+  for (const h of mail.headerLines ?? []) {
+    if (h.key !== "authentication-results") continue;
+    const line = h.line.slice(0, MAX_AUTH_RESULTS + 64);
+    const colon = line.indexOf(":");
+    return colon < 0 ? null : line.slice(colon + 1).trim();
+  }
+  return null;
+}
+function mailToInbound(mail, fallbackId2, auth = {}) {
   const from = firstAddress(mail.from);
   if (!from) return null;
-  const subject = mail.subject?.trim() || null;
+  const fromCount = (Array.isArray(mail.from) ? mail.from : mail.from ? [mail.from] : []).reduce((n, o) => n + (o.value?.length ?? 0), 0);
+  const authenticated = !!auth.trustUnverifiedSenders || fromCount === 1 && authenticatedByHeader(topmostAuthenticationResults(mail), from.address, auth);
+  const subject = mail.subject?.slice(0, 1024).trim() || null;
   const text = bestBody(mail.text ?? null, typeof mail.html === "string" ? mail.html : null) || subject || "";
   if (!text) return null;
   return {
@@ -143169,7 +143380,8 @@ function mailToInbound(mail, fallbackId2) {
     subject,
     text,
     externalId: mail.messageId?.trim() || fallbackId2,
-    receivedAt: mail.date instanceof Date && Number.isFinite(mail.date.getTime()) ? mail.date.getTime() : Date.now()
+    receivedAt: mail.date instanceof Date && Number.isFinite(mail.date.getTime()) ? mail.date.getTime() : Date.now(),
+    authenticated
   };
 }
 function replySubject(subject) {
@@ -143205,7 +143417,7 @@ function createEmailPoller(cfg, onInbound, deps = {}) {
     const msg = await client.fetchOne(String(uid), { source: true, uid: true }, { uid: true });
     if (!msg || !msg.source) return false;
     const mail = await (0, import_mailparser.simpleParser)(msg.source);
-    const inbound = mailToInbound(mail, `imap:${imap.user}:${imap.mailbox}:${uid}`);
+    const inbound = mailToInbound(mail, `imap:${imap.user}:${imap.mailbox}:${uid}`, cfg.emailAuth);
     const sender = inbound?.from ?? "";
     if (!inbound || isAutomated(mail) || ownAddresses.has(sender)) {
       await client.messageFlagsAdd([uid], ["\\Seen"], { uid: true });
@@ -143312,29 +143524,58 @@ function createEmailPoller(cfg, onInbound, deps = {}) {
 
 // packages/integrations/src/email/webhook.ts
 import { createHash as createHash2 } from "node:crypto";
+var MAX_FROM = 320;
+var MAX_HEADER_BLOCK = 64 * 1024;
 var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var str2 = (v) => typeof v === "string" && v.trim() !== "" ? v : null;
+var ADDR_STOP = /* @__PURE__ */ new Set([" ", "	", "\r", "\n", "<", ">", '"', "'", ",", ";", ":"]);
+function validAddress(a) {
+  if (a.length < 5 || a.length > 254) return false;
+  for (const ch of a) if (ADDR_STOP.has(ch)) return false;
+  const at = a.indexOf("@");
+  if (at <= 0 || at !== a.lastIndexOf("@")) return false;
+  const domain2 = a.slice(at + 1);
+  const dot = domain2.indexOf(".");
+  return dot > 0 && !domain2.endsWith(".");
+}
 function parseAddress(raw) {
   if (!raw) return null;
-  const s2 = raw.trim();
-  const angle = /^(.*?)<\s*([^<>\s]+@[^<>\s]+)\s*>\s*$/.exec(s2);
-  if (angle) {
-    const name = angle[1].trim().replace(/^"(.*)"$/, "$1").trim();
-    return { address: angle[2].toLowerCase(), name: name || null };
+  const s2 = raw.slice(0, MAX_FROM).trim();
+  if (s2.endsWith(">")) {
+    const lt = s2.lastIndexOf("<");
+    if (lt >= 0) {
+      const inner = s2.slice(lt + 1, -1).trim().toLowerCase();
+      if (validAddress(inner)) {
+        let name = s2.slice(0, lt).trim();
+        if (name.length >= 2 && name.startsWith('"') && name.endsWith('"')) name = name.slice(1, -1).trim();
+        return { address: inner, name: name || null };
+      }
+    }
   }
-  const bare = /([^\s<>"',;:]+@[^\s<>"',;:]+\.[^\s<>"',;:]+)/.exec(s2);
-  if (!bare) return null;
-  return { address: bare[1].toLowerCase(), name: null };
+  for (const tok of s2.split(/[\s<>"',;:]+/)) {
+    if (tok && validAddress(tok)) return { address: tok.toLowerCase(), name: null };
+  }
+  return null;
 }
-function headerFromRaw(raw, name) {
-  if (!raw) return null;
-  const unfolded = raw.replace(/\r?\n[ \t]+/g, " ");
-  const re = new RegExp(`^${name}:\\s*(.+)$`, "im");
-  return re.exec(unfolded)?.[1]?.trim() ?? null;
+function headersFromRaw(raw) {
+  if (!raw) return [];
+  const out = [];
+  for (const line of raw.slice(0, MAX_HEADER_BLOCK).split(/\r?\n/)) {
+    if ((line.startsWith(" ") || line.startsWith("	")) && out.length) {
+      const last = out[out.length - 1];
+      if (last[1].length < MAX_AUTH_RESULTS) last[1] += " " + line.trim();
+      continue;
+    }
+    const colon = line.indexOf(":");
+    if (colon <= 0) continue;
+    out.push([line.slice(0, colon).trim().toLowerCase(), line.slice(colon + 1).trim()]);
+  }
+  return out;
 }
+var cap = (v, n = MAX_HEADER_VALUE) => v && v.length > n ? v.slice(0, n) : v;
 function parseDate(v) {
   if (typeof v === "number" && Number.isFinite(v)) return v < 1e12 ? v * 1e3 : v;
-  const s2 = str2(v);
+  const s2 = str2(v)?.slice(0, 200);
   if (!s2) return null;
   if (/^\d+(\.\d+)?$/.test(s2)) {
     const n = Number(s2);
@@ -143353,11 +143594,12 @@ function fallbackId(from, subject, text) {
 ${subject ?? ""}
 ${text}`).digest("hex").slice(0, 32)}`;
 }
+var first = (hs, name) => hs.find(([k]) => k === name)?.[1] ?? null;
 function extract(b) {
   if ("From" in b || "FromFull" in b || "TextBody" in b || "HtmlBody" in b) {
     const full = isObj2(b.FromFull) ? b.FromFull : null;
-    const headers2 = Array.isArray(b.Headers) ? b.Headers : [];
-    const midHeader = headers2.find((h) => isObj2(h) && typeof h.Name === "string" && h.Name.toLowerCase() === "message-id");
+    const headers = Array.isArray(b.Headers) ? b.Headers : [];
+    const midHeader = headers.find((h) => isObj2(h) && typeof h.Name === "string" && h.Name.toLowerCase() === "message-id");
     return {
       from: str2(full?.Email) ?? str2(b.From),
       fromName: str2(full?.Name) ?? str2(b.FromName),
@@ -143365,47 +143607,59 @@ function extract(b) {
       text: str2(b.StrippedTextReply) ?? str2(b.TextBody),
       html: str2(b.HtmlBody),
       messageId: str2(midHeader?.Value) ?? str2(b.MessageID),
-      date: parseDate(b.Date)
+      date: parseDate(b.Date),
+      verify(from2, opts) {
+        const hs2 = headers.filter((h) => isObj2(h) && typeof h.Name === "string" && typeof h.Value === "string").slice(0, 500).map((h) => [h.Name.toLowerCase(), h.Value.slice(0, MAX_AUTH_RESULTS)]);
+        if (authenticatedByHeader(first(hs2, "authentication-results"), from2, opts)) return true;
+        if ((first(hs2, "x-spam-tests") ?? "").split(/[\s,]+/).includes("DKIM_VALID_AU")) return true;
+        return aligned(receivedSpfPassDomain(first(hs2, "received-spf")), domainOf(from2));
+      }
     };
   }
   if ("body-plain" in b || "stripped-text" in b || "body-html" in b || "message-headers" in b) {
-    let mid = str2(b["Message-Id"]) ?? str2(b["message-id"]);
-    if (!mid) {
-      const mh = b["message-headers"];
-      let pairs = mh;
-      if (typeof mh === "string") {
-        try {
-          pairs = JSON.parse(mh);
-        } catch {
-          pairs = null;
-        }
-      }
-      if (Array.isArray(pairs)) {
-        const p = pairs.find((x) => Array.isArray(x) && typeof x[0] === "string" && x[0].toLowerCase() === "message-id");
-        mid = Array.isArray(p) ? str2(p[1]) : null;
+    const mh = b["message-headers"];
+    let pairs = mh;
+    if (typeof mh === "string") {
+      try {
+        pairs = JSON.parse(mh.slice(0, MAX_HEADER_BLOCK * 4));
+      } catch {
+        pairs = null;
       }
     }
+    const hs2 = Array.isArray(pairs) ? pairs.slice(0, 500).filter((x) => Array.isArray(x) && typeof x[0] === "string" && typeof x[1] === "string").map(([k, v]) => [k.toLowerCase(), v.slice(0, MAX_AUTH_RESULTS)]) : [];
+    const mid = str2(b["Message-Id"]) ?? str2(b["message-id"]) ?? str2(first(hs2, "message-id"));
+    const sender = str2(b.sender);
     return {
-      from: str2(b.from) ?? str2(b.From) ?? str2(b.sender),
+      from: str2(b.from) ?? str2(b.From) ?? sender,
       subject: str2(b.subject) ?? str2(b.Subject),
       text: str2(b["stripped-text"]) ?? str2(b["body-plain"]),
       html: str2(b["stripped-html"]) ?? str2(b["body-html"]),
       messageId: mid,
-      date: parseDate(b.timestamp) ?? parseDate(b.Date)
+      date: parseDate(b.timestamp) ?? parseDate(b.Date),
+      verify(from2, opts) {
+        if (authenticatedByHeader(first(hs2, "authentication-results"), from2, opts)) return true;
+        const fd = domainOf(from2);
+        const spf = (str2(b["X-Mailgun-Spf"]) ?? first(hs2, "x-mailgun-spf") ?? "").trim().toLowerCase();
+        if (spf === "pass" && aligned(domainOf(sender), fd)) return true;
+        const dkim = (str2(b["X-Mailgun-Dkim-Check-Result"]) ?? first(hs2, "x-mailgun-dkim-check-result") ?? "").trim().toLowerCase();
+        return dkim === "pass" && aligned(dkimSignatureDomain(first(hs2, "dkim-signature")), fd);
+      }
     };
   }
-  const headers = str2(b.headers);
-  let from = str2(b.from);
-  if (!from && isObj2(b.from)) from = str2(b.from.address) ?? str2(b.from.email);
-  if (!from && str2(b.envelope)) {
+  const hs = headersFromRaw(str2(b.headers));
+  let envelopeFrom = null;
+  if (str2(b.envelope)) {
     try {
-      const env2 = JSON.parse(b.envelope);
-      from = str2(env2.from);
+      const env2 = JSON.parse(b.envelope.slice(0, MAX_HEADER_VALUE * 8));
+      envelopeFrom = isObj2(env2) ? str2(env2.from) : null;
     } catch {
     }
-  } else if (!from && isObj2(b.envelope)) {
-    from = str2(b.envelope.from);
+  } else if (isObj2(b.envelope)) {
+    envelopeFrom = str2(b.envelope.from);
   }
+  let from = str2(b.from);
+  if (!from && isObj2(b.from)) from = str2(b.from.address) ?? str2(b.from.email);
+  if (!from) from = envelopeFrom;
   const fromName = isObj2(b.from) ? str2(b.from.name) : null;
   return {
     from,
@@ -143413,11 +143667,23 @@ function extract(b) {
     subject: str2(b.subject),
     text: str2(b.text) ?? str2(b.plain) ?? str2(b.body),
     html: str2(b.html),
-    messageId: str2(b.messageId) ?? str2(b.message_id) ?? str2(b["Message-ID"]) ?? headerFromRaw(headers, "Message-ID"),
-    date: parseDate(b.date) ?? parseDate(headerFromRaw(headers, "Date"))
+    messageId: str2(b.messageId) ?? str2(b.message_id) ?? str2(b["Message-ID"]) ?? str2(first(hs, "message-id")),
+    date: parseDate(b.date) ?? parseDate(first(hs, "date")),
+    verify(fromAddr, opts) {
+      if (b.authenticated === true) return true;
+      if (authenticatedByHeader(first(hs, "authentication-results"), fromAddr, opts)) return true;
+      const fd = domainOf(fromAddr);
+      if (str2(b.SPF)?.trim().toLowerCase() === "pass" && aligned(domainOf(envelopeFrom), fd)) return true;
+      const dkim = str2(b.dkim)?.slice(0, MAX_AUTH_RESULTS) ?? "";
+      for (const part of dkim.replace(/[{}]/g, "").split(",")) {
+        const [dom, res] = part.split(":").map((x) => x.trim().toLowerCase());
+        if (res === "pass" && aligned(domainOf(dom), fd)) return true;
+      }
+      return false;
+    }
   };
 }
-function parseInboundEmailWebhook(body) {
+function parseInboundEmailWebhook(body, opts = {}) {
   let b = body;
   if (Buffer.isBuffer(b)) b = b.toString("utf8");
   if (typeof b === "string") {
@@ -143432,17 +143698,26 @@ function parseInboundEmailWebhook(body) {
   if (!e) return null;
   const addr = parseAddress(e.from);
   if (!addr) return null;
-  const subject = e.subject?.trim() || null;
-  const text = bestBody(e.text, e.html) || subject || "";
+  const subject = cap(e.subject)?.trim() || null;
+  const text = bestBody(cap(e.text, MAX_TEXT_BODY), cap(e.html, MAX_HTML_BODY)) || subject || "";
   if (!text) return null;
+  let authenticated = !!opts.trustUnverifiedSenders;
+  if (!authenticated) {
+    try {
+      authenticated = e.verify(addr.address, opts);
+    } catch {
+      authenticated = false;
+    }
+  }
   return {
     channel: "email",
     from: addr.address,
-    fromName: e.fromName?.trim() || addr.name,
+    fromName: cap(e.fromName ?? null, 200)?.trim() || addr.name,
     subject,
     text,
-    externalId: cleanMessageId(e.messageId) ?? fallbackId(addr.address, subject, text),
-    receivedAt: e.date ?? Date.now()
+    externalId: cleanMessageId(cap(e.messageId)) ?? fallbackId(addr.address, subject, text),
+    receivedAt: e.date ?? Date.now(),
+    authenticated
   };
 }
 
@@ -143566,7 +143841,7 @@ var WINDOWS_TZ = {
 };
 function resolveTzid(tzid) {
   if (!tzid) return null;
-  const t = tzid.trim().replace(/^"(.*)"$/, "$1");
+  const t = tzid.trim().slice(0, 128).replace(/^"(.*)"$/, "$1");
   if (!t) return null;
   if (/^(utc|gmt|z|etc\/utc|etc\/gmt)$/i.test(t)) return "UTC";
   if (isValidTimeZone(t)) return t;
@@ -144072,7 +144347,7 @@ function normalizeFeedUrl(raw) {
   return t.replace(/^webcals?:\/\//i, "https://");
 }
 var BLOCKED_HOSTNAMES = /(^|\.)(localhost|localdomain|internal|local|home\.arpa)$/i;
-async function vetUrl(raw, resolve5 = defaultResolver) {
+async function vetUrl(raw, resolve6 = defaultResolver) {
   let url3;
   try {
     url3 = new URL(normalizeFeedUrl(raw));
@@ -144092,7 +144367,7 @@ async function vetUrl(raw, resolve5 = defaultResolver) {
   if (BLOCKED_HOSTNAMES.test(host)) throw new SsrfError("Host is not allowed");
   let addrs;
   try {
-    addrs = await resolve5(host);
+    addrs = await resolve6(host);
   } catch {
     throw new SsrfError("Could not resolve host");
   }
@@ -144100,8 +144375,8 @@ async function vetUrl(raw, resolve5 = defaultResolver) {
   for (const a of addrs) {
     if (isBlockedAddress(a.address)) throw new SsrfError("Host resolves to a non-public address");
   }
-  const first = addrs[0];
-  return { url: url3, address: first.address, family: first.family };
+  const first2 = addrs[0];
+  return { url: url3, address: first2.address, family: first2.family };
 }
 var nodeTransport = (target, { maxBytes, signal }) => new Promise((resolvePromise, reject) => {
   const { url: url3, address, family } = target;
@@ -144176,14 +144451,14 @@ var nodeTransport = (target, { maxBytes, signal }) => new Promise((resolvePromis
   req.end();
 });
 async function safeFetchText(rawUrl, opts = {}) {
-  const resolve5 = opts.resolve ?? defaultResolver;
+  const resolve6 = opts.resolve ?? defaultResolver;
   const transport = opts.transport ?? nodeTransport;
   const maxRedirects = opts.maxRedirects ?? 3;
   const maxBytes = opts.maxBytes ?? 5 * 1024 * 1024;
   const signal = AbortSignal.timeout(opts.timeoutMs ?? 15e3);
   let current = rawUrl;
   for (let hop = 0; hop <= maxRedirects; hop++) {
-    const target = await vetUrl(current, resolve5);
+    const target = await vetUrl(current, resolve6);
     if (signal.aborted) throw new Error("Request timed out");
     let res;
     try {
@@ -144641,9 +144916,9 @@ var util;
 })(util || (util = {}));
 var objectUtil;
 (function(objectUtil2) {
-  objectUtil2.mergeShapes = (first, second) => {
+  objectUtil2.mergeShapes = (first2, second) => {
     return {
-      ...first,
+      ...first2,
       ...second
       // second overwrites first
     };
@@ -147557,10 +147832,10 @@ var ZodRecord = class _ZodRecord extends ZodType {
   get element() {
     return this._def.valueType;
   }
-  static create(first, second, third) {
+  static create(first2, second, third) {
     if (second instanceof ZodType) {
       return new _ZodRecord({
-        keyType: first,
+        keyType: first2,
         valueType: second,
         typeName: ZodFirstPartyTypeKind.ZodRecord,
         ...processCreateParams(third)
@@ -147568,7 +147843,7 @@ var ZodRecord = class _ZodRecord extends ZodType {
     }
     return new _ZodRecord({
       keyType: ZodString.create(),
-      valueType: first,
+      valueType: first2,
       typeName: ZodFirstPartyTypeKind.ZodRecord,
       ...processCreateParams(second)
     });
@@ -151450,10 +151725,10 @@ var $ZodUnion = /* @__PURE__ */ $constructor("$ZodUnion", (inst, def) => {
     }
     return void 0;
   });
-  const first = def.options.length === 1 ? def.options[0]._zod.run : null;
+  const first2 = def.options.length === 1 ? def.options[0]._zod.run : null;
   inst._zod.parse = (payload, ctx) => {
-    if (first) {
-      return first(payload, ctx);
+    if (first2) {
+      return first2(payload, ctx);
     }
     let async = false;
     const results = [];
@@ -151505,10 +151780,10 @@ function handleExclusiveUnionResults(results, final, inst, ctx) {
 var $ZodXor = /* @__PURE__ */ $constructor("$ZodXor", (inst, def) => {
   $ZodUnion.init(inst, def);
   def.inclusive = false;
-  const first = def.options.length === 1 ? def.options[0]._zod.run : null;
+  const first2 = def.options.length === 1 ? def.options[0]._zod.run : null;
   inst._zod.parse = (payload, ctx) => {
-    if (first) {
-      return first(payload, ctx);
+    if (first2) {
+      return first2(payload, ctx);
     }
     let async = false;
     const results = [];
@@ -166562,7 +166837,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve5) => setTimeout(resolve5, pollInterval));
+        await new Promise((resolve6) => setTimeout(resolve6, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error51) {
@@ -166579,7 +166854,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve5, reject) => {
+    return new Promise((resolve6, reject) => {
       const earlyReject = (error51) => {
         reject(error51);
       };
@@ -166657,7 +166932,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve5(parseResult.data);
+            resolve6(parseResult.data);
           }
         } catch (error51) {
           reject(error51);
@@ -166919,12 +167194,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve5, reject) => {
+    return new Promise((resolve6, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve5, interval);
+      const timeoutId = setTimeout(resolve6, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -168055,7 +168330,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve5) => setTimeout(resolve5, pollInterval));
+      await new Promise((resolve6) => setTimeout(resolve6, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId2);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId2} not found during polling`);
@@ -169041,7 +169316,7 @@ var readBodyDirect = (request) => {
     request[bodyBufferKey] = buffered;
     return Promise.resolve(buffered);
   }
-  const promise2 = new Promise((resolve5, reject) => {
+  const promise2 = new Promise((resolve6, reject) => {
     const chunks = [];
     let settled = false;
     const finish = (callback) => {
@@ -169059,7 +169334,7 @@ var readBodyDirect = (request) => {
         else if (recovered === void 0) reject(error51 ?? normalizeAbortError(request, incoming));
         else {
           request[bodyBufferKey] = recovered;
-          resolve5(recovered);
+          resolve6(recovered);
         }
       });
       return true;
@@ -169071,7 +169346,7 @@ var readBodyDirect = (request) => {
       finish(() => {
         const buffer = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
         request[bodyBufferKey] = buffer;
-        resolve5(buffer);
+        resolve6(buffer);
       });
     };
     const onError = (error51) => {
@@ -169618,7 +169893,7 @@ var responseViaResponseObject = async (res, outgoing, options = {}) => {
         });
         if (!chunk) {
           if (i === 1) {
-            await new Promise((resolve5) => setTimeout(resolve5));
+            await new Promise((resolve6) => setTimeout(resolve6));
             maxReadCount = 3;
             continue;
           }
@@ -170353,9 +170628,9 @@ data:
       const initRequest = messages.find((m) => isInitializeRequest(m));
       const clientProtocolVersion = initRequest ? initRequest.params.protocolVersion : req.headers.get("mcp-protocol-version") ?? DEFAULT_NEGOTIATED_PROTOCOL_VERSION;
       if (this._enableJsonResponse) {
-        return new Promise((resolve5) => {
+        return new Promise((resolve6) => {
           this._streamMapping.set(streamId, {
-            resolveJson: resolve5,
+            resolveJson: resolve6,
             cleanup: () => {
               this._streamMapping.delete(streamId);
             }
@@ -170839,12 +171114,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve5) => {
+    return new Promise((resolve6) => {
       const json5 = serializeMessage(message);
       if (this._stdout.write(json5)) {
-        resolve5();
+        resolve6();
       } else {
-        this._stdout.once("drain", resolve5);
+        this._stdout.once("drain", resolve6);
       }
     });
   }
@@ -171637,8 +171912,8 @@ ${reward.line}` : ""}`,
       task = Object.keys(patch).length ? await ctx.services.tasks.update(ctx.actor, args.taskId, patch) : await ctx.services.tasks.get(ctx.actor, args.taskId);
     } catch (err) {
       const res = toToolError(err, ctx.actor);
-      const first = res.content[0];
-      const msg = first && first.type === "text" ? first.text : "update failed";
+      const first2 = res.content[0];
+      const msg = first2 && first2.type === "text" ? first2.text : "update failed";
       throw new ToolInputError(`Hand-off note was saved, but updating the task failed: ${msg}`);
     }
     const c = await ctx.compactTask(task);
@@ -172032,13 +172307,13 @@ Set COMPANYBRAIN_MCP_KEY to an API key (cb_live_\u2026) created in companybrain 
     }
   });
   const transport = new StdioServerTransport();
-  await new Promise((resolve5, reject) => {
+  await new Promise((resolve6, reject) => {
     let done = false;
     const finish = () => {
       if (done) return;
       done = true;
       void server.close().catch(() => {
-      }).finally(resolve5);
+      }).finally(resolve6);
     };
     transport.onclose = finish;
     process.stdin.once("end", finish);
@@ -172051,34 +172326,6 @@ Set COMPANYBRAIN_MCP_KEY to an API key (cb_live_\u2026) created in companybrain 
 import { existsSync as existsSync3, readFileSync as readFileSync3, writeFileSync as writeFileSync3 } from "node:fs";
 import { randomBytes as randomBytes7 } from "node:crypto";
 import { join as join5 } from "node:path";
-
-// packages/types/src/index.ts
-var SYSTEM_MEMBER_ID = "system";
-var ROLE_RANK = {
-  guest: 0,
-  agent: 1,
-  member: 2,
-  manager: 3,
-  admin: 4,
-  owner: 5
-};
-var AppError = class extends Error {
-  constructor(code, message, details) {
-    super(message);
-    this.code = code;
-    this.details = details;
-    this.name = "AppError";
-  }
-};
-var HTTP_STATUS = {
-  bad_request: 400,
-  unauthorized: 401,
-  forbidden: 403,
-  not_found: 404,
-  conflict: 409,
-  rate_limited: 429,
-  internal: 500
-};
 
 // packages/core/src/context.ts
 var noopOutbound = {
@@ -172141,8 +172388,18 @@ async function fireAudit(ctx, ev) {
     ctx.log.error("[core] onAudit hook failed", err);
   }
 }
+function publicMember(m) {
+  return { ...m, email: null, phone: null, prefs: defaultPrefs(m.kind) };
+}
 function publish(ctx, orgId, event, memberIds) {
   try {
+    if (event.type === "member.upserted" && !memberIds) {
+      const self = event.member.id;
+      ctx.live.publish(orgId, event, { memberIds: [self] });
+      const others = ctx.db.members.list(orgId).map((m) => m.id).filter((id) => id !== self);
+      if (others.length) ctx.live.publish(orgId, { type: "member.upserted", member: publicMember(event.member) }, { memberIds: others });
+      return;
+    }
     ctx.live.publish(orgId, event, memberIds ? { memberIds } : void 0);
   } catch (err) {
     ctx.log.warn("[core] live publish failed", err);
@@ -176215,9 +176472,10 @@ function email3(v, field = "email") {
 function phone(v, field = "phone") {
   const s2 = optStr(v, field, 32);
   if (s2 === null) return null;
-  if (!/^\+?[0-9 ()-]{6,24}$/.test(s2) || s2.replace(/\D/g, "").length < 6) bad(`${field} is not a valid phone number`);
-  const digits = s2.replace(/\D/g, "");
-  return s2.startsWith("+") ? `+${digits}` : digits;
+  if (!/^(\+|00)[0-9 ().-]{6,28}$/.test(s2)) bad(`${field} must be an international number with country code, e.g. +919876543210`);
+  const digits = s2.replace(/\D/g, "").replace(/^00/, "");
+  if (digits.length < 8 || digits.length > 15 || digits.startsWith("0")) bad(`${field} must be an international number with country code, e.g. +919876543210`);
+  return `+${digits}`;
 }
 function color(v, field = "color") {
   if (typeof v !== "string" || !/^#[0-9a-fA-F]{6}$/.test(v)) bad(`${field} must be a hex color like #6366f1`);
@@ -176349,6 +176607,22 @@ function extractMentions(text) {
   for (const m of text.matchAll(/(^|[^\w@])@([A-Za-z0-9][\w.-]{0,63})/g)) out.add(m[2].replace(/[.-]+$/, ""));
   return [...out];
 }
+var NUDGE_MIN_HOURS = 4;
+var NUDGE_MEMBER_DAILY_CAP = 20;
+var NUDGE_ORG_DAILY_CAP = 200;
+var NUDGE_TITLE_MAX = 120;
+var H = 36e5;
+var nudgeIntervalMs = (w) => Math.max(NUDGE_MIN_HOURS, w.nudgeEveryHours ?? NUDGE_MIN_HOURS) * H;
+var URLISH = /^(?:[a-z][a-z0-9+.-]*:\/\/|www\.)|^[^\s@/]+\.[a-z]{2,24}(?:[/:?#]|$)/i;
+function sanitizeNudgeText(s2, max) {
+  const words = s2.replace(/[\u0000-\u001f\u007f]/g, " ").split(/\s+/).filter((w) => w && !URLISH.test(w.replace(/^[("'<[]+|[)"'>\].,;:!?]+$/g, "")));
+  const out = words.join(" ").trim();
+  return out.length > max ? `${out.slice(0, max - 1).trimEnd()}\u2026` : out;
+}
+function nudgeMessage(name, org, title) {
+  const who = sanitizeNudgeText(firstName(name), 40) || "there";
+  return `Hi ${who}, a friendly follow-up from ${org} about: "${sanitizeNudgeText(title, NUDGE_TITLE_MAX) || "your task"}" \u2014 reply here if you have an update.`;
+}
 function createTaskService(ctx) {
   const { db } = ctx;
   const now2 = () => ctx.clock();
@@ -176434,7 +176708,7 @@ function createTaskService(ctx) {
     if (!p) bad("projectId refers to an unknown project");
     return id;
   }
-  function validWaiting(w, prev) {
+  function validWaiting(actor, w, prev) {
     if (w === null || w === void 0) return null;
     if (!isObj3(w)) bad("waitingOn must be an object");
     const name = str3(w.name, "waitingOn.name", { max: 100 });
@@ -176442,7 +176716,11 @@ function createTaskService(ctx) {
     let contact = optStr(w.contact, "waitingOn.contact", 254);
     if (contact && channel === "email") contact = email3(contact, "waitingOn.contact");
     if (contact && channel === "whatsapp") contact = phone(contact, "waitingOn.contact");
-    const nudgeEveryHours = w.nudgeEveryHours === null || w.nudgeEveryHours === void 0 ? null : int3(w.nudgeEveryHours, "waitingOn.nudgeEveryHours", 1, 24 * 30);
+    const contactChanged = !!contact && (!prev || prev.contact !== contact || prev.channel !== channel);
+    if (contactChanged && !isSystem(actor) && !(actor.kind === "human" && rank(actor.role) >= rank("member") && hasWriteScope2(actor))) {
+      forbidden("Only team members can set a waiting-on contact");
+    }
+    const nudgeEveryHours = w.nudgeEveryHours === null || w.nudgeEveryHours === void 0 ? null : Math.max(NUDGE_MIN_HOURS, int3(w.nudgeEveryHours, "waitingOn.nudgeEveryHours", 1, 24 * 30));
     const same = prev && prev.name === name && prev.contact === contact;
     return { name, contact, channel, nudgeEveryHours, lastNudgedAt: same ? prev.lastNudgedAt : null, since: same ? prev.since : now2() };
   }
@@ -176479,7 +176757,7 @@ function createTaskService(ctx) {
       reminderOffsets: input.reminderOffsets === void 0 || input.reminderOffsets === null ? null : offsets(input.reminderOffsets),
       recurrence: validateRecurrence(input.recurrence),
       recurrenceParentId: null,
-      waitingOn: validWaiting(input.waitingOn, null),
+      waitingOn: validWaiting(actor, input.waitingOn, null),
       tags: input.tags === void 0 ? [] : tags2(input.tags),
       subtasks,
       source: {
@@ -176601,7 +176879,7 @@ function createTaskService(ctx) {
     if (patch.order !== void 0) next.order = num2(patch.order, "order");
     if (patch.reminderOffsets !== void 0) next.reminderOffsets = patch.reminderOffsets === null ? null : offsets(patch.reminderOffsets);
     if (patch.recurrence !== void 0) next.recurrence = validateRecurrence(patch.recurrence);
-    if (patch.waitingOn !== void 0) next.waitingOn = validWaiting(patch.waitingOn, cur.waitingOn);
+    if (patch.waitingOn !== void 0) next.waitingOn = validWaiting(actor, patch.waitingOn, cur.waitingOn);
     if (next.title !== cur.title || next.notes !== cur.notes || JSON.stringify(next.tags) !== JSON.stringify(cur.tags) || JSON.stringify(next.recurrence) !== JSON.stringify(cur.recurrence) || JSON.stringify(next.waitingOn) !== JSON.stringify(cur.waitingOn) || JSON.stringify(next.reminderOffsets) !== JSON.stringify(cur.reminderOffsets)) {
       changes.push({ kind: "edited", text: `${who} edited the task` });
     }
@@ -176851,7 +177129,7 @@ function createTaskService(ctx) {
   async function nudge(actor, id) {
     const cur = loadEditable(actor, id);
     const sent = await sendNudge(cur, actor.memberId);
-    if (!sent.ok) bad(sent.error);
+    if (!sent.ok) throw new AppError(sent.retryAt !== void 0 ? "rate_limited" : "bad_request", sent.error);
     return view(actor, db.tasks.get(actor.orgId, cur.id));
   }
   async function remove(actor, id) {
@@ -176951,22 +177229,45 @@ function createTaskService(ctx) {
       return { ok, failed };
     }
   };
+  const dayOf = (t) => Math.floor(t / 864e5);
+  function quotaUsed(orgId, key, t) {
+    const q = db.kv.get(orgId, key);
+    return q && q.day === dayOf(t) ? q.n : 0;
+  }
+  function quotaBump(orgId, key, t) {
+    db.kv.set(orgId, key, { day: dayOf(t), n: quotaUsed(orgId, key, t) + 1 }, t);
+  }
   async function sendNudge(cur, actorId) {
     const w = cur.waitingOn;
     if (!w) return { ok: false, error: "This task is not waiting on anyone" };
     if (!w.contact) return { ok: false, error: `No contact saved for ${w.name}` };
     if (w.channel === "other") return { ok: false, error: "Set the waiting-on channel to WhatsApp or email to send nudges" };
+    const t0 = now2();
+    const scheduled = actorId === SYSTEM_MEMBER_ID;
+    const gap = scheduled ? nudgeIntervalMs(w) : NUDGE_MIN_HOURS * H;
+    if (w.lastNudgedAt !== null && t0 - w.lastNudgedAt < gap) {
+      const retryAt = w.lastNudgedAt + gap;
+      return { ok: false, error: `${w.name} was already nudged recently \u2014 try again in ${Math.ceil((retryAt - t0) / 6e4)} min`, retryAt };
+    }
+    const memberKey = `nudge:quota:${scheduled ? cur.creatorId : actorId}`;
+    const nextDay = (dayOf(t0) + 1) * 864e5;
+    if (quotaUsed(cur.orgId, memberKey, t0) >= NUDGE_MEMBER_DAILY_CAP) {
+      return { ok: false, error: `Daily nudge limit reached (${NUDGE_MEMBER_DAILY_CAP} per person) \u2014 try again tomorrow`, retryAt: nextDay };
+    }
+    if (quotaUsed(cur.orgId, "nudge:quota:org", t0) >= NUDGE_ORG_DAILY_CAP) {
+      return { ok: false, error: `Daily nudge limit reached for the organization (${NUDGE_ORG_DAILY_CAP}) \u2014 try again tomorrow`, retryAt: nextDay };
+    }
     const org = getOrg(ctx, cur.orgId);
-    const sender = actorId === SYSTEM_MEMBER_ID ? org.name : `${memberName(cur.orgId, actorId)} (${org.name})`;
-    const text = `Hi ${firstName(w.name)}, a friendly reminder from ${sender} about: "${cur.title}". Any update? Thank you!`;
+    const text = nudgeMessage(w.name, org.name, cur.title);
     let sent = false;
     try {
-      sent = w.channel === "whatsapp" ? await ctx.outbound.whatsapp(w.contact, text) : await ctx.outbound.email(w.contact, `Following up: ${cur.title}`, text);
+      sent = w.channel === "whatsapp" ? await ctx.outbound.whatsapp(w.contact, text) : await ctx.outbound.email(w.contact, `Following up: ${sanitizeNudgeText(cur.title, NUDGE_TITLE_MAX) || "your task"}`, text);
     } catch (err) {
       ctx.log.warn("[tasks] nudge send failed", err);
     }
     if (!sent) return { ok: false, error: `Could not send the nudge \u2014 ${w.channel === "whatsapp" ? "WhatsApp" : "email"} is not configured or the send failed` };
-    const t0 = now2();
+    quotaBump(cur.orgId, memberKey, t0);
+    quotaBump(cur.orgId, "nudge:quota:org", t0);
     const fresh = db.tasks.get(cur.orgId, cur.id);
     if (!fresh || !fresh.waitingOn) return { ok: true };
     fresh.waitingOn = { ...fresh.waitingOn, lastNudgedAt: t0 };
@@ -177065,7 +177366,7 @@ function createReminders(ctx, tasks) {
       }
       const w = t.waitingOn;
       if (w && w.nudgeEveryHours && w.contact && w.channel !== "other") {
-        const runAt = Math.max((w.lastNudgedAt ?? w.since) + w.nudgeEveryHours * 36e5, t0);
+        const runAt = Math.max((w.lastNudgedAt ?? w.since) + nudgeIntervalMs(w), t0);
         want.set(K.nudge(t.id), { kind: "task.nudge", runAt, payload: { taskId: t.id } });
       }
     }
@@ -177193,6 +177494,10 @@ function createReminders(ctx, tasks) {
       const t = db.tasks.get(job.orgId, String(job.payload.taskId ?? ""));
       if (!t || !isOpen(t) || !t.waitingOn?.nudgeEveryHours) return;
       const res = await tasks.sendNudge(t, SYSTEM_MEMBER_ID);
+      if (!res.ok && res.retryAt !== void 0) {
+        db.jobs.schedule(t.orgId, "task.nudge", K.nudge(t.id), res.retryAt, { taskId: t.id }, now2());
+        return;
+      }
       if (!res.ok) throw new Error(res.error);
     },
     async "task.recur"(job) {
@@ -177448,12 +177753,14 @@ function createAuditService(ctx) {
         const cur = db.members.get(org, e.entityId);
         if (!cur || created) conflict("This change cannot be undone");
         if (rank(cur.role) > rank(actor.role) && actor.via !== "system") forbidden("You cannot modify a higher role");
+        if (actor.via !== "system" && cur.id !== actor.memberId && rank(cur.role) >= rank("admin") && actor.role !== "owner") forbidden("Only owners can modify an admin or owner");
         const next = restoreFields(cur, before, e.after);
         if (rank(next.role) > rank(actor.role) && actor.via !== "system") forbidden("You cannot grant a role higher than your own");
         if (cur.role === "owner" && cur.active && (next.role !== "owner" || !next.active) && db.members.countActive(org, "owner") <= 1) conflict("This is the last owner");
         next.updatedAt = t0;
         db.members.save(next);
         if (next.role !== cur.role || cur.active && !next.active) db.sessions.deleteForMember(org, next.id);
+        if (cur.active && !next.active) db.apiKeys.revokeForMember(org, next.id, t0);
         return {
           snapshot: { type: "member.updated", before: cur, after: next },
           after: () => {
@@ -177714,8 +178021,8 @@ import { randomBytes as randomBytes4 } from "node:crypto";
 import { randomBytes as randomBytes3, scrypt, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
 var KEY_LENGTH = 64;
 function scryptAsync(password2, salt) {
-  return new Promise((resolve5, reject) => {
-    scrypt(password2, salt, KEY_LENGTH, (err, key) => err ? reject(err) : resolve5(key));
+  return new Promise((resolve6, reject) => {
+    scrypt(password2, salt, KEY_LENGTH, (err, key) => err ? reject(err) : resolve6(key));
   });
 }
 async function hashPassword(password2) {
@@ -177919,12 +178226,13 @@ function createMemberService(ctx) {
     async list(actor, opts = {}) {
       const includeInactive = !!opts.includeInactive && isManager(actor);
       const kind = opts.kind === "human" || opts.kind === "agent" ? opts.kind : void 0;
-      return db.members.list(actor.orgId, { includeInactive, kind });
+      const list = db.members.list(actor.orgId, { includeInactive, kind });
+      return actor.role === "guest" ? list.map((m) => m.id === actor.memberId ? m : publicMember(m)) : list;
     },
     async get(actor, id) {
       const m = load(actor, id);
       if (!m.active && !isManager(actor) && m.id !== actor.memberId) notFound("Member not found");
-      return m;
+      return actor.role === "guest" && m.id !== actor.memberId ? publicMember(m) : m;
     },
     async me(actor) {
       return load(actor, actor.memberId);
@@ -177982,7 +178290,7 @@ function createMemberService(ctx) {
       if (!isObj3(patch)) bad("patch must be an object");
       const cur = load(actor, id);
       const self = cur.id === actor.memberId;
-      const adminOver = isAdmin(actor) && (isSystem(actor) || rank(cur.role) <= rank(actor.role));
+      const adminOver = isAdmin(actor) && (isSystem(actor) || actor.role === "owner" || rank(cur.role) < rank("admin"));
       const managerOverAgent = cur.kind === "agent" && isManager(actor);
       const privileged = adminOver || managerOverAgent;
       if (!self && !privileged) forbidden("You can only edit your own profile");
@@ -178039,6 +178347,7 @@ function createMemberService(ctx) {
       const m = load(actor, id);
       if (m.kind !== "human") bad("AI agents authenticate with API keys, not passwords");
       if (!isSystem(actor) && rank(m.role) > rank(actor.role)) forbidden("You cannot reset the password of a higher role");
+      if (!isSystem(actor) && m.id !== actor.memberId && rank(m.role) >= rank("admin") && actor.role !== "owner") forbidden("Only owners can reset an admin's or owner's password");
       const hash2 = await hashPassword(password(password2));
       db.members.setPasswordHash(actor.orgId, m.id, hash2, ctx.clock());
       db.sessions.deleteForMember(actor.orgId, m.id);
@@ -178062,6 +178371,7 @@ function createMemberService(ctx) {
       else {
         requireRole(actor, "admin", "Only owners and admins can remove people");
         if (!isSystem(actor) && rank(m.role) > rank(actor.role)) forbidden("You cannot remove a higher role");
+        if (!isSystem(actor) && rank(m.role) >= rank("admin") && actor.role !== "owner") forbidden("Only owners can remove an admin or owner");
       }
       if (!m.active) return;
       assertNotLastOwner(m);
@@ -178191,6 +178501,8 @@ function memberActor(m) {
   return { orgId: m.orgId, memberId: m.id, role: m.role, kind: m.kind, via: "system" };
 }
 var firstLine = (s2) => s2.split(/\r?\n/).map((l) => l.trim()).find(Boolean) ?? "";
+var UNVERIFIED_NOTE = "Sender not verified: this email did not pass sender authentication (DMARC/DKIM/SPF), so it may not really be from this address.";
+var senderVerified = (msg) => msg.channel === "whatsapp" || msg.authenticated === true;
 function createInboxService(ctx, tasks) {
   const { db } = ctx;
   const now2 = () => ctx.clock();
@@ -178200,6 +178512,7 @@ function createInboxService(ctx, tasks) {
     return i;
   }
   function matchSender(orgId, msg) {
+    if (!senderVerified(msg)) return null;
     if (msg.channel === "whatsapp") {
       const hits = db.members.findByPhone(orgId, msg.from);
       return hits.length === 1 ? hits[0] : null;
@@ -178312,8 +178625,10 @@ Reply "done 1" to complete one.`;
         subject,
         text,
         externalId: msg.externalId.trim().slice(0, 300),
-        receivedAt: typeof msg.receivedAt === "number" && Number.isFinite(msg.receivedAt) ? msg.receivedAt : now2()
+        receivedAt: typeof msg.receivedAt === "number" && Number.isFinite(msg.receivedAt) ? msg.receivedAt : now2(),
+        authenticated: senderVerified(msg)
       };
+      const verified = clean2.authenticated === true;
       const dup = db.inbox.findByExternal(orgId, clean2.externalId);
       if (dup) return { item: dup, task: null, reply: null };
       const sender = matchSender(orgId, clean2);
@@ -178354,10 +178669,19 @@ Reply "done 1" to complete one.`;
         }
       }
       item.suggestion = await suggest(orgId, clean2, org.timezone);
+      if (!verified) {
+        const base = item.suggestion ?? { title: (clean2.subject?.trim() || firstLine(clean2.text) || "Message").slice(0, 500) };
+        const original = `From ${clean2.fromName ? `${clean2.fromName} <${clean2.from}>` : clean2.from}:
+
+${clean2.text}`;
+        item.suggestion = { ...base, notes: `${UNVERIFIED_NOTE}
+
+${base.notes ?? original}`.slice(0, 2e4) };
+      }
       db.inbox.save(item);
       const managers = db.members.list(orgId, { kind: "human" }).filter((m) => rank(m.role) >= rank("manager"));
-      const who = clean2.fromName ? `${clean2.fromName} (${clean2.from})` : clean2.from;
-      const preview = (clean2.subject ? `${clean2.subject} \u2014 ` : "") + firstLine(clean2.text);
+      const who = (clean2.fromName ? `${clean2.fromName} (${clean2.from})` : clean2.from) + (verified ? "" : " \u2014 sender not verified");
+      const preview = (verified ? "" : "\u26A0 Sender not verified. ") + (clean2.subject ? `${clean2.subject} \u2014 ` : "") + firstLine(clean2.text);
       for (const m of managers.filter((x) => rank(x.role) >= rank("admin"))) {
         try {
           await ctx.services.notifications.notify(orgId, m.id, {
@@ -178375,7 +178699,7 @@ Reply "done 1" to complete one.`;
       }
       publish(ctx, orgId, { type: "inbox.new", item }, managers.map((m) => m.id));
       ctx.internal.invalidateBriefings(orgId);
-      const reply = org.intakeAutoAck ? `Thanks${clean2.fromName ? `, ${clean2.fromName.split(/\s+/)[0]}` : ""} \u2014 we received your message and will get back to you shortly.` : null;
+      const reply = org.intakeAutoAck && verified ? `Thanks${clean2.fromName ? `, ${clean2.fromName.split(/\s+/)[0]}` : ""} \u2014 we received your message and will get back to you shortly.` : null;
       return { item, task: null, reply };
     } catch (err) {
       ctx.log.error("[intake] ingest failed", err);
@@ -178669,6 +178993,10 @@ function createNotificationService(ctx) {
     const ch = externalChannels(m);
     if (ch.push) {
       for (const sub of db.push.list(orgId, m.id)) {
+        if (!isAllowedPushEndpoint(sub.endpoint)) {
+          db.push.delete(orgId, m.id, sub.endpoint);
+          continue;
+        }
         try {
           const res = await ctx.outbound.push({ endpoint: sub.endpoint, keys: sub.keys }, { title: n.title, body: n.body, url: linkUrl(n.link), tag: n.taskId ?? n.meetingId ?? n.kind });
           if (res === "gone") db.push.delete(orgId, m.id, sub.endpoint);
@@ -178708,6 +179036,7 @@ Open: ${n.link}` : ""}
       return db.notifications.unreadCount(actor.orgId, actor.memberId);
     },
     async markRead(actor, ids2) {
+      requireWrite(actor);
       if (ids2 !== "all") {
         if (!Array.isArray(ids2)) bad("ids must be an array or 'all'");
         if (ids2.length > 1e3) bad("Too many ids");
@@ -178720,6 +179049,7 @@ Open: ${n.link}` : ""}
       if (actor.kind !== "human") forbidden("Only people can subscribe to push notifications");
       if (!isObj3(sub) || !isObj3(sub.keys)) bad("Invalid push subscription");
       const endpoint = url2(sub.endpoint, "endpoint", { httpsOnly: true });
+      if (!isAllowedPushEndpoint(endpoint)) bad("endpoint must be a Web Push service URL (FCM, Mozilla, Apple or Windows push service)");
       const p256dh = str3(sub.keys.p256dh, "keys.p256dh", { max: 200 });
       const auth = str3(sub.keys.auth, "keys.auth", { max: 100 });
       db.push.upsert(actor.orgId, actor.memberId, { endpoint, keys: { p256dh, auth } }, typeof userAgent === "string" ? userAgent.slice(0, 300) : null, now2());
@@ -178783,6 +179113,10 @@ Open: ${n.link}` : ""}
         if (!subs.length) return { ok: false, error: "No push subscriptions \u2014 enable notifications in this browser first" };
         let sent = 0;
         for (const s2 of subs) {
+          if (!isAllowedPushEndpoint(s2.endpoint)) {
+            db.push.delete(actor.orgId, m.id, s2.endpoint);
+            continue;
+          }
           const res = await ctx.outbound.push({ endpoint: s2.endpoint, keys: s2.keys }, { title: "Company Brain", body: text, url: "/", tag: "test" });
           if (res === "gone") db.push.delete(actor.orgId, m.id, s2.endpoint);
           if (res === "sent") sent++;
@@ -178993,6 +179327,7 @@ function createReportService(ctx) {
   const { db } = ctx;
   return {
     async get(actor, windowDays) {
+      if (actor.role === "guest") forbidden("Guests cannot see team reports");
       const days = windowDays === void 0 || windowDays === null ? 30 : int3(windowDays, "days", 1, 365);
       const t0 = ctx.clock();
       const org = db.orgs.get(actor.orgId);
@@ -179071,7 +179406,8 @@ function createSearchService(ctx) {
       const lc = query.toLowerCase();
       const tasks = ctx.internal.views(actor.orgId, db.tasks.query(actor.orgId, { visibility: visibility(actor), search: query, order: "updated", limit: n }), actorTz(ctx, actor));
       const projects = db.projects.list(actor.orgId, { visibility: visibility(actor), includeArchived: true }).filter((p) => p.name.toLowerCase().includes(lc) || p.description.toLowerCase().includes(lc)).slice(0, n);
-      const members = db.members.list(actor.orgId).filter((m) => m.name.toLowerCase().includes(lc) || (m.email ?? "").toLowerCase().includes(lc) || (m.title ?? "").toLowerCase().includes(lc)).slice(0, n);
+      const guest = actor.role === "guest";
+      const members = db.members.list(actor.orgId).filter((m) => m.name.toLowerCase().includes(lc) || !guest && (m.email ?? "").toLowerCase().includes(lc) || (m.title ?? "").toLowerCase().includes(lc)).slice(0, n).map((m) => guest && m.id !== actor.memberId ? publicMember(m) : m);
       return { tasks, projects, members };
     }
   };
@@ -180643,10 +180979,22 @@ function safeEqual2(a, b) {
   const hb = createHash4("sha256").update(b, "utf8").digest();
   return timingSafeEqual3(ha, hb) && a.length === b.length;
 }
+var SECRET_PARAMS = /* @__PURE__ */ new Set(["secret", "key", "token", "hub.verify_token", "access_token", "code", "code_verifier"]);
 function redactUrl(url3) {
-  let out = url3.replace(/(\/mcp\/k\/)[^/?#]+/i, "$1[REDACTED]");
-  out = out.replace(/([?&](?:secret|key|token|hub\.verify_token)=)[^&#]*/gi, "$1[REDACTED]");
-  return out;
+  const out = url3.replace(/(\/mcp\/k\/)[^/?#]+/i, "$1[REDACTED]");
+  const q = out.indexOf("?");
+  if (q < 0) return out;
+  const params = out.slice(q + 1).split("&").map((pair) => {
+    const eq2 = pair.indexOf("=");
+    if (eq2 < 0) return pair;
+    let name = pair.slice(0, eq2);
+    try {
+      name = decodeURIComponent(name.replace(/\+/g, " "));
+    } catch {
+    }
+    return SECRET_PARAMS.has(name.trim().toLowerCase()) ? `${pair.slice(0, eq2)}=[REDACTED]` : pair;
+  });
+  return `${out.slice(0, q)}?${params.join("&")}`;
 }
 function looksLikeApiPath(url3) {
   let p = url3.split("?")[0] ?? "";
@@ -180759,6 +181107,9 @@ function mount(app, defs) {
 }
 var json4 = (schema, status) => ({ kind: "json", schema, status });
 var empty = { kind: "empty" };
+
+// packages/server/src/routes/api.ts
+import { createHash as createHash5 } from "node:crypto";
 
 // packages/server/src/schemas.ts
 var ID_RE2 = /^[a-z]+_[A-Za-z0-9]{6,32}$/;
@@ -181563,9 +181914,13 @@ function baseUrl(publicUrl, req) {
 // packages/server/src/routes/api.ts
 var Ok = { ok: true };
 var DAY4 = 864e5;
+var TTS_MAX_PER_HOUR = 20;
+var TTS_CACHE_MS = 10 * 6e4;
 function apiRoutes(deps) {
   const s2 = deps.services;
   const now2 = () => (deps.clock ?? Date.now)();
+  const ttsCalls = /* @__PURE__ */ new Map();
+  const ttsCache = /* @__PURE__ */ new Map();
   return [
     // ─── Me & briefing ─────────────────────────────────────────────────────
     apiRoute({
@@ -181617,11 +181972,31 @@ function apiRoutes(deps) {
       summary: "Server text-to-speech for the briefing (204 when no TTS provider is configured)",
       body: AudioBody,
       response: { kind: "binary", mime: "audio/mpeg", description: "Audio bytes (provider-specific audio/* type), or 204 without TTS", alsoEmpty: true },
-      handler: async ({ body, reply }) => {
+      handler: async ({ actor, body, reply }) => {
+        if (actor.via !== "session" || actor.kind !== "human" || actor.role === "guest") {
+          throw new AppError("forbidden", "Briefing audio is only available to signed-in team members");
+        }
         if (!deps.tts) return reply.code(204).send();
-        const out = await deps.tts.synthesize(body.text.slice(0, 2e3), body.voice ? { voice: body.voice } : void 0);
+        const text = body.text.slice(0, 2e3);
+        const t = now2();
+        const key = `${actor.orgId}:${actor.memberId}`;
+        const hash2 = createHash5("sha256").update(`${body.voice ?? ""}
+${text}`).digest("hex");
+        const send = (audio2, mime) => reply.code(200).header("cache-control", "no-store").type(mime || "audio/mpeg").send(audio2);
+        const cached2 = ttsCache.get(key);
+        if (cached2 && cached2.hash === hash2 && t - cached2.at < TTS_CACHE_MS) return send(cached2.audio, cached2.mime);
+        const recent = (ttsCalls.get(key) ?? []).filter((x) => t - x < 36e5);
+        if (recent.length >= TTS_MAX_PER_HOUR) {
+          reply.header("retry-after", Math.ceil((recent[0] + 36e5 - t) / 1e3));
+          throw new AppError("rate_limited", `Briefing audio is limited to ${TTS_MAX_PER_HOUR} per hour`);
+        }
+        recent.push(t);
+        ttsCalls.set(key, recent);
+        const out = await deps.tts.synthesize(text, body.voice ? { voice: body.voice } : void 0);
         if (!out) return reply.code(204).send();
-        return reply.code(200).header("cache-control", "no-store").type(out.mime || "audio/mpeg").send(out.audio);
+        const audio = out.audio;
+        ttsCache.set(key, { hash: hash2, at: t, audio, mime: out.mime });
+        return send(audio, out.mime);
       }
     }),
     // ─── Tasks ─────────────────────────────────────────────────────────────
@@ -182509,10 +182884,27 @@ function publicRoutes(deps, opts) {
 
 // packages/server/src/routes/stream.ts
 var PING_MS = 25e3;
+var MAX_STREAMS_PER_MEMBER = 5;
 function registerStream(api, deps, opts = {}) {
-  const pingMs = opts.pingMs ?? PING_MS;
+  const pingMs = Math.min(opts.pingMs ?? PING_MS, PING_MS);
+  const maxPerMember = opts.maxPerMember ?? MAX_STREAMS_PER_MEMBER;
+  const open = /* @__PURE__ */ new Map();
   api.get("/api/stream", async (req, reply) => {
     const actor = req.actor;
+    const auth = deps.services.auth;
+    const sessionToken = req.sessionToken;
+    const apiKey = sessionToken === null ? bearerToken(req) : null;
+    const stillValid = async () => {
+      let now2 = null;
+      try {
+        if (sessionToken !== null) now2 = await auth.resolveSession(sessionToken);
+        else if (apiKey) now2 = await auth.resolveApiKey(apiKey);
+      } catch (err) {
+        req.log.warn({ err }, "sse revalidation failed");
+        return false;
+      }
+      return !!now2 && now2.memberId === actor.memberId && now2.orgId === actor.orgId && now2.role === actor.role;
+    };
     const headers = reply.getHeaders();
     reply.hijack();
     const res = reply.raw;
@@ -182527,6 +182919,8 @@ function registerStream(api, deps, opts = {}) {
     });
     res.socket?.setNoDelay(true);
     let closed = false;
+    let timer = null;
+    let unsubscribe = null;
     const write = (e) => {
       if (closed || res.writableEnded) return;
       try {
@@ -182538,22 +182932,49 @@ function registerStream(api, deps, opts = {}) {
         cleanup();
       }
     };
+    let chain = Promise.resolve();
+    const deliver = (e) => {
+      if (closed) return;
+      chain = chain.then(async () => {
+        if (closed) return;
+        if (!await stillValid()) return cleanup();
+        write(e);
+      });
+    };
     res.write("retry: 5000\n\n");
     write({ type: "ping", at: Date.now() });
-    let unsubscribe = null;
+    const key = `${actor.orgId}:${actor.memberId}`;
+    let mine = open.get(key);
+    if (!mine) open.set(key, mine = /* @__PURE__ */ new Set());
+    while (mine.size >= maxPerMember) {
+      const oldest = mine.values().next().value;
+      if (!oldest) break;
+      mine.delete(oldest);
+      oldest();
+    }
+    const evict = () => {
+      if (!closed && !res.writableEnded) res.write("retry: 60000\n\n");
+      cleanup();
+    };
+    mine.add(evict);
     try {
-      unsubscribe = deps.services.live.subscribe(actor.orgId, actor.memberId, write);
+      unsubscribe = deps.services.live.subscribe(actor.orgId, actor.memberId, deliver);
     } catch (err) {
       req.log.error({ err }, "live subscribe failed");
-      res.end();
+      cleanup();
       return;
     }
-    const timer = setInterval(() => write({ type: "ping", at: Date.now() }), pingMs);
+    timer = setInterval(() => deliver({ type: "ping", at: Date.now() }), pingMs);
     timer.unref?.();
     function cleanup() {
       if (closed) return;
       closed = true;
-      clearInterval(timer);
+      if (timer) clearInterval(timer);
+      const set2 = open.get(key);
+      if (set2) {
+        set2.delete(evict);
+        if (!set2.size) open.delete(key);
+      }
       try {
         unsubscribe?.();
       } catch {
@@ -182651,7 +183072,7 @@ async function registerWebhooks(app, deps, limit) {
 }
 
 // packages/server/src/oauth.ts
-import { createHash as createHash5, createHmac as createHmac2, randomBytes as randomBytes6, timingSafeEqual as timingSafeEqual4 } from "node:crypto";
+import { createHash as createHash6, createHmac as createHmac2, randomBytes as randomBytes6, timingSafeEqual as timingSafeEqual4 } from "node:crypto";
 var CODE_TTL_MS = 5 * 6e4;
 var MAX_PENDING_CODES = 1e4;
 var MAX_CLIENT_ID_LEN = 4096;
@@ -182713,24 +183134,20 @@ function withParams(uri, params) {
   for (const [k, v] of Object.entries(params)) if (v !== null && v !== void 0) url3.searchParams.set(k, v);
   return url3.toString();
 }
-function checkAuthorize(secret, q, issuer) {
+function checkAuthorize(secret, q, _issuer) {
+  const fail = (error51, description) => ({ ok: false, error: error51, description });
   const clientId = pick2(q, "client_id");
   const client = verifyClientId(secret, clientId);
-  if (!clientId || !client) return { ok: false, fatal: true, error: "invalid_client", description: "Unknown or invalid client_id" };
+  if (!clientId || !client) return fail("invalid_client", "Unknown or invalid client_id");
   let redirectUri = pick2(q, "redirect_uri");
   if (!redirectUri) {
-    if (client.redirectUris.length !== 1) return { ok: false, fatal: true, error: "invalid_request", description: "redirect_uri is required" };
+    if (client.redirectUris.length !== 1) return fail("invalid_request", "redirect_uri is required");
     redirectUri = client.redirectUris[0];
   }
   if (!client.redirectUris.includes(redirectUri) || !isAllowedRedirectUri(redirectUri)) {
-    return { ok: false, fatal: true, error: "invalid_request", description: "redirect_uri is not registered for this client" };
+    return fail("invalid_request", "redirect_uri is not registered for this client");
   }
   const state = pick2(q, "state");
-  const fail = (error51, description) => ({
-    ok: false,
-    fatal: false,
-    redirectTo: withParams(redirectUri, { error: error51, error_description: description, state, iss: issuer })
-  });
   if (state !== null && state.length > 1024) return fail("invalid_request", "state too long");
   if (pick2(q, "response_type") !== "code") return fail("unsupported_response_type", 'response_type must be "code"');
   const challenge = pick2(q, "code_challenge");
@@ -182771,12 +183188,20 @@ var CodeStore = class {
   }
 };
 function s256(verifier) {
-  return createHash5("sha256").update(verifier, "ascii").digest("base64url");
+  return createHash6("sha256").update(verifier, "ascii").digest("base64url");
 }
 function eq(a, b) {
   const ba = Buffer.from(a);
   const bb = Buffer.from(b);
   return ba.length === bb.length && timingSafeEqual4(ba, bb);
+}
+var HTML_ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+var escapeHtml = (s2) => s2.replace(/[&<>"']/g, (c) => HTML_ESC[c]);
+function oauthErrorPage(reply, status, error51, description) {
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connection failed</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1rem;color:#222}code{background:#f2f2f2;padding:.1em .3em;border-radius:4px}</style></head>
+<body><h1>Could not connect</h1><p>${escapeHtml(description)}</p><p><code>${escapeHtml(error51)}</code></p><p>Close this window and try connecting again from your AI app.</p></body></html>`;
+  return reply.code(status).header("cache-control", "no-store").header("content-security-policy", "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'").type("text/html; charset=utf-8").send(body);
 }
 function oauthError(reply, status, error51, description) {
   return reply.code(status).header("cache-control", "no-store").header("pragma", "no-cache").type("application/json; charset=utf-8").send({ error: error51, error_description: description });
@@ -182885,10 +183310,7 @@ async function registerOAuthPublic(app, deps, store, limit) {
     oauth.get("/oauth/authorize", async (req, reply) => {
       const q = req.query ?? {};
       const check2 = checkAuthorize(secret, q, baseUrl(deps.config.publicUrl, req));
-      if (!check2.ok) {
-        if (check2.fatal) return oauthError(reply, 400, check2.error, check2.description);
-        return reply.redirect(check2.redirectTo, 302);
-      }
+      if (!check2.ok) return oauthErrorPage(reply, 400, check2.error, check2.description);
       const p = check2.p;
       const qs = new URLSearchParams();
       qs.set("response_type", "code");
@@ -182962,10 +183384,7 @@ function oauthApiRoutes(deps, store) {
       handler: async ({ actor, req, body }) => {
         if (actor.via !== "session") throw new AppError("forbidden", "OAuth approval requires a signed-in web session");
         const check2 = checkAuthorize(secret, body.query, baseUrl(deps.config.publicUrl, req));
-        if (!check2.ok) {
-          if (check2.fatal) throw new AppError("bad_request", check2.description, { error: check2.error });
-          return { redirectTo: check2.redirectTo };
-        }
+        if (!check2.ok) throw new AppError("bad_request", check2.description, { error: check2.error });
         const p = check2.p;
         const iss = baseUrl(deps.config.publicUrl, req);
         if (!body.approve) {
@@ -183168,6 +183587,16 @@ function buildOpenApi(routes, opts) {
 // packages/server/src/server.ts
 var BODY_LIMIT = 1048576;
 var MINUTE = 6e4;
+var LOGIN_ACCOUNT_MAX = 30;
+var LOGIN_ACCOUNT_WINDOW_MS = 15 * MINUTE;
+function normalizeIdentifier(identifier) {
+  return String(identifier ?? "").normalize("NFKC").trim().toLowerCase().slice(0, 320);
+}
+function normalizeTrustProxy(v) {
+  if (v === true) return 1;
+  if (v === false || v === void 0 || v === null || v === "") return false;
+  return v;
+}
 var CSP_DIRECTIVES = {
   defaultSrc: ["'self'"],
   baseUri: ["'self'"],
@@ -183220,7 +183649,7 @@ async function buildServer(deps) {
         }
       }
     },
-    trustProxy: cfg.trustProxy,
+    trustProxy: normalizeTrustProxy(cfg.trustProxy),
     bodyLimit: BODY_LIMIT,
     genReqId: () => randomUUID(),
     requestIdHeader: false,
@@ -183273,10 +183702,17 @@ async function buildServer(deps) {
   const globalLimit = (req, reply) => req.actor ? memberLimit(req, reply) : anonLimit(req, reply);
   const authIdLimit = makeLimiter(app, { max: 10, windowMs: MINUTE, prefix: "auth", key: (req) => `${req.ip}|${authIds.get(req) ?? ""}` });
   const authIpLimit = makeLimiter(app, { max: 60, windowMs: MINUTE, prefix: "auth-ip", key: (req) => req.ip });
+  const authAccountLimit = makeLimiter(app, {
+    max: LOGIN_ACCOUNT_MAX,
+    windowMs: LOGIN_ACCOUNT_WINDOW_MS,
+    prefix: "auth-acct",
+    key: (req) => authIds.get(req) ?? ""
+  });
   const authLimit = async (req, identifier, reply) => {
-    authIds.set(req, identifier.trim().toLowerCase());
+    authIds.set(req, normalizeIdentifier(identifier));
     await authIpLimit(req, reply);
     await authIdLimit(req, reply);
+    await authAccountLimit(req, reply);
   };
   const identify = makeIdentify(deps);
   const codes = new CodeStore(() => (deps.clock ?? Date.now)());
@@ -183438,7 +183874,7 @@ async function createApp(opts) {
         verifySignature: (raw, sig) => whatsappCloud.verifySignature(cfg, raw, sig),
         parse: (body) => whatsappCloud.parseWebhook(body)
       },
-      parseEmailWebhook: parseInboundEmailWebhook,
+      parseEmailWebhook: (body) => parseInboundEmailWebhook(body, cfg.emailAuth),
       sendTest: (actor, channel) => services.notifications.sendTest(actor, channel)
     },
     mcp: { handleHttp: handleMcpHttp },
@@ -183485,14 +183921,44 @@ function loadSigningSecret(env2, dataDir2) {
   return secret;
 }
 function parseTrustProxy(v) {
-  if (!v || v === "false") return false;
-  if (v === "true") return true;
-  const n = Number(v);
-  return Number.isInteger(n) ? n : v;
+  const s2 = (v ?? "").trim();
+  if (!s2 || s2.toLowerCase() === "false" || s2 === "0") return false;
+  if (s2.toLowerCase() === "true") return 1;
+  if (/^\d+$/.test(s2)) return Math.min(Number(s2), 10);
+  const parts = s2.split(",").map((p) => p.trim()).filter(Boolean);
+  const ok = parts.every((p) => /^[0-9a-fA-F:.]+(\/\d{1,3})?$/.test(p) || ["loopback", "linklocal", "uniquelocal"].includes(p));
+  if (!ok || !parts.length) throw new Error(`COMPANYBRAIN_TRUST_PROXY must be true/false, a hop count, or a comma-separated list of proxy IPs/CIDRs (got "${s2}")`);
+  return parts.join(",");
+}
+
+// cli/src/backup.ts
+import { copyFileSync, existsSync as existsSync4, mkdirSync as mkdirSync3 } from "node:fs";
+import { join as join6, resolve as resolve4 } from "node:path";
+var KEY_FILES = ["secret.key", "signing.key", "vapid.json"];
+async function backupTo(dbPath2, dataDir2, target, opts = {}) {
+  const stamp = (opts.now ?? /* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const dir = resolve4(target, `companybrain-${stamp}`);
+  mkdirSync3(dir, { recursive: true, mode: 448 });
+  const db = openDatabase(dbPath2);
+  try {
+    await db.sqlite.backup(join6(dir, "companybrain.sqlite"));
+  } finally {
+    db.close();
+  }
+  const files = ["companybrain.sqlite"];
+  if (!opts.withoutKeys) {
+    for (const f of KEY_FILES) {
+      if (existsSync4(join6(dataDir2, f))) {
+        copyFileSync(join6(dataDir2, f), join6(dir, f));
+        files.push(f);
+      }
+    }
+  }
+  return { dir, files };
 }
 
 // cli/bin/companybrain.ts
-if (existsSync4(".env")) {
+if (existsSync5(".env")) {
   try {
     process.loadEnvFile(".env");
   } catch (err) {
@@ -183503,31 +183969,25 @@ var command = process.argv.slice(2).find((a) => !a.startsWith("-")) ?? "serve";
 var env = process.env;
 var dbPath = resolveDbPath(env);
 var dataDir = dirname4(dbPath);
-mkdirSync3(dataDir, { recursive: true });
+mkdirSync4(dataDir, { recursive: true });
 if (command === "mcp") {
   await runMcp();
 } else if (command === "migrate") {
   openDatabase(dbPath).close();
   stderrLog.info(`migrations applied \u2192 ${dbPath}`);
 } else if (command === "backup") {
-  await backup(process.argv.slice(3).find((a) => !a.startsWith("-")) ?? "backups");
+  await backup(process.argv.slice(3).find((a) => !a.startsWith("-")) ?? "backups", process.argv.includes("--without-keys"));
 } else if (command === "serve" || command === "start") {
   await serve();
 } else {
   console.error(`Unknown command "${command}". Use: companybrain [serve|mcp|migrate|backup]`);
   process.exit(64);
 }
-async function backup(target) {
-  const stamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  const dir = resolve4(target, `companybrain-${stamp}`);
-  mkdirSync3(dir, { recursive: true, mode: 448 });
-  const db = openDatabase(dbPath);
-  await db.sqlite.backup(join6(dir, "companybrain.sqlite"));
-  db.close();
-  for (const f of ["secret.key", "signing.key", "vapid.json"]) {
-    if (existsSync4(join6(dataDir, f))) copyFileSync(join6(dataDir, f), join6(dir, f));
-  }
-  stderrLog.info(`backup written \u2192 ${dir}`);
+async function backup(target, withoutKeys) {
+  const { dir, files } = await backupTo(dbPath, dataDir, target, { withoutKeys });
+  stderrLog.info(`backup written \u2192 ${dir} (${files.join(", ")})`);
+  if (withoutKeys) stderrLog.info("key files skipped (--without-keys): keep secret.key / signing.key / vapid.json (or COMPANYBRAIN_SECRET) safe separately \u2014 the backup cannot decrypt stored secrets without them");
+  else stderrLog.warn("this backup contains secret.key, which decrypts the secrets stored in the database \u2014 store it encrypted");
 }
 async function runMcp() {
   const key = env.COMPANYBRAIN_MCP_KEY?.trim();
@@ -183566,10 +184026,10 @@ async function serve() {
   process.on("unhandledRejection", (reason) => stderrLog.error("unhandledRejection:", reason));
 }
 function resolveWebDir() {
-  if (env.COMPANYBRAIN_WEB_DIR) return resolve4(env.COMPANYBRAIN_WEB_DIR);
+  if (env.COMPANYBRAIN_WEB_DIR) return resolve5(env.COMPANYBRAIN_WEB_DIR);
   const here = dirname4(fileURLToPath(import.meta.url));
-  for (const candidate of [join6(here, "web"), join6(here, "..", "..", "dist", "web")]) {
-    if (existsSync4(join6(candidate, "index.html"))) return candidate;
+  for (const candidate of [join7(here, "web"), join7(here, "..", "..", "dist", "web")]) {
+    if (existsSync5(join7(candidate, "index.html"))) return candidate;
   }
   stderrLog.warn("web UI build not found (run `pnpm build`); serving the API only");
   return null;

@@ -68,7 +68,29 @@ Enabled when `EMAIL_SMTP_HOST` and a sender (`EMAIL_FROM`, or an address-like `E
 
 | Variable | Default | Description |
 |---|---|---|
-| `EMAIL_WEBHOOK_SECRET` | — | Shared secret required on `POST /webhooks/email` (as `?secret=` or `X-CB-Webhook-Secret` header; endpoint disabled when unset). Accepts Postmark, SendGrid Inbound Parse, Mailgun routes and Cloudflare Email Workers (`{from,to,subject,text,html,messageId}`) JSON. |
+| `EMAIL_WEBHOOK_SECRET` | — | Shared secret required on `POST /webhooks/email` (prefer the `X-CB-Webhook-Secret` header; `?secret=` is accepted for providers that can't send headers and is redacted from logs; endpoint disabled when unset). Accepts Postmark, SendGrid Inbound Parse, Mailgun routes and Cloudflare Email Workers (`{from,to,subject,text,html,messageId,authenticated}`) JSON. |
+
+## Email — sender verification (anti-spoofing)
+
+The From header of an email is trivially forged. An inbound email is only treated as coming from
+a team member (creates a task as them, `list` / `done N` commands) when the receiving mail system
+**verified** the sender: DMARC `pass`, or DKIM `pass` with `header.d`/`header.i` aligned to the From
+domain, or SPF `pass` with `smtp.mailfrom` aligned. Unverified email goes to the Inbox as an
+unknown sender, marked *"Sender not verified"*, and never gets an auto-reply.
+
+| Intake | Verdict comes from |
+|---|---|
+| IMAP | The **topmost** `Authentication-Results` header (the one your mailbox provider adds on receipt; Gmail, Microsoft 365, Zoho, Fastmail… all add one). Lower copies may be written by the sender and are ignored. |
+| Postmark | `Headers`: topmost `Authentication-Results`, SpamAssassin `X-Spam-Tests` containing `DKIM_VALID_AU`, or `Received-SPF: Pass` with an aligned `envelope-from`. |
+| SendGrid | `SPF` = `pass` with an aligned envelope sender, or a `dkim` entry `@<from-domain> : pass`; or `Authentication-Results` in `headers`. |
+| Mailgun | `X-Mailgun-Spf: Pass` with an aligned `sender`, or `X-Mailgun-Dkim-Check-Result: Pass` with an aligned `DKIM-Signature d=`. |
+| Cloudflare Email Workers / custom | Cannot be verified by companybrain. Your worker must check the message itself (e.g. Cloudflare's `Authentication-Results`/ARC) and send `"authenticated": true` only for messages that passed. Anything else is unverified. |
+| WhatsApp (Cloud API / QR) | Always verified — WhatsApp authenticates the sender's number. |
+
+| Variable | Default | Description |
+|---|---|---|
+| `EMAIL_AUTHSERV_ID` | — | **Recommended.** The authserv-id your mailbox provider writes at the start of its `Authentication-Results` header (e.g. `mx.google.com` for Gmail/Workspace, `mx.microsoft.com` for Microsoft 365). When set, only a topmost header with this id counts — so a forged header can't be mistaken for your provider's when the provider adds none. |
+| `EMAIL_TRUST_UNVERIFIED_SENDERS` | `false` | **UNSAFE.** `true` treats every email sender as verified (pre-audit behaviour): anyone can email in as any team member, create tasks as them and read their task list via `list`. Only for closed mail systems that already reject spoofed mail. |
 
 ## Web Push (VAPID)
 

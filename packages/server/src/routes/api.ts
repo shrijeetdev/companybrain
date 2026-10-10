@@ -1,4 +1,5 @@
 // Authenticated REST routes (`/api/*`). Each maps 1:1 to a service method.
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { AppError } from '@companybrain/types';
 import type { ServerDeps } from '../types';
@@ -10,9 +11,15 @@ import { baseUrl } from '../origin';
 const Ok = { ok: true } as const;
 const DAY = 86_400_000;
 
+/** Server TTS costs money per call: per-member sliding-window limit + a short per-text cache. */
+export const TTS_MAX_PER_HOUR = 20;
+export const TTS_CACHE_MS = 10 * 60_000;
+
 export function apiRoutes(deps: ServerDeps): RouteDef[] {
   const s = deps.services;
   const now = () => (deps.clock ?? Date.now)();
+  const ttsCalls = new Map<string, number[]>();
+  const ttsCache = new Map<string, { hash: string; at: number; audio: Buffer; mime: string }>();
 
   return [
     // ─── Me & briefing ─────────────────────────────────────────────────────
@@ -44,11 +51,30 @@ export function apiRoutes(deps: ServerDeps): RouteDef[] {
       summary: 'Server text-to-speech for the briefing (204 when no TTS provider is configured)',
       body: S.AudioBody,
       response: { kind: 'binary', mime: 'audio/mpeg', description: 'Audio bytes (provider-specific audio/* type), or 204 without TTS', alsoEmpty: true },
-      handler: async ({ body, reply }) => {
+      handler: async ({ actor, body, reply }) => {
+        if (actor.via !== 'session' || actor.kind !== 'human' || actor.role === 'guest') {
+          throw new AppError('forbidden', 'Briefing audio is only available to signed-in team members');
+        }
         if (!deps.tts) return reply.code(204).send();
-        const out = await deps.tts.synthesize(body.text.slice(0, 2000), body.voice ? { voice: body.voice } : undefined);
+        const text = body.text.slice(0, 2000);
+        const t = now();
+        const key = `${actor.orgId}:${actor.memberId}`;
+        const hash = createHash('sha256').update(`${body.voice ?? ''}\n${text}`).digest('hex');
+        const send = (audio: Buffer, mime: string) => reply.code(200).header('cache-control', 'no-store').type(mime || 'audio/mpeg').send(audio);
+        const cached = ttsCache.get(key);
+        if (cached && cached.hash === hash && t - cached.at < TTS_CACHE_MS) return send(cached.audio, cached.mime);
+        const recent = (ttsCalls.get(key) ?? []).filter((x) => t - x < 3_600_000);
+        if (recent.length >= TTS_MAX_PER_HOUR) {
+          reply.header('retry-after', Math.ceil((recent[0]! + 3_600_000 - t) / 1000));
+          throw new AppError('rate_limited', `Briefing audio is limited to ${TTS_MAX_PER_HOUR} per hour`);
+        }
+        recent.push(t);
+        ttsCalls.set(key, recent);
+        const out = await deps.tts.synthesize(text, body.voice ? { voice: body.voice } : undefined);
         if (!out) return reply.code(204).send();
-        return reply.code(200).header('cache-control', 'no-store').type(out.mime || 'audio/mpeg').send(out.audio);
+        const audio = out.audio;
+        ttsCache.set(key, { hash, at: t, audio, mime: out.mime });
+        return send(audio, out.mime);
       },
     }),
 

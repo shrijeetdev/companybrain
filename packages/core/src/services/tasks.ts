@@ -25,7 +25,7 @@ import {
 import { parseQuickAdd } from '@companybrain/nlp';
 import { atLocalHour, localParts, newId, safeTz, startOfLocalDay, zonedToUtc, type TaskFilter } from '@companybrain/db';
 import { actorMember, actorTz, audit, firstName, getOrg, publish, type Ctx } from '../context.js';
-import { canDeleteTask, canEditTask, forbidden, isSystem, notFound, rank, requireWrite, systemActor, visibility } from '../perms.js';
+import { canDeleteTask, canEditTask, forbidden, hasWriteScope, isSystem, notFound, rank, requireWrite, systemActor, visibility } from '../perms.js';
 import { nextOccurrence, validateRecurrence } from '../recurrence.js';
 import * as v from '../validate.js';
 
@@ -78,6 +78,35 @@ export function extractMentions(text: string): string[] {
   return [...out];
 }
 
+// ─── nudge limits ────────────────────────────────────────────────────────────
+
+/** Minimum gap between two nudges of the same task (manual or scheduled), and the floor for nudgeEveryHours. */
+export const NUDGE_MIN_HOURS = 4;
+export const NUDGE_MEMBER_DAILY_CAP = 20;
+export const NUDGE_ORG_DAILY_CAP = 200;
+const NUDGE_TITLE_MAX = 120;
+const H = 3_600_000;
+
+/** Nudge interval actually used: never below NUDGE_MIN_HOURS (also for legacy stored values). */
+export const nudgeIntervalMs = (w: WaitingOn) => Math.max(NUDGE_MIN_HOURS, w.nudgeEveryHours ?? NUDGE_MIN_HOURS) * H;
+
+const URLISH = /^(?:[a-z][a-z0-9+.-]*:\/\/|www\.)|^[^\s@/]+\.[a-z]{2,24}(?:[/:?#]|$)/i;
+/** Drop anything link-like (URLs, www., bare domains) and cap the length: nudges go to people outside the org. */
+export function sanitizeNudgeText(s: string, max: number): string {
+  const words = s
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w && !URLISH.test(w.replace(/^[("'<[]+|[)"'>\].,;:!?]+$/g, '')));
+  const out = words.join(' ').trim();
+  return out.length > max ? `${out.slice(0, max - 1).trimEnd()}…` : out;
+}
+
+/** Fixed template — the only free text is the (sanitized) task title and first name. */
+export function nudgeMessage(name: string, org: string, title: string): string {
+  const who = sanitizeNudgeText(firstName(name), 40) || 'there';
+  return `Hi ${who}, a friendly follow-up from ${org} about: "${sanitizeNudgeText(title, NUDGE_TITLE_MAX) || 'your task'}" — reply here if you have an update.`;
+}
+
 // ─── service ─────────────────────────────────────────────────────────────────
 
 export interface TaskInternals {
@@ -90,7 +119,7 @@ export interface TaskInternals {
   /** Parse + resolve hints (preview / intake suggestions). */
   draftFromText(actor: Actor, text: string): { parsed: ParsedQuickAdd; draft: TaskDraft; unresolved: string[] };
   /** Send the waiting-on party a nudge (used by the API and the scheduler). */
-  sendNudge(cur: Task, actorId: string): Promise<{ ok: true } | { ok: false; error: string }>;
+  sendNudge(cur: Task, actorId: string): Promise<{ ok: true } | { ok: false; error: string; retryAt?: number }>;
   addActivity(t: Task, actorId: string, kind: ActivityKind, text: string, data?: Record<string, unknown> | null, bump?: boolean): TaskActivity;
 }
 
@@ -191,7 +220,7 @@ export function createTaskService(ctx: Ctx): TaskInternals {
     if (!p) v.bad('projectId refers to an unknown project');
     return id;
   }
-  function validWaiting(w: unknown, prev: WaitingOn | null): WaitingOn | null {
+  function validWaiting(actor: Actor, w: unknown, prev: WaitingOn | null): WaitingOn | null {
     if (w === null || w === undefined) return null;
     if (!v.isObj(w)) v.bad('waitingOn must be an object');
     const name = v.str(w.name, 'waitingOn.name', { max: 100 });
@@ -199,7 +228,15 @@ export function createTaskService(ctx: Ctx): TaskInternals {
     let contact = v.optStr(w.contact, 'waitingOn.contact', 254);
     if (contact && channel === 'email') contact = v.email(contact, 'waitingOn.contact');
     if (contact && channel === 'whatsapp') contact = v.phone(contact, 'waitingOn.contact');
-    const nudgeEveryHours = w.nudgeEveryHours === null || w.nudgeEveryHours === undefined ? null : v.int(w.nudgeEveryHours, 'waitingOn.nudgeEveryHours', 1, 24 * 30);
+    // A contact makes the server message an outside party: only people (member role or above,
+    // write access) may set one — not guests, AI agents or read-only keys.
+    const contactChanged = !!contact && (!prev || prev.contact !== contact || prev.channel !== channel);
+    if (contactChanged && !isSystem(actor) && !(actor.kind === 'human' && rank(actor.role) >= rank('member') && hasWriteScope(actor))) {
+      forbidden('Only team members can set a waiting-on contact');
+    }
+    const nudgeEveryHours = w.nudgeEveryHours === null || w.nudgeEveryHours === undefined
+      ? null
+      : Math.max(NUDGE_MIN_HOURS, v.int(w.nudgeEveryHours, 'waitingOn.nudgeEveryHours', 1, 24 * 30));
     const same = prev && prev.name === name && prev.contact === contact;
     return { name, contact, channel, nudgeEveryHours, lastNudgedAt: same ? prev.lastNudgedAt : null, since: same ? prev.since : now() };
   }
@@ -241,7 +278,7 @@ export function createTaskService(ctx: Ctx): TaskInternals {
       reminderOffsets: input.reminderOffsets === undefined || input.reminderOffsets === null ? null : v.offsets(input.reminderOffsets),
       recurrence: validateRecurrence(input.recurrence),
       recurrenceParentId: null,
-      waitingOn: validWaiting(input.waitingOn, null),
+      waitingOn: validWaiting(actor, input.waitingOn, null),
       tags: input.tags === undefined ? [] : v.tags(input.tags),
       subtasks,
       source: {
@@ -367,7 +404,7 @@ export function createTaskService(ctx: Ctx): TaskInternals {
     if (patch.order !== undefined) next.order = v.num(patch.order, 'order');
     if (patch.reminderOffsets !== undefined) next.reminderOffsets = patch.reminderOffsets === null ? null : v.offsets(patch.reminderOffsets);
     if (patch.recurrence !== undefined) next.recurrence = validateRecurrence(patch.recurrence);
-    if (patch.waitingOn !== undefined) next.waitingOn = validWaiting(patch.waitingOn, cur.waitingOn);
+    if (patch.waitingOn !== undefined) next.waitingOn = validWaiting(actor, patch.waitingOn, cur.waitingOn);
     if (next.title !== cur.title || next.notes !== cur.notes || JSON.stringify(next.tags) !== JSON.stringify(cur.tags) ||
       JSON.stringify(next.recurrence) !== JSON.stringify(cur.recurrence) || JSON.stringify(next.waitingOn) !== JSON.stringify(cur.waitingOn) ||
       JSON.stringify(next.reminderOffsets) !== JSON.stringify(cur.reminderOffsets)) {
@@ -621,7 +658,7 @@ export function createTaskService(ctx: Ctx): TaskInternals {
   async function nudge(actor: Actor, id: string): Promise<TaskView> {
     const cur = loadEditable(actor, id);
     const sent = await sendNudge(cur, actor.memberId);
-    if (!sent.ok) v.bad(sent.error);
+    if (!sent.ok) throw new AppError(sent.retryAt !== undefined ? 'rate_limited' : 'bad_request', sent.error);
     return view(actor, db.tasks.get(actor.orgId, cur.id)!);
   }
 
@@ -725,22 +762,51 @@ export function createTaskService(ctx: Ctx): TaskInternals {
   };
 
   // ── waiting-on nudges (shared with the scheduler) ──
-  async function sendNudge(cur: Task, actorId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  /** Daily (UTC) counters in kv: { day, n }. */
+  const dayOf = (t: number) => Math.floor(t / 86_400_000);
+  function quotaUsed(orgId: string, key: string, t: number): number {
+    const q = db.kv.get<{ day: number; n: number }>(orgId, key);
+    return q && q.day === dayOf(t) ? q.n : 0;
+  }
+  function quotaBump(orgId: string, key: string, t: number): void {
+    db.kv.set(orgId, key, { day: dayOf(t), n: quotaUsed(orgId, key, t) + 1 }, t);
+  }
+
+  async function sendNudge(cur: Task, actorId: string): Promise<{ ok: true } | { ok: false; error: string; retryAt?: number }> {
     const w = cur.waitingOn;
     if (!w) return { ok: false, error: 'This task is not waiting on anyone' };
     if (!w.contact) return { ok: false, error: `No contact saved for ${w.name}` };
     if (w.channel === 'other') return { ok: false, error: 'Set the waiting-on channel to WhatsApp or email to send nudges' };
+    const t0 = now();
+    // Per-task cooldown: manual nudges at most every NUDGE_MIN_HOURS; scheduled ones per their interval.
+    const scheduled = actorId === SYSTEM_MEMBER_ID;
+    const gap = scheduled ? nudgeIntervalMs(w) : NUDGE_MIN_HOURS * H;
+    if (w.lastNudgedAt !== null && t0 - w.lastNudgedAt < gap) {
+      const retryAt = w.lastNudgedAt + gap;
+      return { ok: false, error: `${w.name} was already nudged recently — try again in ${Math.ceil((retryAt - t0) / 60_000)} min`, retryAt };
+    }
+    // Daily caps: per member (the one nudging; for scheduled nudges the task's creator) and per org.
+    const memberKey = `nudge:quota:${scheduled ? cur.creatorId : actorId}`;
+    const nextDay = (dayOf(t0) + 1) * 86_400_000;
+    if (quotaUsed(cur.orgId, memberKey, t0) >= NUDGE_MEMBER_DAILY_CAP) {
+      return { ok: false, error: `Daily nudge limit reached (${NUDGE_MEMBER_DAILY_CAP} per person) — try again tomorrow`, retryAt: nextDay };
+    }
+    if (quotaUsed(cur.orgId, 'nudge:quota:org', t0) >= NUDGE_ORG_DAILY_CAP) {
+      return { ok: false, error: `Daily nudge limit reached for the organization (${NUDGE_ORG_DAILY_CAP}) — try again tomorrow`, retryAt: nextDay };
+    }
     const org = getOrg(ctx, cur.orgId);
-    const sender = actorId === SYSTEM_MEMBER_ID ? org.name : `${memberName(cur.orgId, actorId)} (${org.name})`;
-    const text = `Hi ${firstName(w.name)}, a friendly reminder from ${sender} about: "${cur.title}". Any update? Thank you!`;
+    const text = nudgeMessage(w.name, org.name, cur.title);
     let sent = false;
     try {
-      sent = w.channel === 'whatsapp' ? await ctx.outbound.whatsapp(w.contact, text) : await ctx.outbound.email(w.contact, `Following up: ${cur.title}`, text);
+      sent = w.channel === 'whatsapp'
+        ? await ctx.outbound.whatsapp(w.contact, text)
+        : await ctx.outbound.email(w.contact, `Following up: ${sanitizeNudgeText(cur.title, NUDGE_TITLE_MAX) || 'your task'}`, text);
     } catch (err) {
       ctx.log.warn('[tasks] nudge send failed', err);
     }
     if (!sent) return { ok: false, error: `Could not send the nudge — ${w.channel === 'whatsapp' ? 'WhatsApp' : 'email'} is not configured or the send failed` };
-    const t0 = now();
+    quotaBump(cur.orgId, memberKey, t0);
+    quotaBump(cur.orgId, 'nudge:quota:org', t0);
     const fresh = db.tasks.get(cur.orgId, cur.id);
     if (!fresh || !fresh.waitingOn) return { ok: true };
     fresh.waitingOn = { ...fresh.waitingOn, lastNudgedAt: t0 };

@@ -152,7 +152,7 @@ test('outbound email + push with injected transports', async () => {
   assert.equal(mails[0].from, 'bot@x.com');
   assert.equal(mails[0].html, '<p>Body</p>');
   assert.equal(await out.email('not-an-email', 'Subj', 'Body'), false);
-  const sub = { endpoint: 'https://push.example.com/abc', keys: { p256dh: 'p', auth: 'a' } };
+  const sub = { endpoint: 'https://web.push.apple.com/abc', keys: { p256dh: 'p', auth: 'a' } };
   assert.equal(await out.push(sub, { title: 't', body: 'b' }), 'sent');
   pushStatus = 410;
   assert.equal(await out.push(sub, { title: 't', body: 'b' }), 'gone');

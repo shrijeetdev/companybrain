@@ -164,14 +164,14 @@ export function memberRepo(db: SQL) {
       const r = db.prepare('SELECT * FROM members WHERE org_id=? AND email_lc=? ORDER BY active DESC, created_at LIMIT 1').get(orgId, e) as Row | undefined;
       return r ? rowToMember(r) : null;
     },
-    /** Match by phone digits; also tolerates a missing/extra country code (suffix match ≥ 8 digits). */
+    /**
+     * Exact E.164 match: all digits including the country code must be equal. No suffix /
+     * "last 10 digits" matching — +44 7700 900123 must never match +1 …7700900123.
+     */
     findByPhone(orgId: string, phone: string): Member[] {
       const d = phoneDigits(phone);
       if (!d) return [];
-      const exact = (db.prepare('SELECT * FROM members WHERE org_id=? AND active=1 AND phone_digits=?').all(orgId, d) as Row[]).map(rowToMember);
-      if (exact.length || d.length < 8) return exact;
-      const tail = d.slice(-10);
-      return (db.prepare("SELECT * FROM members WHERE org_id=? AND active=1 AND phone_digits IS NOT NULL AND length(phone_digits) >= 8 AND (phone_digits LIKE '%' || ? OR ? LIKE '%' || phone_digits)").all(orgId, tail, d) as Row[]).map(rowToMember);
+      return (db.prepare('SELECT * FROM members WHERE org_id=? AND active=1 AND phone_digits=?').all(orgId, d) as Row[]).map(rowToMember);
     },
     countActive(orgId: string, role: Role): number {
       return (db.prepare('SELECT COUNT(*) c FROM members WHERE org_id=? AND role=? AND active=1').get(orgId, role) as Row).c;
