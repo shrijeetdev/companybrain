@@ -8,12 +8,14 @@
 // The `mcp` subcommand must never write anything but JSON-RPC to stdout, so it is
 // dispatched before anything else is constructed and never starts the web server.
 
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { openDatabase, resolveDbPath } from '@companybrain/db';
-import { createCore } from '@companybrain/core';
+import { createCore, type Core } from '@companybrain/core';
+import { createGame, type Game } from '@companybrain/game';
 import {
   loadIntegrationsConfig,
   createOutbound,
@@ -28,7 +30,7 @@ import {
 } from '@companybrain/integrations';
 import { handleMcpHttp, runMcpStdio } from '@companybrain/mcp';
 import { buildServer } from '@companybrain/server';
-import type { InboundMessage, OnInbound } from '@companybrain/types';
+import type { AppServices, AuditEvent, InboundMessage, OnInbound } from '@companybrain/types';
 
 const VERSION = '2.0.0';
 const command = process.argv.slice(2).find((a) => !a.startsWith('-')) ?? 'serve';
@@ -68,8 +70,8 @@ async function runMcp(): Promise<void> {
   const cfg = loadIntegrationsConfig(env, dataDir);
   // The stdio process shares the SQLite file with the running web app (WAL). It does not run
   // the scheduler — the web app owns background jobs — so outbound is a no-op here.
-  const core = createCore({ db, llm: createLlm(cfg), calendar: createCalendarFetcher(), log });
-  await runMcpStdio(core.services, key);
+  const { services } = createAppServices(db, { llm: createLlm(cfg), calendar: createCalendarFetcher(), log });
+  await runMcpStdio(services, key);
 }
 
 async function serve(): Promise<void> {
@@ -85,8 +87,7 @@ async function serve(): Promise<void> {
   const outbound = createOutbound(cfg, whatsappQr);
   const tts = createTts(cfg);
 
-  const core = createCore({
-    db,
+  const { core, services } = createAppServices(db, {
     outbound,
     llm: createLlm(cfg),
     calendar: createCalendarFetcher(),
@@ -94,8 +95,6 @@ async function serve(): Promise<void> {
     vapidPublicKey: vapid.publicKey,
     log,
   });
-
-  const { services } = core;
   const orgId = await services.auth.orgId();
   onInbound = async (msg) => {
     if (!orgId) return { reply: null }; // not set up yet
@@ -122,6 +121,7 @@ async function serve(): Promise<void> {
       secureCookies: env.COMPANYBRAIN_SECURE_COOKIE === 'true' ? true : env.COMPANYBRAIN_SECURE_COOKIE === 'false' ? false : 'auto',
       corsOrigins: (env.COMPANYBRAIN_CORS_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean),
       emailWebhookSecret: env.EMAIL_WEBHOOK_SECRET || null,
+      signingSecret: loadSigningSecret(),
       logLevel: env.COMPANYBRAIN_LOG_LEVEL || 'info',
     },
   });
@@ -158,6 +158,27 @@ async function serve(): Promise<void> {
     });
   }
   process.on('unhandledRejection', (reason) => log.error('unhandledRejection:', reason));
+}
+
+/** Core + game layer. The game consumes core's audit stream; core needs the game's callback first. */
+function createAppServices(
+  db: ReturnType<typeof openDatabase>,
+  opts: Omit<Parameters<typeof createCore>[0], 'db' | 'onAudit'>,
+): { core: Core; game: Game; services: AppServices } {
+  let game: Game | null = null;
+  const core = createCore({ ...opts, db, onAudit: (e: AuditEvent) => game?.onAudit(e) });
+  game = createGame({ sqlite: db.sqlite, services: core.services });
+  return { core, game, services: { ...core.services, game: game.service } };
+}
+
+/** HMAC key for OAuth client ids/codes. Env, else generated once and kept next to the DB. */
+function loadSigningSecret(): string {
+  if (env.COMPANYBRAIN_SIGNING_SECRET) return env.COMPANYBRAIN_SIGNING_SECRET;
+  const file = join(dataDir, 'signing.key');
+  if (existsSync(file)) return readFileSync(file, 'utf8').trim();
+  const secret = randomBytes(32).toString('hex');
+  writeFileSync(file, secret, { mode: 0o600 });
+  return secret;
 }
 
 function resolveWebDir(): string | null {
