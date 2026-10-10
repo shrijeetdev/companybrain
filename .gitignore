@@ -20,3 +20,8 @@ dist/*.map
 .vscode/
 .idea/
 *.log
+
+# agent worktrees / test output
+.claude/worktrees/
+test-results/
+playwright-report/

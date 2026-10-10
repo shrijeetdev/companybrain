@@ -1,42 +1,52 @@
-// Build script: bundles our TypeScript monorepo into a single dist/server.js.
-// Third-party npm packages stay external (resolved from node_modules at runtime).
-// Run: node scripts/build.mjs
-import { build } from "esbuild";
-import { mkdirSync } from "node:fs";
+// Production build → dist/
+//   dist/server.js   the whole backend in one ESM bundle (workspace packages + pure-JS deps)
+//   dist/web/        the React SPA (Vite)
+//
+// dist/ is committed: some hosts (Hostinger) can't run esbuild in their build sandbox, so the
+// server boots straight from the committed bundle with `node server.js`.
+//
+// Run: pnpm build   (or: node scripts/build.mjs [--server-only|--web-only])
 
-mkdirSync("dist", { recursive: true });
+import { build } from 'esbuild';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const external = [
-  // Runtime deps resolved from root node_modules at start-up.
-  "fastify",
-  "@fastify/cors",
-  "@fastify/rate-limit",
-  "@fastify/static",
-  "better-sqlite3",
-  "@anthropic-ai/sdk",
-  "@supabase/supabase-js",
-  "@sentry/node",
-  "@whiskeysockets/baileys",
-  "qrcode-terminal",
-  "zod",
-  // Logger stack: keep external to avoid ESM bundle runtime issues.
-  "pino",
-  "pino-pretty",
-  // Optional native accelerators used by ws stack.
-  "bufferutil",
-  "utf-8-validate",
-];
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const args = new Set(process.argv.slice(2));
+const doServer = !args.has('--web-only');
+const doWeb = !args.has('--server-only');
+const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
 
-await build({
-  entryPoints: ["cli/bin/companybrain.ts"],
-  bundle: true,
-  platform: "node",
-  target: "node20",
-  format: "esm",
-  outfile: "dist/server.js",
-  // Keep selected npm packages external; workspace @companybrain/* stays bundled.
-  external,
-  logLevel: "info",
-});
+mkdirSync(join(root, 'dist'), { recursive: true });
 
-console.log(`build complete → dist/server.js (${external.length} externals)`);
+if (doServer) {
+  // Kept external: native modules and the optional WhatsApp QR library (lazy-loaded).
+  const external = ['better-sqlite3', '@whiskeysockets/baileys', 'bufferutil', 'utf-8-validate'];
+  await build({
+    entryPoints: [join(root, 'cli/bin/companybrain.ts')],
+    outfile: join(root, 'dist/server.js'),
+    bundle: true,
+    platform: 'node',
+    target: 'node20',
+    format: 'esm',
+    external,
+    legalComments: 'none',
+    logLevel: 'warning',
+    define: { 'process.env.COMPANYBRAIN_BUILD_VERSION': JSON.stringify(version) },
+    // Bundled CommonJS deps call require() for Node builtins; give the ESM bundle a real one.
+    banner: {
+      js: [
+        "import { createRequire as __cbCreateRequire } from 'node:module';",
+        'const require = __cbCreateRequire(import.meta.url);',
+      ].join('\n'),
+    },
+  });
+  console.log(`✓ dist/server.js (externals: ${external.join(', ')})`);
+}
+
+if (doWeb) {
+  execFileSync('pnpm', ['--filter', '@companybrain/web', 'build'], { cwd: root, stdio: 'inherit' });
+  console.log('✓ dist/web/');
+}
