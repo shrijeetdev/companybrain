@@ -8,6 +8,10 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "test": "node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
   "dependencies": {
     "@companybrain/types": "file:../types",
     "chrono-node": "^2.10.2"
