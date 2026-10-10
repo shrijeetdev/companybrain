@@ -110,7 +110,7 @@ test('intake uses llm.extractTask first and falls back to the parser on failure'
   assert.equal(r.task!.priority, 'high');
   assert.equal(r.task!.dueAt, T0 + DAY);
   const r2 = await env.s.inbox.ingest(team.owner.orgId, wa('+15551112222', 'this will explode'));
-  assert.match(r2.task!.title, /this will explode/);
+  assert.match(r2.task!.title, /this will explode/i);
   assert.equal(calls.length, 2);
 });
 

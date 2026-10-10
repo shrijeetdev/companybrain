@@ -205,6 +205,9 @@ export function createFakeServices(opts: FakeOptions = {}) {
 
   const services: AppServices = {
     auth: {
+      async orgId() {
+        return owner.orgId;
+      },
       async login(identifier, password, meta) {
         record('auth.login', undefined, identifier, meta);
         const m = [...members.values()].find((x) => x.email === identifier.toLowerCase());
@@ -511,6 +514,9 @@ export function createFakeServices(opts: FakeOptions = {}) {
       },
     },
     notifications: {
+      async sendTest() {
+        return { ok: true };
+      },
       async list() {
         return [];
       },

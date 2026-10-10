@@ -153,6 +153,7 @@ export function createFakeServices(opts: FakeOptions = {}) {
 
   const services: AppServices = {
     auth: {
+      orgId: async () => ORG,
       async resolveApiKey(raw: string): Promise<Actor | null> {
         track('auth.resolveApiKey', [raw]);
         if (raw === KEYS.agentWrite) return { orgId: ORG, memberId: 'mem_claude001', role: 'agent', kind: 'agent', via: 'api_key', scopes: ['read', 'write'] };
@@ -248,6 +249,7 @@ export function createFakeServices(opts: FakeOptions = {}) {
       listFeeds: notImpl('listFeeds'), addFeed: notImpl('addFeed'), removeFeed: notImpl('removeFeed'), syncFeed: notImpl('syncFeed'),
     },
     notifications: {
+      sendTest: notImpl('notifications.sendTest'),
       async list(actor, o) {
         track('notifications.list', [actor, o]);
         return notifications.filter((n) => n.memberId === actor.memberId && (!o?.unreadOnly || n.readAt == null)).slice(0, o?.limit ?? 50);
