@@ -1,7 +1,7 @@
 // Per-tool-call context: the actor, lazy lookups (members, projects, org), name → id
 // resolution, due-date parsing in the member's time zone, and compact task formatting.
 
-import type { Actor, CoreServices, Member, OrgSettings, ProjectSummary, TaskActivity, TaskView } from '@companybrain/types';
+import type { Actor, AppServices, Member, OrgSettings, ProjectSummary, TaskActivity, TaskView } from '@companybrain/types';
 import { ToolInputError } from './errors.js';
 import { humanDate, isoLocal, parseIso, relativeAgo, safeTimezone, zonedToUtc } from './dates.js';
 
@@ -14,7 +14,7 @@ export class CallContext {
   private orgP: Promise<OrgSettings | null> | null = null;
   readonly now: number;
 
-  constructor(readonly services: CoreServices, readonly actor: Actor, clock: () => number) {
+  constructor(readonly services: AppServices, readonly actor: Actor, clock: () => number) {
     this.now = clock();
   }
 

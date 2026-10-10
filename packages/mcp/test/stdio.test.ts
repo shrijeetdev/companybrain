@@ -53,7 +53,7 @@ test('stdio: initialize → tools/list → tools/call; stdout carries only JSON-
   const byId = new Map(msgs.map((m) => [m.id, m]));
   assert.equal(byId.get(1).result.serverInfo.name, 'companybrain');
   assert.ok(byId.get(1).result.instructions.includes('get_my_work'));
-  assert.equal(byId.get(2).result.tools.length, 15);
+  assert.equal(byId.get(2).result.tools.length, 16);
   assert.equal(byId.get(3).result.isError, undefined);
   assert.equal(byId.get(3).result.structuredContent.overdue[0].title, 'Send Acme proposal');
   assert.ok(byId.get(4).result.structuredContent.count > 0);

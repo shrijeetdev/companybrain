@@ -2,8 +2,8 @@
 
 import { AppError } from '@companybrain/types';
 import type {
-  Actor, Briefing, CoreServices, CreateTaskInput, Meeting, Member, Notification, ProjectSummary,
-  TaskActivity, TaskDraft, TaskQuery, TaskView, UpdateTaskInput, ParsedQuickAdd,
+  Actor, AppServices, Briefing, CreateTaskInput, Hud, Meeting, Member, Notification, ProjectSummary, Rank,
+  RewardEvent, TaskActivity, TaskDraft, TaskQuery, TaskView, UpdateTaskInput, ParsedQuickAdd,
 } from '@companybrain/types';
 
 export const NOW = Date.parse('2026-10-10T08:00:00Z'); // 13:30 in Asia/Kolkata
@@ -23,7 +23,7 @@ function member(id: string, name: string, kind: Member['kind'], role: Member['ro
     id, orgId: ORG, kind, role, name, email: kind === 'human' ? `${name.split(' ')[0]!.toLowerCase()}@acme.test` : null,
     phone: null, title: null, initials: name.slice(0, 2).toUpperCase(), color: '#888', avatarUrl: null, timezone: TZ,
     active: true,
-    prefs: { briefingVoice: 'button', digestHour: null, notifyPush: false, notifyWhatsapp: false, notifyEmail: false, quietStart: null, quietEnd: null },
+    prefs: { briefingVoice: 'button', digestHour: null, notifyPush: false, notifyWhatsapp: false, notifyEmail: false, quietStart: null, quietEnd: null, theme: 'tactical', sound: true },
     agent: kind === 'agent' ? { provider: 'claude', description: 'Writes things', lastSeenAt: NOW - 2 * HOUR, supervisorId: 'mem_shrijeet1' } : null,
     createdAt: NOW - 30 * DAY, updatedAt: NOW - 30 * DAY, ...extra,
   };
@@ -49,6 +49,17 @@ export function createFakeServices(opts: FakeOptions = {}) {
   const activity: TaskActivity[] = [];
   const notifications: Notification[] = [];
   const calls: { method: string; args: unknown[] }[] = [];
+  const rewards: RewardEvent[] = [];
+  const SERGEANT: Rank = { id: 'sergeant', name: 'Sergeant', minLevel: 5, insignia: { kind: 'chevron', count: 3, color: '#c9a227' } };
+  const CORPORAL: Rank = { id: 'corporal', name: 'Corporal', minLevel: 3, insignia: { kind: 'chevron', count: 2, color: '#999' } };
+  /** What the real game layer does via onAudit when a task is completed. */
+  function grantCompletion(actor: Actor, t: TaskView) {
+    const base = { orgId: ORG, memberId: actor.memberId, coins: 0, at: NOW };
+    rewards.unshift({ ...base, id: id('rwd'), kind: 'mission_complete', xp: 40, coins: 5, label: `+40 XP · Mission complete: ${t.title}`, taskId: t.id });
+    if (t.dueAt != null && t.dueAt >= NOW) rewards.unshift({ ...base, id: id('rwd'), kind: 'on_time_bonus', xp: 20, label: '+20 XP · On time', taskId: t.id });
+    if (t.dueAt != null && t.dueAt < NOW) rewards.unshift({ ...base, id: id('rwd'), kind: 'rescue_bonus', xp: 15, label: '+15 XP · Rescued', taskId: t.id });
+    if (t.title.includes('level')) rewards.unshift({ ...base, id: id('rwd'), kind: 'level_up', xp: 0, label: 'Level 5', taskId: null, level: 5, rank: SERGEANT });
+  }
   let seq = 0;
   const id = (p: string) => `${p}_${String(++seq).padStart(8, '0')}`;
 
@@ -140,7 +151,7 @@ export function createFakeServices(opts: FakeOptions = {}) {
 
   const notImpl = (name: string) => () => { throw new Error(`fake: ${name} not implemented`); };
 
-  const services: CoreServices = {
+  const services: AppServices = {
     auth: {
       async resolveApiKey(raw: string): Promise<Actor | null> {
         track('auth.resolveApiKey', [raw]);
@@ -197,7 +208,9 @@ export function createFakeServices(opts: FakeOptions = {}) {
         requireWrite(actor);
         const t = find(tid);
         for (const a of patch.assigneeIds ?? []) memberOrThrow(a);
+        const wasOpen = t.status !== 'done';
         Object.assign(t, patch, { updatedAt: NOW, lastActivityAt: NOW });
+        if (wasOpen && patch.status === 'done') grantCompletion(actor, t);
         return derive(t);
       },
       async complete(actor, tid) {
@@ -205,6 +218,7 @@ export function createFakeServices(opts: FakeOptions = {}) {
         requireWrite(actor);
         const t = find(tid);
         Object.assign(t, { status: 'done', completedAt: NOW, completedBy: actor.memberId, lastActivityAt: NOW });
+        grantCompletion(actor, t);
         return derive(t);
       },
       async comment(actor, tid, text, kind = 'comment') {
@@ -277,6 +291,34 @@ export function createFakeServices(opts: FakeOptions = {}) {
       },
     },
     live: { publish() {}, subscribe() { return () => {}; } },
+    game: {
+      async rewards(actor, limit = 20) {
+        track('game.rewards', [actor, limit]);
+        return rewards.filter((x) => x.memberId === actor.memberId).slice(0, limit);
+      },
+      async hud(actor): Promise<Hud> {
+        track('game.hud', [actor]);
+        return {
+          profile: {
+            memberId: actor.memberId, xp: 1240, level: 4, levelXp: 400, levelProgressXp: 310, rank: CORPORAL, nextRank: SERGEANT, coins: 85,
+            streak: { current: 6, best: 9, lastActiveDay: '2026-10-10' },
+            stats: { missionsCompleted: 31, onTime: 27, rescued: 3, created: 12, cratesOpened: 2, achievements: 4 },
+            equipped: { title: 'Night Raider', frame: null, emote: null }, unopenedCrates: 2,
+          },
+          today: { total: 4, done: 1, pending: 3, overdue: 1, pct: 25 },
+          week: { total: 10, done: 6, pending: 4, overdue: 1, pct: 60 },
+          operations: [], squadToday: { total: 12, done: 5, pending: 7, overdue: 2, pct: 42 },
+          challenges: [
+            { id: 'ch_1', memberId: actor.memberId, day: '2026-10-10', title: 'Clear 3 missions', description: 'Complete 3 tasks today', target: 3, progress: 1, xp: 50, completedAt: null },
+            { id: 'ch_2', memberId: actor.memberId, day: '2026-10-10', title: 'Leave 2 intel notes', description: 'Comment twice', target: 2, progress: 2, xp: 30, completedAt: NOW - HOUR },
+          ],
+          boost: null,
+        };
+      },
+      profile: notImpl('game.profile'), leaderboard: notImpl('game.leaderboard'), achievements: notImpl('game.achievements'),
+      challenges: notImpl('game.challenges'), crates: notImpl('game.crates'), openCrate: notImpl('game.openCrate'),
+      inventory: notImpl('game.inventory'), equip: notImpl('game.equip'), feed: notImpl('game.feed'),
+    },
   };
 
   const meetings: Meeting[] = [{
@@ -305,5 +347,5 @@ export function createFakeServices(opts: FakeOptions = {}) {
     { id: 'notif_0000002', orgId: ORG, memberId: 'mem_claude001', kind: 'task_overdue', title: 'Overdue: Send Acme proposal', body: '', taskId: overdue.id, meetingId: null, link: null, urgent: true, readAt: NOW - HOUR, createdAt: NOW - 2 * HOUR },
   );
 
-  return { services, calls, tasks, activity, notifications, members, ids: { overdue: overdue.id, inProgress: inProg.id, today: today.id }, actors: { shrijeet, priya, claude } };
+  return { services, calls, rewards, tasks, activity, notifications, members, ids: { overdue: overdue.id, inProgress: inProg.id, today: today.id }, actors: { shrijeet, priya, claude } };
 }

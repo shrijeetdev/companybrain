@@ -361,3 +361,77 @@ describe('per-call actor (stdio key re-resolution)', () => {
     assert.match(text(r), /Not authenticated: the API key is no longer valid/);
   });
 });
+
+describe('Tactical Ops rewards and stats', () => {
+  test('complete_task appends a reward line (rescue bonus on an overdue task)', async () => {
+    const { call, fake } = await connect();
+    const r = await call('complete_task', { taskId: fake.ids.overdue });
+    assert.ok(!r.isError, text(r));
+    assert.match(text(r), /\n🎖️ \+55 XP · rescue bonus \+15 · \+5 coins$/);
+    assert.deepEqual(data(r).rewards.map((x: any) => x.kind), ['mission_complete', 'rescue_bonus']);
+  });
+
+  test('update_task to done shows on-time bonus and level-up; other updates show no rewards', async () => {
+    const { call, fake } = await connect();
+    let r = await call('update_task', { taskId: fake.ids.today, priority: 'high' });
+    assert.ok(!text(r).includes('XP'));
+    assert.equal(data(r).rewards, undefined);
+    assert.ok(!fake.calls.some((c) => c.method === 'game.rewards'), 'no reward lookup unless completing');
+    const c = await call('create_task', { title: 'Hit level five', due: 'tomorrow 5pm' });
+    r = await call('update_task', { taskId: data(c).task.id, status: 'done' });
+    assert.ok(!r.isError, text(r));
+    assert.match(text(r), /🎖️ \+60 XP · on-time bonus \+20 · LEVEL UP → 5 \(Sergeant\) · \+5 coins/);
+  });
+
+  test('handoff with status done reports rewards', async () => {
+    const { call, fake } = await connect();
+    const r = await call('handoff', { taskId: fake.ids.today, note: 'Shipped, closing.', status: 'done' });
+    assert.ok(!r.isError, text(r));
+    assert.match(text(r), /🎖️ \+60 XP · on-time bonus \+20/);
+  });
+
+  test('rewards older than ~10 s or for other tasks are ignored', async () => {
+    const { call, fake } = await connect();
+    fake.rewards.push({ id: 'rwd_old', orgId: 'org_test0001', memberId: 'mem_claude001', kind: 'mission_complete', xp: 40, coins: 0, label: 'old', taskId: fake.ids.inProgress, at: NOW - 60_000 });
+    fake.services.tasks.complete = async (_a, id) => ({ ...(await fake.services.tasks.get(_a, id)), status: 'done' });
+    const r = await call('complete_task', { taskId: fake.ids.inProgress });
+    assert.ok(!r.isError, text(r));
+    assert.ok(!text(r).includes('XP'), text(r));
+  });
+
+  test('a game error never fails the completion', async () => {
+    const { call, fake } = await connect('claude', { failOn: { 'game.rewards': new Error('game db locked') } });
+    const origError = console.error;
+    console.error = () => {};
+    let r: CallToolResult;
+    try {
+      r = await call('complete_task', { taskId: fake.ids.today });
+    } finally {
+      console.error = origError;
+    }
+    assert.ok(!r.isError, text(r));
+    assert.match(text(r), /^Completed: Review pricing page/);
+    assert.ok(!text(r).includes('XP'));
+    assert.equal(fake.tasks.find((t) => t.id === fake.ids.today)!.status, 'done');
+  });
+
+  test('get_my_stats: profile, today progress, challenges (works with a read-only key)', async () => {
+    const { call } = await connect('claudeRead');
+    const r = await call('get_my_stats');
+    assert.ok(!r.isError, text(r));
+    const d = data(r);
+    assert.equal(d.profile.level, 4);
+    assert.equal(d.profile.rank, 'Corporal');
+    assert.equal(d.profile.xpToNextLevel, 90);
+    assert.equal(d.profile.streak, 6);
+    assert.equal(d.profile.unopenedCrates, 2);
+    assert.equal(d.today.pct, 25);
+    assert.deepEqual(d.challenges.map((c: any) => [c.title, c.pct, c.done]), [['Clear 3 missions', 33, false], ['Leave 2 intel notes', 100, true]]);
+    const t = text(r);
+    assert.match(t, /^Corporal · Level 4 · 1240 XP \(90 XP to level 5, next rank Sergeant at level 5\)/);
+    assert.match(t, /Streak 6 days \(best 9\) · 85 coins · 2 unopened crates/);
+    assert.match(t, /Today: 25% of missions done \(1\/4, 1 overdue\) · this week 60%/);
+    assert.match(t, /- \[ \] Clear 3 missions — 1\/3 \(\+50 XP\)/);
+    assert.match(t, /- \[x\] Leave 2 intel notes — 2\/2/);
+  });
+});

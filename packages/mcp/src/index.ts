@@ -1,11 +1,11 @@
-// @companybrain/mcp — MCP tools over CoreServices; stdio + stateless Streamable HTTP.
+// @companybrain/mcp — MCP tools over AppServices (core + game); stdio + stateless Streamable HTTP.
 // See docs/v2/WIRING.md for the exported contract and packages/mcp/CONNECT.md for client setup.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import type { Actor, CoreServices } from '@companybrain/types';
+import type { Actor, AppServices } from '@companybrain/types';
 import pkg from '../package.json' with { type: 'json' };
 import { MCP_INSTRUCTIONS } from './instructions.js';
 import { registerTools } from './tools.js';
@@ -24,7 +24,7 @@ export interface McpServerOptions {
 }
 
 /** Create an MCP server with every companybrain tool bound to `actor`. */
-export function createMcpServer(services: CoreServices, actor: Actor, opts: McpServerOptions = {}): McpServer {
+export function createMcpServer(services: AppServices, actor: Actor, opts: McpServerOptions = {}): McpServer {
   const server = new McpServer(
     { name: MCP_SERVER_NAME, title: 'companybrain', version: MCP_SERVER_VERSION },
     { instructions: MCP_INSTRUCTIONS, capabilities: { tools: { listChanged: false } } },
@@ -67,7 +67,7 @@ function normalizeAccept(req: IncomingMessage): void {
  *
  * Fastify: `reply.hijack(); await handleMcpHttp(services, actor, request.raw, reply.raw, request.body)`.
  */
-export async function handleMcpHttp(services: CoreServices, actor: Actor, req: IncomingMessage, res: ServerResponse, parsedBody: unknown): Promise<void> {
+export async function handleMcpHttp(services: AppServices, actor: Actor, req: IncomingMessage, res: ServerResponse, parsedBody: unknown): Promise<void> {
   if (req.method !== 'POST') {
     sendJsonRpcError(res, 405, -32000, 'Method not allowed. This MCP endpoint is stateless: send JSON-RPC requests with POST.', { allow: 'POST' });
     return;
@@ -98,7 +98,7 @@ export async function handleMcpHttp(services: CoreServices, actor: Actor, req: I
  * exits with code 2. Nothing but JSON-RPC is ever written to stdout (console.log/info/debug are
  * redirected to stderr). Resolves when the client disconnects (stdin closes).
  */
-export async function runMcpStdio(services: CoreServices, rawKey: string): Promise<void> {
+export async function runMcpStdio(services: AppServices, rawKey: string): Promise<void> {
   const toStderr = (...args: unknown[]) => console.error(...args);
   console.log = toStderr;
   console.info = toStderr;

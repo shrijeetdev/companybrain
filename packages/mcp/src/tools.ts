@@ -1,19 +1,19 @@
 // MCP tool definitions. Every tool acts as the authenticated member, goes through
-// CoreServices (which enforce org scoping, roles and key scopes), and returns concise
+// AppServices (core services enforce org scoping, roles and key scopes), and returns concise
 // human-readable text plus `structuredContent` JSON.
 
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type {
-  Actor, CoreServices, CreateTaskInput, Member, TaskActivity, TaskQuery, TaskView, UpdateTaskInput,
+  Actor, AppServices, CreateTaskInput, Member, RewardEvent, TaskActivity, TaskQuery, TaskView, UpdateTaskInput,
 } from '@companybrain/types';
 import { CallContext, type CompactTask } from './context.js';
 import { READ_ONLY_MESSAGE, ToolInputError, errorResult, hasWriteScope, toToolError } from './errors.js';
 import { addDays, humanDate, isoLocal, relativeAgo, startOfDay } from './dates.js';
 
 export interface ToolDeps {
-  services: CoreServices;
+  services: AppServices;
   /** Returns the current actor (stdio re-resolves the key per call; HTTP is fixed per request). */
   getActor: () => Promise<Actor>;
   clock: () => number;
@@ -367,7 +367,11 @@ export function registerTools(server: McpServer, deps: ToolDeps): void {
     if (!Object.keys(patch).length) throw new ToolInputError('Nothing to update — pass at least one field (status, priority, due, assignees, project, notes, title, tags, reminders).');
     const task = await ctx.services.tasks.update(ctx.actor, args.taskId, patch);
     const c = await ctx.compactTask(task);
-    return { text: `Updated (${Object.keys(patch).join(', ')}):\n${await ctx.taskLine(c)}`, data: { task: c, changed: Object.keys(patch) } };
+    const reward = patch.status === 'done' ? await completionRewards(ctx, task.id) : null;
+    return {
+      text: `Updated (${Object.keys(patch).join(', ')}):\n${await ctx.taskLine(c)}${reward ? `\n${reward.line}` : ''}`,
+      data: { task: c, changed: Object.keys(patch), ...(reward ? { rewards: reward.rewards } : {}) },
+    };
   });
 
   // ── complete_task ──────────────────────────────────────────────────────────
@@ -385,7 +389,11 @@ export function registerTools(server: McpServer, deps: ToolDeps): void {
     if (args.note?.trim()) await ctx.services.tasks.comment(ctx.actor, args.taskId, args.note.trim(), 'comment');
     const task = await ctx.services.tasks.complete(ctx.actor, args.taskId);
     const c = await ctx.compactTask(task);
-    return { text: `Completed: ${c.title} [${c.id}]${args.note?.trim() ? ' (note saved)' : ''}.`, data: { task: c, noteSaved: Boolean(args.note?.trim()) } };
+    const reward = await completionRewards(ctx, task.id);
+    return {
+      text: `Completed: ${c.title} [${c.id}]${args.note?.trim() ? ' (note saved)' : ''}.${reward ? `\n${reward.line}` : ''}`,
+      data: { task: c, noteSaved: Boolean(args.note?.trim()), ...(reward ? { rewards: reward.rewards } : {}) },
+    };
   });
 
   // ── add_comment ────────────────────────────────────────────────────────────
@@ -417,7 +425,7 @@ export function registerTools(server: McpServer, deps: ToolDeps): void {
       note: z.string().min(1).max(20_000).describe('Hand-off note: what is done, what is next, where things are.'),
       to: z.string().optional().describe('Member id or name to reassign to (replaces current assignees unless keepCurrentAssignees).'),
       keepCurrentAssignees: z.boolean().optional().describe('Add `to` instead of replacing current assignees (default false).'),
-      status: z.enum(['todo', 'in_progress', 'blocked', 'review']).optional().describe('New status, e.g. "review" or "blocked".'),
+      status: z.enum(['todo', 'in_progress', 'blocked', 'review', 'done']).optional().describe('New status, e.g. "review", "blocked", or "done" (closing note).'),
     },
     write: true,
   }, async (args, ctx) => {
@@ -448,9 +456,10 @@ export function registerTools(server: McpServer, deps: ToolDeps): void {
     }
     const c = await ctx.compactTask(task);
     const who = toId ? await ctx.memberName(toId) : null;
+    const reward = args.status === 'done' ? await completionRewards(ctx, task.id) : null;
     return {
-      text: `Handed off${who ? ` to ${who}` : ''}${args.status ? `, status → ${args.status.replace('_', ' ')}` : ''}:\n${await ctx.taskLine(c)}`,
-      data: { task: c, activity: await ctx.activityEntry(a), reassignedTo: toId },
+      text: `Handed off${who ? ` to ${who}` : ''}${args.status ? `, status → ${args.status.replace('_', ' ')}` : ''}:\n${await ctx.taskLine(c)}${reward ? `\n${reward.line}` : ''}`,
+      data: { task: c, activity: await ctx.activityEntry(a), reassignedTo: toId, ...(reward ? { rewards: reward.rewards } : {}) },
     };
   });
 
@@ -648,12 +657,95 @@ export function registerTools(server: McpServer, deps: ToolDeps): void {
     if (members.length) lines.push(`People & agents (${members.length}):`, ...members.map((m) => `- ${m.name} [${m.id}] · ${m.kind === 'agent' ? 'AI agent' : m.role}`));
     return { text: lines.join('\n') || `Nothing matches "${args.query}".`, data: { query: args.query, tasks, projects, members } };
   });
+
+  // ── get_my_stats ───────────────────────────────────────────────────────────
+  tool('get_my_stats', {
+    title: 'Get my stats (Tactical Ops)',
+    description:
+      'Your game profile: level, rank, XP to the next level, streak, coins and unopened crates, plus today\'s mission progress (% of ' +
+      'today\'s tasks done) and your daily challenges with progress. Completing tasks on time earns XP. Example: {}',
+    input: {},
+    write: false,
+  }, async (_args, ctx) => {
+    const hud = await ctx.services.game.hud(ctx.actor);
+    const p = hud.profile;
+    const toNext = Math.max(0, p.levelXp - p.levelProgressXp);
+    const data = {
+      profile: {
+        level: p.level, xp: p.xp, rank: p.rank.name, nextRank: p.nextRank?.name ?? null,
+        levelProgressXp: p.levelProgressXp, levelXp: p.levelXp, xpToNextLevel: toNext,
+        streak: p.streak.current, bestStreak: p.streak.best, coins: p.coins, unopenedCrates: p.unopenedCrates,
+        stats: p.stats, title: p.equipped.title,
+      },
+      today: hud.today,
+      week: hud.week,
+      challenges: hud.challenges.map((c) => ({
+        id: c.id, title: c.title, description: c.description, progress: c.progress, target: c.target, xp: c.xp,
+        pct: c.target > 0 ? Math.min(100, Math.round((c.progress / c.target) * 100)) : 0, done: c.completedAt != null,
+      })),
+      boost: hud.boost,
+    };
+    const lines = [
+      `${p.rank.name} · Level ${p.level} · ${p.xp} XP (${toNext} XP to level ${p.level + 1}${p.nextRank ? `, next rank ${p.nextRank.name} at level ${p.nextRank.minLevel}` : ''})`,
+      `Streak ${p.streak.current} day${p.streak.current === 1 ? '' : 's'} (best ${p.streak.best}) · ${p.coins} coins · ${p.unopenedCrates} unopened crate${p.unopenedCrates === 1 ? '' : 's'}`,
+      `Today: ${hud.today.pct}% of missions done (${hud.today.done}/${hud.today.total}${hud.today.overdue ? `, ${hud.today.overdue} overdue` : ''}) · this week ${hud.week.pct}%`,
+    ];
+    if (hud.boost) lines.push(`XP boost ×${hud.boost.multiplier} active.`);
+    if (data.challenges.length) {
+      lines.push('', 'Daily challenges:');
+      for (const c of data.challenges) lines.push(`- [${c.done ? 'x' : ' '}] ${c.title} — ${c.progress}/${c.target} (+${c.xp} XP)`);
+    }
+    return { text: lines.join('\n'), data };
+  });
 }
 
 export const TOOL_NAMES = [
   'get_my_work', 'list_tasks', 'get_task', 'create_task', 'quick_add', 'update_task', 'complete_task',
   'add_comment', 'handoff', 'list_projects', 'list_team', 'get_briefing', 'list_meetings', 'get_notifications', 'search',
+  'get_my_stats',
 ] as const;
+
+
+const REWARD_WINDOW_MS = 10_000;
+const KIND_LABEL: Partial<Record<RewardEvent['kind'], string>> = {
+  on_time_bonus: 'on-time bonus', rescue_bonus: 'rescue bonus', priority_bonus: 'priority bonus',
+  streak_bonus: 'streak bonus', challenge: 'challenge', squad_bonus: 'squad bonus', subtask: 'objective',
+};
+/** Rewards not tied to a task that a completion can trigger (level-ups, crates, …). */
+const SIDE_EFFECT_KINDS = new Set<RewardEvent['kind']>(['level_up', 'crate_earned', 'achievement', 'challenge', 'streak_bonus', 'squad_bonus']);
+
+/** Mission XP first, then task bonuses, then side effects (level-up, crates, achievements…). */
+const rewardOrder = (r: RewardEvent) => (r.kind === 'mission_complete' ? 0 : r.taskId != null ? 1 : 2);
+
+/**
+ * Best-effort reward summary after completing a task: "🎖️ +40 XP · on-time bonus +20 · LEVEL 5 (Sergeant)".
+ * Never throws — a game error must not fail the tool.
+ */
+async function completionRewards(ctx: CallContext, taskId: string): Promise<{ line: string; rewards: { kind: string; xp: number; coins: number; label: string }[] } | null> {
+  try {
+    const game = ctx.services.game;
+    if (!game?.rewards) return null;
+    const since = ctx.now - REWARD_WINDOW_MS;
+    const recent = (await game.rewards(ctx.actor, 5))
+      .filter((r) => r.at >= since && r.kind !== 'revoked' && (r.taskId === taskId || (r.taskId == null && SIDE_EFFECT_KINDS.has(r.kind))))
+      .sort((a, b) => rewardOrder(a) - rewardOrder(b) || a.at - b.at);
+    if (!recent.some((r) => r.taskId === taskId)) return null;
+    const xp = recent.reduce((n, r) => n + r.xp, 0);
+    const coins = recent.reduce((n, r) => n + r.coins, 0);
+    const parts = [`🎖️ +${xp} XP`];
+    for (const r of recent) {
+      if (r.kind === 'level_up') parts.push(`LEVEL UP → ${r.level ?? '?'}${r.rank ? ` (${r.rank.name})` : ''}`);
+      else if (r.kind === 'crate_earned') parts.push(`${r.rarity ?? ''} crate earned`.trim());
+      else if (r.kind === 'achievement') parts.push(`achievement: ${r.label}`);
+      else if (KIND_LABEL[r.kind] && r.xp) parts.push(`${KIND_LABEL[r.kind]} +${r.xp}`);
+    }
+    if (coins) parts.push(`+${coins} coins`);
+    return { line: parts.join(' · '), rewards: recent.map((r) => ({ kind: r.kind, xp: r.xp, coins: r.coins, label: r.label })) };
+  } catch (err) {
+    console.error('[companybrain mcp] reward lookup failed (ignored):', err instanceof Error ? err.message : err);
+    return null;
+  }
+}
 
 function clip(s: string, n: number): string {
   const one = s.replace(/\s+/g, ' ').trim();

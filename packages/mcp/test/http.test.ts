@@ -48,7 +48,7 @@ test('SDK client over Streamable HTTP: initialize → tools/list → tools/call'
   assert.equal(transport.sessionId, undefined, 'stateless: no session id');
 
   const { tools } = await client.listTools();
-  assert.equal(tools.length, 15);
+  assert.equal(tools.length, 16);
 
   const r = (await client.callTool({ name: 'get_my_work', arguments: {} })) as CallToolResult;
   assert.ok(!r.isError);
@@ -82,7 +82,7 @@ test('plain JSON client (Accept: application/json only) works', async () => {
   assert.match(res.headers.get('content-type') ?? '', /application\/json/);
   const json = (await res.json()) as any;
   assert.equal(json.id, 1);
-  assert.equal(json.result.tools.length, 15);
+  assert.equal(json.result.tools.length, 16);
 
   const call = await fetch(base, {
     method: 'POST',
