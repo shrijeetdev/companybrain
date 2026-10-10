@@ -2,11 +2,10 @@
 // 4 s timeout + fallback), cached per member for 60 s. 'tactical' theme speaks in game voice
 // (missions / operations / squad) with the same facts.
 
-import { ROLE_RANK, type Actor, type Briefing, type BriefingService, type Meeting, type Member, type Task, type TaskView, type TeamPulse } from '@companybrain/types';
-import { localParts, safeTz, spokenTime, startOfLocalDay } from '@companybrain/db';
+import { ROLE_RANK, type Actor, type Briefing, type BriefingService, type Meeting, type Member, type Task, type TeamPulse } from '@companybrain/types';
+import { PRIORITY_RANK, localParts, safeTz, spokenTime, startOfLocalDay } from '@companybrain/db';
 import { firstName, withTimeout, type Ctx } from '../context.js';
 import { notFound, rank, visibility } from '../perms.js';
-import { PRIORITY_RANK } from '@companybrain/db';
 
 const CACHE_MS = 60_000;
 const POLISH_TIMEOUT_MS = 4_000;
@@ -132,7 +131,7 @@ export function createBriefingService(ctx: Ctx): BriefingInternals {
       const open = team.reduce((s, p) => s + p.open, 0);
       const od = team.reduce((s, p) => s + p.overdue, 0);
       const doneToday = team.reduce((s, p) => s + p.doneToday, 0);
-      sentences.push(`Across ${voice.team}, ${open} ${open === 1 ? voice.task : voice.tasks} are open, ${od} overdue, and ${doneToday} finished today.`);
+      sentences.push(`Across ${voice.team}, ${open} ${open === 1 ? `${voice.task} is` : `${voice.tasks} are`} open, ${od} overdue, and ${doneToday} finished today.`);
       const star = [...team].sort((a, b) => b.doneThisWeek - a.doneThisWeek)[0];
       if (star && star.doneThisWeek > 0 && star.member.id !== m.id) sentences.push(`${firstName(star.member.name)} has closed ${plural(star.doneThisWeek, voice.task, voice.tasks)} this week.`);
     }
@@ -185,4 +184,3 @@ export function createBriefingService(ctx: Ctx): BriefingInternals {
   };
 }
 
-export type { TaskView };
