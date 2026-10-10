@@ -83,7 +83,7 @@ async function serve(): Promise<void> {
   let onInbound: OnInbound = async () => ({ reply: null });
   const inbound: OnInbound = (msg: InboundMessage) => onInbound(msg);
 
-  const whatsappQr: WhatsAppQr | null = env.WHATSAPP_QR === 'on' ? createWhatsAppQr(cfg, inbound) : null;
+  const whatsappQr: WhatsAppQr | null = cfg.whatsapp.qrEnabled ? createWhatsAppQr(cfg, inbound) : null;
   const outbound = createOutbound(cfg, whatsappQr);
   const tts = createTts(cfg);
 
