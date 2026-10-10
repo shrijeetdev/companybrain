@@ -32,6 +32,14 @@ function memberActor(m: Member): Actor {
 
 const firstLine = (s: string) => s.split(/\r?\n/).map((l) => l.trim()).find(Boolean) ?? '';
 
+export const UNVERIFIED_NOTE = 'Sender not verified: this email did not pass sender authentication (DMARC/DKIM/SPF), so it may not really be from this address.';
+
+/**
+ * Was the sender verified by the transport? WhatsApp numbers are verified by WhatsApp itself;
+ * email only when the receiving mail system vouched for the From address (InboundMessage.authenticated).
+ */
+export const senderVerified = (msg: Pick<InboundMessage, 'channel' | 'authenticated'>) => msg.channel === 'whatsapp' || msg.authenticated === true;
+
 export function createInboxService(ctx: Ctx, tasks: TaskInternals): InboxService {
   const { db } = ctx;
   const now = () => ctx.clock();
@@ -43,6 +51,9 @@ export function createInboxService(ctx: Ctx, tasks: TaskInternals): InboxService
   }
 
   function matchSender(orgId: string, msg: InboundMessage): Member | null {
+    // An unverified email sender is never matched to a member: a forged From must not create
+    // tasks as (or run commands for) a teammate.
+    if (!senderVerified(msg)) return null;
     if (msg.channel === 'whatsapp') {
       const hits = db.members.findByPhone(orgId, msg.from);
       return hits.length === 1 ? hits[0]! : null;
@@ -149,7 +160,9 @@ export function createInboxService(ctx: Ctx, tasks: TaskInternals): InboxService
       const clean: InboundMessage = {
         channel: msg.channel, from: msg.from.trim().slice(0, 254), fromName: typeof msg.fromName === 'string' ? msg.fromName.slice(0, 200) : null, subject, text,
         externalId: msg.externalId.trim().slice(0, 300), receivedAt: typeof msg.receivedAt === 'number' && Number.isFinite(msg.receivedAt) ? msg.receivedAt : now(),
+        authenticated: senderVerified(msg),
       };
+      const verified = clean.authenticated === true;
 
       const dup = db.inbox.findByExternal(orgId, clean.externalId);
       if (dup) return { item: dup, task: null, reply: null };
@@ -182,12 +195,17 @@ export function createInboxService(ctx: Ctx, tasks: TaskInternals): InboxService
         }
       }
 
-      // Unknown sender (or creation failed): triage in the Inbox.
+      // Unknown/unverified sender (or creation failed): triage in the Inbox.
       item.suggestion = await suggest(orgId, clean, org.timezone);
+      if (!verified) {
+        const base = item.suggestion ?? { title: (clean.subject?.trim() || firstLine(clean.text) || 'Message').slice(0, 500) };
+        const original = `From ${clean.fromName ? `${clean.fromName} <${clean.from}>` : clean.from}:\n\n${clean.text}`;
+        item.suggestion = { ...base, notes: `${UNVERIFIED_NOTE}\n\n${base.notes ?? original}`.slice(0, 20_000) };
+      }
       db.inbox.save(item);
       const managers = db.members.list(orgId, { kind: 'human' }).filter((m) => rank(m.role) >= rank('manager'));
-      const who = clean.fromName ? `${clean.fromName} (${clean.from})` : clean.from;
-      const preview = (clean.subject ? `${clean.subject} — ` : '') + firstLine(clean.text);
+      const who = (clean.fromName ? `${clean.fromName} (${clean.from})` : clean.from) + (verified ? '' : ' — sender not verified');
+      const preview = (verified ? '' : '⚠ Sender not verified. ') + (clean.subject ? `${clean.subject} — ` : '') + firstLine(clean.text);
       for (const m of managers.filter((x) => rank(x.role) >= rank('admin'))) {
         try {
           await ctx.services.notifications.notify(orgId, m.id, {
@@ -199,7 +217,8 @@ export function createInboxService(ctx: Ctx, tasks: TaskInternals): InboxService
       }
       publish(ctx, orgId, { type: 'inbox.new', item }, managers.map((m) => m.id));
       ctx.internal.invalidateBriefings(orgId);
-      const reply = org.intakeAutoAck ? `Thanks${clean.fromName ? `, ${clean.fromName.split(/\s+/)[0]}` : ''} — we received your message and will get back to you shortly.` : null;
+      // Never auto-acknowledge an unverified email: the From address may be a spoofing victim (backscatter).
+      const reply = org.intakeAutoAck && verified ? `Thanks${clean.fromName ? `, ${clean.fromName.split(/\s+/)[0]}` : ''} — we received your message and will get back to you shortly.` : null;
       return { item, task: null, reply };
     } catch (err) {
       ctx.log.error('[intake] ingest failed', err);
