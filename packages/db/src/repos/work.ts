@@ -138,7 +138,10 @@ export interface TaskFilter {
   projectId?: string;
   noProject?: boolean;
   statuses?: TaskStatus[];
+  priorities?: Priority[];
   open?: boolean;
+  /** Closed (done/cancelled) tasks only when closed at/after this time (completed_at, else updated_at). Open tasks pass. */
+  closedSince?: number;
   dueBefore?: number;
   dueAfter?: number;
   hasDue?: boolean;
@@ -263,6 +266,11 @@ export function taskRepo(db: SQL) {
     if (f.noProject) c.push('t.project_id IS NULL');
     if (f.statuses?.length) { c.push('t.status IN (SELECT value FROM json_each(@statuses))'); p.statuses = JSON.stringify(f.statuses); }
     if (f.open) c.push("t.status NOT IN ('done','cancelled')");
+    if (f.priorities?.length) { c.push('t.priority IN (SELECT value FROM json_each(@priorities))'); p.priorities = JSON.stringify(f.priorities); }
+    if (f.closedSince !== undefined) {
+      c.push("(t.status NOT IN ('done','cancelled') OR COALESCE(t.completed_at, t.updated_at) >= @closedSince)");
+      p.closedSince = f.closedSince;
+    }
     if (f.dueBefore !== undefined) { c.push('t.due_at IS NOT NULL AND t.due_at < @dueBefore'); p.dueBefore = f.dueBefore; }
     if (f.dueAfter !== undefined) { c.push('t.due_at IS NOT NULL AND t.due_at >= @dueAfter'); p.dueAfter = f.dueAfter; }
     if (f.hasDue === true) c.push('t.due_at IS NOT NULL');

@@ -145,9 +145,11 @@ export const TaskListQuery = z.object({
   ),
   search: QStr(200),
   tag: QStr(50),
+  priority: QList(Priority),
   dueBefore: QInt(0, 8.64e15),
   dueAfter: QInt(0, 8.64e15),
   includeDone: QBool,
+  completedSince: QInt(0, 8.64e15),
   limit: QInt(1, 500),
   offset: QInt(0, 1_000_000),
 });
@@ -188,6 +190,7 @@ export const UpdateTaskBody = z
 
 export const SubtaskCreateBody = z.object({ title: ShortText(500) });
 export const SubtaskPatchBody = z.object({ title: ShortText(500).optional(), done: z.boolean().optional() }).strict();
+export const SubtaskOrderBody = z.object({ ids: z.array(Id).max(100).describe('Every current subtask id of the task, in the new order') }).strict();
 export const CommentBody = z.object({ text: ShortText(10_000), kind: z.enum(['comment', 'handoff']).optional() });
 
 // ─── Projects ────────────────────────────────────────────────────────────────
@@ -271,6 +274,7 @@ export const UpdateOrgBody = z
     escalateAfterMin: z.number().int().min(1).max(525_600).nullable(),
     agentStaleAfterMin: z.number().int().min(1).max(525_600),
     intakeAutoAck: z.boolean(),
+    currency: z.string().regex(/^[A-Za-z]{3}$/, 'expected an ISO 4217 code like USD'),
   })
   .partial()
   .strict();
@@ -363,6 +367,8 @@ function dto<T extends z.ZodType>(id: string, schema: T, description?: string): 
 const N = <T extends z.ZodType>(s: T) => s.nullable();
 const ts = z.number().int().describe('epoch milliseconds (UTC)');
 
+export const DeletedDto = dto('Deleted', z.object({ auditId: z.string().describe('Pass to POST /api/audit/{id}/undo to restore') }));
+
 export const MemberDto = dto(
   'Member',
   z.object({
@@ -413,6 +419,7 @@ export const OrgDto = dto(
     escalateAfterMin: N(z.number().int()),
     agentStaleAfterMin: z.number().int(),
     intakeAutoAck: z.boolean(),
+    currency: z.string().describe('ISO 4217 code, e.g. USD, INR'),
     createdAt: ts,
     updatedAt: ts,
   }),

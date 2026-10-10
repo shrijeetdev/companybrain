@@ -8,7 +8,7 @@ import { flash, isLocalEcho, qk, removeTaskFromCaches, softInvalidate, upsertTas
 export const liveStatus = createStore<'connecting' | 'live' | 'offline'>('connecting');
 export const useLiveStatus = () => useStore(liveStatus);
 
-const EVENT_TYPES: LiveEvent['type'][] = ['task.upserted', 'task.deleted', 'activity', 'project.upserted', 'notification', 'inbox.new', 'member.upserted', 'meeting.upserted', 'game.reward', 'ping'];
+const EVENT_TYPES: LiveEvent['type'][] = ['task.upserted', 'task.deleted', 'activity', 'project.upserted', 'notification', 'inbox.new', 'member.upserted', 'meeting.upserted', 'game.reward', 'game.feed', 'ping'];
 
 export function applyLiveEvent(qc: QueryClient, e: LiveEvent, meId: string): void {
   switch (e.type) {
@@ -51,20 +51,23 @@ export function applyLiveEvent(qc: QueryClient, e: LiveEvent, meId: string): voi
       softInvalidate(qc, qk.briefing, 1200);
       break;
     case 'game.reward': {
+      // Rewards are private to the earner (celebrations + HUD). The squad feed has its own event.
       const r = e.reward;
-      if (r.memberId === meId) {
-        onReward(r);
-        softInvalidate(qc, qk.game.hud, 250);
-        if (r.kind === 'crate_earned') softInvalidate(qc, qk.game.crates, 250);
-      }
-      // Everyone's rewards feed the squad feed + leaderboard.
-      if (['mission_complete', 'level_up', 'squad_bonus', 'achievement', 'challenge'].includes(r.kind)) {
-        qc.setQueryData<FeedItem[]>(qk.game.feed, (old) => {
-          if (!old || old.some((f) => f.id === r.id)) return old;
-          return [{ id: r.id, memberId: r.memberId, kind: r.kind, xp: r.xp, text: r.label, at: r.at }, ...old].slice(0, 40);
-        });
-        softInvalidate(qc, ['game', 'leaderboard'], 2000);
-      }
+      if (r.memberId !== meId) break;
+      onReward(r);
+      softInvalidate(qc, qk.game.hud, 250);
+      if (r.kind === 'crate_earned') softInvalidate(qc, qk.game.crates, 250);
+      softInvalidate(qc, ['game', 'leaderboard'], 2000);
+      break;
+    }
+    case 'game.feed': {
+      const item = e.item;
+      qc.setQueryData<FeedItem[]>(qk.game.feed, (old) => {
+        if (!old || old.some((f) => f.id === item.id)) return old;
+        return [item, ...old].sort((a, b) => b.at - a.at).slice(0, 40);
+      });
+      flash(item.id, 3000);
+      softInvalidate(qc, ['game', 'leaderboard'], 2000);
       break;
     }
     case 'ping':

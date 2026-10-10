@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { AlarmClock, AtSign, CalendarClock, CornerDownLeft, Flag, Hash, Plus, Repeat, Send, TriangleAlert } from 'lucide-react';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { CreateTaskInput, ParsedQuickAdd, Recurrence } from '@companybrain/types';
@@ -161,15 +161,15 @@ export const QuickAdd = forwardRef<QuickAddHandle, Props>(function QuickAdd({ de
       </div>
       <AnimatePresence initial={false}>
         {chips.length > 0 && (
-          <motion.div className="quickadd-chips" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }}>
+          <m.div className="quickadd-chips" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }}>
             <AnimatePresence initial={false} mode="popLayout">
               {chips.map((c) => (
-                <motion.span key={c.key} layout className={cx('chip token-chip', c.cls)} initial={{ opacity: 0, scale: 0.7, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ type: 'spring', stiffness: 600, damping: 28 }}>
+                <m.span key={c.key} layout className={cx('chip token-chip', c.cls)} initial={{ opacity: 0, scale: 0.7, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ type: 'spring', stiffness: 600, damping: 28 }}>
                   {c.icon}{c.label}
-                </motion.span>
+                </m.span>
               ))}
             </AnimatePresence>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

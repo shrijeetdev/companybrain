@@ -32,6 +32,7 @@ function rowToOrg(r: Row): OrgSettings {
     escalateAfterMin: r.escalate_after_min ?? null,
     agentStaleAfterMin: r.agent_stale_after_min,
     intakeAutoAck: !!r.intake_auto_ack,
+    currency: typeof r.currency === 'string' && /^[A-Z]{3}$/.test(r.currency) ? r.currency : 'USD',
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -39,8 +40,8 @@ function rowToOrg(r: Row): OrgSettings {
 
 export function orgRepo(db: SQL) {
   const save = db.prepare(`UPDATE orgs SET name=@name, timezone=@timezone, logo=@logo, workday_start=@workdayStart, workday_end=@workdayEnd,
-    default_reminder_offsets=@offsets, escalate_after_min=@escalateAfterMin, agent_stale_after_min=@agentStaleAfterMin, intake_auto_ack=@ack, updated_at=@updatedAt WHERE id=@id`);
-  const params = (o: OrgSettings) => ({ ...o, offsets: JSON.stringify(o.defaultReminderOffsets), ack: o.intakeAutoAck ? 1 : 0 });
+    default_reminder_offsets=@offsets, escalate_after_min=@escalateAfterMin, agent_stale_after_min=@agentStaleAfterMin, intake_auto_ack=@ack, currency=@currency, updated_at=@updatedAt WHERE id=@id`);
+  const params = (o: OrgSettings) => ({ ...o, offsets: JSON.stringify(o.defaultReminderOffsets), ack: o.intakeAutoAck ? 1 : 0, currency: o.currency || 'USD' });
   return {
     /** All orgs (system-level: scheduler bootstrap / single-org routing). */
     list(): OrgSettings[] {
@@ -51,8 +52,8 @@ export function orgRepo(db: SQL) {
       return r ? rowToOrg(r) : null;
     },
     insert(o: OrgSettings): void {
-      db.prepare(`INSERT INTO orgs (id, name, timezone, logo, workday_start, workday_end, default_reminder_offsets, escalate_after_min, agent_stale_after_min, intake_auto_ack, created_at, updated_at)
-        VALUES (@id, @name, @timezone, @logo, @workdayStart, @workdayEnd, @offsets, @escalateAfterMin, @agentStaleAfterMin, @ack, @createdAt, @updatedAt)`).run(params(o));
+      db.prepare(`INSERT INTO orgs (id, name, timezone, logo, workday_start, workday_end, default_reminder_offsets, escalate_after_min, agent_stale_after_min, intake_auto_ack, currency, created_at, updated_at)
+        VALUES (@id, @name, @timezone, @logo, @workdayStart, @workdayEnd, @offsets, @escalateAfterMin, @agentStaleAfterMin, @ack, @currency, @createdAt, @updatedAt)`).run(params(o));
     },
     save(o: OrgSettings): void {
       save.run(params(o));

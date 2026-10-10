@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { ArrowRight, Bot, CalendarClock, Hourglass, MapPin, Video } from 'lucide-react';
 import { useMemo } from 'react';
 import { Link } from 'wouter';
@@ -61,9 +61,9 @@ function Hero({ b, me }: { b: Briefing | undefined; me: Member }) {
         <div className="grow" style={{ minWidth: 0 }}>
           <div className="eyebrow hero-kicker">{tactical ? `${L.todayTitle} · ${fmtLongDate(Date.now())}` : fmtLongDate(Date.now())}</div>
           {b ? (
-            <motion.h1 className="hero-greeting display" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
+            <m.h1 className="hero-greeting display" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
               {b.greeting.replace(/,\s*/, ', ')}
-            </motion.h1>
+            </m.h1>
           ) : <Skeleton w="60%" h={34} />}
           {b ? <p className="hero-headline">{b.headline}</p> : <Skeleton w="40%" h={16} style={{ marginTop: 10 }} />}
         </div>
@@ -115,10 +115,10 @@ function MyDay({ b }: { b: Briefing }) {
     <>
       <AnimatePresence initial={false}>
         {overdue.length > 0 && (
-          <motion.section key="overdue" className="panel day-section critical" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, height: 0 }}>
+          <m.section key="overdue" className="panel day-section critical" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, height: 0 }}>
             <div className="panel-head"><span className="g-dot pulse" /><h2 style={{ color: 'var(--danger)' }}>{L.overdue}</h2><span className="faint num">{overdue.length}</span></div>
             <div className="task-list" role="list"><AnimatePresence initial={false}>{overdue.map(row)}</AnimatePresence></div>
-          </motion.section>
+          </m.section>
         )}
       </AnimatePresence>
 
@@ -208,9 +208,9 @@ function TeamPulsePanel({ team }: { team: TeamPulse[] }) {
                   </span>
                 </div>
                 <div className="pulse-bar" aria-hidden>
-                  <motion.i className="ov" initial={{ width: 0 }} animate={{ width: `${(p.overdue / max) * 100}%` }} transition={{ duration: 0.8 }} />
-                  <motion.i className="op" initial={{ width: 0 }} animate={{ width: `${((p.open - p.overdue) / max) * 100}%` }} transition={{ duration: 0.8, delay: 0.05 }} />
-                  <motion.i className="dn" initial={{ width: 0 }} animate={{ width: `${(p.doneToday / max) * 100}%` }} transition={{ duration: 0.8, delay: 0.1 }} />
+                  <m.i className="ov" initial={{ width: 0 }} animate={{ width: `${(p.overdue / max) * 100}%` }} transition={{ duration: 0.8 }} />
+                  <m.i className="op" initial={{ width: 0 }} animate={{ width: `${((p.open - p.overdue) / max) * 100}%` }} transition={{ duration: 0.8, delay: 0.05 }} />
+                  <m.i className="dn" initial={{ width: 0 }} animate={{ width: `${(p.doneToday / max) * 100}%` }} transition={{ duration: 0.8, delay: 0.1 }} />
                 </div>
               </div>
             </Link>

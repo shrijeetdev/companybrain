@@ -46,20 +46,21 @@ method. Routes never touch the DB directly.
 ### Tasks
 | Method | Path | Body / Query | Returns |
 |---|---|---|---|
-| GET | `/api/tasks` | `TaskQuery` as query (`status` comma-separated) | `TaskView[]` |
+| GET | `/api/tasks` | `TaskQuery` as query (`status`, `priority` comma-separated; `completedSince` = epoch ms, closed tasks only if closed since then) | `TaskView[]` |
 | POST | `/api/tasks` | `CreateTaskInput` | `TaskView` |
 | POST | `/api/tasks/quick` | `{ text, defaults?: Partial<CreateTaskInput> }` | `TaskView` |
 | POST | `/api/tasks/preview` | `{ text }` | `{ parsed, draft, unresolved }` |
 | POST | `/api/tasks/bulk` | `{ ids, op: { kind, value? } }` | `{ ok, failed }` |
 | GET | `/api/tasks/:id` | | `TaskView` |
 | PATCH | `/api/tasks/:id` | `UpdateTaskInput` | `TaskView` |
-| DELETE | `/api/tasks/:id` | | `204` |
+| DELETE | `/api/tasks/:id` | | `{ auditId }` (200) — `POST /api/audit/:auditId/undo` restores the task |
 | POST | `/api/tasks/:id/complete` | | `TaskView` |
 | POST | `/api/tasks/:id/reopen` | | `TaskView` |
 | POST | `/api/tasks/:id/nudge` | | `TaskView` |
 | POST | `/api/tasks/:id/subtasks` | `{ title }` | `TaskView` |
 | PATCH | `/api/tasks/:id/subtasks/:subId` | `{ title?, done? }` | `TaskView` |
 | DELETE | `/api/tasks/:id/subtasks/:subId` | | `TaskView` |
+| PUT | `/api/tasks/:id/subtasks/order` | `{ ids: string[] }` (exactly the current subtask ids, new order) | `TaskView` |
 | GET | `/api/tasks/:id/activity` | | `TaskActivity[]` |
 | POST | `/api/tasks/:id/comments` | `{ text, kind?: 'comment'\|'handoff' }` | `TaskActivity` |
 
@@ -77,7 +78,7 @@ method. Routes never touch the DB directly.
 | POST | `/api/keys` | `{ memberId, name, scopes, expiresAt? }` | `{ key: ApiKey, raw: string }` |
 | DELETE | `/api/keys/:id` | | `204` |
 | GET | `/api/org` | | `OrgSettings` |
-| PATCH | `/api/org` | partial (admin+) | `OrgSettings` |
+| PATCH | `/api/org` | partial (admin+), incl. `currency` (ISO 4217, e.g. `INR`) | `OrgSettings` |
 
 ### Meetings & calendar feeds
 | Method | Path | Body / Query | Returns |
@@ -153,8 +154,10 @@ Tools (all act as the key's member, scope-checked):
 | GET | `/api/game/feed` | `?limit=` | `FeedItem[]` |
 | GET | `/api/game/rewards` | `?limit=` | `RewardEvent[]` (actor's recent) |
 
-Live: `{ type: 'game.reward', reward }` is pushed over `/api/stream` to the rewarded member (and as a feed
-item to the squad) — the UI plays the celebration from it.
+Live: `{ type: 'game.reward', reward }` is pushed over `/api/stream` to the rewarded member only — the UI
+plays the celebration from it. Notable squad-feed items (level-ups, rank-ups, achievements, operation
+cleared, legendary crates, streak milestones) are pushed as `{ type: 'game.feed', item: FeedItem }` to every
+active member of the org (guests only receive their own), so the squad feed updates live.
 
 ## OAuth 2.1 for "paste the URL into Claude/ChatGPT and it connects"
 
@@ -171,4 +174,7 @@ API keys minted through `services.apiKeys.create` (visible + revocable in Settin
 | POST | `/oauth/token` | form or JSON; `authorization_code` + `code_verifier` → `{ access_token, token_type: 'Bearer', scope }`. Codes single-use, 5-min TTL. |
 | — | `/mcp` 401 responses | include `WWW-Authenticate: Bearer resource_metadata="<base>/.well-known/oauth-protected-resource"` |
 
-`GET /api/oauth/client?client_id=` (session) → `{ name, redirectUri host }` so the consent page can show who's asking.
+`GET /api/oauth/client?client_id=&redirect_uri=` (session) → `{ name, host, redirectUri, redirectUris }` so the
+consent page can show who's asking ("Claude wants to connect · claude.ai"). `400` when `redirect_uri` isn't
+registered for the client, `404` for an unknown/forged `client_id`. `POST /api/oauth/approve` answers `400`
+(with `details.error`, e.g. `invalid_request`) when the authorize parameters are invalid or expired.

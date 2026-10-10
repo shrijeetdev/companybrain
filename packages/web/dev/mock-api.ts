@@ -117,7 +117,7 @@ function seed(): void {
   org = {
     id: ORG_ID, name: 'Vexocore', timezone: TZ, logo: null, workdayStart: 9, workdayEnd: 18,
     defaultReminderOffsets: [1440, 60, 0], escalateAfterMin: 1440, agentStaleAfterMin: 240,
-    intakeAutoAck: true, createdAt: NOW0 - 200 * D, updatedAt: NOW0 - 5 * D,
+    intakeAutoAck: true, currency: 'INR', createdAt: NOW0 - 200 * D, updatedAt: NOW0 - 5 * D,
   };
   members = [
     mkMember('mem_shrijeet01', 'Shrijeet Mehta', 'owner', { email: 'owner@vexocore.test', phone: '+919820011001', title: 'Founder & CEO', color: '#3b6ff6' }),
@@ -398,8 +398,10 @@ function upsertTask(t: Task): TaskView {
   return v;
 }
 
-function logAudit(actorId: string, type: string, entity: AuditEvent['entity'], entityId: string, summaryText: string, before: Record<string, unknown> | null, after: Record<string, unknown> | null): void {
-  audit.unshift({ id: rid('aud'), orgId: ORG_ID, actorId, type, entity, entityId, summary: summaryText, before, after, undoable: before !== null, undoneAt: null, undoneBy: null, at: Date.now() });
+function logAudit(actorId: string, type: string, entity: AuditEvent['entity'], entityId: string, summaryText: string, before: Record<string, unknown> | null, after: Record<string, unknown> | null): string {
+  const id = rid('aud');
+  audit.unshift({ id, orgId: ORG_ID, actorId, type, entity, entityId, summary: summaryText, before, after, undoable: before !== null, undoneAt: null, undoneBy: null, at: Date.now() });
+  return id;
 }
 
 // Simulated teammates and agents.
@@ -659,7 +661,7 @@ route('POST', '/api/auth/setup', (c) => {
   if (org) throw new HttpError(409, 'conflict', 'Already set up');
   const { orgName, name, email, password, timezone } = c.body;
   if (!orgName || !name || !email || !password || String(password).length < 8) throw new HttpError(400, 'bad_request', 'Please fill in every field (password ≥ 8 characters).');
-  org = { id: ORG_ID, name: orgName, timezone, logo: null, workdayStart: 9, workdayEnd: 18, defaultReminderOffsets: [1440, 60, 0], escalateAfterMin: 1440, agentStaleAfterMin: 240, intakeAutoAck: true, createdAt: Date.now(), updatedAt: Date.now() };
+  org = { id: ORG_ID, name: orgName, timezone, logo: null, workdayStart: 9, workdayEnd: 18, defaultReminderOffsets: [1440, 60, 0], escalateAfterMin: 1440, agentStaleAfterMin: 240, intakeAutoAck: true, currency: 'USD', createdAt: Date.now(), updatedAt: Date.now() };
   const m = mkMember(rid('mem'), name, 'owner', { email, timezone, createdAt: Date.now() });
   members.push(m); passwords.set(m.id, password);
   startSession(c.res, m.id);
@@ -720,6 +722,9 @@ route('GET', '/api/tasks', (c) => {
   if (pid === 'none') vs = vs.filter((t) => !t.projectId); else if (pid) vs = vs.filter((t) => t.projectId === pid);
   const st = q.get('status'); if (st) { const ss = st.split(','); vs = vs.filter((t) => ss.includes(t.status)); }
   const tag = q.get('tag'); if (tag) vs = vs.filter((t) => t.tags.includes(tag));
+  const pr = q.get('priority'); if (pr) { const ps = pr.split(','); vs = vs.filter((t) => ps.includes(t.priority)); }
+  const since = Number(q.get('completedSince') ?? NaN);
+  if (Number.isFinite(since)) vs = vs.filter((t) => (t.status !== 'done' && t.status !== 'cancelled') || (t.completedAt ?? t.updatedAt) >= since);
   const search = q.get('search')?.toLowerCase(); if (search) vs = vs.filter((t) => t.title.toLowerCase().includes(search));
   const v = q.get('view');
   const includeDone = q.get('includeDone') === 'true' || q.get('includeDone') === '1' || v === 'done' || !!st;
@@ -786,8 +791,8 @@ route('PATCH', '/api/tasks/:id', (c) => {
 });
 route('DELETE', '/api/tasks/:id', (c) => {
   const t = getTask(c.params.id!); tasks = tasks.filter((x) => x.id !== t.id);
-  logAudit(c.me!.id, 'task.deleted', 'task', t.id, `${firstName(c.me!.id)} deleted "${t.title}"`, t as unknown as Record<string, unknown>, null);
-  publish({ type: 'task.deleted', taskId: t.id }); c.res.writeHead(204); c.res.end(); return undefined;
+  const auditId = logAudit(c.me!.id, 'task.deleted', 'task', t.id, `${firstName(c.me!.id)} deleted "${t.title}"`, t as unknown as Record<string, unknown>, null);
+  publish({ type: 'task.deleted', taskId: t.id }); return { auditId };
 });
 route('POST', '/api/tasks/:id/complete', (c) => {
   const t = getTask(c.params.id!); const before = t.status; const wasOverdue = view(t).isOverdue;
@@ -824,6 +829,12 @@ route('PATCH', '/api/tasks/:id/subtasks/:subId', (c) => {
   if (c.body.title !== undefined) s.title = c.body.title;
   if (c.body.done !== undefined) { s.done = c.body.done; s.doneAt = c.body.done ? Date.now() : null; s.doneBy = c.body.done ? c.me!.id : null; }
   const out = upsertTask(t); if (c.body.done === true) game.onSubtask(c.me!.id, out); return out;
+});
+route('PUT', '/api/tasks/:id/subtasks/order', (c) => {
+  const t = getTask(c.params.id!); const ids: string[] = Array.isArray(c.body.ids) ? c.body.ids : [];
+  const byId = new Map(t.subtasks.map((s) => [s.id, s]));
+  if (ids.length !== byId.size || ids.some((x) => !byId.has(x))) throw new HttpError(400, 'bad_request', 'ids must list exactly the current subtasks of this task');
+  t.subtasks = ids.map((x) => byId.get(x)!); return upsertTask(t);
 });
 route('DELETE', '/api/tasks/:id/subtasks/:subId', (c) => { const t = getTask(c.params.id!); t.subtasks = t.subtasks.filter((s) => s.id !== c.params.subId); return upsertTask(t); });
 route('GET', '/api/tasks/:id/activity', (c) => { getTask(c.params.id!); return activity.filter((a) => a.taskId === c.params.id).sort((a, b) => a.at - b.at); });

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { Lead, LeadStage } from '@companybrain/types';
@@ -11,6 +11,7 @@ import { ChannelIcon } from '../components/icons';
 import { Modal } from '../components/Overlay';
 import { Skeleton } from '../components/ui';
 import { useLabels } from '../lib/labels';
+import { currencySymbol, useMoney } from '../lib/money';
 import { sfx } from '../lib/sfx';
 import { ago } from '../lib/time';
 import { toast } from '../lib/toast';
@@ -24,10 +25,10 @@ const STAGES: { id: LeadStage; label: string; color: string }[] = [
   { id: 'won', label: 'Won', color: 'var(--success)' },
   { id: 'lost', label: 'Lost', color: 'var(--danger)' },
 ];
-const money = (n: number) => new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(n);
 
 export function Pipeline() {
   const L = useLabels();
+  const { money } = useMoney();
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: qk.leads, queryFn: api.leads.list });
   const members = useMemberMap();
@@ -69,7 +70,7 @@ export function Pipeline() {
                     const owner = l.ownerId ? members.get(l.ownerId) : undefined;
                     const next = STAGES[STAGES.findIndex((x) => x.id === l.stage) + 1];
                     return (
-                      <motion.div key={l.id} layout layoutId={`lead-${l.id}`} className="card lead-card" draggable
+                      <m.div key={l.id} layout layoutId={`lead-${l.id}`} className="card lead-card" draggable
                         onDragStart={() => setDragId(l.id)} onDragEnd={() => setDragId(null)} onClick={() => setEdit(l)}
                         tabIndex={0} role="button" aria-label={`${l.name}, ${l.company}`} onKeyDown={(e) => { if (e.key === 'Enter') setEdit(l); }}
                         initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: dragId === l.id ? 0.4 : 1, scale: 1 }} exit={{ opacity: 0 }}>
@@ -87,7 +88,7 @@ export function Pipeline() {
                             <button className="icon-btn icon-btn-sm" aria-label={`Move to ${next.label}`} title={`Move to ${next.label}`} onClick={(e) => { e.stopPropagation(); void move(l, next.id); }}><ChevronRight /></button>
                           )}
                         </div>
-                      </motion.div>
+                      </m.div>
                     );
                   })}
                 </AnimatePresence>
@@ -113,6 +114,7 @@ function LeadModal({ lead, onClose }: { lead: Lead | 'new' | null; onClose: () =
 function LeadForm({ lead, onClose }: { lead: Lead | null; onClose: () => void }) {
   const qc = useQueryClient();
   const { data: members } = useMembers();
+  const { currency } = useMoney();
   const [f, setF] = useState({ name: lead?.name ?? '', company: lead?.company ?? '', email: lead?.email ?? '', phone: lead?.phone ?? '', value: lead?.value?.toString() ?? '', stage: lead?.stage ?? 'new' as LeadStage, ownerId: lead?.ownerId ?? '', notes: lead?.notes ?? '' });
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
   const save = async () => {
@@ -135,7 +137,7 @@ function LeadForm({ lead, onClose }: { lead: Lead | null; onClose: () => void })
           <div className="field"><label htmlFor="lc">Company</label><input id="lc" className="input" value={f.company} onChange={set('company')} /></div>
           <div className="field"><label htmlFor="le">Email</label><input id="le" className="input" type="email" value={f.email} onChange={set('email')} /></div>
           <div className="field"><label htmlFor="lp">Phone</label><input id="lp" className="input" value={f.phone} onChange={set('phone')} /></div>
-          <div className="field"><label htmlFor="lv">Deal value</label><input id="lv" className="input" inputMode="numeric" value={f.value} onChange={set('value')} placeholder="25000" /></div>
+          <div className="field"><label htmlFor="lv">Deal value ({currencySymbol(currency)} {currency})</label><input id="lv" className="input" inputMode="numeric" value={f.value} onChange={set('value')} placeholder="25000" /></div>
           <div className="field"><label htmlFor="ls">Stage</label><select id="ls" className="select" value={f.stage} onChange={set('stage')}>{STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select></div>
           <div className="field"><label htmlFor="lo">Owner</label><select id="lo" className="select" value={f.ownerId} onChange={set('ownerId')}><option value="">Unassigned</option>{(members ?? []).filter((m) => m.kind === 'human').map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></div>
         </div>

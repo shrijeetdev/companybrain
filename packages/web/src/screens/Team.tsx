@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { Bot, Mail, Phone, Settings2, TriangleAlert, UserPlus } from 'lucide-react';
 import { useMemo } from 'react';
 import { Link } from 'wouter';

@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { motion } from 'motion/react';
+import { m } from 'motion/react';
 import { Archive, CalendarClock, Pencil, Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
@@ -62,7 +62,7 @@ function ProjectCard({ p, i, onEdit }: { p: ProjectSummary; i: number; onEdit: (
   const { tactical } = useTheme();
   const pct = Math.round(p.progress * 100);
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04, type: 'spring', stiffness: 300, damping: 30 }}>
+    <m.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04, type: 'spring', stiffness: 300, damping: 30 }}>
       <Link href={`/projects/${p.id}`} className="panel project-card" style={{ ['--pc' as string]: p.color }}>
         <div className="pc-top">
           <span className="pc-emoji">{p.emoji}</span>
@@ -87,7 +87,7 @@ function ProjectCard({ p, i, onEdit }: { p: ProjectSummary; i: number; onEdit: (
           <button className="icon-btn icon-btn-sm pc-edit" aria-label={`Edit ${p.name}`} onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(); }}><Pencil /></button>
         </div>
       </Link>
-    </motion.div>
+    </m.div>
   );
 }
 

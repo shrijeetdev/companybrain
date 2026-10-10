@@ -1,16 +1,19 @@
 import { Bell, Bot, Building2, CalendarDays, History, Plug, User, Users } from 'lucide-react';
+import { lazy, Suspense } from 'react';
 import { Link } from 'wouter';
+import { SkeletonRows } from '../components/ui';
 import { useMe } from '../api/queries';
 import { useLabels } from '../lib/labels';
 import { cx } from '../lib/util';
-import { ActivityLog } from './settings/ActivityLog';
-import { AiSettings } from './settings/AiSettings';
-import { CalendarFeeds } from './settings/CalendarFeeds';
-import { IntegrationsSettings } from './settings/Integrations';
-import { NotificationSettings } from './settings/Notifications';
-import { OrgSettingsPanel } from './settings/Org';
-import { Profile } from './settings/Profile';
-import { TeamRoles } from './settings/TeamRoles';
+
+const ActivityLog = lazy(() => import('./settings/ActivityLog').then((m) => ({ default: m.ActivityLog })));
+const AiSettings = lazy(() => import('./settings/AiSettings').then((m) => ({ default: m.AiSettings })));
+const CalendarFeeds = lazy(() => import('./settings/CalendarFeeds').then((m) => ({ default: m.CalendarFeeds })));
+const IntegrationsSettings = lazy(() => import('./settings/Integrations').then((m) => ({ default: m.IntegrationsSettings })));
+const NotificationSettings = lazy(() => import('./settings/Notifications').then((m) => ({ default: m.NotificationSettings })));
+const OrgSettingsPanel = lazy(() => import('./settings/Org').then((m) => ({ default: m.OrgSettingsPanel })));
+const Profile = lazy(() => import('./settings/Profile').then((m) => ({ default: m.Profile })));
+const TeamRoles = lazy(() => import('./settings/TeamRoles').then((m) => ({ default: m.TeamRoles })));
 
 const SECTIONS = [
   { id: 'profile', label: 'Profile', icon: <User />, admin: false },
@@ -41,6 +44,7 @@ export function Settings({ section = 'profile' }: { section?: string }) {
           ))}
         </nav>
         <div className="settings-body" key={cur.id}>
+          <Suspense fallback={<div className="panel panel-pad"><SkeletonRows n={5} /></div>}>
           {cur.id === 'profile' && <Profile />}
           {cur.id === 'notifications' && <NotificationSettings />}
           {cur.id === 'calendar' && <CalendarFeeds />}
@@ -49,6 +53,7 @@ export function Settings({ section = 'profile' }: { section?: string }) {
           {cur.id === 'integrations' && <IntegrationsSettings />}
           {cur.id === 'org' && <OrgSettingsPanel />}
           {cur.id === 'activity' && <ActivityLog />}
+          </Suspense>
         </div>
       </div>
     </>

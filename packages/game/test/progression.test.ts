@@ -184,3 +184,40 @@ test('rebuild recomputes the cached player rows from the ledger', async () => {
   const p2 = await w.game.service.profile(w.actor('alice'));
   assert.deepEqual(p2, p1);
 });
+
+test('notable feed items are published live org-wide as game.feed (guests only see their own)', async () => {
+  const w = new World();
+  w.member('alice');
+  w.member('bob');
+  w.member('gina', { role: 'guest' });
+  w.member('other', { org: 'org2' });
+  const t1 = await w.create('bob', { priority: 'urgent', assignees: ['alice'] });
+  const t2 = await w.create('bob', { priority: 'urgent', assignees: ['alice'] });
+  w.now += 10 * MIN;
+  await w.complete(t1.id, 'alice');
+  await w.complete(t2.id, 'alice'); // First Blood medal + level 2
+  const feedEvents = w.published.filter((p) => p.event.type === 'game.feed');
+  assert.ok(feedEvents.length >= 2, `expected live feed events, got ${feedEvents.length}`);
+  for (const p of feedEvents) {
+    assert.equal(p.orgId, 'org1');
+    assert.deepEqual([...(p.memberIds ?? [])].sort(), ['alice', 'bob'], 'whole squad except guests / other orgs');
+  }
+  const items = feedEvents.map((p) => (p.event as { item: { id: string; text: string; kind: string; memberId: string } }).item);
+  assert.ok(items.some((i) => i.kind === 'level_up' && /reached Level 2/.test(i.text)));
+  assert.ok(items.some((i) => i.kind === 'achievement'));
+  // Same items as the stored feed (ids match → clients can dedupe).
+  const stored = new Set((await w.game.service.feed(w.actor('bob'))).map((f) => f.id));
+  for (const i of items) assert.ok(stored.has(i.id), i.text);
+  // Rewards stay private to the earner.
+  for (const p of w.published.filter((x) => x.event.type === 'game.reward')) assert.deepEqual(p.memberIds, [(p.event as { reward: { memberId: string } }).reward.memberId]);
+
+  // A guest's own milestone reaches the guest too, still not other guests.
+  w.member('gus', { role: 'guest' });
+  const g1 = await w.create('bob', { priority: 'urgent', assignees: ['gina'] });
+  w.now += 10 * MIN;
+  const before = w.published.length;
+  await w.complete(g1.id, 'gina');
+  const guestFeed = w.published.slice(before).filter((p) => p.event.type === 'game.feed');
+  assert.ok(guestFeed.length >= 1);
+  for (const p of guestFeed) assert.deepEqual([...(p.memberIds ?? [])].sort(), ['alice', 'bob', 'gina']);
+});

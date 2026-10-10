@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, Globe, Lock, Mail, User } from 'lucide-react';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { errorMessage } from '../api/client';
@@ -19,7 +19,7 @@ function AuthFrame({ children, kicker }: { children: ReactNode; kicker: string }
     <div className="auth">
       {tactical && <div className="radar" aria-hidden><span className="radar-sweep" /><span className="radar-rings" /></div>}
       {!tactical && <div className="auth-blobs" aria-hidden><i /><i /><i /></div>}
-      <motion.div className="auth-card panel" initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
+      <m.div className="auth-card panel" initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
         <div className="auth-brand">
           <BrandMark size={48} />
           <div>
@@ -29,7 +29,7 @@ function AuthFrame({ children, kicker }: { children: ReactNode; kicker: string }
         </div>
         <div className="eyebrow auth-kicker">{kicker}</div>
         {children}
-      </motion.div>
+      </m.div>
       <div className="auth-foot faint">Humans and AI agents, one team. Nothing forgotten.</div>
     </div>
   );
@@ -84,7 +84,7 @@ export function Login() {
           <button type="button" className="icon-btn icon-btn-sm" onClick={() => setShow((s) => !s)} aria-label={show ? 'Hide password' : 'Show password'}>{show ? <EyeOff /> : <Eye />}</button>
         </Field>
         <AnimatePresence>
-          {error && <motion.div className="auth-error" role="alert" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>{error}</motion.div>}
+          {error && <m.div className="auth-error" role="alert" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>{error}</m.div>}
         </AnimatePresence>
         <button className="btn btn-primary btn-lg btn-block" disabled={busy}>
           {busy ? <Spinner /> : null}{tactical ? 'Deploy' : 'Sign in'} {!busy && <ArrowRight />}
@@ -121,7 +121,7 @@ export function Setup() {
       <form onSubmit={submit} className="stack" style={{ gap: 14, overflow: 'hidden' }}>
         <AnimatePresence mode="wait" initial={false}>
           {step === 0 ? (
-            <motion.div key="s0" className="stack" style={{ gap: 14 }} initial={{ x: -30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -30, opacity: 0 }} transition={{ duration: 0.22 }}>
+            <m.div key="s0" className="stack" style={{ gap: 14 }} initial={{ x: -30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -30, opacity: 0 }} transition={{ duration: 0.22 }}>
               <h2 className="auth-h">Name your company</h2>
               <Field label="Company name" icon={<Building2 />}>
                 <input required value={form.orgName} onChange={set('orgName')} placeholder="Vexocore" autoFocus />
@@ -132,14 +132,14 @@ export function Setup() {
                 </select>
               </Field>
               <p className="faint" style={{ fontSize: 12.5 }}>We detected your timezone automatically. Reminders and “end of day” use it.</p>
-            </motion.div>
+            </m.div>
           ) : (
-            <motion.div key="s1" className="stack" style={{ gap: 14 }} initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 30, opacity: 0 }} transition={{ duration: 0.22 }}>
+            <m.div key="s1" className="stack" style={{ gap: 14 }} initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 30, opacity: 0 }} transition={{ duration: 0.22 }}>
               <h2 className="auth-h">Create your owner account</h2>
               <Field label="Your name" icon={<User />}><input required value={form.name} onChange={set('name')} placeholder="Shrijeet Mehta" autoFocus autoComplete="name" /></Field>
               <Field label="Email" icon={<Mail />}><input type="email" required value={form.email} onChange={set('email')} placeholder="you@company.com" autoComplete="email" /></Field>
               <Field label="Password" icon={<Lock />}><input type="password" required minLength={8} value={form.password} onChange={set('password')} placeholder="At least 8 characters" autoComplete="new-password" /></Field>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
         {error && <div className="auth-error" role="alert">{error}</div>}
@@ -154,10 +154,3 @@ export function Setup() {
   );
 }
 
-export function Splash() {
-  return (
-    <div className="splash" aria-busy="true" aria-label="Loading">
-      <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 1.4, repeat: Infinity }}><BrandMark size={56} /></motion.div>
-    </div>
-  );
-}

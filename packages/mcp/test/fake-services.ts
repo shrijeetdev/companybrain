@@ -173,7 +173,7 @@ export function createFakeServices(opts: FakeOptions = {}) {
     },
     apiKeys: { list: notImpl('apiKeys.list'), create: notImpl('apiKeys.create'), revoke: notImpl('apiKeys.revoke') },
     org: {
-      async get() { return { id: ORG, name: 'Acme', timezone: TZ, logo: null, workdayStart: 9, workdayEnd: 18, defaultReminderOffsets: [1440, 60, 0], escalateAfterMin: 1440, agentStaleAfterMin: 240, intakeAutoAck: true, createdAt: 0, updatedAt: 0 }; },
+      async get() { return { id: ORG, name: 'Acme', timezone: TZ, logo: null, workdayStart: 9, workdayEnd: 18, defaultReminderOffsets: [1440, 60, 0], escalateAfterMin: 1440, agentStaleAfterMin: 240, intakeAutoAck: true, currency: 'USD', createdAt: 0, updatedAt: 0 }; },
       update: notImpl('org.update'),
     },
     tasks: {
@@ -233,7 +233,7 @@ export function createFakeServices(opts: FakeOptions = {}) {
       },
       async activity(actor, tid) { track('tasks.activity', [actor, tid]); find(tid); return activity.filter((a) => a.taskId === tid); },
       reopen: notImpl('reopen'), remove: notImpl('remove'), addSubtask: notImpl('addSubtask'), updateSubtask: notImpl('updateSubtask'),
-      removeSubtask: notImpl('removeSubtask'), nudge: notImpl('nudge'), bulk: notImpl('bulk'),
+      removeSubtask: notImpl('removeSubtask'), reorderSubtasks: notImpl('reorderSubtasks'), nudge: notImpl('nudge'), bulk: notImpl('bulk'),
     },
     projects: {
       async list(actor, o) { track('projects.list', [actor, o]); return projects.filter((p) => o?.includeArchived || p.status !== 'archived'); },

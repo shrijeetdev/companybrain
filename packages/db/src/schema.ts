@@ -345,6 +345,13 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 4,
+    name: 'org currency (ISO 4217, default USD)',
+    up(db) {
+      if (!columns(db, 'orgs').includes('currency')) db.exec(`ALTER TABLE orgs ADD COLUMN currency TEXT NOT NULL DEFAULT 'USD'`);
+    },
+  },
 ];
 
 /** v1 table names that conflict with (or are superseded by) v2. Renamed to v1_* before v2 schema. */

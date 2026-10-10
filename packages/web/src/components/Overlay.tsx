@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
@@ -64,9 +64,9 @@ export function Modal({ open, onClose, title, icon, children, footer, width = 56
       <AnimatePresence>
         {open && (
           <>
-            <motion.div className="overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
+            <m.div className="overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
             <div className="modal-wrap">
-              <motion.div
+              <m.div
                 ref={ref}
                 role="dialog"
                 aria-modal="true"
@@ -89,7 +89,7 @@ export function Modal({ open, onClose, title, icon, children, footer, width = 56
                 )}
                 {children}
                 {footer && <div className="modal-foot">{footer}</div>}
-              </motion.div>
+              </m.div>
             </div>
           </>
         )}
@@ -109,8 +109,8 @@ export function Drawer({ open, onClose, children, label }: DrawerProps) {
       <AnimatePresence>
         {open && (
           <>
-            <motion.div className="overlay" style={{ background: mobile ? undefined : 'color-mix(in srgb, var(--overlay) 55%, transparent)' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
-            <motion.aside
+            <m.div className="overlay" style={{ background: mobile ? undefined : 'color-mix(in srgb, var(--overlay) 55%, transparent)' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
+            <m.aside
               ref={ref}
               role="dialog"
               aria-modal="true"
@@ -127,7 +127,7 @@ export function Drawer({ open, onClose, children, label }: DrawerProps) {
               dragListener={false}
             >
               {children}
-            </motion.aside>
+            </m.aside>
           </>
         )}
       </AnimatePresence>
@@ -192,7 +192,7 @@ export function Popover({ open, onClose, anchor, children, placement = 'bottom-s
     <Portal>
       <AnimatePresence>
         {open && (
-          <motion.div
+          <m.div
             ref={ref}
             role="dialog"
             aria-label={label}
@@ -205,7 +205,7 @@ export function Popover({ open, onClose, anchor, children, placement = 'bottom-s
             transition={{ type: 'spring', stiffness: 600, damping: 38 }}
           >
             {children}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </Portal>

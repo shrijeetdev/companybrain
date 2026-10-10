@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { AlarmClock, ArrowRightLeft, Bell, CalendarClock, CircleDot, Flag, FolderInput, Handshake, ListChecks, Pencil, Plus, Send, UserPlus } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import type { ActivityKind, Member, TaskActivity, TaskView } from '@companybrain/types';
@@ -22,7 +22,7 @@ function ActivityItem({ a, actor, isMention }: { a: TaskActivity; actor: Member 
   const isText = a.kind === 'comment' || a.kind === 'handoff';
   const name = a.actorId === 'system' ? 'companybrain' : actor?.name ?? 'Someone';
   return (
-    <motion.li className="tl-item" layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+    <m.li className="tl-item" layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
       <span className="tl-line" />
       {isText ? <Avatar member={actor} size={28} /> : <span className="tl-sysicon">{SYS_ICON[a.kind] ?? <CircleDot />}</span>}
       <div className="grow" style={{ minWidth: 0 }}>
@@ -39,7 +39,7 @@ function ActivityItem({ a, actor, isMention }: { a: TaskActivity; actor: Member 
           <div className="tl-event"><b>{a.actorId === 'system' ? 'companybrain' : firstName(name)}</b> {a.text}<span className="tl-time">{ago(a.at)}</span></div>
         )}
       </div>
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -105,13 +105,13 @@ export function Composer({ task }: { task: TaskView }) {
     <div className="composer" style={{ position: 'relative' }}>
       <AnimatePresence>
         {mention && suggestions.length > 0 && (
-          <motion.div className="popover mention-pop" style={{ position: 'absolute' }} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} role="listbox" aria-label="Mention someone">
+          <m.div className="popover mention-pop" style={{ position: 'absolute' }} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} role="listbox" aria-label="Mention someone">
             {suggestions.map((m, i) => (
               <button key={m.id} className="menu-item" role="option" aria-selected={i === active} data-active={i === active} onMouseDown={(e) => { e.preventDefault(); pick(m); }}>
                 <Avatar member={m} size={22} /><span className="grow">{m.name}</span>{m.kind === 'agent' && <span className="faint" style={{ fontSize: 11 }}>agent</span>}
               </button>
             ))}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
       <div className="composer-box">

@@ -28,7 +28,7 @@ function tmp(): string {
 function seedOrg(db: Db, id = newId('org')) {
   db.orgs.insert({
     id, name: 'Acme', timezone: 'UTC', logo: null, workdayStart: 9, workdayEnd: 18, defaultReminderOffsets: [1440, 60, 0], escalateAfterMin: 1440,
-    agentStaleAfterMin: 240, intakeAutoAck: false, createdAt: NOW, updatedAt: NOW,
+    agentStaleAfterMin: 240, intakeAutoAck: false, currency: 'USD', createdAt: NOW, updatedAt: NOW,
   });
   return id;
 }
@@ -58,7 +58,7 @@ test('migrations run once, pragmas set, path resolution', () => {
   try {
     const path = join(dir, 'nested', 'cb.sqlite');
     const db = openDatabase(path, { secret: 'x' });
-    assert.deepEqual(db.migrated, [1, 2, 3]);
+    assert.deepEqual(db.migrated, [1, 2, 3, 4]);
     assert.equal(db.sqlite.pragma('foreign_keys', { simple: true }), 1);
     assert.equal(db.sqlite.pragma('journal_mode', { simple: true }), 'wal');
     db.close();

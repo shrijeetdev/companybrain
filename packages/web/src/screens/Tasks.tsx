@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { Bot, Check, ChevronDown, Flag, Folder, LayoutGrid, List, SquareCheck, Tag, Trash2, User, Users, X } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { useSearch, useLocation } from 'wouter';
@@ -18,9 +18,11 @@ import { PRIORITIES, priorityLabel, STATUS_ORDER, statusLabel, useLabels } from 
 import { sfx } from '../lib/sfx';
 import { useTheme } from '../lib/theme';
 import { toast } from '../lib/toast';
+import { DAY, startOfDay } from '../lib/time';
 import { cx } from '../lib/util';
 
 type Scope = 'mine' | 'team' | 'agents';
+const DONE_WINDOW_DAYS = 7;
 interface Filters { scope: Scope; person?: string; project?: string; status?: TaskStatus[]; priority?: Priority; tag?: string; view: 'list' | 'board'; done: boolean }
 
 function useUrlFilters(defaults: Partial<Filters> = {}): [Filters, (patch: Partial<Filters>) => void] {
@@ -76,9 +78,14 @@ export function TasksView({ projectId, title }: { projectId?: string; title?: Re
   const { data: members } = useMembers();
   const { data: projects } = useProjects();
   const [selection, setSelection] = useState<ReadonlySet<string>>(new Set());
+  // Board: the Done column only loads the last week of completions unless asked for more.
+  const [olderDone, setOlderDone] = useState(false);
+  const doneSince = useMemo(() => startOfDay(Date.now()) - DONE_WINDOW_DAYS * DAY, []);
 
   const query: TaskQuery = useMemo(() => {
     const q: TaskQuery = { includeDone: f.done || f.view === 'board' };
+    if (f.view === 'board' && !olderDone) q.completedSince = doneSince;
+    if (f.priority) q.priority = [f.priority];
     if (f.person) q.assigneeId = f.person;
     else if (f.scope === 'mine') q.assigneeId = 'me';
     if (f.scope === 'agents' && !f.person) q.view = 'agents';
@@ -87,9 +94,10 @@ export function TasksView({ projectId, title }: { projectId?: string; title?: Re
     if (f.status?.length) q.status = f.status;
     if (f.tag) q.tag = f.tag;
     return q;
-  }, [f, projectId]);
+  }, [f, projectId, olderDone, doneSince]);
   const { data, isLoading, error, refetch } = useTasks(query);
-  const tasks = useMemo(() => (data ?? []).filter((t) => !f.priority || t.priority === f.priority), [data, f.priority]);
+  const tasks = useMemo(() => data ?? [], [data]);
+  const doneWindow = useMemo(() => ({ label: `Last ${DONE_WINDOW_DAYS} days`, limited: !olderDone, onToggle: () => setOlderDone((o) => !o) }), [olderDone]);
   const tags = useMemo(() => [...new Set((data ?? []).flatMap((t) => t.tags))].sort(), [data]);
 
   const onSelect = useCallback((t: TaskView, e: MouseEvent | KeyboardEvent) => {
@@ -160,7 +168,7 @@ export function TasksView({ projectId, title }: { projectId?: string; title?: Re
       {error ? <ErrorState error={error} onRetry={() => void refetch()} /> : isLoading && !data ? (
         <div className="panel"><SkeletonRows n={8} /></div>
       ) : f.view === 'board' ? (
-        <TaskBoard tasks={tasks} showProject={!projectId} />
+        <TaskBoard tasks={tasks} showProject={!projectId} doneWindow={doneWindow} />
       ) : (
         <div className="panel" style={{ padding: '6px 0' }}>
           <TaskList tasks={tasks} showDone={f.done} selection={selection} onSelect={onSelect} showProject={!projectId}
@@ -179,7 +187,7 @@ export function TasksView({ projectId, title }: { projectId?: string; title?: Re
 
       <AnimatePresence>
         {selection.size > 0 && (
-          <motion.div className="bulkbar" initial={{ y: 40, opacity: 0, x: '-50%' }} animate={{ y: 0, opacity: 1, x: '-50%' }} exit={{ y: 40, opacity: 0, x: '-50%' }} transition={{ type: 'spring', stiffness: 500, damping: 36 }} role="toolbar" aria-label="Bulk actions">
+          <m.div className="bulkbar" initial={{ y: 40, opacity: 0, x: '-50%' }} animate={{ y: 0, opacity: 1, x: '-50%' }} exit={{ y: 40, opacity: 0, x: '-50%' }} transition={{ type: 'spring', stiffness: 500, damping: 36 }} role="toolbar" aria-label="Bulk actions">
             <b className="num" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{selection.size} selected</b>
             <button className="btn btn-sm btn-primary" onClick={() => void bulk({ kind: 'complete' }, 'Completed')}><Check /> {L.complete}</button>
             <BulkMenu label="Status" icon={<StatusIcon status="in_progress" />}>{(close) => <MenuList onDone={close} items={STATUS_ORDER.map((s) => ({ key: s, label: statusLabel(s, tactical), icon: <StatusIcon status={s} />, onSelect: () => void bulk({ kind: 'status', value: s }, 'Updated') }))} />}</BulkMenu>
@@ -187,7 +195,7 @@ export function TasksView({ projectId, title }: { projectId?: string; title?: Re
             <BulkMenu label="Move" icon={<Folder />}>{(close) => <ProjectMenu projects={projects ?? []} value={null} onDone={close} onChange={(id) => void bulk({ kind: 'move', value: id }, 'Moved')} />}</BulkMenu>
             <button className="btn btn-sm btn-danger" onClick={() => { if (window.confirm(`Delete ${selection.size} ${L.tasksLower}?`)) void bulk({ kind: 'delete' }, 'Deleted'); }}><Trash2 /></button>
             <button className="icon-btn icon-btn-sm" aria-label="Clear selection" onClick={() => setSelection(new Set())}><X /></button>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </>

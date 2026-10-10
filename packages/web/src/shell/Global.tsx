@@ -1,4 +1,4 @@
-import { motion } from 'motion/react';
+import { m } from 'motion/react';
 import { Moon, Sun } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
@@ -107,9 +107,9 @@ export function MoreSheet() {
     <Modal open={more} onClose={() => ui.more(false)} title="More" width={420}>
       <div className="modal-body more-grid">
         {items.map((n, i) => (
-          <motion.div key={n.key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.025 }}>
+          <m.div key={n.key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.025 }}>
             <Link href={n.href} className="more-tile" onClick={() => ui.more(false)}>{n.icon(tactical)}<span>{n.label(L)}</span></Link>
-          </motion.div>
+          </m.div>
         ))}
         <button className="more-tile" onClick={() => toggleMode()}>{mode === 'dark' ? <Sun /> : <Moon />}<span>{mode === 'dark' ? 'Light' : 'Dark'}</span></button>
       </div>

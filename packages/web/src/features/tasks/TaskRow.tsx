@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from 'motion/react';
+import { m, useReducedMotion } from 'motion/react';
 import { Check, Clock3, Hourglass, ListChecks, MessageSquare, Repeat, TriangleAlert } from 'lucide-react';
 import { memo, useRef, type KeyboardEvent, type MouseEvent } from 'react';
 import type { Member, ProjectSummary, TaskView } from '@companybrain/types';
@@ -25,7 +25,7 @@ export function CheckButton({ task, onToggle, label }: { task: TaskView; onToggl
   const done = task.status === 'done';
   const reduce = useReducedMotion();
   return (
-    <motion.button
+    <m.button
       type="button"
       className={cx('check', done && 'is-done')}
       data-priority={task.priority}
@@ -35,11 +35,11 @@ export function CheckButton({ task, onToggle, label }: { task: TaskView; onToggl
       whileTap={reduce ? undefined : { scale: 0.8 }}
     >
       {done ? (
-        <motion.span initial={reduce ? false : { scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 700, damping: 18 }} style={{ display: 'grid' }}>
+        <m.span initial={reduce ? false : { scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 700, damping: 18 }} style={{ display: 'grid' }}>
           <Check />
-        </motion.span>
+        </m.span>
       ) : <Check style={{ opacity: 0 }} />}
-    </motion.button>
+    </m.button>
   );
 }
 
@@ -64,7 +64,7 @@ export const TaskRow = memo(function TaskRow({ task, members, project, onOpen, o
   const subDone = task.subtasks.filter((s) => s.done).length;
   const agentAssigned = assignees.some((m) => m?.kind === 'agent');
   return (
-    <motion.div
+    <m.div
       ref={ref}
       layout={reduce ? false : 'position'}
       initial={reduce ? false : { opacity: 0, y: -6 }}
@@ -99,7 +99,7 @@ export const TaskRow = memo(function TaskRow({ task, members, project, onOpen, o
         <div className="task-title-line">
           <span className="task-title">
             {task.title}
-            {done && <motion.span className="strike" initial={reduce ? false : { scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} />}
+            {done && <m.span className="strike" initial={reduce ? false : { scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} />}
           </span>
         </div>
         <div className="task-meta">
@@ -123,6 +123,6 @@ export const TaskRow = memo(function TaskRow({ task, members, project, onOpen, o
         {task.priority === 'urgent' && <span className="only-mobile"><PriorityIcon priority="urgent" /></span>}
         <AvatarStack members={assignees} size={24} max={3} />
       </div>
-    </motion.div>
+    </m.div>
   );
 });

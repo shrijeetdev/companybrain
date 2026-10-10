@@ -125,6 +125,9 @@
   font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.12em; font-size: 11.5px;
 }
 .field-hint { font-size: var(--fs-12); color: var(--text-3); }
+.field-hint.field-error { color: var(--danger); font-weight: 550; }
+.input.is-invalid, .input.is-invalid:focus { border-color: var(--danger); }
+.input.is-invalid:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent); }
 .input, .textarea, .select {
   width: 100%;
   height: 40px;

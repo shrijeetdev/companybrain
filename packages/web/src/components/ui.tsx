@@ -1,4 +1,4 @@
-import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
+import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { CircleAlert, CircleCheck, Info, X } from 'lucide-react';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { dismissToast, useToasts } from '../lib/toast';
@@ -20,7 +20,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, s
         const on = o.value === value;
         return (
           <button key={o.value} role="tab" aria-selected={on} title={o.title} onClick={() => onChange(o.value)}>
-            {on && <motion.span layoutId={`seg-${id}`} className="seg-thumb" transition={{ type: 'spring', stiffness: 600, damping: 40 }} />}
+            {on && <m.span layoutId={`seg-${id}`} className="seg-thumb" transition={{ type: 'spring', stiffness: 600, damping: 40 }} />}
             {o.icon}
             {o.label}
           </button>
@@ -50,17 +50,42 @@ export function SettingRow({ title, desc, children }: { title: ReactNode; desc?:
 
 // ─── Number ticker ──────────────────────────────────────────────────────────
 
+/** ~cubic-bezier(0.22, 1, 0.36, 1) — fast start, soft landing. */
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 4);
+
+/** Tween a number with requestAnimationFrame (no animation library needed for counters/rings). */
+function useTween(target: number, durationS: number, onFrame: (v: number) => void, from = 0): void {
+  const reduce = useReducedMotion();
+  const cur = useRef(reduce ? target : from);
+  const frame = useRef(onFrame);
+  frame.current = onFrame;
+  useEffect(() => {
+    const start = cur.current;
+    if (reduce || durationS <= 0 || start === target) {
+      cur.current = target;
+      frame.current(target);
+      return;
+    }
+    const t0 = performance.now();
+    let raf = 0;
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / (durationS * 1000));
+      cur.current = start + (target - start) * easeOut(k);
+      frame.current(cur.current);
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, durationS, reduce]);
+}
+
 export function Ticker({ value, format = (n) => Math.round(n).toLocaleString(), className, duration = 0.9 }: { value: number; format?: (n: number) => string; className?: string; duration?: number }) {
   const ref = useRef<HTMLSpanElement>(null);
   const reduce = useReducedMotion();
-  const mv = useMotionValue(reduce ? value : 0);
-  useEffect(() => {
-    if (reduce) { mv.set(value); return; }
-    const c = animate(mv, value, { duration, ease: [0.22, 1, 0.36, 1] });
-    return () => c.stop();
-  }, [value, mv, reduce, duration]);
-  useEffect(() => mv.on('change', (v) => { if (ref.current) ref.current.textContent = format(v); }), [mv, format]);
-  return <span ref={ref} className={cx('num', className)}>{format(reduce ? value : mv.get())}</span>;
+  const fmt = useRef(format);
+  fmt.current = format;
+  useTween(value, duration, (v) => { if (ref.current) ref.current.textContent = fmt.current(v); });
+  return <span ref={ref} className={cx('num', className)}>{format(reduce ? value : 0)}</span>;
 }
 
 // ─── Progress ring (optionally segmented) ───────────────────────────────────
@@ -74,12 +99,9 @@ export function Ring({ pct, size = 64, stroke = 6, color = 'var(--accent)', trac
   const reduce = useReducedMotion();
   const gap = segments ? Math.min(6, c / segments / 3) : 0;
   const dash = segments ? `${c / segments - gap} ${gap}` : undefined;
-  const mv = useMotionValue(reduce ? p : 0);
-  useEffect(() => {
-    const ctl = animate(mv, p, { duration: reduce ? 0 : 1.1, ease: [0.22, 1, 0.36, 1] });
-    return () => ctl.stop();
-  }, [p, mv, reduce]);
-  const offset = useTransform(mv, (v) => c * (1 - v));
+  const arc = useRef<SVGCircleElement>(null);
+  useTween(p, 1.1, (v) => arc.current?.setAttribute('stroke-dashoffset', String(c * (1 - v))));
+  const initialOffset = c * (1 - (reduce ? p : 0));
   return (
     <div className="ring" style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
@@ -89,12 +111,12 @@ export function Ring({ pct, size = 64, stroke = 6, color = 'var(--accent)', trac
             <mask id={`m${size}${segments}`}>
               <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#fff" strokeWidth={stroke + 2} strokeDasharray={dash} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
             </mask>
-            <motion.circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray={c} style={{ strokeDashoffset: offset, filter: glow ? `drop-shadow(0 0 6px ${color})` : undefined }}
+            <circle ref={arc} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray={c} strokeDashoffset={initialOffset} style={{ filter: glow ? `drop-shadow(0 0 6px ${color})` : undefined }}
               transform={`rotate(-90 ${size / 2} ${size / 2})`} mask={`url(#m${size}${segments})`} />
           </>
         ) : (
-          <motion.circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c}
-            style={{ strokeDashoffset: offset, filter: glow ? `drop-shadow(0 0 6px ${color})` : undefined }} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+          <circle ref={arc} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={initialOffset}
+            style={{ filter: glow ? `drop-shadow(0 0 6px ${color})` : undefined }} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
         )}
       </svg>
       {children && <div className="ring-center">{children}</div>}
@@ -107,7 +129,7 @@ export function Bar({ pct, color, height, className }: { pct: number; color?: st
   const reduce = useReducedMotion();
   return (
     <div className={cx('bar', className)} style={height ? { height } : undefined} role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
-      <motion.i initial={{ scaleX: reduce ? pct / 100 : 0 }} animate={{ scaleX: Math.max(0, Math.min(1, pct / 100)) }} transition={{ duration: reduce ? 0 : 0.9, ease: [0.22, 1, 0.36, 1] }}
+      <m.i initial={{ scaleX: reduce ? pct / 100 : 0 }} animate={{ scaleX: Math.max(0, Math.min(1, pct / 100)) }} transition={{ duration: reduce ? 0 : 0.9, ease: [0.22, 1, 0.36, 1] }}
         style={color ? { background: color } : undefined} />
     </div>
   );
@@ -135,12 +157,12 @@ export function SkeletonRows({ n = 5 }: { n?: number }) {
 
 export function Empty({ art, title, children, action }: { art: ReactNode; title: ReactNode; children?: ReactNode; action?: ReactNode }) {
   return (
-    <motion.div className="empty" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <motion.div className="empty-art" initial={{ scale: 0.6, rotate: -8 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.05 }}>{art}</motion.div>
+    <m.div className="empty" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+      <m.div className="empty-art" initial={{ scale: 0.6, rotate: -8 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.05 }}>{art}</m.div>
       <h3>{title}</h3>
       {children && <p>{children}</p>}
       {action}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -160,7 +182,7 @@ export function Toaster() {
     <div className="toasts" role="region" aria-label="Notifications" aria-live="polite">
       <AnimatePresence initial={false}>
         {toasts.map((t) => (
-          <motion.div
+          <m.div
             key={t.id}
             layout
             className={cx('toast', `tone-${t.tone}`)}
@@ -176,7 +198,7 @@ export function Toaster() {
               <button className="btn btn-sm" onClick={() => { t.action!.onClick(); dismissToast(t.id); }}>{t.action.label}</button>
             )}
             <button className="icon-btn icon-btn-sm" aria-label="Dismiss" onClick={() => dismissToast(t.id)}><X /></button>
-          </motion.div>
+          </m.div>
         ))}
       </AnimatePresence>
     </div>

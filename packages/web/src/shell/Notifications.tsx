@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { AlarmClock, AtSign, Bell, BellRing, Bot, CalendarClock, CheckCheck, CircleCheck, Flame, Inbox, MessageSquare, Newspaper, TriangleAlert, UserPlus } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useLocation } from 'wouter';
@@ -44,14 +44,14 @@ export function NotificationsButton() {
   return (
     <>
       <button ref={ref} className="icon-btn" aria-label={`Notifications${unread ? ` (${unread} unread)` : ''}`} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <motion.span key={unread} initial={unread ? { rotate: -18 } : false} animate={{ rotate: 0 }} transition={{ type: 'spring', stiffness: 600, damping: 8 }} style={{ display: 'grid' }}>
+        <m.span key={unread} initial={unread ? { rotate: -18 } : false} animate={{ rotate: 0 }} transition={{ type: 'spring', stiffness: 600, damping: 8 }} style={{ display: 'grid' }}>
           {unread ? <BellRing /> : <Bell />}
-        </motion.span>
+        </m.span>
         <AnimatePresence>
           {unread > 0 && (
-            <motion.span className="badge bell-badge" initial={{ scale: 0 }} animate={{ scale: 0.9 }} exit={{ scale: 0 }} transition={{ type: 'spring', stiffness: 600, damping: 20 }}>
+            <m.span className="badge bell-badge" initial={{ scale: 0 }} animate={{ scale: 0.9 }} exit={{ scale: 0 }} transition={{ type: 'spring', stiffness: 600, damping: 20 }}>
               {unread > 99 ? '99+' : unread}
-            </motion.span>
+            </m.span>
           )}
         </AnimatePresence>
       </button>
@@ -86,7 +86,7 @@ function NotificationList({ onNavigate }: { onNavigate: () => void }) {
           {data?.map((n) => {
             const [icon, color] = ICONS[n.kind] ?? ICONS.system;
             return (
-              <motion.button
+              <m.button
                 key={n.id}
                 layout
                 initial={{ opacity: 0, y: -8 }}
@@ -100,7 +100,7 @@ function NotificationList({ onNavigate }: { onNavigate: () => void }) {
                   {n.body && <div className="n-body">{n.body}</div>}
                   <div className="n-time">{ago(n.createdAt)}</div>
                 </span>
-              </motion.button>
+              </m.button>
             );
           })}
         </AnimatePresence>

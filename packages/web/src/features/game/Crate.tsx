@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { Coins, Crown, Frame, Smile, Zap } from 'lucide-react';
 import { useState } from 'react';
 import type { Crate, CrateReward, Rarity } from '@companybrain/types';
@@ -80,26 +80,26 @@ function OpenerBody({ crate, onClose }: { crate: Crate; onClose: () => void }) {
   };
   return (
     <div className={cx('crate-stage', `rarity-${crate.rarity}`)} onClick={stage === 'ready' ? () => void open() : undefined}>
-      <motion.div className="crate-glow" animate={{ opacity: stage === 'ready' ? 0.5 : stage === 'shaking' ? 0.8 : 1, scale: stage === 'burst' ? 1.6 : 1 }} transition={{ duration: 0.4 }} />
+      <m.div className="crate-glow" animate={{ opacity: stage === 'ready' ? 0.5 : stage === 'shaking' ? 0.8 : 1, scale: stage === 'burst' ? 1.6 : 1 }} transition={{ duration: 0.4 }} />
       <div className="rarity-label" style={{ position: 'relative' }}>{crate.rarity} crate</div>
-      <motion.div style={{ position: 'relative' }}
+      <m.div style={{ position: 'relative' }}
         animate={stage === 'shaking' && !reduce ? { rotate: [0, -6, 6, -9, 9, -4, 4, 0], scale: [1, 1.02, 1.04, 1.06, 1.08, 1.1, 1.12, 1.1] } : stage === 'burst' ? { scale: 1.3, opacity: 0 } : stage === 'reveal' ? { scale: 0.5, opacity: 0, y: -10 } : { scale: 1 }}
         transition={stage === 'shaking' ? { duration: 0.9, ease: 'easeInOut' } : { duration: 0.35 }}>
         <CrateArt rarity={crate.rarity} size={150} open={stage === 'burst' || stage === 'reveal'} />
-      </motion.div>
+      </m.div>
       <AnimatePresence>
         {stage === 'burst' && !reduce && (
-          <motion.div key="flash" style={{ position: 'absolute', inset: 0, background: `radial-gradient(circle at 50% 45%, ${color}, transparent 60%)` }} initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0] }} transition={{ duration: 0.5 }} />
+          <m.div key="flash" style={{ position: 'absolute', inset: 0, background: `radial-gradient(circle at 50% 45%, ${color}, transparent 60%)` }} initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0] }} transition={{ duration: 0.5 }} />
         )}
       </AnimatePresence>
       {stage === 'reveal' && reward ? (
-        <motion.div style={{ position: 'relative', display: 'grid', justifyItems: 'center', gap: 8, marginTop: -120 }} initial={{ opacity: 0, y: 16, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 18 }}>
-          {!reduce && <motion.span className="reward-rays" style={{ ['--rar' as string]: color }} initial={{ opacity: 0, rotate: 0 }} animate={{ opacity: 1, rotate: 90 }} transition={{ duration: 4, ease: 'linear' }} aria-hidden />}
+        <m.div style={{ position: 'relative', display: 'grid', justifyItems: 'center', gap: 8, marginTop: -120 }} initial={{ opacity: 0, y: 16, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 18 }}>
+          {!reduce && <m.span className="reward-rays" style={{ ['--rar' as string]: color }} initial={{ opacity: 0, rotate: 0 }} animate={{ opacity: 1, rotate: 90 }} transition={{ duration: 4, ease: 'linear' }} aria-hidden />}
           <span className="inv-swatch" style={{ position: 'relative', width: 72, height: 72, color, background: `color-mix(in srgb, ${color} 18%, transparent)`, boxShadow: `0 0 30px ${color}` }}><RewardIcon r={reward} /></span>
           <div className="crate-reward-name" style={{ color }}>{reward.kind === 'coins' ? `+${reward.amount} credits` : reward.name}</div>
           <div className="faint" style={{ fontSize: 13 }}>{reward.kind === 'title' ? 'New title — equip it in the Armory' : reward.kind === 'frame' ? 'New avatar frame' : reward.kind === 'emote' ? 'New emote' : reward.kind === 'xp_boost' ? `${reward.amount} min of bonus XP` : 'Added to your balance'}</div>
           <button className="btn btn-primary" style={{ marginTop: 10 }} onClick={onClose}>Collect</button>
-        </motion.div>
+        </m.div>
       ) : stage === 'ready' ? (
         <div style={{ position: 'relative', display: 'grid', gap: 10, justifyItems: 'center' }}>
           <div className="faint" style={{ fontSize: 13 }}>Earned: {crate.source}</div>

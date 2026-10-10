@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { useCallback, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import type { TaskView } from '@companybrain/types';
 import { useMemberMap, useProjectMap } from '../../api/queries';
@@ -47,7 +47,7 @@ export function TaskList({ tasks, grouped = true, showDone = false, showProject 
     <div className="task-groups">
       <AnimatePresence initial={false}>
         {groups.map((g) => (
-          <motion.section key={g.key} className="task-group" layout="position" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} aria-label={g.label || 'Tasks'}>
+          <m.section key={g.key} className="task-group" layout="position" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} aria-label={g.label || 'Tasks'}>
             {grouped && (
               <div className={cx('task-group-head', 'tone' in g && g.tone === 'danger' && 'tone-danger')}>
                 {'tone' in g && g.tone === 'danger' && <span className="g-dot" />}
@@ -73,7 +73,7 @@ export function TaskList({ tasks, grouped = true, showDone = false, showProject 
                 ))}
               </AnimatePresence>
             </div>
-          </motion.section>
+          </m.section>
         ))}
       </AnimatePresence>
     </div>

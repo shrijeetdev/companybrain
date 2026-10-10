@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { Table2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Report } from '@companybrain/types';
@@ -8,6 +8,7 @@ import { qk, useMemberMap, useProjectMap } from '../api/queries';
 import { Avatar } from '../components/Avatar';
 import { ErrorState, Ring, Segmented, Skeleton, Ticker } from '../components/ui';
 import { useLabels } from '../lib/labels';
+import { useMoney } from '../lib/money';
 import { useTheme } from '../lib/theme';
 import { cx } from '../lib/util';
 
@@ -97,7 +98,29 @@ function ReportBody({ r }: { r: Report }) {
           </ul>
         </section>
       </div>
+      <PipelineSummary days={r.windowDays} />
     </>
+  );
+}
+
+/** Sales pipeline in the org currency (only when there are leads). */
+function PipelineSummary({ days }: { days: number }) {
+  const L = useLabels();
+  const { money } = useMoney();
+  const { data } = useQuery({ queryKey: qk.leads, queryFn: api.leads.list, staleTime: 60_000 });
+  if (!data?.length) return null;
+  const since = Date.now() - days * 86_400_000;
+  const open = data.filter((l) => l.stage !== 'won' && l.stage !== 'lost');
+  const wonRecent = data.filter((l) => l.stage === 'won' && l.updatedAt >= since);
+  const sum = (ls: typeof data) => ls.reduce((s, l) => s + (l.value ?? 0), 0);
+  return (
+    <section className="panel" style={{ marginTop: 14 }} aria-label={L.pipeline}>
+      <div className="panel-head"><h2>{L.pipeline}</h2></div>
+      <div className="stat-cards" style={{ padding: '0 16px 4px' }}>
+        <div className="stat-card"><div className="eyebrow">Open pipeline</div><b className="num-display">{money(sum(open))}</b><div className="delta">{open.length} open deal{open.length === 1 ? '' : 's'}</div></div>
+        <div className="stat-card"><div className="eyebrow">Won · {days}d</div><b className="num-display" style={{ color: 'var(--success)' }}>{money(sum(wonRecent))}</b><div className="delta">{wonRecent.length} deal{wonRecent.length === 1 ? '' : 's'} closed</div></div>
+      </div>
+    </section>
   );
 }
 

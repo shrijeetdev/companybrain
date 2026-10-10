@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence, Reorder } from 'motion/react';
+import { AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import {
   AlarmClock, CalendarClock, Check, ChevronDown, Copy, Flag, Folder, GripVertical, Hash, Hourglass, Link2, ListChecks,
   MoreHorizontal, Plus, Repeat, RotateCcw, Send, Tag, Trash2, Users, X,
@@ -8,10 +8,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Recurrence, Subtask, TaskView, WaitingOn } from '@companybrain/types';
 import { errorMessage } from '../../api/client';
 import { api } from '../../api/endpoints';
-import { markLocal, qk, upsertTaskInCaches, useMembers, useMemberMap, useProjects, useTask } from '../../api/queries';
+import { markLocal, patchTaskInCaches, qk, upsertTaskInCaches, useMembers, useMemberMap, useProjects, useTask } from '../../api/queries';
 import { Avatar } from '../../components/Avatar';
 import { ChannelIcon, channelName, PriorityIcon, StatusIcon } from '../../components/icons';
-import { Drawer, MenuList, Popover } from '../../components/Overlay';
+import { MenuList, Popover } from '../../components/Overlay';
 import { Bar, SkeletonRows } from '../../components/ui';
 import { priorityLabel, statusLabel, useLabels } from '../../lib/labels';
 import { Markdown } from '../../lib/markdown';
@@ -19,7 +19,7 @@ import { sfx } from '../../lib/sfx';
 import { useTheme } from '../../lib/theme';
 import { ago, fmtDue, zoned } from '../../lib/time';
 import { toast } from '../../lib/toast';
-import { ui, useUi } from '../../lib/ui';
+import { ui } from '../../lib/ui';
 import { copyText, cx } from '../../lib/util';
 import { ActivityTimeline, Composer } from './Activity';
 import { useTaskActions } from './actions';
@@ -41,21 +41,7 @@ function PropPopover({ label, icon, button, children, width }: { label: string; 
   );
 }
 
-export function TaskDrawerHost() {
-  const { taskId } = useUi();
-  // Open from ?task= on first load.
-  useEffect(() => {
-    const id = new URL(window.location.href).searchParams.get('task');
-    if (id) ui.openTask(id);
-  }, []);
-  return (
-    <Drawer open={!!taskId} onClose={() => ui.openTask(null)} label="Task details">
-      {taskId && <TaskDetail id={taskId} />}
-    </Drawer>
-  );
-}
-
-function TaskDetail({ id }: { id: string }) {
+export function TaskDetail({ id }: { id: string }) {
   const { data: task, error, isLoading } = useTask(id);
   useEffect(() => {
     if (error) { toast.error(errorMessage(error)); ui.openTask(null); }
@@ -96,6 +82,19 @@ function TaskDetailBody({ task }: { task: TaskView }) {
     try { upsertTaskInCaches(qc, await fn()); } catch (e) { toast.error(errorMessage(e)); }
   };
   const assignees = task.assigneeIds.map((i) => members.get(i)).filter(Boolean);
+  /** Optimistic subtask reorder; rolls back (and says so) if the server refuses. */
+  const reorderSubtasks = async (ids: string[]) => {
+    const prev = task.subtasks;
+    const byId = new Map(prev.map((x) => [x.id, x]));
+    markLocal(task.id);
+    patchTaskInCaches(qc, task.id, { subtasks: ids.map((x) => byId.get(x)!).filter(Boolean) });
+    try {
+      upsertTaskInCaches(qc, await api.tasks.reorderSubtasks(task.id, ids));
+    } catch (e) {
+      patchTaskInCaches(qc, task.id, { subtasks: prev });
+      toast.error(`Couldn’t save the new order — ${errorMessage(e)}`);
+    }
+  };
 
   return (
     <>
@@ -125,7 +124,7 @@ function TaskDetailBody({ task }: { task: TaskView }) {
             { key: 'copy', label: 'Copy link', icon: <Link2 />, onSelect: () => void copyText(`${location.origin}/tasks/${task.id}`).then(() => toast('Link copied')) },
             { key: 'id', label: 'Copy ID', icon: <Copy />, onSelect: () => void copyText(task.id).then(() => toast('ID copied')) },
             'sep',
-            { key: 'del', label: `Delete ${L.taskLower}`, icon: <Trash2 />, danger: true, onSelect: () => { if (window.confirm(`Delete “${task.title}”? This can be undone from Settings → Activity log.`)) { void remove(task); ui.openTask(null); } } },
+            { key: 'del', label: `Delete ${L.taskLower}`, icon: <Trash2 />, danger: true, onSelect: () => { ui.openTask(null); void remove(task); } },
           ]} />
         </Popover>
         <button className="icon-btn icon-btn-sm" aria-label="Close" onClick={() => ui.openTask(null)}><X /></button>
@@ -199,7 +198,8 @@ function TaskDetailBody({ task }: { task: TaskView }) {
         <Subtasks task={task} onAdd={(t) => sub(() => api.tasks.addSubtask(task.id, t))}
           onToggle={(s) => { if (!s.done) sfx.tick(); void sub(() => api.tasks.updateSubtask(task.id, s.id, { done: !s.done })); }}
           onRename={(s, t) => void sub(() => api.tasks.updateSubtask(task.id, s.id, { title: t }))}
-          onRemove={(s) => void sub(() => api.tasks.removeSubtask(task.id, s.id))} />
+          onRemove={(s) => void sub(() => api.tasks.removeSubtask(task.id, s.id))}
+          onReorder={(ids) => void reorderSubtasks(ids)} />
 
         <section className="drawer-section">
           <div className="section-title">Activity</div>
@@ -318,36 +318,50 @@ function WaitingOnSection({ task, onChange }: { task: TaskView; onChange: (w: Om
   );
 }
 
-function Subtasks({ task, onAdd, onToggle, onRename, onRemove }: {
+function Subtasks({ task, onAdd, onToggle, onRename, onRemove, onReorder }: {
   task: TaskView; onAdd: (t: string) => Promise<void>; onToggle: (s: Subtask) => void; onRename: (s: Subtask, t: string) => void; onRemove: (s: Subtask) => void;
+  onReorder: (ids: string[]) => void;
 }) {
   const L = useLabels();
   const [v, setV] = useState('');
   const [order, setOrder] = useState(task.subtasks);
-  useEffect(() => setOrder((cur) => {
-    // keep local drag order, but reflect server adds/removes/updates
-    const byId = new Map(task.subtasks.map((s) => [s.id, s]));
-    const kept = cur.filter((s) => byId.has(s.id)).map((s) => byId.get(s.id)!);
-    const added = task.subtasks.filter((s) => !cur.some((c) => c.id === s.id));
-    return [...kept, ...added];
-  }), [task.subtasks]);
+  const [announce, setAnnounce] = useState('');
+  const dragging = useRef(false);
+  const orderRef = useRef(order);
+  orderRef.current = order;
+  // Follow the server (incl. optimistic patches and rollbacks) except mid-drag.
+  useEffect(() => { if (!dragging.current) setOrder(task.subtasks); }, [task.subtasks]);
+  const commit = (next: Subtask[]) => {
+    const ids = next.map((s) => s.id);
+    if (ids.join() !== task.subtasks.map((s) => s.id).join()) onReorder(ids);
+  };
+  const move = (s: Subtask, delta: number) => {
+    const i = order.findIndex((x) => x.id === s.id);
+    const j = i + delta;
+    if (i < 0 || j < 0 || j >= order.length) return;
+    const next = order.slice();
+    next.splice(j, 0, ...next.splice(i, 1));
+    setOrder(next);
+    commit(next);
+    setAnnounce(`Moved “${s.title}” to position ${j + 1} of ${next.length}`);
+    window.requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-subtask-grip="${s.id}"]`)?.focus());
+  };
   const done = task.subtasks.filter((s) => s.done).length;
   return (
     <section className="drawer-section">
       <div className="section-title"><ListChecks size={14} /> {L.subtasks} {task.subtasks.length > 0 && <span className="faint num">{done}/{task.subtasks.length}</span>}</div>
       {task.subtasks.length > 0 && <div className="subtask-progress"><Bar pct={(done / task.subtasks.length) * 100} color="var(--success)" height={4} className="grow" /></div>}
-      <Reorder.Group axis="y" values={order} onReorder={setOrder} as="div">
+      <Reorder.Group axis="y" values={order} onReorder={setOrder} as="div" className="subtask-list" aria-label={L.subtasks}>
         <AnimatePresence initial={false}>
-          {order.map((s) => (
-            <Reorder.Item key={s.id} value={s} as="div" className={cx('subtask', s.done && 'done')} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-              <GripVertical className="grip" aria-hidden />
-              <button className={cx('check check-sq', s.done && 'is-done')} aria-label={s.done ? `Mark “${s.title}” not done` : `Complete “${s.title}”`} onClick={() => onToggle(s)}><Check style={{ opacity: s.done ? 1 : 0 }} /></button>
-              <input defaultValue={s.title} aria-label={`${L.subtask} title`} onBlur={(e) => { const t = e.target.value.trim(); if (t && t !== s.title) onRename(s, t); }} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
-              <button className="icon-btn icon-btn-sm" aria-label={`Delete “${s.title}”`} onClick={() => onRemove(s)}><X /></button>
-            </Reorder.Item>
+          {order.map((s, i) => (
+            <SubtaskItem key={s.id} s={s} index={i} count={order.length} label={L.subtask}
+              onDragStart={() => { dragging.current = true; }}
+              onDragEnd={() => { dragging.current = false; commit(orderRef.current); }}
+              onMove={(d) => move(s, d)} onToggle={() => onToggle(s)} onRename={(t) => onRename(s, t)} onRemove={() => onRemove(s)} />
           ))}
         </AnimatePresence>
       </Reorder.Group>
+      <div className="sr-only" aria-live="polite">{announce}</div>
       <div className="subtask">
         <Plus size={16} className="faint" style={{ marginLeft: 22 }} />
         <input value={v} onChange={(e) => setV(e.target.value)} placeholder={`Add ${L.subtask.toLowerCase()}…`} aria-label={`Add ${L.subtask.toLowerCase()}`}
@@ -357,3 +371,26 @@ function Subtasks({ task, onAdd, onToggle, onRename, onRemove }: {
   );
 }
 
+function SubtaskItem({ s, index, count, label, onDragStart, onDragEnd, onMove, onToggle, onRename, onRemove }: {
+  s: Subtask; index: number; count: number; label: string; onDragStart: () => void; onDragEnd: () => void; onMove: (delta: number) => void;
+  onToggle: () => void; onRename: (t: string) => void; onRemove: () => void;
+}) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item value={s} as="div" className={cx('subtask', s.done && 'done')} data-subtask-id={s.id}
+      dragListener={false} dragControls={controls} onDragStart={onDragStart} onDragEnd={onDragEnd}
+      initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+      <button type="button" className="grip" data-subtask-grip={s.id}
+        aria-label={`Reorder “${s.title}” (position ${index + 1} of ${count}). Use arrow up and down to move.`}
+        onPointerDown={(e) => { e.preventDefault(); controls.start(e); }}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); onMove(e.key === 'ArrowUp' ? -1 : 1); }
+        }}>
+        <GripVertical aria-hidden />
+      </button>
+      <button className={cx('check check-sq', s.done && 'is-done')} aria-label={s.done ? `Mark “${s.title}” not done` : `Complete “${s.title}”`} onClick={onToggle}><Check style={{ opacity: s.done ? 1 : 0 }} /></button>
+      <input defaultValue={s.title} aria-label={`${label} title`} onBlur={(e) => { const t = e.target.value.trim(); if (t && t !== s.title) onRename(t); }} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
+      <button className="icon-btn icon-btn-sm" aria-label={`Delete “${s.title}”`} onClick={onRemove}><X /></button>
+    </Reorder.Item>
+  );
+}

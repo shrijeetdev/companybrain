@@ -81,7 +81,7 @@ export function apiRoutes(deps: ServerDeps): RouteDef[] {
     // ─── Tasks ─────────────────────────────────────────────────────────────
     r({
       method: 'GET', path: '/api/tasks', operationId: 'listTasks', tag: 'Tasks', summary: 'List/filter tasks',
-      description: '`status` is comma-separated. `assigneeId=me` = the caller.',
+      description: '`status` and `priority` are comma-separated. `assigneeId=me` = the caller. `completedSince` (epoch ms) limits closed tasks to those closed since then (open tasks unaffected).',
       query: S.TaskListQuery, response: json(z.array(S.TaskViewDto)),
       handler: ({ actor, query }) => s.tasks.list(actor, stripUndefined(query)),
     }),
@@ -119,8 +119,8 @@ export function apiRoutes(deps: ServerDeps): RouteDef[] {
       handler: ({ actor, params, body }) => s.tasks.update(actor, params.id, body),
     }),
     r({
-      method: 'DELETE', path: '/api/tasks/:id', operationId: 'deleteTask', tag: 'Tasks', summary: 'Delete a task',
-      params: S.IdParams, response: empty,
+      method: 'DELETE', path: '/api/tasks/:id', operationId: 'deleteTask', tag: 'Tasks', summary: 'Delete a task (undo with POST /api/audit/{auditId}/undo)',
+      params: S.IdParams, response: json(S.DeletedDto),
       handler: ({ actor, params }) => s.tasks.remove(actor, params.id),
     }),
     r({
@@ -152,6 +152,12 @@ export function apiRoutes(deps: ServerDeps): RouteDef[] {
       method: 'DELETE', path: '/api/tasks/:id/subtasks/:subId', operationId: 'deleteSubtask', tag: 'Tasks', summary: 'Remove a subtask',
       params: S.SubtaskParams, response: json(S.TaskViewDto),
       handler: ({ actor, params }) => s.tasks.removeSubtask(actor, params.id, params.subId),
+    }),
+    r({
+      method: 'PUT', path: '/api/tasks/:id/subtasks/order', operationId: 'reorderSubtasks', tag: 'Tasks', summary: 'Reorder subtasks',
+      description: '`ids` must contain exactly the current subtask ids (in the new order).',
+      params: S.IdParams, body: S.SubtaskOrderBody, response: json(S.TaskViewDto),
+      handler: ({ actor, params, body }) => s.tasks.reorderSubtasks(actor, params.id, body.ids),
     }),
     r({
       method: 'GET', path: '/api/tasks/:id/activity', operationId: 'taskActivity', tag: 'Tasks', summary: 'Task activity timeline',

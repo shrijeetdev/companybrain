@@ -193,7 +193,7 @@ test('org isolation: a second org cannot read or modify the first org\'s data', 
 
   // A second org in the same DB (multi-tenant safety even though deployments are single-org).
   const now = env.clock.now;
-  env.db.orgs.insert({ id: 'org_otherorg1', name: 'Evil', timezone: 'UTC', logo: null, workdayStart: 9, workdayEnd: 18, defaultReminderOffsets: [60], escalateAfterMin: null, agentStaleAfterMin: 240, intakeAutoAck: false, createdAt: now, updatedAt: now });
+  env.db.orgs.insert({ id: 'org_otherorg1', name: 'Evil', timezone: 'UTC', logo: null, workdayStart: 9, workdayEnd: 18, defaultReminderOffsets: [60], escalateAfterMin: null, agentStaleAfterMin: 240, intakeAutoAck: false, currency: 'USD', createdAt: now, updatedAt: now });
   const evil = await env.s.members.create({ orgId: 'org_otherorg1', memberId: 'system', role: 'owner', kind: 'human', via: 'system' }, { kind: 'human', role: 'owner', name: 'Eve', email: 'eve@evil.io', password: 'password123' });
   const eve = { orgId: 'org_otherorg1', memberId: evil.id, role: 'owner' as const, kind: 'human' as const, via: 'session' as const };
 

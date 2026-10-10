@@ -141161,6 +141161,13 @@ var MIGRATIONS = [
         UPDATE members SET prefs = json_set(prefs, '$.sound', json('true')) WHERE json_type(prefs, '$.sound') IS NULL;
       `);
     }
+  },
+  {
+    version: 4,
+    name: "org currency (ISO 4217, default USD)",
+    up(db) {
+      if (!columns(db, "orgs").includes("currency")) db.exec(`ALTER TABLE orgs ADD COLUMN currency TEXT NOT NULL DEFAULT 'USD'`);
+    }
   }
 ];
 var V1_TABLES = ["loops", "tasks", "leads", "events", "settings", "approvals", "time_entries", "custom_fields", "connections", "api_keys", "users"];
@@ -141237,14 +141244,15 @@ function rowToOrg(r) {
     escalateAfterMin: r.escalate_after_min ?? null,
     agentStaleAfterMin: r.agent_stale_after_min,
     intakeAutoAck: !!r.intake_auto_ack,
+    currency: typeof r.currency === "string" && /^[A-Z]{3}$/.test(r.currency) ? r.currency : "USD",
     createdAt: r.created_at,
     updatedAt: r.updated_at
   };
 }
 function orgRepo(db) {
   const save = db.prepare(`UPDATE orgs SET name=@name, timezone=@timezone, logo=@logo, workday_start=@workdayStart, workday_end=@workdayEnd,
-    default_reminder_offsets=@offsets, escalate_after_min=@escalateAfterMin, agent_stale_after_min=@agentStaleAfterMin, intake_auto_ack=@ack, updated_at=@updatedAt WHERE id=@id`);
-  const params = (o) => ({ ...o, offsets: JSON.stringify(o.defaultReminderOffsets), ack: o.intakeAutoAck ? 1 : 0 });
+    default_reminder_offsets=@offsets, escalate_after_min=@escalateAfterMin, agent_stale_after_min=@agentStaleAfterMin, intake_auto_ack=@ack, currency=@currency, updated_at=@updatedAt WHERE id=@id`);
+  const params = (o) => ({ ...o, offsets: JSON.stringify(o.defaultReminderOffsets), ack: o.intakeAutoAck ? 1 : 0, currency: o.currency || "USD" });
   return {
     /** All orgs (system-level: scheduler bootstrap / single-org routing). */
     list() {
@@ -141255,8 +141263,8 @@ function orgRepo(db) {
       return r ? rowToOrg(r) : null;
     },
     insert(o) {
-      db.prepare(`INSERT INTO orgs (id, name, timezone, logo, workday_start, workday_end, default_reminder_offsets, escalate_after_min, agent_stale_after_min, intake_auto_ack, created_at, updated_at)
-        VALUES (@id, @name, @timezone, @logo, @workdayStart, @workdayEnd, @offsets, @escalateAfterMin, @agentStaleAfterMin, @ack, @createdAt, @updatedAt)`).run(params(o));
+      db.prepare(`INSERT INTO orgs (id, name, timezone, logo, workday_start, workday_end, default_reminder_offsets, escalate_after_min, agent_stale_after_min, intake_auto_ack, currency, created_at, updated_at)
+        VALUES (@id, @name, @timezone, @logo, @workdayStart, @workdayEnd, @offsets, @escalateAfterMin, @agentStaleAfterMin, @ack, @currency, @createdAt, @updatedAt)`).run(params(o));
     },
     save(o) {
       save.run(params(o));
@@ -141700,6 +141708,14 @@ function taskRepo(db) {
       p.statuses = JSON.stringify(f.statuses);
     }
     if (f.open) c.push("t.status NOT IN ('done','cancelled')");
+    if (f.priorities?.length) {
+      c.push("t.priority IN (SELECT value FROM json_each(@priorities))");
+      p.priorities = JSON.stringify(f.priorities);
+    }
+    if (f.closedSince !== void 0) {
+      c.push("(t.status NOT IN ('done','cancelled') OR COALESCE(t.completed_at, t.updated_at) >= @closedSince)");
+      p.closedSince = f.closedSince;
+    }
     if (f.dueBefore !== void 0) {
       c.push("t.due_at IS NOT NULL AND t.due_at < @dueBefore");
       p.dueBefore = f.dueBefore;
@@ -176477,6 +176493,13 @@ function phone(v, field = "phone") {
   if (digits.length < 8 || digits.length > 15 || digits.startsWith("0")) bad(`${field} must be an international number with country code, e.g. +919876543210`);
   return `+${digits}`;
 }
+function currency(v, field = "currency") {
+  if (typeof v !== "string" || !/^[A-Za-z]{3}$/.test(v.trim())) bad(`${field} must be a 3-letter ISO 4217 code, e.g. USD or INR`);
+  const code = v.trim().toUpperCase();
+  const known = Intl.supportedValuesOf?.("currency");
+  if (known && !known.includes(code)) bad(`${field} "${code}" is not a known ISO 4217 currency`);
+  return code;
+}
 function color(v, field = "color") {
   if (typeof v !== "string" || !/^#[0-9a-fA-F]{6}$/.test(v)) bad(`${field} must be a hex color like #6366f1`);
   return v.toLowerCase();
@@ -177048,6 +177071,11 @@ function createTaskService(ctx) {
     }
     if (query.search) f.search = str3(query.search, "search", { max: 200 });
     if (query.tag) f.tag = str3(query.tag, "tag", { max: 40 }).replace(/^#/, "");
+    if (query.priority !== void 0) {
+      const arr2 = Array.isArray(query.priority) ? query.priority : String(query.priority).split(",").filter(Boolean);
+      if (arr2.length) f.priorities = [...new Set(arr2.map((p) => oneOf(p, "priority", PRIORITIES2)))];
+    }
+    if (query.completedSince !== void 0) f.closedSince = time3(query.completedSince, "completedSince");
     if (query.dueBefore !== void 0) f.dueBefore = time3(query.dueBefore, "dueBefore");
     if (query.dueAfter !== void 0) f.dueAfter = time3(query.dueAfter, "dueAfter");
     let includeClosed = !!query.includeDone || !!f.statuses;
@@ -177140,9 +177168,10 @@ function createTaskService(ctx) {
     const aud = audience(t);
     db.tasks.delete(actor.orgId, t.id);
     ctx.internal.cancelTask(actor.orgId, t.id);
-    await audit(ctx, actor, { type: "task.deleted", entity: "task", entityId: t.id, summary: `Deleted "${t.title}"`, before: t, undoable: true });
+    const ev = await audit(ctx, actor, { type: "task.deleted", entity: "task", entityId: t.id, summary: `Deleted "${t.title}"`, before: t, undoable: true });
     publish(ctx, t.orgId, { type: "task.deleted", taskId: t.id }, aud);
     ctx.internal.invalidateBriefings(t.orgId);
+    return { auditId: ev.id };
   }
   const service = {
     list,
@@ -177198,6 +177227,24 @@ function createTaskService(ctx) {
         t.subtasks = t.subtasks.filter((x) => x.id !== subtaskId);
         return `Removed subtask "${s2.title}"`;
       });
+    },
+    async reorderSubtasks(actor, id, ids2) {
+      if (!Array.isArray(ids2)) bad("ids must be an array of subtask ids");
+      const list2 = ids2.map((x, i) => str3(x, `ids[${i}]`, { max: 64 }));
+      const cur = loadEditable(actor, id);
+      const known = new Set(cur.subtasks.map((s2) => s2.id));
+      if (new Set(list2).size !== list2.length) bad("ids contains duplicates");
+      if (list2.length !== known.size || list2.some((x) => !known.has(x))) {
+        throw new AppError("bad_request", "ids must list exactly the current subtasks of this task", { expected: [...known] });
+      }
+      if (list2.every((x, i) => cur.subtasks[i].id === x)) return view(actor, cur);
+      const byId = new Map(cur.subtasks.map((s2) => [s2.id, s2]));
+      const next = { ...cur, subtasks: list2.map((x) => ({ ...byId.get(x) })) };
+      const saved = await commit(actor, cur, next, [{ kind: "subtask", text: `${memberName(cur.orgId, actor.memberId)} reordered the subtasks` }], {
+        auditType: "task.updated",
+        summary: `Reordered subtasks of "${cur.title}"`
+      });
+      return view(actor, saved);
     },
     comment,
     async activity(actor, id) {
@@ -177909,8 +177956,8 @@ function createBriefingService(ctx) {
     const isMgr = m.kind === "human" && rank(m.role) >= ROLE_RANK.manager;
     const team = [];
     if (isMgr) {
-      for (const p of db.members.list(m.orgId, { kind: "human" })) {
-        if (p.role === "guest") continue;
+      const others = db.members.list(m.orgId, { kind: "human" }).filter((p) => p.id !== m.id && p.active && p.role !== "guest").sort((a, b) => a.name.localeCompare(b.name));
+      for (const p of [m, ...others]) {
         team.push({
           member: p,
           open: db.tasks.count(m.orgId, { assigneeId: p.id, open: true }),
@@ -178147,6 +178194,7 @@ function createAuthService(ctx) {
             escalateAfterMin: 1440,
             agentStaleAfterMin: 240,
             intakeAutoAck: false,
+            currency: "USD",
             createdAt: now2,
             updatedAt: now2
           };
@@ -178465,6 +178513,7 @@ function validateOrgPatch(cur, patch) {
   if (patch.escalateAfterMin !== void 0) n.escalateAfterMin = patch.escalateAfterMin === null ? null : int3(patch.escalateAfterMin, "escalateAfterMin", 1, 60 * 24 * 60);
   if (patch.agentStaleAfterMin !== void 0) n.agentStaleAfterMin = int3(patch.agentStaleAfterMin, "agentStaleAfterMin", 5, 60 * 24 * 30);
   if (patch.intakeAutoAck !== void 0) n.intakeAutoAck = bool2(patch.intakeAutoAck, "intakeAutoAck");
+  if (patch.currency !== void 0) n.currency = currency(patch.currency);
   return n;
 }
 function createOrgService(ctx) {
@@ -179887,7 +179936,11 @@ var Engine = class {
   queue = Promise.resolve();
   /** Rewards created inside the current transaction; published after commit. */
   pending = [];
+  /** Feed items created inside the current transaction; published org-wide after commit. */
+  pendingFeed = [];
   names = /* @__PURE__ */ new Map();
+  /** Last known roster per org (from members()), used to address org-wide feed events. */
+  roster = /* @__PURE__ */ new Map();
   constructor(deps) {
     this.db = deps.db;
     this.services = deps.services;
@@ -179965,10 +180018,12 @@ var Engine = class {
   markProcessed(e) {
     this.q("INSERT OR IGNORE INTO game_processed (org_id, audit_id, at) VALUES (?, ?, ?)").run(e.orgId, e.id, e.at ?? this.clock());
   }
-  /** Publish rewards created by the last committed transaction. */
+  /** Publish rewards (to the earner) and feed items (to the squad) created by the last committed transaction. */
   flush() {
     const out = this.pending;
+    const feed = this.pendingFeed;
     this.pending = [];
+    this.pendingFeed = [];
     for (const r of out) {
       try {
         this.services.live.publish(r.orgId, { type: "game.reward", reward: r }, { memberIds: [r.memberId] });
@@ -179976,10 +180031,27 @@ var Engine = class {
         this.log.warn("[game] live publish failed", err);
       }
     }
+    for (const { orgId, ...item } of feed) {
+      try {
+        this.services.live.publish(orgId, { type: "game.feed", item }, { memberIds: this.feedAudience(orgId, item.memberId) });
+      } catch (err) {
+        this.log.warn("[game] live feed publish failed", err);
+      }
+    }
   }
-  /** Discard rewards from a rolled-back transaction. */
+  /** Who sees a feed item live: every active member except guests, who only see their own (same rule as GameService.feed). */
+  feedAudience(orgId, memberId) {
+    const list = this.roster.get(orgId);
+    if (!list) return [memberId];
+    const ids2 = new Set(list.filter((m) => m.member.active !== false && (m.role !== "guest" || m.id === memberId)).map((m) => m.id));
+    ids2.add(memberId);
+    ids2.delete(SYSTEM_MEMBER_ID);
+    return [...ids2];
+  }
+  /** Discard rewards and feed items from a rolled-back transaction. */
   discard() {
     this.pending = [];
+    this.pendingFeed = [];
   }
   earnersOf(t, completer) {
     const set2 = new Set(t.assigneeIds);
@@ -180002,6 +180074,7 @@ var Engine = class {
       this.log.warn("[game] members.list failed", err);
     }
     for (const m of map2.values()) this.names.set(`${orgId}:${m.id}`, m.name);
+    if (map2.size) this.roster.set(orgId, [...map2.values()]);
     return map2;
   }
   async gather(orgId, at, involved, completedTask, earners) {
@@ -180098,7 +180171,9 @@ var Engine = class {
     return ev;
   }
   feed(orgId, memberId, kind, xp, text, at) {
-    this.q("INSERT INTO game_feed (id, org_id, member_id, text, kind, xp, at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(newId2("feed"), orgId, memberId, text, kind, xp, at);
+    const id = newId2("feed");
+    this.q("INSERT INTO game_feed (id, org_id, member_id, text, kind, xp, at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(id, orgId, memberId, text, kind, xp, at);
+    this.pendingFeed.push({ orgId, id, memberId, text, kind, xp, at });
   }
   name(orgId, memberId) {
     return this.names.get(`${orgId}:${memberId}`) ?? "An operative";
@@ -180800,6 +180875,7 @@ var Service = class {
     const now2 = this.engine.clock();
     const get = () => this.engine.q("SELECT * FROM game_crates WHERE id = ? AND org_id = ? AND member_id = ?").get(crateId, actor.orgId, actor.memberId);
     if (!get()) throw new AppError("not_found", "Crate not found");
+    await this.engine.members(actor.orgId);
     try {
       this.db.transaction(() => {
         const opened = this.engine.openCrate(actor.orgId, actor.memberId, crateId, now2);
@@ -181215,9 +181291,11 @@ var TaskListQuery = external_exports.object({
   ),
   search: QStr(200),
   tag: QStr(50),
+  priority: QList(Priority),
   dueBefore: QInt(0, 864e13),
   dueAfter: QInt(0, 864e13),
   includeDone: QBool,
+  completedSince: QInt(0, 864e13),
   limit: QInt(1, 500),
   offset: QInt(0, 1e6)
 });
@@ -181249,6 +181327,7 @@ var UpdateTaskBody = external_exports.object({
 }).partial().strict();
 var SubtaskCreateBody = external_exports.object({ title: ShortText(500) });
 var SubtaskPatchBody = external_exports.object({ title: ShortText(500).optional(), done: external_exports.boolean().optional() }).strict();
+var SubtaskOrderBody = external_exports.object({ ids: external_exports.array(Id).max(100).describe("Every current subtask id of the task, in the new order") }).strict();
 var CommentBody = external_exports.object({ text: ShortText(1e4), kind: external_exports.enum(["comment", "handoff"]).optional() });
 var ProjectListQuery = external_exports.object({ includeArchived: QBool });
 var ProjectFields = {
@@ -181307,7 +181386,8 @@ var UpdateOrgBody = external_exports.object({
   defaultReminderOffsets: ReminderOffsets,
   escalateAfterMin: external_exports.number().int().min(1).max(525600).nullable(),
   agentStaleAfterMin: external_exports.number().int().min(1).max(525600),
-  intakeAutoAck: external_exports.boolean()
+  intakeAutoAck: external_exports.boolean(),
+  currency: external_exports.string().regex(/^[A-Za-z]{3}$/, "expected an ISO 4217 code like USD")
 }).partial().strict();
 var MeetingListQuery = external_exports.object({
   from: QInt(0, 864e13),
@@ -181371,6 +181451,7 @@ function dto(id, schema, description) {
 }
 var N = (s2) => s2.nullable();
 var ts = external_exports.number().int().describe("epoch milliseconds (UTC)");
+var DeletedDto = dto("Deleted", external_exports.object({ auditId: external_exports.string().describe("Pass to POST /api/audit/{id}/undo to restore") }));
 var MemberDto = dto(
   "Member",
   external_exports.object({
@@ -181420,6 +181501,7 @@ var OrgDto = dto(
     escalateAfterMin: N(external_exports.number().int()),
     agentStaleAfterMin: external_exports.number().int(),
     intakeAutoAck: external_exports.boolean(),
+    currency: external_exports.string().describe("ISO 4217 code, e.g. USD, INR"),
     createdAt: ts,
     updatedAt: ts
   })
@@ -182006,7 +182088,7 @@ ${text}`).digest("hex");
       operationId: "listTasks",
       tag: "Tasks",
       summary: "List/filter tasks",
-      description: "`status` is comma-separated. `assigneeId=me` = the caller.",
+      description: "`status` and `priority` are comma-separated. `assigneeId=me` = the caller. `completedSince` (epoch ms) limits closed tasks to those closed since then (open tasks unaffected).",
       query: TaskListQuery,
       response: json4(external_exports.array(TaskViewDto)),
       handler: ({ actor, query }) => s2.tasks.list(actor, stripUndefined(query))
@@ -182077,9 +182159,9 @@ ${text}`).digest("hex");
       path: "/api/tasks/:id",
       operationId: "deleteTask",
       tag: "Tasks",
-      summary: "Delete a task",
+      summary: "Delete a task (undo with POST /api/audit/{auditId}/undo)",
       params: IdParams,
-      response: empty,
+      response: json4(DeletedDto),
       handler: ({ actor, params }) => s2.tasks.remove(actor, params.id)
     }),
     apiRoute({
@@ -182143,6 +182225,18 @@ ${text}`).digest("hex");
       params: SubtaskParams,
       response: json4(TaskViewDto),
       handler: ({ actor, params }) => s2.tasks.removeSubtask(actor, params.id, params.subId)
+    }),
+    apiRoute({
+      method: "PUT",
+      path: "/api/tasks/:id/subtasks/order",
+      operationId: "reorderSubtasks",
+      tag: "Tasks",
+      summary: "Reorder subtasks",
+      description: "`ids` must contain exactly the current subtask ids (in the new order).",
+      params: IdParams,
+      body: SubtaskOrderBody,
+      response: json4(TaskViewDto),
+      handler: ({ actor, params, body }) => s2.tasks.reorderSubtasks(actor, params.id, body.ids)
     }),
     apiRoute({
       method: "GET",
@@ -183517,7 +183611,7 @@ function buildOpenApi(routes, opts) {
         in: "query",
         required: !isOptional(s2),
         schema,
-        ...name === "status" ? { description: "Comma-separated list", explode: false, style: "form" } : {}
+        ...name === "status" || name === "priority" ? { description: "Comma-separated list", explode: false, style: "form" } : {}
       });
     }
     const op = {
@@ -183784,7 +183878,7 @@ async function buildServer(deps) {
           const name = basename(filePath);
           if (filePath.includes(`${sep}assets${sep}`)) {
             res.setHeader("cache-control", "public, max-age=31536000, immutable");
-          } else if (name === "index.html" || name === "sw.js" || name === "manifest.webmanifest") {
+          } else if (name === "index.html" || name === "sw.js" || name === "manifest.webmanifest" || name === "theme-init.js") {
             res.setHeader("cache-control", "no-cache");
           } else {
             res.setHeader("cache-control", "public, max-age=3600");

@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { CalendarClock, ChevronLeft, ChevronRight, MapPin, Plus, Settings2, Trash2, Video } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'wouter';

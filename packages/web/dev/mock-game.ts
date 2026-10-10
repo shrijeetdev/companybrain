@@ -171,10 +171,12 @@ export function createMockGame(deps: MockGameDeps) {
     p.xp = Math.max(0, p.xp + xp); p.coins += coins; p.periodXp.week += xp; p.periodXp.month += xp;
     const r: RewardEvent = { id: rid('rwd'), orgId: deps.orgId, memberId, kind, xp, coins, label, taskId, at: Date.now(), ...extra };
     p.rewards.unshift(r);
-    deps.publish({ type: 'game.reward', reward: r });
+    deps.publish({ type: 'game.reward', reward: r }, [memberId]);
     const name = deps.members().find((m) => m.id === memberId)?.name.split(' ')[0] ?? 'Someone';
-    if (['mission_complete', 'level_up', 'squad_bonus', 'achievement', 'challenge'].includes(kind)) {
-      feed.unshift({ id: rid('feed'), memberId, kind, xp, at: r.at, text: kind === 'level_up' ? `${name} reached level ${extra.level} — ${extra.rank?.name}` : kind === 'mission_complete' ? `${name} completed “${label.replace(/^.*?: /, '')}”` : `${name} · ${label}` });
+    if (['level_up', 'squad_bonus', 'achievement'].includes(kind) || (kind === 'crate_earned' && extra.rarity === 'legendary')) {
+      const item = { id: rid('feed'), memberId, kind, xp, at: r.at, text: kind === 'level_up' ? `${name} reached level ${extra.level} — ${extra.rank?.name}` : `${name} · ${label}` };
+      feed.unshift(item);
+      deps.publish({ type: 'game.feed', item });
     }
     const after = levelFromXp(p.xp).level;
     if (after > before) {

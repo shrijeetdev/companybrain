@@ -1,5 +1,5 @@
 import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence, motion, MotionConfig } from 'motion/react';
+import { AnimatePresence, LazyMotion, m, MotionConfig } from 'motion/react';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'wouter';
 import { errorMessage, onUnauthorized } from './api/client';
@@ -7,22 +7,26 @@ import { useLiveStream } from './api/live';
 import { makeQueryClient, qk, useAuth, useMe } from './api/queries';
 import { SkeletonRows, Toaster } from './components/ui';
 import { FxLayer } from './features/game/FxLayer';
-import { TaskDrawerHost } from './features/tasks/TaskDrawer';
+import { TaskDrawerHost } from './features/tasks/TaskDrawerHost';
 import { setSoundPref, sfx } from './lib/sfx';
 import { setTheme } from './lib/theme';
 import { setTimezone } from './lib/time';
 import { toast } from './lib/toast';
-import { ui } from './lib/ui';
-import { Login, Setup, Splash } from './screens/Auth';
-import { Inbox } from './screens/Inbox';
-import { Projects } from './screens/Projects';
-import { Tasks } from './screens/Tasks';
-import { Team } from './screens/Team';
+import { ui, useUi } from './lib/ui';
+import { Splash } from './screens/Splash';
 import { Today } from './screens/Today';
-import { CommandPalette } from './shell/CommandPalette';
 import { HelpModal, MoreSheet, QuickAddModal, useGlobalHotkeys } from './shell/Global';
 import { Shell } from './shell/Shell';
 
+// Code splitting: only the shell + Today ship in the entry chunk; every other screen (and rare
+// overlays like the command palette) loads on first use.
+const Login = lazy(() => import('./screens/Auth').then((m) => ({ default: m.Login })));
+const Setup = lazy(() => import('./screens/Auth').then((m) => ({ default: m.Setup })));
+const Inbox = lazy(() => import('./screens/Inbox').then((m) => ({ default: m.Inbox })));
+const Projects = lazy(() => import('./screens/Projects').then((m) => ({ default: m.Projects })));
+const Tasks = lazy(() => import('./screens/Tasks').then((m) => ({ default: m.Tasks })));
+const Team = lazy(() => import('./screens/Team').then((m) => ({ default: m.Team })));
+const CommandPalette = lazy(() => import('./shell/CommandPalette').then((m) => ({ default: m.CommandPalette })));
 const Armory = lazy(() => import('./screens/Armory').then((m) => ({ default: m.Armory })));
 const Calendar = lazy(() => import('./screens/Calendar').then((m) => ({ default: m.Calendar })));
 const Connect = lazy(() => import('./screens/Connect').then((m) => ({ default: m.Connect })));
@@ -30,6 +34,11 @@ const Leaderboard = lazy(() => import('./screens/Leaderboard').then((m) => ({ de
 const Pipeline = lazy(() => import('./screens/Pipeline').then((m) => ({ default: m.Pipeline })));
 const Reports = lazy(() => import('./screens/Reports').then((m) => ({ default: m.Reports })));
 const Settings = lazy(() => import('./screens/Settings').then((m) => ({ default: m.Settings })));
+
+// Fetch motion's features right away (in parallel with the auth check) so `m.*` components are
+// animating by the time the app paints; LazyMotion just awaits the same promise.
+const motionFeatures = import('./lib/motionFeatures').then((r) => r.default);
+const loadMotionFeatures = () => motionFeatures;
 
 const queryClient = makeQueryClient((e) => {
   sfx.error();
@@ -40,8 +49,10 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <MotionConfig reducedMotion="user">
-        <AuthGate />
-        <Toaster />
+        <LazyMotion features={loadMotionFeatures}>
+          <AuthGate />
+          <Toaster />
+        </LazyMotion>
       </MotionConfig>
     </QueryClientProvider>
   );
@@ -64,8 +75,8 @@ function AuthGate() {
       </div>
     );
   }
-  if (data.needsSetup) return <Setup />;
-  if (!data.authenticated || !data.member) return <Login />;
+  if (data.needsSetup) return <Suspense fallback={<Splash />}><Setup /></Suspense>;
+  if (!data.authenticated || !data.member) return <Suspense fallback={<Splash />}><Login /></Suspense>;
   return <AuthedApp key={data.member.id} />;
 }
 
@@ -90,7 +101,7 @@ function AuthedApp() {
     <>
       <Routes />
       <TaskDrawerHost />
-      <CommandPalette />
+      <LazyPalette />
       <QuickAddModal />
       <HelpModal />
       <MoreSheet />
@@ -99,12 +110,21 @@ function AuthedApp() {
   );
 }
 
+/** Mount the command palette on first open (then keep it, so it can animate out). */
+function LazyPalette() {
+  const { palette } = useUi();
+  const [used, setUsed] = useState(false);
+  useEffect(() => { if (palette) setUsed(true); }, [palette]);
+  if (!palette && !used) return null;
+  return <Suspense fallback={null}><CommandPalette /></Suspense>;
+}
+
 function Page({ children }: { children: React.ReactNode }) {
   const [loc] = useLocation();
   return (
-    <motion.div key={loc.split('/')[1] ?? ''} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
+    <m.div key={loc.split('/')[1] ?? ''} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -124,7 +144,7 @@ function Routes() {
           <Switch>
             <Route path="/" component={Today} />
             <Route path="/tasks/:id">{(p) => <TaskRoute id={p.id} />}</Route>
-            <Route path="/tasks" component={Tasks} />
+            <Route path="/tasks">{() => <Tasks />}</Route>
             <Route path="/projects">{() => <Projects />}</Route>
             <Route path="/projects/:id">{(p) => <Projects id={p.id} />}</Route>
             <Route path="/team">{() => <Team />}</Route>

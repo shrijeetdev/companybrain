@@ -72,6 +72,7 @@ export const http = {
   get: <T>(path: string, query?: Query, signal?: AbortSignal) => request<T>('GET', path, { query, signal }),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, { body }),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, { body }),
+  put: <T>(path: string, body?: unknown) => request<T>('PUT', path, { body }),
   del: <T = void>(path: string) => request<T>('DELETE', path),
 };
 

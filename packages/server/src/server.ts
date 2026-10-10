@@ -241,7 +241,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
           const name = basename(filePath);
           if (filePath.includes(`${sep}assets${sep}`)) {
             res.setHeader('cache-control', 'public, max-age=31536000, immutable');
-          } else if (name === 'index.html' || name === 'sw.js' || name === 'manifest.webmanifest') {
+          } else if (name === 'index.html' || name === 'sw.js' || name === 'manifest.webmanifest' || name === 'theme-init.js') {
             res.setHeader('cache-control', 'no-cache');
           } else {
             res.setHeader('cache-control', 'public, max-age=3600');
