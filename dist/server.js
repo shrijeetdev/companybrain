@@ -217,6 +217,14 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
           },
           async setAutonomy(orgId, settings) {
             db.prepare("INSERT INTO settings (org_id, doc) VALUES (?,?) ON CONFLICT(org_id) DO UPDATE SET doc=excluded.doc").run(orgId, JSON.stringify(settings));
+          },
+          // Shared docs live in the same table under "<orgId>#<key>", so no migration is needed.
+          async getDoc(orgId, key) {
+            const row = db.prepare("SELECT doc FROM settings WHERE org_id=?").get(`${orgId}#${key}`);
+            return row ? JSON.parse(row.doc) : null;
+          },
+          async setDoc(orgId, key, doc) {
+            db.prepare("INSERT INTO settings (org_id, doc) VALUES (?,?) ON CONFLICT(org_id) DO UPDATE SET doc=excluded.doc").run(`${orgId}#${key}`, JSON.stringify(doc));
           }
         };
         this.approvals = {
@@ -759,6 +767,15 @@ var init_supabase = __esm({
           },
           async setAutonomy(orgId, settings) {
             const { error } = await db.from("settings").upsert({ org_id: orgId, doc: JSON.stringify(settings) }, { onConflict: "org_id" });
+            if (error) throw error;
+          },
+          async getDoc(orgId, key) {
+            const { data, error } = await db.from("settings").select("*").eq("org_id", `${orgId}#${key}`).single();
+            if (error || !data) return null;
+            return JSON.parse(data.doc);
+          },
+          async setDoc(orgId, key, doc) {
+            const { error } = await db.from("settings").upsert({ org_id: `${orgId}#${key}`, doc: JSON.stringify(doc) }, { onConflict: "org_id" });
             if (error) throw error;
           }
         };
@@ -4953,6 +4970,7 @@ function renderUi() {
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="robots" content="noindex,nofollow,noarchive"/>
 <title>companybrain</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -5760,6 +5778,14 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     return 'age-old';
   }
   function stageCls(s){return 'lead-stage-'+(s||'new');}
+  // Indian money format: 85,000 -> 85k, 3,00,000 -> 3L, 1,20,00,000 -> 1.2Cr
+  function inr(v){
+    v=Number(v)||0;
+    if(v>=1e7) return '\u20B9'+(Math.round(v/1e6)/10)+'Cr';
+    if(v>=1e5) return '\u20B9'+(Math.round(v/1e4)/10)+'L';
+    if(v>=1e3) return '\u20B9'+Math.round(v/1e3)+'k';
+    return '\u20B9'+v;
+  }
   function autoBadge(a){return '<span class="auto-badge auto-'+(a||'off')+'">'+(a||'off').toUpperCase()+'</span>';}
   function todayStr(){return new Date().toISOString().slice(0,10);}
   function dateLabel(ts){
@@ -5770,6 +5796,14 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   function userFor(id){
     // Map the current logged-in user to "You" even if their ID differs from legacy seed IDs.
     if(me&&(id===me.userId||(me.email&&id===me.email))) return {name:'You',initials:(me.initials||'YO'),role:me.role,color:'linear-gradient(140deg,var(--accent),var(--accent2))'};
+    var tu=null;
+    for(var ti=0;ti<TEAM_USERS.length;ti++){if(TEAM_USERS[ti].userId===id){tu=TEAM_USERS[ti];break;}}
+    if(tu){
+      var tn=tu.name||'Teammate';
+      var tini=tu.initials||tn.trim().split(/ +/).slice(0,2).map(function(w){return (w[0]||'').toUpperCase();}).join('');
+      var thue=0;for(var ci=0;ci<tn.length;ci++){thue=(thue*31+tn.charCodeAt(ci))%360;}
+      return {name:tn,initials:tini,role:tu.role,color:'linear-gradient(140deg,hsl('+thue+',55%,48%),hsl('+((thue+30)%360)+',60%,60%))'};
+    }
     if(USERS[id]) return USERS[id];
     // ponytail: friendly fallback \u2014 strip prefixes like "user_" and title-case the rest.
     var clean=(id||'').replace(/^user_/,'').replace(/_/g,' ').trim();
@@ -5909,8 +5943,9 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     render();
     loadNotifications();
     setupSSE();
-    // Fetch real team users for assignment pickers (best-effort \u2014 fails silently for non-CEO)
-    api('/api/admin/users').then(function(users){TEAM_USERS=users||[];}).catch(function(){TEAM_USERS=[];});
+    // Real team roster for every signed-in member (names on cards, assignment pickers).
+    api('/api/team').then(function(users){TEAM_USERS=users||[];render();}).catch(function(){TEAM_USERS=[];});
+    loadSharedDocs();
   }
   function logoutSession(){
     post('/api/auth/logout').catch(function(){}).then(function(){
@@ -6291,22 +6326,29 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   }
 
   // \u2500\u2500 tasks \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  // Mine = tasks assigned to me (default for employees); Everyone = the whole team board.
+  var taskScope=null;
   function loadTasks(){
     api('/api/tasks').then(function(tasks){
       tasks=tasks||[];
+      if(taskScope===null) taskScope=(me&&(me.role==='ceo'||me.role==='manager'))?'all':'mine';
+      var allCount=tasks.filter(function(t){return !t.completed;}).length;
+      var mineCount=me?tasks.filter(function(t){return !t.completed&&(t.assignees||[]).indexOf(me.userId)>=0;}).length:allCount;
+      if(taskScope==='mine'&&me) tasks=tasks.filter(function(t){return (t.assignees||[]).indexOf(me.userId)>=0||t.createdBy===me.userId;});
       // Tasks store day as enum: 'today' | 'tomorrow' | 'upcoming'. Bucket by enum, not by calendar date.
       var overdueAll=tasks.filter(function(t){return t.day!=='today'&&t.day!=='tomorrow'&&t.day!=='upcoming'&&!t.completed;});
       var todayTasks=tasks.filter(function(t){return t.day==='today'&&!t.completed;});
       var tmrTasks=tasks.filter(function(t){return t.day==='tomorrow'&&!t.completed;});
       var upcomingTasks=tasks.filter(function(t){return t.day==='upcoming'&&!t.completed;});
       var completedTasks=tasks.filter(function(t){return t.completed;});
-      view.innerHTML='<div class="sec-head"><div><div class="sec-title">Tasks</div><div class="sec-sub">Your board \u2014 what needs doing and when.</div></div><div class="head-actions"><button class="btn-primary" id="new-task-btn">+ New task</button></div></div>'
+      view.innerHTML='<div class="sec-head"><div><div class="sec-title">Tasks</div><div class="sec-sub">'+(taskScope==='mine'?'Your board \u2014 what needs doing and when.':'The whole team board \u2014 who is on what.')+'</div></div><div class="head-actions"><div class="seg-bar" id="task-scope" style="margin-bottom:0;"><button class="seg-btn'+(taskScope==='mine'?' on':'')+'" data-scope="mine">Mine \xB7 '+mineCount+'</button><button class="seg-btn'+(taskScope==='all'?' on':'')+'" data-scope="all">Everyone \xB7 '+allCount+'</button></div><button class="btn-primary" id="new-task-btn">+ New task</button></div></div>'
         +'<div class="kanban-wrap">'
         +(overdueAll.length?'<div class="overdue-strip"><span class="overdue-strip-count">'+overdueAll.length+'</span><span class="overdue-strip-label">in an unknown day \u2014 move them or complete them</span></div>':'')
         +'<div class="kanban-board">'+kanbanCol('TODAY','#ef4444',todayTasks,'today')+kanbanCol('TOMORROW','#f59e0b',tmrTasks,'tomorrow')+kanbanCol('UPCOMING','#3e7bfa',upcomingTasks,'upcoming')+'</div>'
         +(completedTasks.length?'<div style="margin-top:20px;"><div style="font-size:11px;font-weight:700;color:var(--green);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;margin-bottom:8px;">\u2705 COMPLETED ('+completedTasks.length+')</div>'+completedTasks.slice(0,10).map(function(t){return '<div class="item-card gc" style="opacity:.6;padding:10px 14px;margin-bottom:6px;"><span style="text-decoration:line-through;color:var(--muted);">'+esc(t.title)+'</span></div>';}).join('')+'</div>':'')
         +'</div>';
       var nt=document.getElementById('new-task-btn'); if(nt) nt.onclick=function(){openNewTaskModal();};
+      view.querySelectorAll('[data-scope]').forEach(function(b){b.onclick=function(){taskScope=b.dataset.scope;loadTasks();};});
       ['today','tomorrow','upcoming'].forEach(function(d){var btn=document.getElementById('kadd-'+d);if(btn)btn.onclick=function(){openNewTaskModal(d);};});
       view.querySelectorAll('[data-done]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.done+'/complete').then(function(){toast('Task completed');loadTasks();});};});
       view.querySelectorAll('[data-move]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.move+'/move',{day:b.dataset.day}).then(function(){toast('Task moved');loadTasks();});};});
@@ -6316,7 +6358,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   function kanbanCol(label,dotColor,items,colDay){
     var cards=items.length?items.map(function(t){
       var pr=t.priority==='high'?'<span class="priority-pill priority-high">HIGH</span>':t.priority==='med'?'<span class="priority-pill priority-med">MED</span>':t.priority==='low'?'<span class="priority-pill priority-low">LOW</span>':'';
-      return '<div class="kanban-task-card gc" draggable="true" data-task-id="'+t.id+'"><div class="kanban-task-row"><button class="kanban-check" data-done="'+t.id+'"></button><span class="kanban-task-emoji">'+esc(t.emoji||'\u{1F4DD}')+'</span><div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title)+'</div><div class="kanban-task-sub">'+esc(t.list||'Inbox')+'</div></div></div><div class="kanban-task-foot">'+pr+(colDay!=='today'?'<button class="btn-ghost" data-move="'+t.id+'" data-day="today" style="font-size:10px;padding:3px 8px;min-height:24px;">\u2192 Today</button>':'')+'</div></div>';
+      return '<div class="kanban-task-card gc" draggable="true" data-task-id="'+t.id+'"><div class="kanban-task-row"><button class="kanban-check" data-done="'+t.id+'"></button><span class="kanban-task-emoji">'+esc(t.emoji||'\u{1F4DD}')+'</span><div style="flex:1;min-width:0;"><div class="kanban-task-title">'+esc(t.title)+'</div><div class="kanban-task-sub">'+esc(t.list||'Inbox')+'</div></div></div><div class="kanban-task-foot">'+pr+((t.assignees&&t.assignees.length)?'<span style="margin-left:auto;display:inline-flex;">'+avatarStackHtml(t.assignees,{size:20})+'</span>':'')+(colDay!=='today'?'<button class="btn-ghost" data-move="'+t.id+'" data-day="today" style="font-size:10px;padding:3px 8px;min-height:24px;">\u2192 Today</button>':'')+'</div></div>';
     }).join(''):'<div class="empty-dashed" style="font-size:11px;padding:16px 12px;">No tasks for '+label.toLowerCase()+'.</div>';
     return '<div class="kanban-col"><div class="kanban-col-head"><span class="kanban-col-dot" style="background:'+dotColor+'"></span><span class="kanban-col-label">'+label+'</span><span class="kanban-col-count">'+items.length+'</span></div><div class="kanban-col-body" data-col-day="'+colDay+'">'+cards+'<button class="kanban-add-btn" id="kadd-'+colDay+'">+ Add</button></div></div>';
   }
@@ -6360,7 +6402,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     api('/api/leads').then(function(leads){
       leads=leads||[];
       view.innerHTML='<div class="sec-head"><div><div class="sec-title">Leads</div><div class="sec-sub">Pipeline \u2014 move each contact toward a close.</div></div><div class="head-actions"><button class="btn-primary" id="new-lead-btn">+ New lead</button></div></div><div class="pipeline-board">'
-        +LEAD_STAGES.map(function(stage){var stageLeads=leads.filter(function(l){return(l.stage||'new')===stage.id;});var stageValue=stageLeads.reduce(function(s,l){return s+((typeof l.value==='number')?l.value:0);},0);return '<div class="pipeline-col"><div class="pipeline-col-head"><span class="pipeline-stage-dot" style="background:'+stage.dot+'"></span><span class="pipeline-stage-label">'+stage.label+'</span><span class="pipeline-col-count">'+stageLeads.length+(stageValue>0?' \xB7 $'+(stageValue>=1000?Math.round(stageValue/1000)+'k':stageValue):'')+'</span></div><div class="pipeline-col-body" data-stage="'+stage.id+'">'+(stageLeads.length?stageLeads.map(function(l){var initials=(l.name||'?').trim().split(/s+/).slice(0,2).map(function(w){return w[0]?w[0].toUpperCase():'';}).join('');var hue=((l.name||'A').charCodeAt(0)*37)%360;var canAdv=stage.id!=='won'&&stage.id!=='lost';var valBadge=(typeof l.value==='number'&&l.value>0)?'<span style="font-size:10px;font-weight:700;color:var(--green);font-family:&quot;JetBrains Mono&quot;,monospace;">$'+(l.value>=1000?Math.round(l.value/1000)+'k':l.value)+'</span>':'';return '<div class="pipeline-lead-card gc" draggable="true" data-lead-id="'+l.id+'"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><div class="pipeline-lead-avatar" style="background:hsl('+hue+',35%,52%)">'+initials+'</div><div style="flex:1;min-width:0;"><div class="pipeline-lead-name">'+esc(l.name)+'</div>'+(l.company?'<div class="pipeline-lead-sub">'+esc(l.company)+'</div>':'')+'</div>'+valBadge+'</div><div class="pipeline-lead-foot">'+(canAdv?'<button class="plead-adv-btn" data-advance="'+l.id+'">Advance \u2192</button>':'<span class="stage-pill lead-stage-'+stage.id+'">'+stage.label+'</span>')+(l.phone?'<a class="plead-adv-btn" href="https://wa.me/'+esc(l.phone.replace(/[^0-9]/g,''))+'" target="_blank" onclick="event.stopPropagation()">WA</a>':'')+'</div></div>';}).join(''):'<div style="font-size:11px;color:var(--faint);padding:10px 2px;">No leads here.</div>')+'</div></div>';}).join('')+'</div>';
+        +LEAD_STAGES.map(function(stage){var stageLeads=leads.filter(function(l){return(l.stage||'new')===stage.id;});var stageValue=stageLeads.reduce(function(s,l){return s+((typeof l.value==='number')?l.value:0);},0);return '<div class="pipeline-col"><div class="pipeline-col-head"><span class="pipeline-stage-dot" style="background:'+stage.dot+'"></span><span class="pipeline-stage-label">'+stage.label+'</span><span class="pipeline-col-count">'+stageLeads.length+(stageValue>0?' \xB7 '+inr(stageValue):'')+'</span></div><div class="pipeline-col-body" data-stage="'+stage.id+'">'+(stageLeads.length?stageLeads.map(function(l){var initials=(l.name||'?').trim().split(/s+/).slice(0,2).map(function(w){return w[0]?w[0].toUpperCase():'';}).join('');var hue=((l.name||'A').charCodeAt(0)*37)%360;var canAdv=stage.id!=='won'&&stage.id!=='lost';var valBadge=(typeof l.value==='number'&&l.value>0)?'<span style="font-size:10px;font-weight:700;color:var(--green);font-family:&quot;JetBrains Mono&quot;,monospace;">'+inr(l.value)+'</span>':'';return '<div class="pipeline-lead-card gc" draggable="true" data-lead-id="'+l.id+'"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><div class="pipeline-lead-avatar" style="background:hsl('+hue+',35%,52%)">'+initials+'</div><div style="flex:1;min-width:0;"><div class="pipeline-lead-name">'+esc(l.name)+'</div>'+(l.company?'<div class="pipeline-lead-sub">'+esc(l.company)+'</div>':'')+'</div>'+valBadge+'</div><div class="pipeline-lead-foot">'+(canAdv?'<button class="plead-adv-btn" data-advance="'+l.id+'">Advance \u2192</button>':'<span class="stage-pill lead-stage-'+stage.id+'">'+stage.label+'</span>')+(l.phone?'<a class="plead-adv-btn" href="https://wa.me/'+esc(l.phone.replace(/[^0-9]/g,''))+'" target="_blank" onclick="event.stopPropagation()">WA</a>':'')+'</div></div>';}).join(''):'<div style="font-size:11px;color:var(--faint);padding:10px 2px;">No leads here.</div>')+'</div></div>';}).join('')+'</div>';
       document.getElementById('new-lead-btn').onclick=function(){openNewLeadModal();};
       view.querySelectorAll('[data-advance]').forEach(function(b){b.onclick=function(e){e.stopPropagation();post('/api/leads/'+b.dataset.advance+'/advance').then(function(){toast('Advanced');loadLeads();});};});
       wireLeadDragAndDrop();
@@ -6418,11 +6460,32 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   var AGENT_EMOJIS=['\u{1F916}','\u{1F52D}','\u{1F5FA}\uFE0F','\u{1F4D2}','\u{1F9ED}','\u{1F6F0}\uFE0F','\u{1F9E0}','\u26A1','\u{1F514}','\u{1F9E9}','\u{1F575}\uFE0F','\u{1F4E1}'];
   var agentEmojiPick='\u{1F916}';
   var editingAgentId=null;
+  // Team-shared docs: projects and custom agents live on the server so all 4 teammates see the same ones.
+  var SHARED={projects:null,agents:null};
+  function localDoc(k){try{return JSON.parse(localStorage.getItem(k)||'[]');}catch(e){return [];}}
+  function loadSharedDocs(rerender){
+    [['projects','cb-projects'],['agents','cb-custom-agents']].forEach(function(pair){
+      api('/api/shared/'+pair[0]).then(function(res){
+        var items=res&&Array.isArray(res.items)?res.items:null;
+        if(items===null){
+          // First run on the server: carry over anything this browser saved before.
+          items=localDoc(pair[1]);
+          if(items.length) post('/api/shared/'+pair[0],{items:items},'PUT').catch(function(){});
+        }
+        SHARED[pair[0]]=items;
+        if(rerender&&((pair[0]==='projects'&&tab==='projects')||(pair[0]==='agents'&&tab==='agents'))) render();
+      }).catch(function(){ if(SHARED[pair[0]]===null) SHARED[pair[0]]=localDoc(pair[1]); });
+    });
+  }
+  function saveShared(key,list){
+    SHARED[key]=list;
+    post('/api/shared/'+key,{items:list},'PUT').catch(function(e){toast(e&&e.message?e.message:'Could not save for the team');});
+  }
   function customAgents(){
-    try{return JSON.parse(localStorage.getItem('cb-custom-agents')||'[]');}catch(e){return [];}
+    return SHARED.agents||localDoc('cb-custom-agents');
   }
   function saveCustomAgents(list){
-    localStorage.setItem('cb-custom-agents',JSON.stringify(list));
+    saveShared('agents',list);
   }
   function loadAgents(){
     api('/api/agents').then(function(agents){
@@ -6690,6 +6753,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       try{
         var evt=JSON.parse(ev.data);
         if(!evt.type) return;
+        if(evt.type==='shared.updated'){loadSharedDocs(true);return;}
         var reloadMap={'loop.created':'loops','loop.closed':'loops','loop.snoozed':'loops','task.created':'tasks','task.completed':'tasks','task.moved':'tasks','lead.created':'leads','lead.advanced':'leads','agent.action':'agents'};
         if(reloadMap[evt.type]===tab) render();
         loadNotifications();
@@ -6705,10 +6769,10 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   var editingProjectId=null;
   var viewingProjectId=null;
   function getProjects(){
-    try{return JSON.parse(localStorage.getItem('cb-projects')||'[]');}catch(e){return [];}
+    return SHARED.projects||localDoc('cb-projects');
   }
   function saveProjects(list){
-    localStorage.setItem('cb-projects',JSON.stringify(list));
+    saveShared('projects',list);
   }
   function projectCardBg(p){
     if(p.img) return 'url('+p.img+') center/cover no-repeat';
@@ -7346,7 +7410,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--accent);">'+(loops.closedInWindow||0)+'</div><div class="kpi-lbl">loops closed</div></div>'
         +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--green);">'+(tasks.completedInWindow||0)+'</div><div class="kpi-lbl">tasks done</div></div>'
         +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--teal);">'+(leads.won||0)+'</div><div class="kpi-lbl">leads won</div></div>'
-        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--green);">$'+(leads.pipelineValue>=1000?Math.round(leads.pipelineValue/1000)+'k':(leads.pipelineValue||0))+'</div><div class="kpi-lbl">in pipeline</div></div>'
+        +'<div class="kpi-card gc"><div class="kpi-val" style="color:var(--green);">'+inr(leads.pipelineValue||0)+'</div><div class="kpi-lbl">in pipeline</div></div>'
         +'</div>'
         // velocity sparkline + rates
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">'
@@ -7679,6 +7743,7 @@ function buildServer(deps) {
   });
   app2.addHook("onSend", async (_req, reply) => {
     reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
     reply.header("X-Frame-Options", "DENY");
     reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
     reply.header("Permissions-Policy", "geolocation=(), microphone=(self), camera=()");
@@ -7807,7 +7872,11 @@ function buildServer(deps) {
     timestamp: (/* @__PURE__ */ new Date()).toISOString(),
     uptime: process.uptime()
   }));
-  app2.get("/metrics", async (_req, reply) => {
+  app2.get("/robots.txt", async (_req, reply) => reply.type("text/plain").send("User-agent: *\nDisallow: /\n"));
+  app2.get("/metrics", async (req, reply) => {
+    if (authRequiresSession && !await auth.authenticate(readAuthToken(req))) {
+      return reply.code(401).send({ error: "unauthorized" });
+    }
     const { renderMetrics: renderMetrics2 } = await Promise.resolve().then(() => (init_middleware(), middleware_exports));
     return reply.type("text/plain").send(renderMetrics2());
   });
@@ -7963,6 +8032,40 @@ function buildServer(deps) {
   app2.get("/api/me", async (req) => {
     const p = await principalOf(req);
     return presentUser(await userFromPrincipal(p));
+  });
+  app2.get("/api/team", async (req) => {
+    const p = await principalOf(req);
+    const users = await listUsers();
+    return users.filter((u) => u.orgId === p.orgId && u.active !== false && u.role !== "agent").map((u) => {
+      const shown2 = presentUser(u);
+      return { userId: shown2.userId, name: shown2.name, role: shown2.role, initials: shown2.initials };
+    });
+  });
+  const SHARED_KEYS = /* @__PURE__ */ new Set(["projects", "agents"]);
+  app2.get("/api/shared/:key", async (req, reply) => {
+    const p = await principalOf(req);
+    const key = req.params.key;
+    if (!SHARED_KEYS.has(key)) return reply.code(404).send({ error: "not found" });
+    const repo = core.ctx.db.settings;
+    if (typeof repo.getDoc !== "function") return { items: null };
+    const doc = await repo.getDoc(p.orgId, key);
+    return { items: Array.isArray(doc) ? doc : null };
+  });
+  app2.put("/api/shared/:key", async (req, reply) => {
+    const p = await principalOf(req);
+    const key = req.params.key;
+    if (!SHARED_KEYS.has(key)) return reply.code(404).send({ error: "not found" });
+    if (key === "agents" && !["ceo", "manager"].includes(String(p.role))) {
+      return reply.code(403).send({ error: "Insufficient permissions" });
+    }
+    if (p.role === "client" || p.role === "agent") return reply.code(403).send({ error: "Insufficient permissions" });
+    const body = req.body ?? {};
+    if (!Array.isArray(body.items) || body.items.length > 500) throw badRequest("items must be an array (max 500)");
+    const repo = core.ctx.db.settings;
+    if (typeof repo.setDoc !== "function") return reply.code(501).send({ error: "not supported" });
+    await repo.setDoc(p.orgId, key, body.items);
+    broadcast({ type: "shared.updated", key });
+    return { ok: true };
   });
   app2.get("/api/loops", async (req) => {
     const p = await principalOf(req);
@@ -8420,7 +8523,8 @@ function buildServer(deps) {
     return { ...settings, killSwitch: await getKillSwitch(p.orgId) };
   });
   app2.put("/api/autonomy", {
-    preHandler: validateBody(validation_exports.AutonomySchema)
+    // Org-wide AI permissions: managers and the CEO only, never employees or clients.
+    preHandler: [requireMinRole("manager"), validateBody(validation_exports.AutonomySchema)]
   }, async (req) => {
     const p = await principalOf(req);
     const b = req.validatedBody;
@@ -8974,7 +9078,9 @@ var wa = cloud_api_exports.whatsappConfigFromEnv();
 var messenger = baileys ? baileys.messenger : createMessenger({ whatsapp: wa ?? void 0 });
 var drafter = createLlm() ?? void 0;
 var boot = await bootstrap({ messenger, drafter });
-await seedIfEmpty(boot.core);
+if ((boot.auth.mode ?? "local") === "local" && process.env.COMPANYBRAIN_DEMO_SEED !== "off") {
+  await seedIfEmpty(boot.core);
+}
 await boot.startWorkers();
 await boot.queue.schedule("sendBriefing", { orgId: "org_local" }, 6 * 60 * 60 * 1e3);
 if (baileys) await baileys.start(boot.core);
@@ -8987,7 +9093,7 @@ console.log(`
 
   \u25B8 ${shown}
   \u25B8 data:  ~/.companybrain/companybrain.sqlite
-  \u25B8 auth: ${authMode}${authMode === "KEY" ? " (session login enabled)" : " (single-user local mode)"}
+  \u25B8 auth: ${authMode}${authMode === "LOCAL" ? " (single-user local mode)" : " (per-user sign-in)"}
   \u25B8 single app: SQLite + in-process worker + API + web, no external services
 
   Ctrl-C to stop.

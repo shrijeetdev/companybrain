@@ -69,7 +69,7 @@ Environment variables:
 - `COMPANYBRAIN_NO_OPEN=true`
 - `COMPANYBRAIN_AUTH_MODE=password`
 - `COMPANYBRAIN_ADMIN_EMAIL=info@vexocore.in`
-- `COMPANYBRAIN_ADMIN_PASSWORD=1234@1234work`
+- `COMPANYBRAIN_ADMIN_PASSWORD=<set-a-long-unique-password-in-hosting-env-only>`
 - `COMPANYBRAIN_ADMIN_NAME=Vexocore Admin`
 - `COMPANYBRAIN_SECURE_COOKIE=true`
 
@@ -99,3 +99,13 @@ Core implemented items from the Liquid Glass docs are in place:
 - Accountability metadata on cards
 
 Remaining deep-product items (calendar/gantt/table, advanced task comments/subtasks drag-and-drop, fuller role-specific analytics) are enhancement-phase work, not launch blockers for current scope.
+
+## Team workspace notes (Vexo Club, Nov 2026)
+
+- Private tool: every response sends `X-Robots-Tag: noindex`, the page has a robots meta tag, and `/robots.txt` disallows all crawlers.
+- Demo data (sample loops, tasks and a lead) is seeded only in single-user `local` mode. Password, key and Supabase installs start clean.
+- `GET /api/team` gives every signed-in member the active roster (names and roles only), so cards show real names instead of IDs.
+- Projects and custom agents are stored on the server (`/api/shared/projects`, `/api/shared/agents`) so the whole team sees the same ones. Anything a browser saved earlier is carried over on first load.
+- Only managers and the CEO can change AI autonomy (`PUT /api/autonomy`). `/metrics` needs a signed-in session.
+- Tasks board has a Mine / Everyone switch. Employees open on Mine, managers and the CEO on Everyone.
+- Money in the pipeline shows in rupees (k, L, Cr).

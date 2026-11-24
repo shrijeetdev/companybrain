@@ -172,6 +172,15 @@ export class SqliteDatabase implements DbPort {
         db.prepare('INSERT INTO settings (org_id, doc) VALUES (?,?) ON CONFLICT(org_id) DO UPDATE SET doc=excluded.doc')
           .run(orgId, JSON.stringify(settings));
       },
+      // Shared docs live in the same table under "<orgId>#<key>", so no migration is needed.
+      async getDoc(orgId, key) {
+        const row = db.prepare('SELECT doc FROM settings WHERE org_id=?').get(`${orgId}#${key}`) as { doc: string } | undefined;
+        return row ? JSON.parse(row.doc) : null;
+      },
+      async setDoc(orgId, key, doc) {
+        db.prepare('INSERT INTO settings (org_id, doc) VALUES (?,?) ON CONFLICT(org_id) DO UPDATE SET doc=excluded.doc')
+          .run(`${orgId}#${key}`, JSON.stringify(doc));
+      },
     };
 
     this.approvals = {

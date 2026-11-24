@@ -59,6 +59,8 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   // --- Security headers (B5: defense-in-depth — CSP, HSTS, framing, MIME) ---
   app.addHook('onSend', async (_req, reply) => {
     reply.header('X-Content-Type-Options', 'nosniff');
+    // Private team workspace: keep every URL out of search engines and AI crawlers.
+    reply.header('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
     reply.header('X-Frame-Options', 'DENY');
     reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
     reply.header('Permissions-Policy', 'geolocation=(), microphone=(self), camera=()');
@@ -226,7 +228,13 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   }));
 
   // --- Prometheus metrics endpoint ---
-  app.get('/metrics', async (_req, reply) => {
+  app.get('/robots.txt', async (_req, reply) => reply.type('text/plain').send('User-agent: *\nDisallow: /\n'));
+
+  app.get('/metrics', async (req, reply) => {
+    // Metrics reveal traffic and route names, so they need a signed-in session in session modes.
+    if (authRequiresSession && !(await auth.authenticate(readAuthToken(req)))) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
     const { renderMetrics } = await import('./middleware');
     return reply.type('text/plain').send(renderMetrics());
   });
@@ -406,6 +414,47 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   app.get('/api/me', async (req) => {
     const p = await principalOf(req);
     return presentUser(await userFromPrincipal(p));
+  });
+
+  // --- Team roster for every signed-in member (names only, no emails) ---
+  // Lets employees see who owns which task, loop and lead without CEO-only admin access.
+  app.get('/api/team', async (req) => {
+    const p = await principalOf(req);
+    const users = await listUsers();
+    return users
+      .filter((u) => u.orgId === p.orgId && u.active !== false && u.role !== 'agent')
+      .map((u) => {
+        const shown = presentUser(u) as { userId: string; name: string; role: string; initials?: string };
+        return { userId: shown.userId, name: shown.name, role: shown.role, initials: shown.initials };
+      });
+  });
+
+  // --- Shared team docs (projects, custom agents) — previously browser-only ---
+  const SHARED_KEYS = new Set(['projects', 'agents']);
+  app.get('/api/shared/:key', async (req, reply) => {
+    const p = await principalOf(req);
+    const key = (req.params as { key: string }).key;
+    if (!SHARED_KEYS.has(key)) return reply.code(404).send({ error: 'not found' });
+    const repo = core.ctx.db.settings;
+    if (typeof repo.getDoc !== 'function') return { items: null };
+    const doc = await repo.getDoc(p.orgId, key);
+    return { items: Array.isArray(doc) ? doc : null };
+  });
+  app.put('/api/shared/:key', async (req, reply) => {
+    const p = await principalOf(req);
+    const key = (req.params as { key: string }).key;
+    if (!SHARED_KEYS.has(key)) return reply.code(404).send({ error: 'not found' });
+    if (key === 'agents' && !['ceo', 'manager'].includes(String(p.role))) {
+      return reply.code(403).send({ error: 'Insufficient permissions' });
+    }
+    if (p.role === 'client' || p.role === 'agent') return reply.code(403).send({ error: 'Insufficient permissions' });
+    const body = (req.body ?? {}) as { items?: unknown };
+    if (!Array.isArray(body.items) || body.items.length > 500) throw badRequest('items must be an array (max 500)');
+    const repo = core.ctx.db.settings;
+    if (typeof repo.setDoc !== 'function') return reply.code(501).send({ error: 'not supported' });
+    await repo.setDoc(p.orgId, key, body.items);
+    broadcast({ type: 'shared.updated', key });
+    return { ok: true };
   });
 
   // --- Open Loops ---
@@ -937,7 +986,8 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   app.put('/api/autonomy', {
-    preHandler: validateBody(schemas.AutonomySchema),
+    // Org-wide AI permissions: managers and the CEO only, never employees or clients.
+    preHandler: [requireMinRole('manager'), validateBody(schemas.AutonomySchema)],
   }, async (req) => {
     const p = await principalOf(req);
     const b = (req as any).validatedBody;
