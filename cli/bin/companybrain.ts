@@ -26,6 +26,10 @@ if (mcpArgs[0] === 'mcp' || process.argv.includes('mcp')) {
   // The process stays alive because stdin keeps the event loop busy, and exits on its
   // own when stdin closes. A process.exit() here would kill it before any line is read.
   await import('./mcp.js');
+  // Stop here: the web app below must not also boot (it would print to stdout and corrupt
+  // the MCP stream). Wait for the host to close stdin, then exit.
+  await new Promise<void>((resolve) => process.stdin.once('close', resolve));
+  process.exit(0);
 }
 
 // --- Process error handlers: catch what would otherwise be silent crashes (H6) ---
@@ -55,7 +59,11 @@ const messenger = baileys ? baileys.messenger : createMessenger({ whatsapp: wa ?
 const drafter = createLlm() ?? undefined;
 
 const boot = await bootstrap({ messenger, drafter });
-await seedIfEmpty(boot.core);
+// Demo data only for the single-user local mode. A real team workspace (password/key/supabase
+// auth) starts clean, so fake loops, tasks and leads never show up next to real work.
+if ((boot.auth.mode ?? 'local') === 'local' && process.env.COMPANYBRAIN_DEMO_SEED !== 'off') {
+  await seedIfEmpty(boot.core);
+}
 
 // In-process worker: timers fire chases/briefings inside this same process.
 await boot.startWorkers();
@@ -74,7 +82,7 @@ console.log(`
 
   ▸ ${shown}
   ▸ data:  ~/.companybrain/companybrain.sqlite
-  ▸ auth: ${authMode}${authMode === 'KEY' ? ' (session login enabled)' : ' (single-user local mode)'}
+  ▸ auth: ${authMode}${authMode === 'LOCAL' ? ' (single-user local mode)' : ' (per-user sign-in)'}
   ▸ single app: SQLite + in-process worker + API + web, no external services
 
   Ctrl-C to stop.

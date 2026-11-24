@@ -29,8 +29,9 @@ function isOverdue(t: Task, now = Date.now()): boolean {
   return t.dueAt < now;
 }
 
-/** A task is "complete" when it has subtasks and every one is done. */
+/** A task is "complete" when it was marked done, or it has subtasks and every one is done. */
 function isComplete(t: Task): boolean {
+  if (t.completed) return true;
   if (!t.subtasks || t.subtasks.length === 0) return false;
   return t.subtasks.every((s) => s.done);
 }

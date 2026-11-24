@@ -42,6 +42,13 @@ export function verifyWhatsAppSignature(
   }
 }
 
+/** A webhook rejection that the error handler turns into the given status, not a 500. */
+function rejected(statusCode: number, message: string): Error & { statusCode: number } {
+  const e = new Error(message) as Error & { statusCode: number };
+  e.statusCode = statusCode;
+  return e;
+}
+
 /**
  * Fastify preHandler hook for WhatsApp webhook signature verification.
  * B6: fail-closed when WHATSAPP_APP_SECRET is unset (never accept forged messages).
@@ -51,17 +58,17 @@ export function whatsappSignatureVerify() {
     const appSecret = process.env.WHATSAPP_APP_SECRET;
     if (!appSecret) {
       // Fail-closed: a missing secret must NOT become "accept everything".
-      throw new Error('WHATSAPP_APP_SECRET not configured — webhook rejected (fail-closed)');
+      throw rejected(503, 'WHATSAPP_APP_SECRET not configured — webhook rejected (fail-closed)');
     }
 
     const signature = req.headers['x-hub-signature-256'] as string | undefined;
     if (!signature) {
-      throw new Error('Missing WhatsApp webhook signature');
+      throw rejected(401, 'Missing WhatsApp webhook signature');
     }
 
     const rawBody = getRawBody(req);
     if (!verifyWhatsAppSignature(rawBody, signature, appSecret)) {
-      throw new Error('Invalid WhatsApp webhook signature');
+      throw rejected(401, 'Invalid WhatsApp webhook signature');
     }
   };
 }
@@ -128,25 +135,32 @@ export function genericWebhookVerify() {
     if (scheme) {
       const secret = process.env[scheme.envVar];
       if (!secret) {
-        throw new Error(`${scheme.envVar} not configured — ${channel} webhook rejected (fail-closed)`);
+        throw rejected(503, `${scheme.envVar} not configured — ${channel} webhook rejected (fail-closed)`);
       }
       const provided = req.headers[scheme.headerName] as string | undefined;
       if (!provided) {
-        throw new Error(`Missing ${scheme.headerName} signature for ${channel} webhook`);
+        throw rejected(401, `Missing ${scheme.headerName} signature for ${channel} webhook`);
+      }
+      if (channel === 'slack') {
+        // Slack signs a timestamp; refuse anything older than 5 minutes so captured requests can't be replayed.
+        const ts = Number(req.headers['x-slack-request-timestamp']);
+        if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) {
+          throw rejected(401, 'Stale or missing Slack request timestamp');
+        }
       }
       const rawBody = getRawBody(req);
       if (!verifyChannelSignature(scheme, provided, secret, rawBody, req)) {
-        throw new Error(`Invalid webhook signature for ${channel}`);
+        throw rejected(401, `Invalid webhook signature for ${channel}`);
       }
       return;
     }
 
     // No signing scheme for this channel (e.g. email/calendar inbound push).
     if (!UNAUTHENTICATED_CHANNELS.has(channel)) {
-      throw new Error(`Unknown channel '${channel}' — webhook rejected`);
+      throw rejected(404, `Unknown channel '${channel}' — webhook rejected`);
     }
     if (process.env.NODE_ENV === 'production') {
-      throw new Error(`Unauthenticated ${channel} webhook rejected in production`);
+      throw rejected(401, `Unauthenticated ${channel} webhook rejected in production`);
     }
     logger.warn({ channel }, 'Unauthenticated webhook accepted in non-production (inbound push)');
   };

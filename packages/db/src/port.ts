@@ -39,6 +39,9 @@ export interface EventRepo {
 export interface SettingsRepo {
   getAutonomy(orgId: string): Promise<AutonomySettings | null>;
   setAutonomy(orgId: string, settings: AutonomySettings): Promise<void>;
+  /** Small shared JSON docs per org (e.g. projects, custom agents) so the whole team sees them. */
+  getDoc?(orgId: string, key: string): Promise<unknown | null>;
+  setDoc?(orgId: string, key: string, doc: unknown): Promise<void>;
 }
 
 /** Queue of AI actions awaiting human approval (autonomy = 'ask'). */

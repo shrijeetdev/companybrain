@@ -123,7 +123,8 @@ export function getAttachmentPath(orgId: string, attachmentId: string): string {
 }
 
 /** List every attachment recorded for a task, straight from its index.json. */
-export async function listAttachments(taskId: string): Promise<AttachmentRecord[]> {
+export async function listAttachments(taskId: string, orgId?: string): Promise<AttachmentRecord[]> {
+  if (orgId) return readIndex(orgId, taskId);
   // listAttachments is keyed by taskId alone (matching the route shape), so we need
   // the orgId to read the index. We scan the org roots to find which org owns the
   // task dir; the index then gives us orgId on each record for free.

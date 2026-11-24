@@ -46,7 +46,7 @@ export interface Core {
   subtasks: ReturnType<typeof makeSubtasks>;
   ai: ReturnType<typeof makeAi>;
   apiKeys: ReturnType<typeof makeApiKeys>;
-  events: { list: Context['db']['events']['list']; undo: (eventId: string) => Promise<UndoResult> };
+  events: { list: Context['db']['events']['list']; undo: (eventId: string, actorId?: string) => Promise<UndoResult> };
   /** Optional server-side LLM injection point (wired in M5); when undefined, leads fall back to heuristics. */
   llm?: { extractLead?: (note: string) => Promise<Partial<import('@companybrain/types').Lead>> };
 }
@@ -76,7 +76,7 @@ export function createCoreFromPorts(ports: { db: Database; queue: Queue; auth: A
     apiKeys: makeApiKeys(ctx),
     events: {
       list: (orgId: string, limit?: number) => ctx.db.events.list(orgId, limit),
-      undo: (eventId: string) => undoEvent(ctx, eventId),
+      undo: (eventId: string, actorId?: string) => undoEvent(ctx, eventId, actorId),
     },
   };
 }

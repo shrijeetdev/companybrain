@@ -31,11 +31,19 @@ export class InProcessQueue implements Queue {
   async enqueue<T = Record<string, unknown>>(name: JobName, data: T, opts: EnqueueOptions = {}) {
     const fire = () => void this.run(name, data as Record<string, unknown>);
     if (opts.delayMs && opts.delayMs > 0) {
-      const t = setTimeout(() => {
-        this.timers.delete(t);
-        fire();
-      }, opts.delayMs);
-      this.timers.add(t);
+      // setTimeout fires at once for delays over ~24.8 days, so long waits are chained.
+      const MAX = 2_000_000_000;
+      const due = Date.now() + opts.delayMs;
+      const arm = () => {
+        const left = due - Date.now();
+        const t = setTimeout(() => {
+          this.timers.delete(t);
+          if (due - Date.now() > 0) arm();
+          else fire();
+        }, Math.min(Math.max(left, 0), MAX));
+        this.timers.add(t);
+      };
+      arm();
     } else {
       // next tick so enqueue never blocks the caller
       queueMicrotask(fire);

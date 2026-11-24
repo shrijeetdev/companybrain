@@ -199,6 +199,18 @@ export class SupabaseDatabase implements DbPort {
           .upsert({ org_id: orgId, doc: JSON.stringify(settings) }, { onConflict: 'org_id' });
         if (error) throw error;
       },
+
+      async getDoc(orgId, key) {
+        const { data, error } = await db.from('settings').select('*').eq('org_id', `${orgId}#${key}`).single();
+        if (error || !data) return null;
+        return JSON.parse(data.doc);
+      },
+
+      async setDoc(orgId, key, doc) {
+        const { error } = await db.from('settings')
+          .upsert({ org_id: `${orgId}#${key}`, doc: JSON.stringify(doc) }, { onConflict: 'org_id' });
+        if (error) throw error;
+      },
     };
 
     this.approvals = {

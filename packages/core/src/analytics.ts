@@ -117,11 +117,11 @@ export interface AnalyticsReport {
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
 /**
- * A task counts as "completed" only when ALL of its subtasks are done. The data model
- * has no top-level `done` flag, so this is our single source of truth for completion.
- * Tasks with zero subtasks cannot be proven complete, so they are treated as incomplete.
+ * A task is complete when it was marked done (`completed`), or when it has subtasks and
+ * every one of them is done.
  */
 function isTaskComplete(task: Task): boolean {
+  if (task.completed) return true;
   return !!task.subtasks && task.subtasks.length > 0 && task.subtasks.every((s) => s.done);
 }
 

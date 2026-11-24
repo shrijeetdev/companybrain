@@ -1,5 +1,6 @@
 import type { Lead, LeadStage, Channel } from '@companybrain/types';
 import { type Context, newId, now, record } from './context';
+import { nextLeadStage } from './bulk';
 
 const STAGE_ORDER: LeadStage[] = ['new', 'contacted', 'meeting', 'proposal', 'won', 'lost'];
 
@@ -48,8 +49,9 @@ export function makeLeads(ctx: Context) {
     async advance(id: string, actorId: string): Promise<Lead> {
       const cur = await ctx.db.leads.get(id);
       if (!cur) throw new Error(`lead ${id} not found`);
-      const idx = STAGE_ORDER.indexOf(cur.stage);
-      const next = STAGE_ORDER[Math.min(idx + 1, STAGE_ORDER.indexOf('won'))]!;
+      // A lost deal stays lost; advancing must never flip it to won.
+      const next = nextLeadStage(cur.stage);
+      if (!next) return cur;
       const lead = await ctx.db.leads.update(id, { stage: next });
       await record(ctx, { orgId: lead.orgId, type: 'lead.advanced', entityId: id, actorId, undo: { restoreStage: cur.stage } });
       return lead;
