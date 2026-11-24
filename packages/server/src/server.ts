@@ -8,11 +8,14 @@ import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import type { Core } from '@companybrain/core';
 import type { Auth, AuthUser, Principal, CreateUserInput, UpdateUserInput } from '@companybrain/auth';
 import { ingest, whatsapp, createLlm, input as inputApi } from '@companybrain/integrations';
 import { methods, analytics } from '@companybrain/core';
 import { LOCAL_ORG_ID } from '@companybrain/auth';
+// Inbound webhooks belong to the org this install serves (same rule the auth adapters use).
+const INSTALL_ORG_ID = process.env.COMPANYBRAIN_ORG_ID?.trim() || LOCAL_ORG_ID;
 import { renderUi } from './web-ui';
 import {
   validateBody,
@@ -37,17 +40,27 @@ export interface ServerDeps {
 
 export function buildServer(deps: ServerDeps): FastifyInstance {
   const { core, auth } = deps;
+  const hopsEnv = Number(process.env.COMPANYBRAIN_TRUST_PROXY_HOPS ?? 1);
+  const TRUST_PROXY_HOPS = Number.isInteger(hopsEnv) && hopsEnv >= 0 ? hopsEnv : 1;
   // B5: HSTS only over HTTPS. Force via COMPANYBRAIN_SECURE_COOKIE or detected per-request.
   const shouldSecureCookieForApp = ['1', 'true', 'yes'].includes((process.env.COMPANYBRAIN_SECURE_COOKIE ?? '').trim().toLowerCase()) || process.env.NODE_ENV === 'production';
   const app = Fastify({
     logger: {
       level: process.env.COMPANYBRAIN_LOG_LEVEL ?? 'info',
+      // Invite tokens travel in URLs; keep them out of the logs.
+      serializers: {
+        req(req: { method?: string; url?: string; ip?: string }) {
+          return { method: req.method, url: (req.url ?? '').replace(/([?&](?:invite|token)=)[^&]+/gi, '$1[redacted]'), ip: req.ip };
+        },
+      },
       ...(process.env.NODE_ENV !== 'production' && {
         transport: { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:HH:MM:ss' } },
       }),
     },
     bodyLimit: 10 * 1024 * 1024, // 10MB for image uploads
-    trustProxy: true,
+    // Trust only the proxy hops in front of us (Hostinger: 1). `true` would let any client pick
+    // its own IP with an X-Forwarded-For header and dodge the login rate limit.
+    trustProxy: ((_addr: string, hop: number) => hop < TRUST_PROXY_HOPS) as (addr: string, hop: number) => boolean,
   });
 
   // --- Observability: Sentry + per-request metrics (H7) ---
@@ -104,7 +117,8 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     try {
       const raw = body.toString('utf8');
       (req as any).rawBody = raw;
-      done(null, JSON.parse(raw));
+      // An empty body with a JSON content-type (e.g. a bodiless POST) is not an error.
+      done(null, raw.trim() === '' ? undefined : JSON.parse(raw));
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
       (e as any).statusCode = 400;
@@ -126,10 +140,13 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   }
 
   // SSE client registry
-  const sseClients = new Set<import('node:http').ServerResponse>();
+  // Each stream remembers its org, so an event that names an org only reaches that org.
+  const sseClients = new Map<import('node:http').ServerResponse, { orgId: string }>();
   function broadcast(event: Record<string, unknown>) {
     const line = 'data: ' + JSON.stringify(event) + '\n\n';
-    for (const res of sseClients) {
+    const eventOrg = typeof event.orgId === 'string' ? event.orgId : null;
+    for (const [res, client] of sseClients) {
+      if (eventOrg && client.orgId !== eventOrg) continue;
       try { res.write(line); }
       catch { sseClients.delete(res); }
     }
@@ -221,6 +238,11 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const entry = await core.ctx.db.timeEntries.get(entryId);
     if (!entry || entry.orgId !== p.orgId) throw notFound('time entry not found');
     // Only the entry's owner (or a manager+) may stop/modify it.
+    if (entry.userId !== p.userId && !['manager', 'ceo'].includes(p.role)) {
+      const e = new Error('Only the person who started this timer, or a manager, can stop it') as Error & { statusCode: number };
+      e.statusCode = 403;
+      throw e;
+    }
     return entry;
   };
 
@@ -247,6 +269,8 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const url = req.raw.url ?? '';
     if (!url.startsWith('/api/')) return;
     if (url.startsWith('/api/auth/')) return;
+    // Google's redirect back can't carry our SameSite=Strict cookie; the callback checks a one-time `state` instead.
+    if (url.startsWith('/api/connections/gmail/callback')) return;
     // SSE stream authenticates inside its own handler via cookie — EventSource can't send headers.
     if (url.startsWith('/api/stream')) return;
 
@@ -262,6 +286,11 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     }
 
     (req as FastifyRequest & { principal?: Principal }).principal = principal;
+
+    // Clients are read-only (see CAPS_BY_ROLE): they can look, never change anything.
+    if (principal.role === 'client' && req.method !== 'GET' && req.method !== 'HEAD') {
+      return reply.code(403).send({ error: 'Your account is read-only' });
+    }
   });
 
   // --- Auth/session ---
@@ -293,14 +322,14 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
 
     const body = (req as any).validatedBody ?? (req.body ?? {}) as { userId?: string; key?: string };
     const userId = body.userId?.trim();
-    const key = body.key?.trim();
+    const key = body.key;
     if (!userId || !key) {
       throw badRequest('userId and key are required');
     }
 
     const login = await authWithSessions.login(userId, key);
     if (!login) {
-      logger.warn({ userId }, 'Failed login attempt');
+      logger.warn({ ip: req.ip }, 'Failed login attempt');
       return reply.code(401).send({ error: 'Invalid email/username or password' });
     }
 
@@ -439,10 +468,19 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet',
     });
     reply.raw.write(': connected\n\n');
-    sseClients.add(reply.raw);
-    const ping = setInterval(() => {
+    sseClients.set(reply.raw, { orgId: principal.orgId });
+    const ping = setInterval(async () => {
+      // Re-check the session each ping: a logged-out, disabled or deleted user stops receiving events.
+      if (authRequiresSession && !(await auth.authenticate(token).catch(() => null))) {
+        clearInterval(ping);
+        sseClients.delete(reply.raw);
+        try { reply.raw.end(); } catch { /* already closed */ }
+        return;
+      }
       try { reply.raw.write(': ping\n\n'); }
       catch { clearInterval(ping); }
     }, 25000);
@@ -470,6 +508,27 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   // --- Shared team docs (projects, custom agents) — previously browser-only ---
+  // Every member's browser renders these, so the server keeps them to plain, bounded values:
+  // short strings, finite numbers, and CSS backgrounds/images that cannot break out of style="".
+  const CSS_BG = /^(#[0-9a-f]{3,8}|(?:linear|radial)-gradient\([#0-9a-z\s.,%()-]{1,300}\)|rgba?\([0-9\s.,%]{1,40}\)|[a-z]{3,20})$/i;
+  const IMG_URL = /^(data:image\/(?:png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]{1,3000000}|https:\/\/[A-Za-z0-9._~:/?#[\]@!$&*+,;=%-]{1,500})$/;
+  function sanitizeSharedItem(raw: unknown): Record<string, unknown> | null {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const src = raw as Record<string, unknown>;
+    const id = typeof src.id === 'string' ? src.id : typeof src.id === 'number' ? String(src.id) : '';
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) return null;
+    const out: Record<string, unknown> = { id };
+    for (const [k, v] of Object.entries(src)) {
+      if (k === 'id' || !/^[A-Za-z][A-Za-z0-9_]{0,40}$/.test(k)) continue;
+      if (k === 'img') { if (typeof v === 'string' && IMG_URL.test(v) && !/['"()\\\s]/.test(v.replace(/^data:[^,]*,/, ''))) out.img = v; continue; }
+      if (k === 'bg' || k === 'color') { if (typeof v === 'string' && CSS_BG.test(v.trim())) out[k] = v.trim(); continue; }
+      if (k === 'done' || k === 'total' || k === 'pending' || k === 'createdAt') { const n = Number(v); if (Number.isFinite(n)) out[k] = n; continue; }
+      if (typeof v === 'string') out[k] = v.slice(0, 2000);
+      else if (typeof v === 'number') { if (Number.isFinite(v)) out[k] = v; }
+      else if (typeof v === 'boolean' || v === null) out[k] = v;
+    }
+    return out;
+  }
   const SHARED_KEYS = new Set(['projects', 'agents']);
   app.get('/api/shared/:key', async (req, reply) => {
     const p = await principalOf(req);
@@ -490,10 +549,12 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     if (p.role === 'client' || p.role === 'agent') return reply.code(403).send({ error: 'Insufficient permissions' });
     const body = (req.body ?? {}) as { items?: unknown };
     if (!Array.isArray(body.items) || body.items.length > 500) throw badRequest('items must be an array (max 500)');
+    const items = body.items.map(sanitizeSharedItem);
+    if (items.some((it) => it === null)) throw badRequest('each item must be an object with an id');
     const repo = core.ctx.db.settings;
     if (typeof repo.setDoc !== 'function') return reply.code(501).send({ error: 'not supported' });
-    await repo.setDoc(p.orgId, key, body.items);
-    broadcast({ type: 'shared.updated', key });
+    await repo.setDoc(p.orgId, key, items);
+    broadcast({ type: 'shared.updated', key, orgId: p.orgId });
     return { ok: true };
   });
 
@@ -521,7 +582,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const p = await principalOf(req);
     await ownedLoop(req); // B1: org-scoped
     const result = await core.loops.close(params(req).id, p.userId);
-    broadcast({ type: 'loop.closed' });
+    broadcast({ type: 'loop.closed', orgId: p.orgId });
     return result;
   });
 
@@ -533,7 +594,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const b = (req as any).validatedBody;
     const untilAt = Date.now() + Math.max(1, b.hours ?? 24) * 60 * 60 * 1000;
     const result = await core.loops.snooze(params(req).id, p.userId, untilAt);
-    broadcast({ type: 'loop.snoozed' });
+    broadcast({ type: 'loop.snoozed', orgId: p.orgId });
     return result;
   });
 
@@ -555,7 +616,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const p = await principalOf(req);
     const b = (req as any).validatedBody;
     const result = await core.tasks.create({ orgId: p.orgId, actorId: p.userId, ...b });
-    broadcast({ type: 'task.created' });
+    broadcast({ type: 'task.created', orgId: p.orgId });
     return result;
   });
 
@@ -563,7 +624,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const p = await principalOf(req);
     await ownedTask(req); // B1
     const result = await core.tasks.complete(params(req).id, p.userId);
-    broadcast({ type: 'task.completed' });
+    broadcast({ type: 'task.completed', orgId: p.orgId });
     return result;
   });
 
@@ -574,7 +635,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     await ownedTask(req);
     const b = (req as any).validatedBody;
     const result = await core.tasks.move(params(req).id, b.day ?? 'today', p.userId);
-    broadcast({ type: 'task.moved' });
+    broadcast({ type: 'task.moved', orgId: p.orgId });
     return result;
   });
 
@@ -592,7 +653,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const p = await principalOf(req);
     await ownedTask(req); // B1: can't start time on another org's task
     const entry = await core.timeTracking.start({ orgId: p.orgId, taskId: params(req).id, userId: p.userId });
-    broadcast({ type: 'time.started' });
+    broadcast({ type: 'time.started', orgId: p.orgId });
     return entry;
   });
 
@@ -600,16 +661,17 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     await ownedTimeEntry(req); // B1: verifies org (and user implicitly — entry belongs to a task)
     const entryId = (req.params as { entryId: string }).entryId;
     const entry = await core.timeTracking.stop(entryId);
-    broadcast({ type: 'time.stopped' });
+    broadcast({ type: 'time.stopped', orgId: (await principalOf(req)).orgId });
     return entry;
   });
 
   app.get('/api/tasks/:id/time', async (req) => {
     await ownedTask(req); // B1: verify org ownership before returning time entries
+    const p = await principalOf(req);
     const taskId = params(req).id;
     const entries = await core.timeTracking.listByTask(taskId);
     const total = await core.timeTracking.getTotalTime(taskId);
-    const active = await core.timeTracking.getActive(taskId);
+    const active = await core.timeTracking.getActive(taskId, p.userId);
     return { entries, total, active };
   });
 
@@ -628,14 +690,15 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const p = await principalOf(req);
     const b = (req as any).validatedBody;
     const result = await core.leads.create({ orgId: p.orgId, actorId: p.userId, ...b });
-    broadcast({ type: 'lead.created' });
+    broadcast({ type: 'lead.created', orgId: p.orgId });
     return result;
   });
 
   app.post('/api/leads/:id/advance', async (req) => {
     await ownedLead(req); // B1
-    const result = await core.leads.advance(params(req).id, (await principalOf(req)).userId);
-    broadcast({ type: 'lead.advanced' });
+    const lp = await principalOf(req);
+    const result = await core.leads.advance(params(req).id, lp.userId);
+    broadcast({ type: 'lead.advanced', orgId: lp.orgId });
     return result;
   });
 
@@ -646,7 +709,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     await ownedLead(req);
     const b = (req as any).validatedBody;
     const result = await core.leads.setStage(params(req).id, b.stage, p.userId);
-    broadcast({ type: 'lead.advanced' });
+    broadcast({ type: 'lead.advanced', orgId: p.orgId });
     return result;
   });
 
@@ -669,7 +732,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
       { orgId: p.orgId, actorId: p.userId, phone: b.phone ?? '', note: b.note },
       llm?.extractLead,
     );
-    broadcast({ type: 'lead.created' });
+    broadcast({ type: 'lead.created', orgId: p.orgId });
     return result;
   });
 
@@ -710,60 +773,75 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   // --- Bulk Operations (B1: manager+ only — these mutate/delete across entities) ---
-  app.post('/api/bulk/loops/close', { preHandler: requireMinRole('manager') }, async (req) => {
+  // Every id is checked against the caller's org first; ids from other orgs are dropped silently.
+  type BulkKind = 'loop' | 'task' | 'lead';
+  const bulkRepo = (kind: BulkKind) => kind === 'loop' ? core.ctx.db.loops : kind === 'task' ? core.ctx.db.tasks : core.ctx.db.leads;
+  const bulkIds = async (req: FastifyRequest, kind: unknown): Promise<{ p: Principal; ids: string[]; kind: BulkKind }> => {
     const p = await principalOf(req);
-    const { ids } = req.body as { ids: string[] };
-    if (!ids?.length) throw badRequest('ids required');
+    const body = (req.body ?? {}) as { ids?: unknown };
+    if (kind !== 'loop' && kind !== 'task' && kind !== 'lead') throw badRequest('entityType must be loop, task or lead');
+    if (!Array.isArray(body.ids) || !body.ids.length || body.ids.length > 500 || body.ids.some((id) => typeof id !== 'string')) {
+      throw badRequest('ids must be a list of 1 to 500 ids');
+    }
+    const repo = bulkRepo(kind) as { get(id: string): Promise<{ orgId: string } | null> };
+    const ids: string[] = [];
+    for (const id of new Set(body.ids as string[])) {
+      const row = await repo.get(id);
+      if (row && row.orgId === p.orgId) ids.push(id);
+    }
+    if (!ids.length) throw notFound('none of those items were found');
+    return { p, ids, kind };
+  };
+
+  app.post('/api/bulk/loops/close', { preHandler: requireMinRole('manager') }, async (req) => {
+    const { p, ids } = await bulkIds(req, 'loop');
     return core.bulk.closeLoops(ids, p.userId);
   });
 
   app.post('/api/bulk/loops/snooze', { preHandler: requireMinRole('manager') }, async (req) => {
-    const p = await principalOf(req);
-    const { ids, hours } = req.body as { ids: string[]; hours?: number };
-    if (!ids?.length) throw badRequest('ids required');
-    return core.bulk.snoozeLoops(ids, hours ?? 24, p.userId);
+    const { p, ids } = await bulkIds(req, 'loop');
+    const hours = Number((req.body as { hours?: unknown }).hours ?? 24);
+    if (!Number.isFinite(hours) || hours <= 0 || hours > 24 * 365) throw badRequest('hours must be between 0 and 8760');
+    return core.bulk.snoozeLoops(ids, hours, p.userId);
   });
 
   app.post('/api/bulk/tasks/move', { preHandler: requireMinRole('manager') }, async (req) => {
-    const p = await principalOf(req);
-    const { ids, day } = req.body as { ids: string[]; day: string };
-    if (!ids?.length) throw badRequest('ids required');
-    return core.bulk.moveTasks(ids, day as any, p.userId);
+    const { p, ids } = await bulkIds(req, 'task');
+    const day = (req.body as { day?: unknown }).day;
+    if (day !== 'today' && day !== 'tomorrow' && day !== 'upcoming') throw badRequest('day must be today, tomorrow or upcoming');
+    return core.bulk.moveTasks(ids, day, p.userId);
   });
 
   app.post('/api/bulk/tasks/complete', { preHandler: requireMinRole('manager') }, async (req) => {
-    const p = await principalOf(req);
-    const { ids } = req.body as { ids: string[] };
-    if (!ids?.length) throw badRequest('ids required');
+    const { p, ids } = await bulkIds(req, 'task');
     return core.bulk.completeTasks(ids, p.userId);
   });
 
   app.post('/api/bulk/tasks/delete', { preHandler: requireMinRole('manager') }, async (req) => {
-    const p = await principalOf(req);
-    const { ids } = req.body as { ids: string[] };
-    if (!ids?.length) throw badRequest('ids required');
+    const { p, ids } = await bulkIds(req, 'task');
     return core.bulk.deleteTasks(ids, p.userId);
   });
 
   app.post('/api/bulk/leads/advance', { preHandler: requireMinRole('manager') }, async (req) => {
-    const p = await principalOf(req);
-    const { ids } = req.body as { ids: string[] };
-    if (!ids?.length) throw badRequest('ids required');
+    const { p, ids } = await bulkIds(req, 'lead');
     return core.bulk.advanceLeads(ids, p.userId);
   });
 
   app.post('/api/bulk/assign', { preHandler: requireMinRole('manager') }, async (req) => {
-    const p = await principalOf(req);
-    const { entityType, ids, userIds } = req.body as { entityType: string; ids: string[]; userIds: string[] };
-    if (!ids?.length || !entityType) throw badRequest('ids and entityType required');
-    return core.bulk.assignMany(entityType as any, ids, userIds ?? [p.userId], p.userId);
+    const body = (req.body ?? {}) as { entityType?: unknown; userIds?: unknown };
+    const { p, ids, kind } = await bulkIds(req, body.entityType);
+    let userIds = [p.userId];
+    if (body.userIds !== undefined) {
+      if (!Array.isArray(body.userIds) || body.userIds.some((u) => typeof u !== 'string')) throw badRequest('userIds must be a list of user ids');
+      const team = new Set((await listUsers()).filter((u) => u.orgId === p.orgId).map((u) => u.userId));
+      userIds = (body.userIds as string[]).filter((u) => team.has(u));
+    }
+    return core.bulk.assignMany(kind, ids, userIds, p.userId);
   });
 
   app.post('/api/bulk/delete', { preHandler: requireMinRole('manager') }, async (req) => {
-    const p = await principalOf(req);
-    const { entityType, ids } = req.body as { entityType: string; ids: string[] };
-    if (!ids?.length || !entityType) throw badRequest('ids and entityType required');
-    return core.bulk.deleteMany(entityType as any, ids, p.userId);
+    const { p, ids, kind } = await bulkIds(req, (req.body as { entityType?: unknown } | undefined)?.entityType);
+    return core.bulk.deleteMany(kind, ids, p.userId);
   });
 
   // --- Recurring Tasks ---
@@ -830,8 +908,14 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
   // Reverse a logged action (the "reversible" pillar): delete what was created, restore what changed.
   app.post('/api/events/:id/undo', { preHandler: requireMinRole('manager') }, async (req) => {
-    await principalOf(req);
-    return core.events.undo(params(req).id);
+    const p = await principalOf(req);
+    const ev = await core.ctx.db.events.get(params(req).id);
+    if (!ev || ev.orgId !== p.orgId) throw notFound('event not found');
+    try {
+      return await core.events.undo(ev.id, p.userId);
+    } catch (error) {
+      throw badRequest(error instanceof Error ? error.message : 'This action cannot be undone');
+    }
   });
 
   // --- Connections: real credential management + connect flows ---
@@ -877,9 +961,9 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     preHandler: requireMinRole('ceo'),
   }, async (req) => {
     const p = await principalOf(req);
-    const body = req.body as any;
-    if (!body.phoneNumberId || !body.accessToken) {
-      return { error: 'phone_number_id and access_token are required' };
+    const body = (req.body ?? {}) as any;
+    if (typeof body.phoneNumberId !== 'string' || typeof body.accessToken !== 'string' || !body.phoneNumberId || !body.accessToken) {
+      throw badRequest('phone_number_id and access_token are required');
     }
     const conn = await core.ctx.db.connections.upsert(p.orgId, 'whatsapp_cloud', {
       status: 'connected',
@@ -890,8 +974,8 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
         appSecret: body.appSecret ?? '',
       },
     });
-    broadcast({ type: 'connections.changed' });
-    return { ok: true, connection: conn };
+    broadcast({ type: 'connections.changed', orgId: p.orgId });
+    return { ok: true, connection: { channel: 'whatsapp_cloud', status: conn.status } };
   });
 
   // WhatsApp Baileys — request QR code
@@ -903,7 +987,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
       status: 'connecting',
       credentials: {},
     });
-    broadcast({ type: 'connections.changed' });
+    broadcast({ type: 'connections.changed', orgId: p.orgId });
     return { ok: true, message: 'QR code will appear in server console. Scan with WhatsApp.' };
   });
 
@@ -928,10 +1012,13 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
       access_type: 'offline',
       prompt: 'consent',
     });
+    // One-time state ties Google's redirect back to this org and this request (CSRF protection).
+    const state = `${p.orgId}.${randomBytes(18).toString('base64url')}`;
+    params.set('state', state);
 
     await core.ctx.db.connections.upsert(p.orgId, 'gmail', {
       status: 'connecting',
-      credentials: { redirectUri: redirectBase },
+      credentials: { redirectUri: redirectBase, state, stateExpiresAt: Date.now() + 15 * 60 * 1000 },
     });
 
     return { authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
@@ -939,14 +1026,21 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
 
   // Gmail — OAuth callback (Google redirects here with code)
   app.get('/api/connections/gmail/callback', async (req, reply) => {
-    const { code } = req.query as { code?: string; error?: string };
+    const { code, state } = req.query as { code?: string; error?: string; state?: string };
     if (!code) {
       return reply.redirect('/?error=gmail_no_code');
+    }
+    const orgId = typeof state === 'string' && state.includes('.') ? state.slice(0, state.lastIndexOf('.')) : '';
+    const pending = orgId ? (await core.ctx.db.connections.list(orgId)).find((c) => c.channel === 'gmail') : undefined;
+    const creds = (pending?.credentials ?? {}) as { state?: string; stateExpiresAt?: number; redirectUri?: string };
+    if (!pending || !creds.state || creds.state !== state || (creds.stateExpiresAt ?? 0) < Date.now()) {
+      return reply.redirect('/?error=gmail_state_mismatch');
     }
     try {
       const clientId = process.env.GMAIL_CLIENT_ID!;
       const clientSecret = process.env.GMAIL_CLIENT_SECRET!;
-      const redirectBase = process.env.GMAIL_REDIRECT_URI || `http://localhost:4317/api/connections/gmail/callback`;
+      // Must be the exact redirect URI sent in auth-url, or Google rejects the exchange.
+      const redirectBase = creds.redirectUri || process.env.GMAIL_REDIRECT_URI || `http://localhost:4317/api/connections/gmail/callback`;
 
       // Exchange code for tokens
       const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -972,7 +1066,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
       const profile = await profileRes.json() as any;
 
       // Store credentials
-      await core.ctx.db.connections.upsert(LOCAL_ORG_ID, 'gmail', {
+      await core.ctx.db.connections.upsert(orgId, 'gmail', {
         status: 'connected',
         credentials: {
           accessToken: tokens.access_token,
@@ -982,7 +1076,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
         },
       });
 
-      broadcast({ type: 'connections.changed' });
+      broadcast({ type: 'connections.changed', orgId });
       return reply.redirect('/?connected=gmail');
     } catch (err: any) {
       logger.error({ err }, 'Gmail OAuth callback failed');
@@ -996,11 +1090,12 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   }, async (req) => {
     const p = await principalOf(req);
     const { channel } = req.params as { channel: string };
+    if (!['whatsapp_cloud', 'whatsapp_baileys', 'gmail', 'slack', 'telegram', 'github', 'calendar'].includes(channel)) throw notFound('unknown channel');
     await core.ctx.db.connections.upsert(p.orgId, channel, {
       status: 'disconnected',
       credentials: {},
     });
-    broadcast({ type: 'connections.changed' });
+    broadcast({ type: 'connections.changed', orgId: p.orgId });
     return { ok: true };
   });
 
@@ -1038,16 +1133,35 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   // Stored in the settings table as a separate key so it survives restarts.
   app.put('/api/autonomy/kill-switch', { preHandler: requireMinRole('manager') }, async (req) => {
     const p = await principalOf(req);
-    const { paused } = (req.body as { paused?: boolean });
-    await setKillSwitch(p.orgId, paused !== false);
-    broadcast({ type: 'autonomy.changed' });
+    const { paused } = (req.body ?? {}) as { paused?: unknown };
+    if (typeof paused !== 'boolean') throw badRequest('paused must be true or false');
+    await setKillSwitch(p.orgId, paused);
+    broadcast({ type: 'autonomy.changed', orgId: p.orgId });
     logger.warn({ orgId: p.orgId, paused }, 'Kill switch toggled');
-    return { paused: paused !== false };
+    return { paused };
   });
 
   app.get('/api/approvals', async (req) => core.approvals.list((await principalOf(req)).orgId, 'pending'));
-  app.post('/api/approvals/:id/approve', { preHandler: requireMinRole('manager') }, async (req) => { await principalOf(req); const r = await core.approvals.approve(params(req).id); broadcast({ type: 'agent.action' }); return r; });
-  app.post('/api/approvals/:id/dismiss', { preHandler: requireMinRole('manager') }, async (req) => { await principalOf(req); const r = await core.approvals.dismiss(params(req).id); broadcast({ type: 'agent.action' }); return r; });
+  const ownedApproval = async (req: FastifyRequest) => {
+    const p = await principalOf(req);
+    const a = await core.ctx.db.approvals.get(params(req).id);
+    if (!a || a.orgId !== p.orgId) throw notFound('approval not found');
+    return { p, a };
+  };
+  app.post('/api/approvals/:id/approve', { preHandler: requireMinRole('manager') }, async (req) => {
+    const { p, a } = await ownedApproval(req);
+    if (a.status !== 'pending') throw badRequest(`This approval was already ${a.status}`);
+    const r = await core.approvals.approve(a.id, p.userId);
+    broadcast({ type: 'agent.action', orgId: p.orgId });
+    return r;
+  });
+  app.post('/api/approvals/:id/dismiss', { preHandler: requireMinRole('manager') }, async (req) => {
+    const { p, a } = await ownedApproval(req);
+    if (a.status !== 'pending') throw badRequest(`This approval was already ${a.status}`);
+    const r = await core.approvals.dismiss(a.id, p.userId);
+    broadcast({ type: 'agent.action', orgId: p.orgId });
+    return r;
+  });
 
   // --- WhatsApp webhook (the one integration wired end-to-end) ---
   const wa = whatsapp.whatsappConfigFromEnv();
@@ -1064,11 +1178,11 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     config: { rateLimit: webhookRateLimitConfig },
     preHandler: whatsappSignatureVerify(),
   }, async (req, reply) => {
-    const messages = whatsapp.parseInbound(LOCAL_ORG_ID, req.body);
+    const messages = whatsapp.parseInbound(INSTALL_ORG_ID, req.body);
     for (const m of messages) await ingest(core, m);
     if (messages.length) {
       logger.info({ count: messages.length }, 'WhatsApp messages processed');
-      broadcast({ type: 'loop.created' });
+      broadcast({ type: 'loop.created', orgId: INSTALL_ORG_ID });
     }
     return reply.code(200).send('ok');
   });
@@ -1085,14 +1199,14 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     }
     const b = (req as any).validatedBody;
     const loopId = await ingest(core, {
-      orgId: LOCAL_ORG_ID,
+      orgId: INSTALL_ORG_ID,
       channel: channel as (typeof FANIN_CHANNELS)[number],
       from: b.from ?? 'unknown',
       text: b.text,
       ref: b.ref,
     });
-    logger.info({ channel, from: b.from }, 'Webhook received');
-    broadcast({ type: 'loop.created' });
+    logger.info({ channel }, 'Webhook received');
+    broadcast({ type: 'loop.created', orgId: INSTALL_ORG_ID });
     return reply.send({ captured: loopId });
   });
 
@@ -1162,8 +1276,12 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
 
   // --- AI Suggestions ---
   app.get('/api/ai/suggestions/:entityType/:entityId', async (req) => {
+    const p = await principalOf(req);
     const { entityType, entityId } = req.params as { entityType: string; entityId: string };
-    return core.ai.getSuggestions(entityType as 'loop' | 'task' | 'lead', entityId);
+    if (entityType !== 'loop' && entityType !== 'task' && entityType !== 'lead') throw badRequest('entityType must be loop, task or lead');
+    const row = await (bulkRepo(entityType) as { get(id: string): Promise<{ orgId: string } | null> }).get(entityId);
+    if (!row || row.orgId !== p.orgId) throw notFound(`${entityType} not found`);
+    return core.ai.getSuggestions(entityType, entityId);
   });
 
   app.post('/api/ai/assign/:taskId', async (req) => {
@@ -1277,7 +1395,8 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     const today = new Date().toISOString().slice(0, 10);
     const todayTasks = tasks.filter(t => t.day === 'today');
     const openLoops = loops.filter(l => l.status === 'open');
-    const completedTasks = tasks.filter(t => t.subtasks?.every(s => s.done));
+    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+    const completedTasks = tasks.filter(t => isTaskDone(t) && (t.completedAt ?? 0) >= startOfDay.getTime());
 
     return {
       loops: {
@@ -1290,7 +1409,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
         total: tasks.length,
         today: todayTasks.length,
         completedToday: completedTasks.length,
-        overdue: tasks.filter(t => t.dueAt && t.dueAt < Date.now() && t.subtasks?.some(s => !s.done)).length,
+        overdue: tasks.filter(t => t.dueAt && t.dueAt < Date.now() && !isTaskDone(t)).length,
       },
       leads: {
         total: leads.length,
@@ -1308,8 +1427,8 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   app.get('/api/methods/:methodId', async (req) => {
     const p = await principalOf(req);
     const { methodId } = req.params as { methodId: string };
-    const entry = (methods.METHODS as Record<string, any>)[methodId];
-    if (!entry) return { error: 'Unknown method' };
+    const entry = Object.prototype.hasOwnProperty.call(methods.METHODS, methodId) ? (methods.METHODS as Record<string, any>)[methodId] : null;
+    if (!entry) throw notFound('Unknown method');
     const tasks = await core.tasks.list(p.orgId);
     const result = entry.run(tasks);
     return { result, meta: entry.meta };
@@ -1318,7 +1437,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   // --- Reports (real analytics) ---
   app.get('/api/reports', async (req) => {
     const p = await principalOf(req);
-    const days = Math.min(365, Math.max(1, Number((req.query as any)?.days ?? 30)));
+    const days = Math.min(365, Math.max(1, Math.round(Number((req.query as any)?.days ?? 30)) || 30));
     const [loops, tasks, leads] = await Promise.all([
       core.loops.list(p.orgId),
       core.tasks.list(p.orgId),
@@ -1342,7 +1461,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
       return userStats.get(uid)!;
     };
     for (const t of tasks) {
-      const done = t.subtasks && t.subtasks.length > 0 && t.subtasks.every((s: any) => s.done);
+      const done = isTaskDone(t);
       for (const uid of t.assignees || []) {
         const s = ensure(uid);
         if (done) { s.tasksDone++; s.points += 3; }
@@ -1387,9 +1506,13 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   // --- Rich input: calendar .ics import ---
   app.post('/api/input/calendar-import', async (req) => {
     const p = await principalOf(req);
-    const body = req.body as { ics?: string; url?: string };
-    const icsText = body.ics ?? (body.url ? await inputApi.downloadIcsFromUrl(body.url) : '');
-    if (!icsText) return { error: 'No .ics content or URL provided' };
+    const body = (req.body ?? {}) as { ics?: string; url?: string };
+    let icsText = typeof body.ics === 'string' ? body.ics : '';
+    if (!icsText && typeof body.url === 'string' && body.url) {
+      try { icsText = await inputApi.downloadIcsFromUrl(body.url); }
+      catch (error) { throw badRequest(error instanceof Error ? error.message : 'Could not download that calendar'); }
+    }
+    if (!icsText) throw badRequest('No .ics content or URL provided');
     const events = inputApi.parseIcs(icsText);
     const taskShapes = inputApi.icsToTasks(events, p.orgId, p.userId);
     const created: any[] = [];
@@ -1400,23 +1523,42 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   // --- Rich input: attachment upload ---
-  app.post('/api/input/attachments', async (req) => {
+  // Ids become folder names on disk, so only plain ids are accepted (no "../" tricks),
+  // and the task must belong to the caller's org.
+  const SAFE_ID = /^[A-Za-z0-9_-]{1,100}$/;
+  const taskInOrg = async (req: FastifyRequest, taskId: unknown) => {
     const p = await principalOf(req);
-    const body = req.body as { taskId?: string; filename?: string; mimeType?: string; data?: string };
-    if (!body.taskId || !body.filename || !body.data) return { error: 'taskId, filename, and data are required' };
+    if (typeof taskId !== 'string' || !SAFE_ID.test(taskId)) throw badRequest('invalid task id');
+    const task = await core.ctx.db.tasks.get(taskId);
+    if (!task || task.orgId !== p.orgId) throw notFound('task not found');
+    return { p, task };
+  };
+
+  app.post('/api/input/attachments', async (req) => {
+    const body = (req.body ?? {}) as { taskId?: string; filename?: string; mimeType?: string; data?: string };
+    if (!body.taskId || typeof body.filename !== 'string' || typeof body.data !== 'string' || !body.filename || !body.data) {
+      throw badRequest('taskId, filename, and data are required');
+    }
+    const { p } = await taskInOrg(req, body.taskId);
     const buf = Buffer.from(body.data, 'base64');
-    const record = await inputApi.saveAttachment({ taskId: body.taskId, filename: body.filename, mimeType: body.mimeType ?? 'application/octet-stream', data: buf, orgId: p.orgId });
+    if (buf.length > 8 * 1024 * 1024) throw badRequest('Attachments can be at most 8 MB');
+    const mimeType = typeof body.mimeType === 'string' && body.mimeType.length < 120 ? body.mimeType : 'application/octet-stream';
+    const record = await inputApi.saveAttachment({ taskId: body.taskId, filename: body.filename, mimeType, data: buf, orgId: p.orgId });
     return { ok: true, attachment: record };
   });
 
   app.get('/api/input/attachments/:taskId', async (req) => {
     const { taskId } = req.params as { taskId: string };
-    return { attachments: await inputApi.listAttachments(taskId) };
+    const { p } = await taskInOrg(req, taskId);
+    return { attachments: await inputApi.listAttachments(taskId, p.orgId) };
   });
 
+  // The :orgId segment is kept for old links but ignored: deletes only ever touch the caller's org.
   app.delete('/api/input/attachments/:orgId/:attachmentId', async (req) => {
-    const { orgId, attachmentId } = req.params as { orgId: string; attachmentId: string };
-    await inputApi.deleteAttachment(orgId, attachmentId);
+    const p = await principalOf(req);
+    const { attachmentId } = req.params as { orgId: string; attachmentId: string };
+    if (!SAFE_ID.test(attachmentId)) throw badRequest('invalid attachment id');
+    await inputApi.deleteAttachment(p.orgId, attachmentId);
     return { ok: true };
   });
 
@@ -1500,12 +1642,10 @@ function initialsFor(name: string): string {
 }
 
 function readAuthToken(req: FastifyRequest): string | undefined {
-  const cookieToken = readCookie(req.headers.cookie, 'cb_session');
-  if (cookieToken) return cookieToken;
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return undefined;
-  const m = authHeader.match(/^Bearer\s+(.+)$/i);
-  return m?.[1]?.trim();
+  // An explicit Bearer header wins over a possibly stale browser cookie.
+  const m = req.headers.authorization?.match(/^Bearer\s+(.+)$/i);
+  if (m?.[1]?.trim()) return m[1].trim();
+  return readCookie(req.headers.cookie, 'cb_session');
 }
 
 function readCookie(cookieHeader: string | undefined, name: string): string | undefined {
@@ -1577,6 +1717,12 @@ function escapeCsvField(val: unknown): string {
   return str;
 }
 
+/** Done = marked complete, or every subtask ticked (a task with no subtasks is done only when marked). */
+function isTaskDone(t: { completed?: boolean; subtasks?: { done: boolean }[] }): boolean {
+  if (t.completed) return true;
+  return !!t.subtasks && t.subtasks.length > 0 && t.subtasks.every((s) => s.done);
+}
+
 function arrayToCsv(headers: string[], rows: (string | number | boolean | null)[][]): string {
   const lines = [headers.join(',')];
   for (const row of rows) {
@@ -1586,9 +1732,10 @@ function arrayToCsv(headers: string[], rows: (string | number | boolean | null)[
 }
 
 function loopsToCsv(loops: any[]): string {
-  const headers = ['id', 'channel', 'from', 'subject', 'body', 'status', 'assignee', 'createdAt'];
+  const headers = ['id', 'channel', 'title', 'why', 'side', 'status', 'assignedTo', 'dueAt', 'createdAt'];
   const rows = loops.map(l => [
-    l.id, l.channel, l.from, l.subject, l.body, l.status, l.assignee, l.createdAt,
+    l.id, l.channel, l.title, l.why, l.side, l.status, (l.assignedTo ?? []).join('; '),
+    l.dueAt ? new Date(l.dueAt).toISOString() : '', new Date(l.createdAt).toISOString(),
   ]);
   return arrayToCsv(headers, rows);
 }
@@ -1599,15 +1746,15 @@ function tasksToCsv(tasks: any[]): string {
     t.id, t.title, t.list, t.day, t.priority, t.recurring ? 'yes' : 'no',
     t.dueAt ? new Date(t.dueAt).toISOString() : '',
     (t.assignees ?? []).join('; '),
-    (t.subtasks ?? []).every((s: any) => s.done) ? 'yes' : 'no',
+    isTaskDone(t) ? 'yes' : 'no',
   ]);
   return arrayToCsv(headers, rows);
 }
 
 function leadsToCsv(leads: any[]): string {
-  const headers = ['id', 'name', 'company', 'title', 'stage', 'value', 'notes', 'createdAt'];
+  const headers = ['id', 'name', 'company', 'title', 'phone', 'email', 'stage', 'value', 'notes', 'createdAt'];
   const rows = leads.map(l => [
-    l.id, l.name, l.company, l.title, l.stage, l.value, l.notes, l.createdAt,
+    l.id, l.name, l.company, l.title, l.phone, l.email, l.stage, l.value ?? '', l.what, new Date(l.createdAt).toISOString(),
   ]);
   return arrayToCsv(headers, rows);
 }

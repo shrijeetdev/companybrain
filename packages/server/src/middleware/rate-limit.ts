@@ -5,7 +5,7 @@ export const rateLimitConfig: FastifyRateLimitOptions = {
   max: 100,
   timeWindow: '1 minute',
   keyGenerator: (req: FastifyRequest) => {
-    return req.ip ?? req.headers['x-forwarded-for'] as string ?? 'unknown';
+    return req.ip || 'unknown';
   },
   errorResponseBuilder: (_req: FastifyRequest, context: { ttl: number }) => ({
     error: 'Too many requests',
@@ -18,7 +18,7 @@ export const webhookRateLimitConfig: FastifyRateLimitOptions = {
   max: 30,
   timeWindow: '1 minute',
   keyGenerator: (req: FastifyRequest) => {
-    return req.ip ?? req.headers['x-forwarded-for'] as string ?? 'unknown';
+    return req.ip || 'unknown';
   },
   errorResponseBuilder: () => ({
     error: 'Too many webhook requests',
@@ -30,7 +30,7 @@ export const authRateLimitConfig: FastifyRateLimitOptions = {
   max: 10,
   timeWindow: '1 minute',
   keyGenerator: (req: FastifyRequest) => {
-    return req.ip ?? req.headers['x-forwarded-for'] as string ?? 'unknown';
+    return req.ip || 'unknown';
   },
   errorResponseBuilder: () => ({
     error: 'Too many auth attempts',

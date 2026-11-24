@@ -102,8 +102,9 @@ export const AutonomySchema = z.object({
 });
 
 export const LoginSchema = z.object({
-  userId: z.string().trim().min(1),
-  key: z.string().trim().min(1),
+  userId: z.string().trim().min(1).max(200),
+  // Not trimmed: passwords are stored exactly as typed, spaces included.
+  key: z.string().min(1).max(500),
 });
 
 export const CreateUserSchema = z.object({

@@ -81,21 +81,31 @@ export function makeAutonomy(ctx: Context) {
 }
 
 export function makeApprovals(ctx: Context) {
+  const inFlight = new Set<string>();
   return {
     list: (orgId: string, status: Approval['status'] = 'pending') => ctx.db.approvals.list(orgId, status),
-    async approve(id: string): Promise<Approval> {
+    async approve(id: string, actorId = 'user_local'): Promise<Approval> {
       const a = await ctx.db.approvals.get(id);
       if (!a) throw new Error(`approval ${id} not found`);
-      if (a.status === 'pending') await dispatch(ctx, a.action, a.loopId, a.orgId);
-      const next = await ctx.db.approvals.update(id, { status: 'approved' });
-      await record(ctx, { orgId: a.orgId, type: 'approval.approved', entityId: id, actorId: 'user_local' });
-      return next;
+      if (a.status !== 'pending') return a;
+      // Mark it approved before dispatching, so a double click can't send the action twice.
+      if (inFlight.has(id)) return a;
+      inFlight.add(id);
+      try {
+        const next = await ctx.db.approvals.update(id, { status: 'approved' });
+        await dispatch(ctx, a.action, a.loopId, a.orgId);
+        await record(ctx, { orgId: a.orgId, type: 'approval.approved', entityId: id, actorId });
+        return next;
+      } finally {
+        inFlight.delete(id);
+      }
     },
-    async dismiss(id: string): Promise<Approval> {
+    async dismiss(id: string, actorId = 'user_local'): Promise<Approval> {
       const a = await ctx.db.approvals.get(id);
       if (!a) throw new Error(`approval ${id} not found`);
+      if (a.status !== 'pending') return a;
       const next = await ctx.db.approvals.update(id, { status: 'dismissed' });
-      await record(ctx, { orgId: a.orgId, type: 'approval.dismissed', entityId: id, actorId: 'user_local' });
+      await record(ctx, { orgId: a.orgId, type: 'approval.dismissed', entityId: id, actorId });
       return next;
     },
   };

@@ -318,10 +318,10 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
           },
           async upsert(orgId, channel, patch) {
             const existing = await connectionRepo.get(orgId, channel);
-            const now2 = Date.now();
+            const now3 = Date.now();
             if (existing) {
-              const merged = { ...existing, ...patch, channel, updatedAt: now2 };
-              db.prepare("UPDATE connections SET status=?, credentials=?, updated_at=? WHERE org_id=? AND channel=?").run(merged.status, encryptJSON(merged.credentials), now2, orgId, channel);
+              const merged = { ...existing, ...patch, channel, updatedAt: now3 };
+              db.prepare("UPDATE connections SET status=?, credentials=?, updated_at=? WHERE org_id=? AND channel=?").run(merged.status, encryptJSON(merged.credentials), now3, orgId, channel);
               return merged;
             }
             const conn = {
@@ -330,8 +330,8 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
               channel,
               status: patch.status ?? "disconnected",
               credentials: patch.credentials ?? {},
-              createdAt: patch.createdAt ?? now2,
-              updatedAt: now2
+              createdAt: patch.createdAt ?? now3,
+              updatedAt: now3
             };
             db.prepare("INSERT INTO connections (id, org_id, channel, status, credentials, created_at, updated_at) VALUES (?,?,?,?,?,?,?)").run(conn.id, conn.orgId, conn.channel, conn.status, encryptJSON(conn.credentials), conn.createdAt, conn.updatedAt);
             return conn;
@@ -947,11 +947,18 @@ var init_in_process = __esm({
       async enqueue(name, data, opts = {}) {
         const fire = () => void this.run(name, data);
         if (opts.delayMs && opts.delayMs > 0) {
-          const t = setTimeout(() => {
-            this.timers.delete(t);
-            fire();
-          }, opts.delayMs);
-          this.timers.add(t);
+          const MAX = 2e9;
+          const due = Date.now() + opts.delayMs;
+          const arm = () => {
+            const left = due - Date.now();
+            const t = setTimeout(() => {
+              this.timers.delete(t);
+              if (due - Date.now() > 0) arm();
+              else fire();
+            }, Math.min(Math.max(left, 0), MAX));
+            this.timers.add(t);
+          };
+          arm();
         } else {
           queueMicrotask(fire);
         }
@@ -1199,11 +1206,11 @@ var init_key = __esm({
       }
       async login(userIdOrEmail, key) {
         this.cleanupExpired();
-        const lookup = (userIdOrEmail ?? "").trim();
+        const lookup2 = (userIdOrEmail ?? "").trim();
         const secret = (key ?? "").trim();
-        if (!lookup || !secret) return null;
-        const byId = this.userMap.get(lookup);
-        const byEmail = this.userByEmail.get(lookup.toLowerCase());
+        if (!lookup2 || !secret) return null;
+        const byId = this.userMap.get(lookup2);
+        const byEmail = this.userByEmail.get(lookup2.toLowerCase());
         const user = byId ?? byEmail ?? null;
         if (!user) return null;
         const expected = this.perUserKeys.get(user.userId) ?? this.globalKey;
@@ -1223,9 +1230,9 @@ var init_key = __esm({
         this.sessions.delete(token);
       }
       cleanupExpired() {
-        const now2 = Date.now();
+        const now3 = Date.now();
         for (const [token, sess] of this.sessions) {
-          if (sess.expiresAt <= now2) this.sessions.delete(token);
+          if (sess.expiresAt <= now3) this.sessions.delete(token);
         }
       }
     };
@@ -1279,7 +1286,7 @@ function rowToUser(row) {
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
-var PasswordAuth;
+var PasswordAuth, DUMMY_HASH;
 var init_password = __esm({
   "packages/auth/src/password.ts"() {
     "use strict";
@@ -1292,6 +1299,8 @@ var init_password = __esm({
       orgId;
       sessionTtlMs;
       sessions = /* @__PURE__ */ new Map();
+      failedLogins = /* @__PURE__ */ new Map();
+      lastCleanup = 0;
       constructor() {
         this.orgId = process.env.COMPANYBRAIN_ORG_ID?.trim() || LOCAL_ORG_ID;
         const ttlHours = Number(process.env.COMPANYBRAIN_SESSION_TTL_HOURS ?? 168);
@@ -1356,7 +1365,7 @@ var init_password = __esm({
       }
       insertUser(input, createdBy) {
         const id = `user_${randomUUID().slice(0, 8)}`;
-        const now2 = Date.now();
+        const now3 = Date.now();
         const role = normalizeRole(input.role);
         const initials = initialsFor(input.name);
         const passwordHash = hashPassword(input.password || randomBytes4(32).toString("base64url"));
@@ -1373,9 +1382,9 @@ var init_password = __esm({
           initials,
           role,
           passwordHash,
-          now2,
+          now3,
           createdBy,
-          now2
+          now3
         );
         return rowToUser(this.getRow(id));
       }
@@ -1479,9 +1488,18 @@ var init_password = __esm({
         const id = (identifier ?? "").trim();
         const pw = password ?? "";
         if (!id || !pw) return null;
+        const key = id.toLowerCase();
+        const fail = this.failedLogins.get(key);
+        if (fail && fail.lockedUntil > Date.now()) return null;
         const row = this.findByIdentifier(id);
-        if (!row || row.active !== 1) return null;
-        if (!verifyPassword(pw, row.password_hash)) return null;
+        const ok = row ? verifyPassword(pw, row.password_hash) : (verifyPassword(pw, DUMMY_HASH), false);
+        if (!row || row.active !== 1 || !ok) {
+          const count = (fail && fail.lockedUntil <= Date.now() && fail.count >= 8 ? 0 : fail?.count ?? 0) + 1;
+          this.failedLogins.set(key, { count, lockedUntil: count >= 8 ? Date.now() + 15 * 60 * 1e3 : 0 });
+          if (this.failedLogins.size > 5e3) this.failedLogins.clear();
+          return null;
+        }
+        this.failedLogins.delete(key);
         return this.startSession(row);
       }
       async logout(token) {
@@ -1489,12 +1507,14 @@ var init_password = __esm({
         this.dropSession(token);
       }
       cleanupExpired() {
-        const now2 = Date.now();
+        const now3 = Date.now();
+        if (now3 - this.lastCleanup < 6e4) return;
+        this.lastCleanup = now3;
         for (const [token, sess] of this.sessions) {
-          if (sess.expiresAt <= now2) this.sessions.delete(token);
+          if (sess.expiresAt <= now3) this.sessions.delete(token);
         }
-        this.db.prepare("DELETE FROM auth_sessions WHERE expires_at<=?").run(now2);
-        this.db.prepare("DELETE FROM auth_invites WHERE expires_at<=?").run(now2);
+        this.db.prepare("DELETE FROM auth_sessions WHERE expires_at<=?").run(now3);
+        this.db.prepare("DELETE FROM auth_invites WHERE expires_at<=?").run(now3);
       }
       // --- admin-only user management (feature-detected by the server layer) ---
       emailTaken(email, excludeId) {
@@ -1525,9 +1545,9 @@ var init_password = __esm({
         const role = patch.role ? normalizeRole(patch.role) : normalizeRole(row.role);
         const active = patch.active !== void 0 ? patch.active ? 1 : 0 : row.active;
         const initials = patch.name ? initialsFor(name) : row.initials;
-        if (role !== "ceo" && normalizeRole(row.role) === "ceo") {
+        if ((role !== "ceo" || active !== 1) && normalizeRole(row.role) === "ceo" && row.active === 1) {
           const otherAdmins = this.db.prepare("SELECT COUNT(*) as c FROM users WHERE role='ceo' AND active=1 AND id!=?").get(id);
-          if (otherAdmins.c === 0) throw new Error("cannot demote the last admin");
+          if (otherAdmins.c === 0) throw new Error(role !== "ceo" ? "cannot demote the last admin" : "cannot disable the last admin");
         }
         this.db.prepare(`
       UPDATE users SET name=?, email=?, username=?, role=?, active=?, initials=?, updated_at=? WHERE id=?
@@ -1554,6 +1574,7 @@ var init_password = __esm({
         this.dropSessionsForUser(id);
       }
     };
+    DUMMY_HASH = hashPassword(randomBytes4(16).toString("hex"));
   }
 });
 
@@ -1863,21 +1884,30 @@ function makeAutonomy(ctx) {
   };
 }
 function makeApprovals(ctx) {
+  const inFlight = /* @__PURE__ */ new Set();
   return {
     list: (orgId, status = "pending") => ctx.db.approvals.list(orgId, status),
-    async approve(id) {
+    async approve(id, actorId = "user_local") {
       const a = await ctx.db.approvals.get(id);
       if (!a) throw new Error(`approval ${id} not found`);
-      if (a.status === "pending") await dispatch(ctx, a.action, a.loopId, a.orgId);
-      const next = await ctx.db.approvals.update(id, { status: "approved" });
-      await record(ctx, { orgId: a.orgId, type: "approval.approved", entityId: id, actorId: "user_local" });
-      return next;
+      if (a.status !== "pending") return a;
+      if (inFlight.has(id)) return a;
+      inFlight.add(id);
+      try {
+        const next = await ctx.db.approvals.update(id, { status: "approved" });
+        await dispatch(ctx, a.action, a.loopId, a.orgId);
+        await record(ctx, { orgId: a.orgId, type: "approval.approved", entityId: id, actorId });
+        return next;
+      } finally {
+        inFlight.delete(id);
+      }
     },
-    async dismiss(id) {
+    async dismiss(id, actorId = "user_local") {
       const a = await ctx.db.approvals.get(id);
       if (!a) throw new Error(`approval ${id} not found`);
+      if (a.status !== "pending") return a;
       const next = await ctx.db.approvals.update(id, { status: "dismissed" });
-      await record(ctx, { orgId: a.orgId, type: "approval.dismissed", entityId: id, actorId: "user_local" });
+      await record(ctx, { orgId: a.orgId, type: "approval.dismissed", entityId: id, actorId });
       return next;
     }
   };
@@ -2027,6 +2057,175 @@ var init_tasks = __esm({
   }
 });
 
+// packages/core/src/bulk.ts
+function nextLeadStage(stage) {
+  const order = ["new", "contacted", "meeting", "proposal", "won"];
+  const idx = order.indexOf(stage);
+  if (idx < 0 || stage === "won") return null;
+  return order[idx + 1] ?? null;
+}
+function makeBulkOps(ctx) {
+  return {
+    /**
+     * Close multiple loops at once.
+     */
+    async closeLoops(ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          const prev = await ctx.db.loops.get(id);
+          if (!prev) throw new Error("loop not found");
+          await ctx.db.loops.update(id, { status: "closed" });
+          await record(ctx, { orgId: prev.orgId, type: "loop.closed", entityId: id, actorId, undo: { restoreStatus: prev.status } });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Snooze multiple loops.
+     */
+    async snoozeLoops(ids, hours, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      const untilAt = Date.now() + Math.max(1, hours) * 60 * 60 * 1e3;
+      for (const id of ids) {
+        try {
+          const loop = await ctx.db.loops.update(id, { status: "snoozed", dueAt: untilAt });
+          await record(ctx, { orgId: loop.orgId, type: "loop.snoozed", entityId: id, actorId });
+          await ctx.queue.enqueue("sendReminder", { loopId: id, orgId: loop.orgId }, { delayMs: Math.max(0, untilAt - Date.now()) });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Move multiple tasks to a different day.
+     */
+    async moveTasks(ids, day, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          const prev = await ctx.db.tasks.get(id);
+          if (!prev) throw new Error("task not found");
+          await ctx.db.tasks.update(id, { day });
+          await record(ctx, { orgId: prev.orgId, type: "task.moved", entityId: id, actorId, undo: { restoreDay: prev.day } });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Complete multiple tasks.
+     */
+    async completeTasks(ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          const task = await ctx.db.tasks.get(id);
+          if (!task) throw new Error("task not found");
+          await ctx.db.tasks.update(id, { completed: true, completedAt: Date.now() });
+          await record(ctx, { orgId: task.orgId, type: "task.completed", entityId: id, actorId, undo: { restoreCompleted: task.completed ?? false, restoreCompletedAt: task.completedAt ?? null } });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Delete multiple tasks.
+     */
+    async deleteTasks(ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          const task = await ctx.db.tasks.get(id);
+          if (!task) throw new Error("task not found");
+          await ctx.db.tasks.remove(id);
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Advance multiple leads to next stage.
+     */
+    async advanceLeads(ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          const lead = await ctx.db.leads.get(id);
+          if (!lead) throw new Error("lead not found");
+          const nextStage = nextLeadStage(lead.stage);
+          if (!nextStage) throw new Error(`lead is already ${lead.stage}`);
+          await ctx.db.leads.update(id, { stage: nextStage });
+          await record(ctx, { orgId: lead.orgId, type: "lead.advanced", entityId: id, actorId, undo: { restoreStage: lead.stage } });
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Assign multiple entities to a user.
+     */
+    async assignMany(entityType, ids, userIds, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          if (entityType === "loop") {
+            await ctx.db.loops.update(id, { assignedTo: userIds });
+          } else if (entityType === "task") {
+            await ctx.db.tasks.update(id, { assignees: userIds });
+          } else if (entityType === "lead") {
+            await ctx.db.leads.update(id, { assignedTo: userIds });
+          }
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    },
+    /**
+     * Delete multiple entities.
+     */
+    async deleteMany(entityType, ids, actorId) {
+      const result = { succeeded: [], failed: [], total: ids.length };
+      for (const id of ids) {
+        try {
+          if (entityType === "loop") {
+            await ctx.db.loops.remove(id);
+          } else if (entityType === "task") {
+            await ctx.db.tasks.remove(id);
+          } else if (entityType === "lead") {
+            await ctx.db.leads.remove(id);
+          }
+          result.succeeded.push(id);
+        } catch (e) {
+          result.failed.push({ id, error: e.message });
+        }
+      }
+      return result;
+    }
+  };
+}
+var init_bulk = __esm({
+  "packages/core/src/bulk.ts"() {
+    "use strict";
+    init_context();
+  }
+});
+
 // packages/core/src/leads.ts
 function makeLeads(ctx) {
   return {
@@ -2057,8 +2256,8 @@ function makeLeads(ctx) {
     async advance(id, actorId) {
       const cur = await ctx.db.leads.get(id);
       if (!cur) throw new Error(`lead ${id} not found`);
-      const idx = STAGE_ORDER.indexOf(cur.stage);
-      const next = STAGE_ORDER[Math.min(idx + 1, STAGE_ORDER.indexOf("won"))];
+      const next = nextLeadStage(cur.stage);
+      if (!next) return cur;
       const lead = await ctx.db.leads.update(id, { stage: next });
       await record(ctx, { orgId: lead.orgId, type: "lead.advanced", entityId: id, actorId, undo: { restoreStage: cur.stage } });
       return lead;
@@ -2098,6 +2297,7 @@ var init_leads = __esm({
   "packages/core/src/leads.ts"() {
     "use strict";
     init_context();
+    init_bulk();
     STAGE_ORDER = ["new", "contacted", "meeting", "proposal", "won", "lost"];
   }
 });
@@ -2130,7 +2330,7 @@ function makeTimeTracking(ctx) {
      * If there's already an active entry for this task, stop it first.
      */
     async start(input) {
-      const active = await this.getActive(input.taskId);
+      const active = await this.getActive(input.taskId, input.userId);
       if (active) {
         await this.stop(active.id);
       }
@@ -2162,9 +2362,9 @@ function makeTimeTracking(ctx) {
     /**
      * Get active (running) time entry for a task.
      */
-    async getActive(taskId) {
+    async getActive(taskId, userId) {
       const entries = await ctx.db.timeEntries.listByTask(taskId);
-      return entries.find((e) => !e.endedAt) ?? null;
+      return entries.find((e) => !e.endedAt && (!userId || e.userId === userId)) ?? null;
     },
     /**
      * Get all time entries for a task.
@@ -2235,193 +2435,39 @@ var init_time_tracking = __esm({
   }
 });
 
-// packages/core/src/bulk.ts
-function makeBulkOps(ctx) {
-  return {
-    /**
-     * Close multiple loops at once.
-     */
-    async closeLoops(ids, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      for (const id of ids) {
-        try {
-          await ctx.db.loops.update(id, { status: "closed", updatedAt: Date.now() });
-          await record(ctx, { orgId: (await ctx.db.loops.get(id))?.orgId ?? "", type: "loop.closed", entityId: id, actorId });
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Snooze multiple loops.
-     */
-    async snoozeLoops(ids, hours, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      const untilAt = Date.now() + Math.max(1, hours) * 60 * 60 * 1e3;
-      for (const id of ids) {
-        try {
-          await ctx.db.loops.update(id, { status: "snoozed", updatedAt: untilAt });
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Move multiple tasks to a different day.
-     */
-    async moveTasks(ids, day, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      for (const id of ids) {
-        try {
-          const prev = await ctx.db.tasks.get(id);
-          if (!prev) throw new Error("task not found");
-          await ctx.db.tasks.update(id, { day });
-          await record(ctx, { orgId: prev.orgId, type: "task.moved", entityId: id, actorId, undo: { restoreDay: prev.day } });
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Complete multiple tasks.
-     */
-    async completeTasks(ids, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      for (const id of ids) {
-        try {
-          const task = await ctx.db.tasks.get(id);
-          if (!task) throw new Error("task not found");
-          await ctx.db.tasks.update(id, { day: "today" });
-          await record(ctx, { orgId: task.orgId, type: "task.completed", entityId: id, actorId });
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Delete multiple tasks.
-     */
-    async deleteTasks(ids, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      for (const id of ids) {
-        try {
-          const task = await ctx.db.tasks.get(id);
-          if (!task) throw new Error("task not found");
-          await ctx.db.tasks.remove(id);
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Advance multiple leads to next stage.
-     */
-    async advanceLeads(ids, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      const stageOrder = ["new", "contacted", "meeting", "proposal", "won"];
-      for (const id of ids) {
-        try {
-          const lead = await ctx.db.leads.get(id);
-          if (!lead) throw new Error("lead not found");
-          const currentIdx = stageOrder.indexOf(lead.stage);
-          const nextStage = stageOrder[Math.min(currentIdx + 1, stageOrder.length - 1)];
-          await ctx.db.leads.update(id, { stage: nextStage });
-          await record(ctx, { orgId: lead.orgId, type: "lead.advanced", entityId: id, actorId });
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Assign multiple entities to a user.
-     */
-    async assignMany(entityType, ids, userIds, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      for (const id of ids) {
-        try {
-          if (entityType === "loop") {
-            await ctx.db.loops.update(id, { assignedTo: userIds });
-          } else if (entityType === "task") {
-            await ctx.db.tasks.update(id, { assignees: userIds });
-          } else if (entityType === "lead") {
-            await ctx.db.leads.update(id, { assignedTo: userIds });
-          }
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    },
-    /**
-     * Delete multiple entities.
-     */
-    async deleteMany(entityType, ids, actorId) {
-      const result = { succeeded: [], failed: [], total: ids.length };
-      for (const id of ids) {
-        try {
-          if (entityType === "loop") {
-            await ctx.db.loops.remove(id);
-          } else if (entityType === "task") {
-            await ctx.db.tasks.remove(id);
-          } else if (entityType === "lead") {
-            await ctx.db.leads.remove(id);
-          }
-          result.succeeded.push(id);
-        } catch (e) {
-          result.failed.push({ id, error: e.message });
-        }
-      }
-      return result;
-    }
-  };
-}
-var init_bulk = __esm({
-  "packages/core/src/bulk.ts"() {
-    "use strict";
-    init_context();
-  }
-});
-
 // packages/core/src/recurring.ts
+function localDay(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 function makeRecurring(ctx) {
   return {
     /**
      * Process all recurring tasks and create new instances where needed.
      * Should be called daily (e.g., by a cron job or worker).
      */
-    async processDaily(orgId) {
+    async processDaily(orgId, at = /* @__PURE__ */ new Date()) {
       let created = 0;
       let skipped = 0;
       const tasks = await ctx.db.tasks.list(orgId);
-      const recurringTasks = tasks.filter((t) => t.recurring && t.recur);
-      for (const task of recurringTasks) {
-        const shouldCreate = this.shouldCreateToday(task.recur);
-        if (!shouldCreate) {
+      const templates = /* @__PURE__ */ new Map();
+      for (const t of tasks) {
+        if (!t.recurring || !t.recur) continue;
+        const key = t.createdBy + "\0" + t.title;
+        const cur = templates.get(key);
+        if (!cur || t.createdAt < cur.createdAt) templates.set(key, t);
+      }
+      const today = localDay(at);
+      const madeOn = new Set(tasks.map((t) => t.createdBy + "\0" + t.title + "\0" + localDay(new Date(t.createdAt))));
+      for (const [key, task] of templates) {
+        if (!this.shouldCreateToday(task.recur, at, new Date(task.createdAt))) {
           skipped++;
           continue;
         }
-        const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-        const existingToday = tasks.find(
-          (t) => t.title === task.title && t.createdBy === task.createdBy && new Date(t.createdAt).toISOString().split("T")[0] === today
-        );
-        if (existingToday) {
+        if (madeOn.has(key + "\0" + today)) {
           skipped++;
           continue;
         }
-        await ctx.db.tasks.insert({
+        const copy = {
           id: newId("task"),
           orgId: task.orgId,
           emoji: task.emoji,
@@ -2429,8 +2475,8 @@ function makeRecurring(ctx) {
           list: task.list,
           day: "today",
           priority: task.priority,
-          recurring: true,
-          recur: task.recur,
+          recurring: false,
+          recur: null,
           assignees: task.assignees,
           createdBy: task.createdBy,
           completed: false,
@@ -2438,34 +2484,38 @@ function makeRecurring(ctx) {
           subtasks: [],
           comments: [],
           dueAt: null,
-          createdAt: now()
-        });
+          createdAt: at.getTime()
+        };
+        await ctx.db.tasks.insert(copy);
+        madeOn.add(key + "\0" + today);
         await record(ctx, {
           orgId: task.orgId,
           type: "task.created",
-          entityId: task.id,
-          actorId: task.createdBy
+          entityId: copy.id,
+          actorId: task.createdBy,
+          undo: { delete: copy.id }
         });
         created++;
       }
       return { created, skipped };
     },
     /**
-     * Check if a recurring task should be created today.
+     * Check if a recurring task should be created on `at`. Weekly repeats on the weekday the
+     * task was first made; monthly on the same date (or the month's last day if shorter).
      */
-    shouldCreateToday(recur) {
-      const today = /* @__PURE__ */ new Date();
-      const dayOfWeek = today.getDay();
-      const dayOfMonth = today.getDate();
+    shouldCreateToday(recur, at = /* @__PURE__ */ new Date(), firstMade) {
+      const dayOfWeek = at.getDay();
+      const dayOfMonth = at.getDate();
+      const anchor = firstMade ?? at;
       switch ((recur ?? "").toLowerCase()) {
         case "daily":
           return true;
         case "weekly":
-          return true;
-        // Base task is weekly, check on creation day
-        case "monthly":
-          return dayOfMonth === 1;
-        // Create on 1st of month
+          return dayOfWeek === anchor.getDay();
+        case "monthly": {
+          const lastDay = new Date(at.getFullYear(), at.getMonth() + 1, 0).getDate();
+          return dayOfMonth === Math.min(anchor.getDate(), lastDay);
+        }
         case "weekdays":
           return dayOfWeek >= 1 && dayOfWeek <= 5;
         case "weekends":
@@ -2478,34 +2528,34 @@ function makeRecurring(ctx) {
      * Get next run date for a recurring task.
      */
     getNextRun(recur) {
-      const now2 = /* @__PURE__ */ new Date();
+      const now3 = /* @__PURE__ */ new Date();
       switch ((recur ?? "").toLowerCase()) {
         case "daily":
-          return new Date(now2.getTime() + 24 * 60 * 60 * 1e3);
+          return new Date(now3.getTime() + 24 * 60 * 60 * 1e3);
         case "weekly":
-          return new Date(now2.getTime() + 7 * 24 * 60 * 60 * 1e3);
-        case "Monthly": {
-          const next = new Date(now2);
+          return new Date(now3.getTime() + 7 * 24 * 60 * 60 * 1e3);
+        case "monthly": {
+          const next = new Date(now3);
           next.setMonth(next.getMonth() + 1);
           next.setDate(1);
           return next;
         }
-        case "Weekdays": {
-          const next = new Date(now2);
+        case "weekdays": {
+          const next = new Date(now3);
           do {
             next.setDate(next.getDate() + 1);
           } while (next.getDay() === 0 || next.getDay() === 6);
           return next;
         }
-        case "Weekends": {
-          const next = new Date(now2);
+        case "weekends": {
+          const next = new Date(now3);
           do {
             next.setDate(next.getDate() + 1);
           } while (next.getDay() !== 0 && next.getDay() !== 6);
           return next;
         }
         default:
-          return new Date(now2.getTime() + 24 * 60 * 60 * 1e3);
+          return new Date(now3.getTime() + 24 * 60 * 60 * 1e3);
       }
     },
     /**
@@ -2727,14 +2777,14 @@ var init_ai = __esm({
 });
 
 // packages/core/src/api-keys.ts
-import { createHash as createHash2 } from "node:crypto";
+import { createHash as createHash2, randomBytes as randomBytes5 } from "node:crypto";
 function hash(raw) {
   return createHash2("sha256").update(raw).digest("hex");
 }
 function makeApiKeys(ctx) {
   const db = ctx.db;
   async function create(orgId, name, scopes = ["read"], actorId) {
-    const raw = `cb_${newId("key")}`;
+    const raw = `cb_${randomBytes5(24).toString("base64url")}`;
     const row = {
       id: newId("apikey"),
       orgId,
@@ -2752,6 +2802,7 @@ function makeApiKeys(ctx) {
   async function verify(rawKey) {
     const row = await db.apiKeys.findByHash(hash(rawKey));
     if (!row) return null;
+    if (row.expiresAt && row.expiresAt <= Date.now()) return null;
     await db.apiKeys.touch(row.id, Date.now());
     return { orgId: row.orgId, actorId: row.actorId, scopes: row.scopes };
   }
@@ -2779,11 +2830,13 @@ var init_api_keys = __esm({
 });
 
 // packages/core/src/undo.ts
-async function undoEvent(ctx, eventId) {
+async function undoEvent(ctx, eventId, actorId = "user_local") {
   const ev = await ctx.db.events.get(eventId);
   if (!ev) throw notReversible(`event ${eventId} not found`);
   if (!ev.reversible || !ev.undo) throw notReversible(`event ${eventId} is not reversible`);
   const u = ev.undo;
+  const already = (await ctx.db.events.list(ev.orgId, 1e3)).some((e) => e.type === "event.undone" && e.entityId === eventId);
+  if (already) throw notReversible("This action was already undone");
   if (u.delete) {
     const id = u.delete;
     if (id.startsWith("loop_")) await ctx.db.loops.remove(id);
@@ -2796,10 +2849,12 @@ async function undoEvent(ctx, eventId) {
     await ctx.db.tasks.update(ev.entityId, { day: u.restoreDay });
   } else if (u.restoreStage) {
     await ctx.db.leads.update(ev.entityId, { stage: u.restoreStage });
+  } else if (typeof u.restoreCompleted === "boolean") {
+    await ctx.db.tasks.update(ev.entityId, { completed: u.restoreCompleted, completedAt: u.restoreCompletedAt ?? null });
   } else {
     throw notReversible(`event ${eventId} has no known undo action`);
   }
-  await record(ctx, { orgId: ev.orgId, type: "event.undone", entityId: eventId, actorId: "user_local", reversible: false });
+  await record(ctx, { orgId: ev.orgId, type: "event.undone", entityId: eventId, actorId, reversible: false });
   return { undone: eventId, type: ev.type };
 }
 function notReversible(message) {
@@ -2840,6 +2895,8 @@ function registerWorkers(ctx) {
   ctx.queue.on("sendReminder", async ({ loopId, orgId }) => {
     const loop = await ctx.db.loops.get(loopId);
     if (!loop || loop.status === "closed") return;
+    if (loop.status === "snoozed" && loop.dueAt && loop.dueAt > Date.now() + 6e4) return;
+    if (loop.status === "snoozed") await ctx.db.loops.update(loopId, { status: "open" });
     await record(ctx, { orgId, type: "reminder.sent", entityId: loopId, actorId: "agent_scout" });
     console.log(`[worker] reminder fired for loop ${loopId}`);
   });
@@ -2897,27 +2954,28 @@ __export(methods_exports, {
   timeBlocking: () => timeBlocking,
   twoMinute: () => twoMinute
 });
-function isUrgent(t, now2 = Date.now()) {
+function isUrgent(t, now3 = Date.now()) {
   if (t.day === "today") return true;
-  if (t.dueAt && t.dueAt - now2 <= MS_PER_DAY) return true;
+  if (t.dueAt && t.dueAt - now3 <= MS_PER_DAY) return true;
   return false;
 }
 function isImportant(t) {
   return t.priority === "high";
 }
-function isOverdue(t, now2 = Date.now()) {
+function isOverdue(t, now3 = Date.now()) {
   if (!t.dueAt) return false;
-  return t.dueAt < now2;
+  return t.dueAt < now3;
 }
 function isComplete(t) {
+  if (t.completed) return true;
   if (!t.subtasks || t.subtasks.length === 0) return false;
   return t.subtasks.every((s) => s.done);
 }
-function eisenhower(tasks, now2 = Date.now()) {
+function eisenhower(tasks, now3 = Date.now()) {
   const open = tasks.filter((t) => !isComplete(t));
   const result = { q1: [], q2: [], q3: [], q4: [] };
   for (const t of open) {
-    const u = isUrgent(t, now2);
+    const u = isUrgent(t, now3);
     const i = isImportant(t);
     if (u && i) result.q1.push(t);
     else if (!u && i) result.q2.push(t);
@@ -2926,23 +2984,23 @@ function eisenhower(tasks, now2 = Date.now()) {
   }
   return result;
 }
-function moscow(tasks, now2 = Date.now()) {
+function moscow(tasks, now3 = Date.now()) {
   const open = tasks.filter((t) => !isComplete(t));
   const result = { must: [], should: [], could: [], wont: [] };
   for (const t of open) {
     if (t.priority === "high") result.must.push(t);
     else if (t.priority === "med") result.should.push(t);
     else if (t.priority === "low") result.could.push(t);
-    else if (isOverdue(t, now2)) result.wont.push(t);
+    else if (isOverdue(t, now3)) result.wont.push(t);
     else result.could.push(t);
   }
   return result;
 }
-function abcde(tasks, now2 = Date.now()) {
+function abcde(tasks, now3 = Date.now()) {
   const open = tasks.filter((t) => !isComplete(t));
   const ranked = open.map((task) => {
     let rank;
-    if (task.priority === "high" && isOverdue(task, now2)) rank = "A";
+    if (task.priority === "high" && isOverdue(task, now3)) rank = "A";
     else if (task.priority === "high") rank = "B";
     else if (task.priority === "med" && task.day === "today") rank = "C";
     else if (task.priority === "med") rank = "D";
@@ -2990,21 +3048,21 @@ function twoMinute(tasks) {
   }
   return { twoMinute: twoMinute2, longer };
 }
-function frogScore(t, now2) {
+function frogScore(t, now3) {
   const pWeight = t.priority === "high" ? 3 : t.priority === "med" ? 2 : t.priority === "low" ? 1 : 0;
   let uWeight = 0;
-  if (isOverdue(t, now2)) uWeight = 3;
+  if (isOverdue(t, now3)) uWeight = 3;
   else if (t.day === "today") uWeight = 2;
   else if (t.day === "tomorrow") uWeight = 1;
   return pWeight * 3 + uWeight;
 }
-function eatThatFrog(tasks, now2 = Date.now()) {
+function eatThatFrog(tasks, now3 = Date.now()) {
   const open = tasks.filter((t) => !isComplete(t));
   if (open.length === 0) return { frog: null, why: "No open tasks \u2014 nothing to eat." };
   let best = open[0];
-  let bestScore = frogScore(best, now2);
+  let bestScore = frogScore(best, now3);
   for (const t of open) {
-    const s = frogScore(t, now2);
+    const s = frogScore(t, now3);
     if (s > bestScore) {
       best = t;
       bestScore = s;
@@ -3012,7 +3070,7 @@ function eatThatFrog(tasks, now2 = Date.now()) {
   }
   const reasons = [];
   if (best.priority === "high") reasons.push("highest priority");
-  if (isOverdue(best, now2)) reasons.push("overdue");
+  if (isOverdue(best, now3)) reasons.push("overdue");
   else if (best.day === "today") reasons.push("due today");
   const why = reasons.length > 0 ? `Your frog: the task that is ${reasons.join(" and ")}. Do it first.` : "Your frog: the highest-impact task right now. Do it first.";
   return { frog: best, why };
@@ -3155,6 +3213,7 @@ __export(analytics_exports, {
   computeReport: () => computeReport
 });
 function isTaskComplete(task) {
+  if (task.completed) return true;
   return !!task.subtasks && task.subtasks.length > 0 && task.subtasks.every((s) => s.done);
 }
 function round(n) {
@@ -3195,7 +3254,7 @@ function computeLoops(loops, windowStart) {
     // one decimal place
   };
 }
-function computeTasks(tasks, windowStart, now2) {
+function computeTasks(tasks, windowStart, now3) {
   let completedInWindow = 0;
   let createdInWindow = 0;
   let overdue = 0;
@@ -3209,7 +3268,7 @@ function computeTasks(tasks, windowStart, now2) {
     if (t.createdAt >= windowStart) createdInWindow++;
     if (isTaskComplete(t)) {
       if (t.createdAt >= windowStart) completedInWindow++;
-    } else if (t.dueAt != null && t.dueAt < now2) {
+    } else if (t.dueAt != null && t.dueAt < now3) {
       overdue++;
     }
   }
@@ -3244,7 +3303,7 @@ function computeLeads(leads, windowStart) {
     pipelineValue: leads.filter((l) => l.stage !== "won" && l.stage !== "lost" && typeof l.value === "number").reduce((sum, l) => sum + l.value, 0)
   };
 }
-function computeProductivity(tasks, timeEntries, windowStart, now2, windowDays) {
+function computeProductivity(tasks, timeEntries, windowStart, now3, windowDays) {
   const focusSeconds = (timeEntries ?? []).reduce((sum, e) => sum + (e.duration ?? 0), 0);
   const focusHours = round(focusSeconds / SECONDS_PER_HOUR * 10) / 10;
   const trend = [0, 0, 0, 0, 0, 0, 0];
@@ -3254,7 +3313,7 @@ function computeProductivity(tasks, timeEntries, windowStart, now2, windowDays) 
     const dow = new Date(t.createdAt).getDay();
     if (dayBuckets[dow] === void 0) dayBuckets[dow] = 0;
     dayBuckets[dow]++;
-    const ageDays = Math.floor((now2 - t.createdAt) / MS_PER_DAY2);
+    const ageDays = Math.floor((now3 - t.createdAt) / MS_PER_DAY2);
     if (ageDays >= 0 && ageDays <= 6) {
       const idx = 6 - ageDays;
       const slot = trend[idx];
@@ -3309,17 +3368,17 @@ function buildSummary(loops, tasks, leads, windowDays) {
 }
 function computeReport(input) {
   const { loops = [], tasks = [], leads = [], timeEntries, users, windowDays = 30 } = input ?? {};
-  const now2 = Date.now();
-  const windowStart = now2 - windowDays * MS_PER_DAY2;
+  const now3 = Date.now();
+  const windowStart = now3 - windowDays * MS_PER_DAY2;
   const loopsReport = computeLoops(loops, windowStart);
-  const tasksReport = computeTasks(tasks, windowStart, now2);
+  const tasksReport = computeTasks(tasks, windowStart, now3);
   const leadsReport = computeLeads(leads, windowStart);
-  const productivity = computeProductivity(tasks, timeEntries, windowStart, now2, windowDays);
+  const productivity = computeProductivity(tasks, timeEntries, windowStart, now3, windowDays);
   const leaderboard = computeLeaderboard(users, loops, tasks, timeEntries);
   const summary = buildSummary(loopsReport, tasksReport, leadsReport, windowDays);
   return {
     windowDays,
-    generatedAt: now2,
+    generatedAt: now3,
     loops: loopsReport,
     tasks: tasksReport,
     leads: leadsReport,
@@ -3365,7 +3424,7 @@ function createCoreFromPorts(ports) {
     apiKeys: makeApiKeys(ctx),
     events: {
       list: (orgId, limit) => ctx.db.events.list(orgId, limit),
-      undo: (eventId) => undoEvent(ctx, eventId)
+      undo: (eventId, actorId) => undoEvent(ctx, eventId, actorId)
     }
   };
 }
@@ -3537,8 +3596,9 @@ var init_validation = __esm({
       level: z.enum(["off", "ask", "auto"])
     });
     LoginSchema = z.object({
-      userId: z.string().trim().min(1),
-      key: z.string().trim().min(1)
+      userId: z.string().trim().min(1).max(200),
+      // Not trimmed: passwords are stored exactly as typed, spaces included.
+      key: z.string().min(1).max(500)
     });
     CreateUserSchema = z.object({
       email: z.string().trim().email().max(200).optional(),
@@ -3579,7 +3639,7 @@ var init_rate_limit = __esm({
       max: 100,
       timeWindow: "1 minute",
       keyGenerator: (req) => {
-        return req.ip ?? req.headers["x-forwarded-for"] ?? "unknown";
+        return req.ip || "unknown";
       },
       errorResponseBuilder: (_req, context) => ({
         error: "Too many requests",
@@ -3591,7 +3651,7 @@ var init_rate_limit = __esm({
       max: 30,
       timeWindow: "1 minute",
       keyGenerator: (req) => {
-        return req.ip ?? req.headers["x-forwarded-for"] ?? "unknown";
+        return req.ip || "unknown";
       },
       errorResponseBuilder: () => ({
         error: "Too many webhook requests",
@@ -3602,7 +3662,7 @@ var init_rate_limit = __esm({
       max: 10,
       timeWindow: "1 minute",
       keyGenerator: (req) => {
-        return req.ip ?? req.headers["x-forwarded-for"] ?? "unknown";
+        return req.ip || "unknown";
       },
       errorResponseBuilder: () => ({
         error: "Too many auth attempts",
@@ -3662,19 +3722,24 @@ function verifyWhatsAppSignature(body, signature, appSecret) {
     return false;
   }
 }
+function rejected(statusCode, message) {
+  const e = new Error(message);
+  e.statusCode = statusCode;
+  return e;
+}
 function whatsappSignatureVerify() {
   return async (req, _reply) => {
     const appSecret = process.env.WHATSAPP_APP_SECRET;
     if (!appSecret) {
-      throw new Error("WHATSAPP_APP_SECRET not configured \u2014 webhook rejected (fail-closed)");
+      throw rejected(503, "WHATSAPP_APP_SECRET not configured \u2014 webhook rejected (fail-closed)");
     }
     const signature = req.headers["x-hub-signature-256"];
     if (!signature) {
-      throw new Error("Missing WhatsApp webhook signature");
+      throw rejected(401, "Missing WhatsApp webhook signature");
     }
     const rawBody = getRawBody(req);
     if (!verifyWhatsAppSignature(rawBody, signature, appSecret)) {
-      throw new Error("Invalid WhatsApp webhook signature");
+      throw rejected(401, "Invalid WhatsApp webhook signature");
     }
   };
 }
@@ -3691,23 +3756,29 @@ function genericWebhookVerify() {
     if (scheme) {
       const secret = process.env[scheme.envVar];
       if (!secret) {
-        throw new Error(`${scheme.envVar} not configured \u2014 ${channel} webhook rejected (fail-closed)`);
+        throw rejected(503, `${scheme.envVar} not configured \u2014 ${channel} webhook rejected (fail-closed)`);
       }
       const provided = req.headers[scheme.headerName];
       if (!provided) {
-        throw new Error(`Missing ${scheme.headerName} signature for ${channel} webhook`);
+        throw rejected(401, `Missing ${scheme.headerName} signature for ${channel} webhook`);
+      }
+      if (channel === "slack") {
+        const ts = Number(req.headers["x-slack-request-timestamp"]);
+        if (!Number.isFinite(ts) || Math.abs(Date.now() / 1e3 - ts) > 300) {
+          throw rejected(401, "Stale or missing Slack request timestamp");
+        }
       }
       const rawBody = getRawBody(req);
       if (!verifyChannelSignature(scheme, provided, secret, rawBody, req)) {
-        throw new Error(`Invalid webhook signature for ${channel}`);
+        throw rejected(401, `Invalid webhook signature for ${channel}`);
       }
       return;
     }
     if (!UNAUTHENTICATED_CHANNELS.has(channel)) {
-      throw new Error(`Unknown channel '${channel}' \u2014 webhook rejected`);
+      throw rejected(404, `Unknown channel '${channel}' \u2014 webhook rejected`);
     }
     if (process.env.NODE_ENV === "production") {
-      throw new Error(`Unauthenticated ${channel} webhook rejected in production`);
+      throw rejected(401, `Unauthenticated ${channel} webhook rejected in production`);
     }
     logger.warn({ channel }, "Unauthenticated webhook accepted in non-production (inbound push)");
   };
@@ -4449,6 +4520,7 @@ import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import { join as join5 } from "node:path";
 import { existsSync as existsSync2 } from "node:fs";
+import { randomBytes as randomBytes6 } from "node:crypto";
 
 // packages/integrations/src/pipeline.ts
 function needsHuman(msg) {
@@ -4788,6 +4860,8 @@ async function safeReadText(response) {
 }
 
 // packages/integrations/src/input/calendar-import.ts
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 function unfoldLines(icsText) {
   const normalised = icsText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const lines = normalised.split("\n");
@@ -4911,7 +4985,7 @@ function dayFromStart(start) {
   return "upcoming";
 }
 function icsToTasks(events, orgId, actorId) {
-  const now2 = Date.now();
+  const now3 = Date.now();
   return events.map((ev) => ({
     orgId,
     title: ev.summary,
@@ -4920,17 +4994,47 @@ function icsToTasks(events, orgId, actorId) {
     list: "Calendar",
     createdBy: actorId,
     assignees: [actorId],
-    createdAt: now2
+    createdAt: now3
   }));
 }
 async function downloadIcsFromUrl(url) {
-  const response = await fetch(url, {
-    headers: { Accept: "text/calendar, application/octet-stream, text/plain, */*" }
+  let parsed;
+  try {
+    parsed = new URL(url.trim().replace(/^webcal:/i, "https:"));
+  } catch {
+    throw new Error("That calendar link is not a valid URL");
+  }
+  if (parsed.protocol !== "https:") throw new Error("Calendar links must start with https://");
+  if (parsed.username || parsed.password) throw new Error("Calendar links cannot contain a username or password");
+  const host2 = parsed.hostname.replace(/^\[|\]$/g, "");
+  const addrs = isIP(host2) ? [{ address: host2 }] : await lookup(host2, { all: true }).catch(() => []);
+  if (!addrs.length) throw new Error("Could not find that calendar host");
+  if (addrs.some((a) => isPrivateAddress(a.address))) throw new Error("That calendar host is not allowed");
+  const response = await fetch(parsed, {
+    headers: { Accept: "text/calendar, application/octet-stream, text/plain, */*" },
+    redirect: "error",
+    signal: AbortSignal.timeout(1e4)
   });
   if (!response.ok) {
-    throw new Error(`Failed to download .ics from ${url}: HTTP ${response.status}`);
+    throw new Error(`Failed to download the calendar: HTTP ${response.status}`);
   }
-  return response.text();
+  const text = await response.text();
+  if (text.length > 2 * 1024 * 1024) throw new Error("That calendar file is too large (over 2 MB)");
+  return text;
+}
+function isPrivateAddress(address) {
+  const ip = address.toLowerCase();
+  if (isIP(ip) === 6) {
+    if (ip === "::" || ip === "::1") return true;
+    const mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (mapped) return isPrivateAddress(mapped[1]);
+    return /^(fc|fd|fe8|fe9|fea|feb|ff)/.test(ip);
+  }
+  const parts = ip.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) return true;
+  const a = parts[0];
+  const b = parts[1];
+  return a === 0 || a === 10 || a === 127 || a >= 224 || a === 100 && b >= 64 && b <= 127 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 168 || a === 198 && (b === 18 || b === 19);
 }
 
 // packages/integrations/src/input/attachments.ts
@@ -4997,13 +5101,14 @@ function getAttachmentPath(orgId, attachmentId) {
   }
   return "";
 }
-async function listAttachments(taskId) {
+async function listAttachments(taskId, orgId) {
+  if (orgId) return readIndex(orgId, taskId);
   const root = attachmentsRoot();
   if (!existsSync(root)) return [];
-  for (const orgId of safeReaddir(root)) {
-    const dir = taskDir(orgId, taskId);
+  for (const orgId2 of safeReaddir(root)) {
+    const dir = taskDir(orgId2, taskId);
     if (existsSync(dir)) {
-      return readIndex(orgId, taskId);
+      return readIndex(orgId2, taskId);
     }
   }
   return [];
@@ -5147,9 +5252,9 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 [data-theme="dark"] #sidebar{box-shadow:inset -1px 0 0 var(--glassBorder),4px 0 32px rgba(0,0,0,.3);}
 .logo-row{display:flex;align-items:center;gap:10px;padding:4px 8px 16px;}
 .logo-icon{width:34px;height:34px;border-radius:11px;background:var(--grad-accent);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 6px 18px var(--accentGlow),inset 0 1px 0 rgba(255,255,255,.3);flex-shrink:0;}
-.logo-text{font-family:&quot;JetBrains Mono&quot;,monospace;font-weight:700;font-size:15px;letter-spacing:-.4px;}
+.logo-text{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;letter-spacing:-.4px;}
 .logo-text span{background:var(--grad-accent);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-.logo-sub{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:9px;color:var(--faint);margin-top:3px;letter-spacing:.5px;}
+.logo-sub{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--faint);margin-top:3px;letter-spacing:.5px;}
 .sidebar-search{padding:0 2px 12px;position:relative;}
 .sidebar-search input{width:100%;background:rgba(255,255,255,.5);border:1px solid var(--glassBorder);border-radius:12px;padding:9px 11px 9px 32px;font-size:12.5px;color:var(--text);transition:all .2s;box-shadow:inset 0 1px 2px rgba(82,99,140,.04);}
 [data-theme="dark"] .sidebar-search input{background:rgba(255,255,255,.06);}
@@ -5163,16 +5268,16 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 .nav-item.active{background:var(--accentSoft);color:var(--accent);font-weight:600;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 4px 14px var(--accentGlow);}
 .nav-item.active::before{content:'';position:absolute;left:-14px;top:50%;transform:translateY(-50%);width:3px;height:20px;background:var(--grad-accent);border-radius:0 3px 3px 0;box-shadow:0 0 8px var(--accentGlow);}
 .nav-item .ni{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.nav-badge{margin-left:auto;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--grad-accent);color:#fff;font-size:10px;font-weight:700;font-family:&quot;JetBrains Mono&quot;,monospace;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px var(--accentGlow);}
+.nav-badge{margin-left:auto;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--grad-accent);color:#fff;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px var(--accentGlow);}
 .sidebar-bot{margin-top:auto;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--glassBorder);padding-top:12px;}
 .agent-status{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:12px;background:var(--surface2);border:1px solid var(--glassBorder);transition:all .2s;}
 .agent-status:hover{background:rgba(255,255,255,.6);transform:translateY(-1px);}
 [data-theme="dark"] .agent-status:hover{background:rgba(255,255,255,.08);}
 .agent-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green),0 0 0 3px rgba(0,184,148,.15);animation:cbPulse 2.4s ease-in-out infinite;}
 .agent-label{font-size:11px;font-weight:600;line-height:1.2;}
-.agent-sublabel{font-size:9px;color:var(--faint);font-family:&quot;JetBrains Mono&quot;,monospace;margin-top:2px;}
+.agent-sublabel{font-size:9px;color:var(--faint);font-family:'JetBrains Mono',monospace;margin-top:2px;}
 .role-switcher{padding:0 2px;}
-.role-sw-label{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:8px;color:var(--faint);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;padding:0 9px;}
+.role-sw-label{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--faint);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;padding:0 9px;}
 .role-chips{display:flex;gap:4px;flex-wrap:wrap;padding:0 4px;}
 .role-chip{padding:4px 9px;border-radius:8px;border:1px solid var(--glassBorder);background:transparent;font-size:10.5px;font-weight:600;color:var(--faint);cursor:pointer;transition:all .2s;min-height:28px;}
 .role-chip.on{background:var(--accentSoft);color:var(--accent);border-color:rgba(59,111,246,.4);box-shadow:0 2px 8px var(--accentGlow);}
@@ -5184,7 +5289,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 .theme-btn:hover{background:var(--bg2);color:var(--text);}
 .theme-panel{position:absolute;bottom:calc(100% + 8px);left:0;right:0;background:var(--surface);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glassBorder);border-radius:16px;padding:14px 12px;display:none;z-index:50;box-shadow:var(--shadow-lg),inset 0 1px 0 var(--glassHi);}
 .theme-panel.open{display:block;animation:cbFadeUp .2s ease;}
-.theme-panel-lbl{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:9px;color:var(--faint);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;padding:0 2px;}
+.theme-panel-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--faint);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;padding:0 2px;}
 .theme-swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .theme-swatch{height:32px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:all .2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.3);}
 .theme-swatch:hover{transform:scale(1.06);}
@@ -5200,7 +5305,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 [data-theme="dark"] #notif-btn{background:rgba(255,255,255,.06);}
 #notif-btn:hover{background:rgba(255,255,255,.7);transform:translateY(-1px);box-shadow:var(--shadow-md);}
 [data-theme="dark"] #notif-btn:hover{background:rgba(255,255,255,.12);}
-#notif-count{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--red);color:#fff;font-size:9px;font-weight:700;font-family:&quot;JetBrains Mono&quot;,monospace;display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(255,107,129,.5);}
+#notif-count{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--red);color:#fff;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(255,107,129,.5);}
 #content{flex:1;overflow-y:auto;min-height:0;padding:28px clamp(16px,4vw,32px) 100px;}
 #content>div{max-width:1100px;margin:0 auto;animation:cbFadeUp .35s cubic-bezier(.16,1,.3,1);}
 
@@ -5260,41 +5365,56 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 /* Premium toast \u2014 dark glass works in both themes; existing #toast .toast-inner already styled above */
 
 /* Mobile: floating + button + bottom nav */
+#fab{display:none;}
+.admin-user-row{display:grid;grid-template-columns:minmax(180px,1fr) 140px 120px 1fr auto;gap:8px;align-items:center;}
+@media(max-width:820px){.admin-user-row{grid-template-columns:1fr 1fr;}.admin-user-row > :first-child{grid-column:1/-1;}.admin-user-row > :last-child{grid-column:1/-1;}}
+/* Approvals, autonomy levels and the kill switch are manager-only on the server too. */
+body.not-mgr .approve-btn,body.not-mgr #kill-switch-btn{display:none !important;}
+body.not-mgr .lvl{pointer-events:none;opacity:.55;}
+body.is-client #qbar,body.is-client #fab{display:none !important;}
+@media(min-width:701px){
+  /* The top bar is mobile-only, so on desktop its bell floats top-right on its own. */
+  #topbar{display:flex;position:fixed;top:14px;right:22px;padding:0;border:none;background:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;z-index:40;}
+  [data-theme="dark"] #topbar{box-shadow:none;}
+  #topbar > :not(#notif-btn){display:none !important;}
+  .sec-head{padding-right:56px;}
+}
 @media(max-width:900px){
   #fab{position:fixed;bottom:78px;right:18px;width:56px;height:56px;border-radius:18px;background:var(--grad-accent);border:none;color:#fff;font-size:28px;font-weight:300;box-shadow:0 8px 24px var(--accentGlow),inset 0 1px 0 rgba(255,255,255,.3);z-index:25;transition:all .2s cubic-bezier(.16,1,.3,1);display:flex;align-items:center;justify-content:center;line-height:1;}
   #fab:hover{transform:translateY(-3px) scale(1.05);box-shadow:0 12px 32px var(--accentGlow);}
   #fab:active{transform:scale(.92);}
+  body.qbar-on #fab{display:none;}
 }
 
 /* briefing panel */
 .brief-card{padding:20px 22px;border-radius:20px;margin-bottom:24px;background:var(--grad-surface),var(--surface);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);}
 .brief-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
 .brief-brain{width:40px;height:40px;border-radius:13px;background:var(--grad-accent);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 8px 22px var(--accentGlow),inset 0 1px 0 rgba(255,255,255,.3);flex-shrink:0;animation:cbFloat 4s ease-in-out infinite;}
-.brief-label{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:9px;font-weight:700;color:var(--accent);letter-spacing:.8px;text-transform:uppercase;}
+.brief-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--accent);letter-spacing:.8px;text-transform:uppercase;}
 .brief-title{font-size:14px;font-weight:600;margin-top:2px;color:var(--text);line-height:1.4;}
 .brief-sw{display:flex;gap:2px;margin-left:auto;background:rgba(255,255,255,.06);padding:3px;border-radius:10px;border:1px solid var(--glassBorder);}
-.brief-sw-btn{padding:6px 10px;border:none;border-radius:8px;background:transparent;font-size:10px;font-weight:600;color:var(--faint);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.3px;min-height:28px;transition:all .2s;}
+.brief-sw-btn{padding:6px 10px;border:none;border-radius:8px;background:transparent;font-size:10px;font-weight:600;color:var(--faint);font-family:'JetBrains Mono',monospace;letter-spacing:.3px;min-height:28px;transition:all .2s;}
 .brief-sw-btn.on{background:var(--grad-accent);color:#fff;box-shadow:0 2px 8px var(--accentGlow);}
 .brief-stats{display:flex;gap:10px;flex-wrap:wrap;}
 .brief-stat{flex:1;min-width:80px;padding:12px 14px;border-radius:13px;background:var(--bg2);border:1px solid var(--glassBorder);transition:all .2s;}
 .brief-stat:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);}
 [data-theme="dark"] .brief-stat{background:rgba(255,255,255,.04);}
-.brief-stat-val{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:20px;font-weight:700;}
+.brief-stat-val{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;}
 .brief-stat-lbl{font-size:10px;color:var(--muted);margin-top:2px;}
 
 /* CEO KPI row */
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:10px;margin-bottom:20px;}
 .kpi-card{padding:14px 15px;border-radius:14px;}
-.kpi-val{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:26px;font-weight:700;line-height:1;}
+.kpi-val{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;line-height:1;}
 .kpi-lbl{font-size:11px;color:var(--muted);margin-top:7px;}
 
 /* role-specific panels */
 .role-panel{padding:18px 20px;border-radius:18px;margin-bottom:20px;border-left:4px solid transparent;border-image:var(--grad-accent) 1;background:var(--grad-surface),var(--surface);}
-.role-panel-lbl{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:9px;font-weight:800;background:var(--grad-accent);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;}
+.role-panel-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:800;background:var(--grad-accent);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;}
 .role-panel-title{font-size:15px;font-weight:700;margin-bottom:4px;letter-spacing:-.2px;}
 .role-panel-sub{font-size:12.5px;color:var(--muted);line-height:1.55;}
 .role-stats{display:flex;gap:20px;margin-top:14px;padding-top:12px;border-top:1px solid var(--glassBorder);}
-.role-stat-val{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:20px;font-weight:800;letter-spacing:-.3px;}
+.role-stat-val{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;letter-spacing:-.3px;}
 .role-stat-lbl{font-size:10px;color:var(--muted);margin-top:3px;font-weight:600;}
 
 /* accountability */
@@ -5313,8 +5433,8 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 .loops-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;}
 .col-head{display:flex;align-items:center;gap:8px;margin-bottom:5px;padding:0 2px;}
 .col-dot{width:9px;height:9px;border-radius:3px;}
-.col-label{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
-.col-count{margin-left:auto;font-family:&quot;JetBrains Mono&quot;,monospace;font-size:12px;color:var(--muted);}
+.col-label{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+.col-count{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);}
 .col-hint{font-size:10.5px;color:var(--faint);display:block;margin:-2px 0 10px 17px;}
 .loop-card{display:flex;align-items:flex-start;gap:12px;padding:15px 17px;border-radius:15px;margin-bottom:10px;animation:cbFadeUp .3s ease both;transition:transform .2s cubic-bezier(.16,1,.3,1),box-shadow .2s,border-color .2s;}
 .loop-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md),inset 0 1px 0 var(--glassHi),0 8px 24px var(--accentGlow);border-color:rgba(59,111,246,.25);}
@@ -5325,7 +5445,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 .loop-title-row .loop-title{flex:1;min-width:0;}
 .loop-title{font-size:14.5px;font-weight:700;line-height:1.35;letter-spacing:-.1px;}
 .loop-meta{font-size:12px;color:var(--muted);margin-top:3px;}
-.loop-chan{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--faint);text-transform:uppercase;}
+.loop-chan{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--faint);text-transform:uppercase;}
 .loop-actions{display:flex;align-items:center;gap:16px;margin-top:11px;}
 .age-pill{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;white-space:nowrap;flex-shrink:0;letter-spacing:.3px;}
 .age-fresh{background:var(--greenSoft);color:var(--green);box-shadow:0 1px 3px rgba(0,184,148,.15);}
@@ -5347,7 +5467,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 #qbar button{background:var(--grad-accent);border:none;border-radius:14px;padding:12px 22px;font-size:13px;font-weight:700;color:#fff;box-shadow:0 6px 20px var(--accentGlow),inset 0 1px 0 rgba(255,255,255,.25);min-height:46px;transition:all .2s;letter-spacing:.2px;}
 #qbar button:hover{transform:translateY(-2px);box-shadow:0 10px 28px var(--accentGlow),inset 0 1px 0 rgba(255,255,255,.3);}
 #qbar button:active{transform:translateY(0);}
-.qhint{font-size:11px;color:var(--faint);font-family:&quot;JetBrains Mono&quot;,monospace;align-self:center;white-space:nowrap;}
+.qhint{font-size:11px;color:var(--faint);font-family:'JetBrains Mono',monospace;align-self:center;white-space:nowrap;}
 
 /* segments */
 .seg-bar{display:flex;gap:4px;padding:5px;border-radius:14px;background:rgba(255,255,255,.4);border:1px solid var(--glassBorder);width:fit-content;margin-bottom:20px;flex-wrap:wrap;box-shadow:inset 0 1px 2px rgba(82,99,140,.04);}
@@ -5372,7 +5492,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 .lead-detail{display:none;padding:14px 16px 16px;border-top:1px solid var(--glassBorder);margin-top:2px;animation:cbFadeUp .25s cubic-bezier(.16,1,.3,1);width:100%;}
 .lead-detail.open{display:block;}
 .lead-detail-row{display:flex;gap:8px;margin-bottom:8px;font-size:12.5px;}
-.lead-detail-lbl{color:var(--faint);min-width:80px;font-family:&quot;JetBrains Mono&quot;,monospace;font-size:10px;padding-top:1px;font-weight:600;}
+.lead-detail-lbl{color:var(--faint);min-width:80px;font-family:'JetBrains Mono',monospace;font-size:10px;padding-top:1px;font-weight:600;}
 .lead-detail-val{color:var(--text);font-weight:600;}
 .lead-action-strip{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
 .lead-action-btn{padding:9px 13px;border-radius:11px;border:1px solid var(--glassBorder);background:rgba(255,255,255,.4);color:var(--muted);font-size:12px;font-weight:600;min-height:38px;transition:all .2s;backdrop-filter:blur(10px);}
@@ -5386,13 +5506,13 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 .lead-tl-item{position:relative;padding-left:16px;margin-bottom:12px;}
 .lead-tl-item::before{content:'';position:absolute;left:-10.5px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--bg);border:2px solid var(--accent);}
 .lead-tl-text{font-size:12px;line-height:1.4;}
-.lead-tl-when{font-size:10px;color:var(--faint);margin-top:2px;font-family:&quot;JetBrains Mono&quot;,monospace;}
+.lead-tl-when{font-size:10px;color:var(--faint);margin-top:2px;font-family:'JetBrains Mono',monospace;}
 
 /* agent / autonomy */
 .agent-card{padding:16px 18px;border-radius:15px;margin-bottom:10px;}
 .agent-name{font-size:14px;font-weight:700;}
 .agent-role{font-size:12px;color:var(--muted);margin-top:2px;}
-.auto-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.3px;}
+.auto-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;font-family:'JetBrains Mono',monospace;letter-spacing:.3px;}
 .auto-auto{background:var(--greenSoft);color:var(--green);}
 .auto-ask{background:var(--amberSoft);color:var(--amber);}
 .auto-off{background:rgba(120,120,140,.12);color:var(--faint);}
@@ -5411,7 +5531,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 .lvl.on{background:var(--grad-accent);color:#fff;box-shadow:0 3px 10px var(--accentGlow),inset 0 1px 0 rgba(255,255,255,.25);}
 .approve-card{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:15px;margin-bottom:9px;}
 .approve-title{font-size:13.5px;font-weight:700;}
-.approve-action{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:11px;color:var(--faint);margin-top:3px;}
+.approve-action{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--faint);margin-top:3px;}
 .approve-btn{padding:9px 17px;border-radius:11px;border:none;font-size:12px;font-weight:700;min-height:38px;transition:all .2s;}
 .approve-btn.ok{background:linear-gradient(135deg,var(--green),#3ee3b0);color:#fff;box-shadow:0 4px 14px rgba(0,184,148,.3),inset 0 1px 0 rgba(255,255,255,.25);}
 .approve-btn.ok:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,184,148,.4),inset 0 1px 0 rgba(255,255,255,.3);}
@@ -5428,11 +5548,11 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 
 /* events */
 .event-card{padding:12px 16px;border-radius:13px;margin-bottom:8px;display:flex;align-items:center;gap:12px;}
-.event-type{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:12px;font-weight:600;color:var(--accent);}
+.event-type{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--accent);}
 .event-meta{font-size:11.5px;color:var(--muted);margin-top:2px;}
 .event-icon{width:36px;height:36px;border-radius:12px;background:var(--grad-surface),var(--surface2);border:1px solid var(--glassBorder);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;box-shadow:inset 0 1px 0 var(--glassHi);transition:transform .2s;}
 .event-icon:hover{transform:scale(1.08);}
-.date-sep{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:10px;color:var(--faint);letter-spacing:.6px;padding:10px 0 8px;display:flex;align-items:center;gap:12px;font-weight:700;}
+.date-sep{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);letter-spacing:.6px;padding:10px 0 8px;display:flex;align-items:center;gap:12px;font-weight:700;}
 .date-sep::before,.date-sep::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--glassBorder),transparent);}
 .undo-btn{margin-left:auto;padding:7px 14px;border-radius:10px;border:1px solid var(--glassBorder);background:rgba(255,255,255,.4);color:var(--muted);font-size:12px;font-weight:600;min-height:34px;transition:all .2s;backdrop-filter:blur(10px);}
 [data-theme="dark"] .undo-btn{background:rgba(255,255,255,.05);}
@@ -5445,12 +5565,12 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 #cmd-box{width:100%;max-width:530px;border-radius:18px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.5);border:1px solid var(--glassBorder);}
 #cmd-search{width:100%;padding:16px 18px;background:rgba(16,17,22,.98);border:none;font-size:15px;color:var(--text);border-bottom:1px solid var(--glassBorder);}
 #cmd-results{max-height:360px;overflow-y:auto;background:rgba(12,13,18,.97);}
-.cmd-group{padding:8px 18px 2px;font-family:&quot;JetBrains Mono&quot;,monospace;font-size:9px;color:var(--faint);letter-spacing:.6px;text-transform:uppercase;}
+.cmd-group{padding:8px 18px 2px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--faint);letter-spacing:.6px;text-transform:uppercase;}
 .cmd-item{display:flex;align-items:center;gap:12px;padding:10px 18px;cursor:pointer;font-size:13px;border-radius:0;min-height:44px;}
 .cmd-item:hover,.cmd-item.sel{background:var(--accentSoft);}
 .cmd-item-ic{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid var(--glassBorder);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
 .cmd-item-label{font-weight:500;flex:1;}
-.cmd-item-hint{font-size:10px;color:var(--faint);font-family:&quot;JetBrains Mono&quot;,monospace;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.06);border:1px solid var(--glassBorder);}
+.cmd-item-hint{font-size:10px;color:var(--faint);font-family:'JetBrains Mono',monospace;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.06);border:1px solid var(--glassBorder);}
 
 /* mobile bottom nav \u2014 44px hit targets */
 #botnav{display:none;position:fixed;left:0;right:0;bottom:0;background:var(--glassThin);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);border-top:1px solid var(--glassBorder);padding:4px 0 max(6px,env(safe-area-inset-bottom));z-index:30;}
@@ -5489,16 +5609,16 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 .spin{width:24px;height:24px;border:3px solid rgba(255,255,255,.1);border-top-color:var(--accent);border-right-color:var(--accent2);border-radius:50%;animation:cbSpin .7s linear infinite;margin:40px auto;display:block;filter:drop-shadow(0 0 6px var(--accentGlow));}
 
 /* kanban board */
-.kanban-wrap{margin-top:4px;}.overdue-strip{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;background:linear-gradient(135deg,rgba(255,107,129,.1),rgba(255,107,129,.05));border:1px solid rgba(255,107,129,.25);margin-bottom:16px;box-shadow:0 4px 14px rgba(255,107,129,.08);}.overdue-strip-count{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:14px;font-weight:800;color:var(--red);}.overdue-strip-label{font-size:13px;color:var(--red);flex:1;font-weight:600;}.kanban-board{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}.kanban-col{min-width:0;}.kanban-col-head{display:flex;align-items:center;gap:7px;padding:0 2px 12px;}.kanban-col-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;box-shadow:0 0 8px currentColor;}.kanban-col-label{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);}.kanban-col-count{margin-left:auto;font-family:&quot;JetBrains Mono&quot;,monospace;font-size:11px;font-weight:700;color:var(--faint);background:var(--surface2);padding:2px 8px;border-radius:8px;border:1px solid var(--glassBorder);}.kanban-col-body{display:flex;flex-direction:column;gap:8px;min-height:80px;}.kanban-task-card{padding:13px 14px;border-radius:14px;transition:all .2s cubic-bezier(.16,1,.3,1);}.kanban-task-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md),inset 0 1px 0 var(--glassHi);}.kanban-task-card.overdue{border-left:3px solid var(--red);border-top-left-radius:11px;border-bottom-left-radius:11px;}.kanban-task-card.due-soon{border-left:3px solid var(--amber);border-top-left-radius:11px;border-bottom-left-radius:11px;}.kanban-task-row{display:flex;align-items:flex-start;gap:9px;}.kanban-check{width:19px;height:19px;border-radius:50%;border:2px solid var(--glassBorder);background:transparent;flex-shrink:0;margin-top:2px;cursor:pointer;transition:all .2s;min-height:19px;}.kanban-check:hover{border-color:var(--green);background:var(--greenSoft);transform:scale(1.1);}.kanban-task-emoji{font-size:14px;flex-shrink:0;margin-top:1px;}.kanban-task-title{font-size:13.5px;font-weight:600;color:var(--text);line-height:1.3;flex:1;}.kanban-task-sub{font-size:10.5px;color:var(--muted);margin-top:3px;}.kanban-task-foot{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;}.priority-pill{font-size:9px;font-weight:800;padding:3px 7px;border-radius:6px;font-family:&quot;JetBrains Mono&quot;,monospace;white-space:nowrap;letter-spacing:.3px;}.priority-high{background:var(--redSoft);color:var(--red);box-shadow:0 1px 3px rgba(255,107,129,.2);}.priority-med{background:var(--amberSoft);color:var(--amber);}.priority-low{background:var(--greenSoft);color:var(--green);}.kanban-add-btn{display:flex;align-items:center;gap:7px;padding:10px 12px;border-radius:12px;border:1.5px dashed var(--glassBorder);background:transparent;color:var(--faint);font-size:12px;width:100%;cursor:pointer;margin-top:6px;min-height:38px;transition:all .2s;font-weight:500;}.kanban-add-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accentSoft);transform:translateY(-1px);}
+.kanban-wrap{margin-top:4px;}.overdue-strip{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;background:linear-gradient(135deg,rgba(255,107,129,.1),rgba(255,107,129,.05));border:1px solid rgba(255,107,129,.25);margin-bottom:16px;box-shadow:0 4px 14px rgba(255,107,129,.08);}.overdue-strip-count{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:var(--red);}.overdue-strip-label{font-size:13px;color:var(--red);flex:1;font-weight:600;}.kanban-board{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}.kanban-col{min-width:0;}.kanban-col-head{display:flex;align-items:center;gap:7px;padding:0 2px 12px;}.kanban-col-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;box-shadow:0 0 8px currentColor;}.kanban-col-label{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);}.kanban-col-count{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--faint);background:var(--surface2);padding:2px 8px;border-radius:8px;border:1px solid var(--glassBorder);}.kanban-col-body{display:flex;flex-direction:column;gap:8px;min-height:80px;}.kanban-task-card{padding:13px 14px;border-radius:14px;transition:all .2s cubic-bezier(.16,1,.3,1);}.kanban-task-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md),inset 0 1px 0 var(--glassHi);}.kanban-task-card.overdue{border-left:3px solid var(--red);border-top-left-radius:11px;border-bottom-left-radius:11px;}.kanban-task-card.due-soon{border-left:3px solid var(--amber);border-top-left-radius:11px;border-bottom-left-radius:11px;}.kanban-task-row{display:flex;align-items:flex-start;gap:9px;}.kanban-check{width:19px;height:19px;border-radius:50%;border:2px solid var(--glassBorder);background:transparent;flex-shrink:0;margin-top:2px;cursor:pointer;transition:all .2s;min-height:19px;}.kanban-check:hover{border-color:var(--green);background:var(--greenSoft);transform:scale(1.1);}.kanban-task-emoji{font-size:14px;flex-shrink:0;margin-top:1px;}.kanban-task-title{font-size:13.5px;font-weight:600;color:var(--text);line-height:1.3;flex:1;}.kanban-task-sub{font-size:10.5px;color:var(--muted);margin-top:3px;}.kanban-task-foot{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;}.priority-pill{font-size:9px;font-weight:800;padding:3px 7px;border-radius:6px;font-family:'JetBrains Mono',monospace;white-space:nowrap;letter-spacing:.3px;}.priority-high{background:var(--redSoft);color:var(--red);box-shadow:0 1px 3px rgba(255,107,129,.2);}.priority-med{background:var(--amberSoft);color:var(--amber);}.priority-low{background:var(--greenSoft);color:var(--green);}.kanban-add-btn{display:flex;align-items:center;gap:7px;padding:10px 12px;border-radius:12px;border:1.5px dashed var(--glassBorder);background:transparent;color:var(--faint);font-size:12px;width:100%;cursor:pointer;margin-top:6px;min-height:38px;transition:all .2s;font-weight:500;}.kanban-add-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accentSoft);transform:translateY(-1px);}
 
 /* pipeline board */
-.pipeline-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;-webkit-overflow-scrolling:touch;margin-top:4px;}.pipeline-board::-webkit-scrollbar{height:4px;}.pipeline-col{min-width:210px;width:210px;flex-shrink:0;}.pipeline-col-head{display:flex;align-items:center;gap:6px;padding:0 2px 10px;}.pipeline-stage-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}.pipeline-stage-label{font-family:&quot;JetBrains Mono&quot;,monospace;font-size:9.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}.pipeline-col-count{margin-left:auto;font-family:&quot;JetBrains Mono&quot;,monospace;font-size:11px;color:var(--faint);}.pipeline-col-body{display:flex;flex-direction:column;gap:7px;min-height:80px;}.pipeline-lead-card{padding:11px 12px;border-radius:12px;cursor:pointer;transition:transform .15s,box-shadow .15s;}.pipeline-lead-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);}.pipeline-lead-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#fff;}.pipeline-lead-name{font-size:12.5px;font-weight:600;color:var(--text);line-height:1.3;}.pipeline-lead-sub{font-size:10.5px;color:var(--muted);margin-top:2px;}.pipeline-lead-foot{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;}.plead-adv-btn{padding:4px 9px;border-radius:6px;border:1px solid var(--glassBorder);background:var(--surface2);color:var(--muted);font-size:10.5px;font-weight:500;min-height:26px;cursor:pointer;transition:all .15s;text-decoration:none;}.plead-adv-btn:hover{background:var(--accentSoft);color:var(--accent);border-color:rgba(62,123,250,.3);}
+.pipeline-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;-webkit-overflow-scrolling:touch;margin-top:4px;}.pipeline-board::-webkit-scrollbar{height:4px;}.pipeline-col{min-width:210px;width:210px;flex-shrink:0;}.pipeline-col-head{display:flex;align-items:center;gap:6px;padding:0 2px 10px;}.pipeline-stage-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}.pipeline-stage-label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}.pipeline-col-count{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--faint);}.pipeline-col-body{display:flex;flex-direction:column;gap:7px;min-height:80px;}.pipeline-lead-card{padding:11px 12px;border-radius:12px;cursor:pointer;transition:transform .15s,box-shadow .15s;}.pipeline-lead-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);}.pipeline-lead-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#fff;}.pipeline-lead-name{font-size:12.5px;font-weight:600;color:var(--text);line-height:1.3;}.pipeline-lead-sub{font-size:10.5px;color:var(--muted);margin-top:2px;}.pipeline-lead-foot{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;}.plead-adv-btn{padding:4px 9px;border-radius:6px;border:1px solid var(--glassBorder);background:var(--surface2);color:var(--muted);font-size:10.5px;font-weight:500;min-height:26px;cursor:pointer;transition:all .15s;text-decoration:none;}.plead-adv-btn:hover{background:var(--accentSoft);color:var(--accent);border-color:rgba(62,123,250,.3);}
 
 /* bento grid */
-.bento-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:13px;margin-top:4px;}.bento-card{border-radius:18px;padding:20px;min-height:170px;display:flex;flex-direction:column;position:relative;overflow:hidden;cursor:pointer;transition:transform .25s cubic-bezier(.16,1,.3,1),box-shadow .25s;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.2);}.bento-card::after{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(180deg,rgba(255,255,255,.1) 0%,transparent 100%);pointer-events:none;}.bento-card:hover{transform:translateY(-4px) scale(1.01);box-shadow:var(--shadow-lg),0 12px 36px rgba(59,111,246,.2),inset 0 1px 0 rgba(255,255,255,.3);}.bento-hero{grid-column:span 2;min-height:190px;}.bento-card-emoji{font-size:26px;margin-bottom:auto;}.bento-card-name{font-size:15px;font-weight:700;line-height:1.3;color:#fff;}.bento-card-desc{font-size:11.5px;opacity:.8;margin-top:4px;color:#fff;line-height:1.4;}.bento-card-foot{display:flex;align-items:center;gap:8px;margin-top:12px;}.bento-prog-bar{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.25);overflow:hidden;}.bento-prog-fill{height:100%;border-radius:3px;background:rgba(255,255,255,.75);}.bento-pct{font-size:10px;font-weight:700;color:rgba(255,255,255,.8);font-family:&quot;JetBrains Mono&quot;,monospace;}.bento-status{font-size:9.5px;font-weight:700;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,.2);color:#fff;font-family:&quot;JetBrains Mono&quot;,monospace;}.bento-new-card{border-radius:18px;padding:20px;min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:2px dashed var(--glassBorder);cursor:pointer;transition:all .2s;color:var(--faint);background:transparent;}.bento-new-card:hover{border-color:var(--accent);color:var(--accent);background:var(--accentSoft);transform:translateY(-2px);box-shadow:0 8px 24px var(--accentGlow);}
+.bento-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:13px;margin-top:4px;}.bento-card{border-radius:18px;padding:20px;min-height:170px;display:flex;flex-direction:column;position:relative;overflow:hidden;cursor:pointer;transition:transform .25s cubic-bezier(.16,1,.3,1),box-shadow .25s;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.2);}.bento-card::after{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(180deg,rgba(255,255,255,.1) 0%,transparent 100%);pointer-events:none;}.bento-card:hover{transform:translateY(-4px) scale(1.01);box-shadow:var(--shadow-lg),0 12px 36px rgba(59,111,246,.2),inset 0 1px 0 rgba(255,255,255,.3);}.bento-hero{grid-column:span 2;min-height:190px;}.bento-card-emoji{font-size:26px;margin-bottom:auto;}.bento-card-name{font-size:15px;font-weight:700;line-height:1.3;color:#fff;}.bento-card-desc{font-size:11.5px;opacity:.8;margin-top:4px;color:#fff;line-height:1.4;}.bento-card-foot{display:flex;align-items:center;gap:8px;margin-top:12px;}.bento-prog-bar{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.25);overflow:hidden;}.bento-prog-fill{height:100%;border-radius:3px;background:rgba(255,255,255,.75);}.bento-pct{font-size:10px;font-weight:700;color:rgba(255,255,255,.8);font-family:'JetBrains Mono',monospace;}.bento-status{font-size:9.5px;font-weight:700;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,.2);color:#fff;font-family:'JetBrains Mono',monospace;}.bento-new-card{border-radius:18px;padding:20px;min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:2px dashed var(--glassBorder);cursor:pointer;transition:all .2s;color:var(--faint);background:transparent;}.bento-new-card:hover{border-color:var(--accent);color:var(--accent);background:var(--accentSoft);transform:translateY(-2px);box-shadow:0 8px 24px var(--accentGlow);}
 
 /* modals */
-.modal-backdrop{position:fixed;inset:0;background:rgba(8,10,20,.45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:200;display:none;align-items:center;justify-content:center;padding:18px;}.modal-backdrop.open{display:flex;animation:cbFade .2s ease;}.modal-box{background:var(--grad-surface),var(--surface);border:1px solid var(--glassBorder);border-radius:24px;width:100%;max-width:500px;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg),inset 0 1px 0 var(--glassHi);animation:cbModalUp .25s cubic-bezier(.16,1,.3,1);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);}.modal-head{display:flex;align-items:center;gap:12px;padding:22px 22px 0;}.modal-title{font-size:17px;font-weight:700;flex:1;letter-spacing:-.3px;}.modal-close{width:34px;height:34px;border-radius:10px;border:1px solid var(--glassBorder);background:transparent;color:var(--muted);font-size:16px;cursor:pointer;transition:all .2s;}.modal-close:hover{background:rgba(255,255,255,.06);color:var(--text);transform:rotate(90deg);}.modal-body{padding:18px 22px 4px;}.modal-foot{display:flex;gap:10px;justify-content:flex-end;padding:14px 22px 22px;}.modal-field{margin-bottom:14px;}.modal-label{display:block;font-size:10px;font-weight:700;color:var(--muted);font-family:&quot;JetBrains Mono&quot;,monospace;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;}.modal-input,.modal-select{width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--glassBorder);background:rgba(255,255,255,.5);color:var(--text);font-size:13.5px;font-family:inherit;transition:all .2s;box-shadow:inset 0 1px 2px rgba(82,99,140,.04);}[data-theme="dark"] .modal-input,[data-theme="dark"] .modal-select{background:rgba(255,255,255,.07);}.modal-input:focus,.modal-select:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accentSoft),inset 0 1px 2px rgba(82,99,140,.04);outline:none;background:rgba(255,255,255,.7);}[data-theme="dark"] .modal-input:focus,[data-theme="dark"] .modal-select:focus{background:rgba(255,255,255,.1);}@keyframes cbModalUp{from{opacity:0;transform:translateY(20px) scale(.96)}to{opacity:1;transform:none}}
+.modal-backdrop{position:fixed;inset:0;background:rgba(8,10,20,.45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:200;display:none;align-items:center;justify-content:center;padding:18px;}.modal-backdrop.open{display:flex;animation:cbFade .2s ease;}.modal-box{background:var(--grad-surface),var(--surface);border:1px solid var(--glassBorder);border-radius:24px;width:100%;max-width:500px;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg),inset 0 1px 0 var(--glassHi);animation:cbModalUp .25s cubic-bezier(.16,1,.3,1);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);}.modal-head{display:flex;align-items:center;gap:12px;padding:22px 22px 0;}.modal-title{font-size:17px;font-weight:700;flex:1;letter-spacing:-.3px;}.modal-close{width:34px;height:34px;border-radius:10px;border:1px solid var(--glassBorder);background:transparent;color:var(--muted);font-size:16px;cursor:pointer;transition:all .2s;}.modal-close:hover{background:rgba(255,255,255,.06);color:var(--text);transform:rotate(90deg);}.modal-body{padding:18px 22px 4px;}.modal-foot{display:flex;gap:10px;justify-content:flex-end;padding:14px 22px 22px;}.modal-field{margin-bottom:14px;}.modal-label{display:block;font-size:10px;font-weight:700;color:var(--muted);font-family:'JetBrains Mono',monospace;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;}.modal-input,.modal-select{width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--glassBorder);background:rgba(255,255,255,.5);color:var(--text);font-size:13.5px;font-family:inherit;transition:all .2s;box-shadow:inset 0 1px 2px rgba(82,99,140,.04);}[data-theme="dark"] .modal-input,[data-theme="dark"] .modal-select{background:rgba(255,255,255,.07);}.modal-input:focus,.modal-select:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accentSoft),inset 0 1px 2px rgba(82,99,140,.04);outline:none;background:rgba(255,255,255,.7);}[data-theme="dark"] .modal-input:focus,[data-theme="dark"] .modal-select:focus{background:rgba(255,255,255,.1);}@keyframes cbModalUp{from{opacity:0;transform:translateY(20px) scale(.96)}to{opacity:1;transform:none}}
 
 /* sheets / modals on mobile */
 .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);z-index:90;display:none;}
@@ -5832,7 +5952,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   var darkMode=localStorage.getItem('cb-dark')==='1';
 
   // \u2500\u2500 helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-  function esc(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function api(path,opts){
     return fetch(path,opts).then(function(r){
       return r.text().then(function(t){
@@ -5852,7 +5972,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       });
     });
   }
-  function post(path,body,method){return api(path,{method:method||'POST',headers:{'content-type':'application/json'},body:body?JSON.stringify(body):undefined});}
+  function post(path,body,method){var o={method:method||'POST'};if(body!==undefined&&body!==null){o.headers={'content-type':'application/json'};o.body=JSON.stringify(body);}return api(path,o);}
   function ago(ts){
     var d=(Date.now()-ts)/1e3;
     if(d<60) return 'just now';
@@ -5875,7 +5995,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     if(v>=1e3) return '\u20B9'+Math.round(v/1e3)+'k';
     return '\u20B9'+v;
   }
-  function autoBadge(a){return '<span class="auto-badge auto-'+(a||'off')+'">'+(a||'off').toUpperCase()+'</span>';}
+  function autoBadge(a){a=['off','ask','auto','full','on','low','medium','high'].indexOf(String(a))>=0?String(a):'off';return '<span class="auto-badge auto-'+a+'">'+a.toUpperCase()+'</span>';}
   function todayStr(){return new Date().toISOString().slice(0,10);}
   function dateLabel(ts){
     if(!ts) return '';
@@ -5925,6 +6045,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       +'<span style="font-family:&quot;JetBrains Mono&quot;,monospace;font-size:11px;font-weight:600;color:var(--accent);width:32px;text-align:right;">'+pct+'%</span>'
       +'</div>';
   }
+  function fail(e){toast((e&&e.message)||'Something went wrong');}
   function toast(msg,onUndo){
     var t=document.getElementById('toast');
     var inner=t.querySelector('.toast-inner');
@@ -5967,6 +6088,9 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   function applySessionUser(user){
     me=user||null;
     if(me&&me.role) activeRole=roleFromApi(me.role);
+    var mgr=!!(me&&(me.role==='ceo'||me.role==='manager'));
+    document.body.classList.toggle('not-mgr',!!me&&!mgr);
+    document.body.classList.toggle('is-client',!!me&&me.role==='client');
     updateSessionUi();
   }
   function openAuthModal(msg){
@@ -6039,6 +6163,11 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   function logoutSession(){
     post('/api/auth/logout').catch(function(){}).then(function(){
       appStarted=false;
+      if(sseSource){try{sseSource.close();}catch(_e){}sseSource=null;}
+      // Nothing from the last person's session stays on screen for the next one.
+      TEAM_USERS=[];SHARED.projects=null;SHARED.agents=null;tab='home';
+      if(notifPanel)notifPanel.classList.remove('open');
+      view.innerHTML='';
       applySessionUser(null);
       ensureSession().then(function(ok){ if(ok) startApp(); });
     });
@@ -6129,6 +6258,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   function render(){
     var showBar=tab==='loops'||tab==='tasks'||tab==='leads';
     qbar.style.display=showBar?'flex':'none';
+    document.body.classList.toggle('qbar-on',showBar);
     qfield.placeholder=tab==='loops'?'Add a follow-up\u2026':tab==='tasks'?'Add a task for today\u2026':'Add lead (name or paste a note)\u2026';
     view.innerHTML='<div class="spin"></div>';
     if(tab==='home')          loadToday();
@@ -6140,6 +6270,8 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     else if(tab==='methods')  loadMethods();
     else if(tab==='reports')  loadReports();
     else if(tab==='settings') loadSettings();
+    else if(tab==='agents')   loadAgents();
+    else if(tab==='auto')     loadAuto();
     else                      loadEvents();
   }
 
@@ -6153,7 +6285,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       +'<div class="role-stats">'
       +'<div><div class="role-stat-val" style="color:var(--blue)">'+yours.length+'</div><div class="role-stat-lbl">your actions</div></div>'
       +'<div><div class="role-stat-val" style="color:var(--teal)">'+theirs.length+'</div><div class="role-stat-lbl">team actions</div></div>'
-      +'<div><div class="role-stat-val" style="color:var(--amber)">'+['user_emp','user_dev'].length+'</div><div class="role-stat-lbl">direct reports</div></div>'
+      +'<div><div class="role-stat-val" style="color:var(--amber)">'+TEAM_USERS.filter(function(u){return u.role==='employee'&&(!me||u.userId!==me.userId);}).length+'</div><div class="role-stat-lbl">employees</div></div>'
       +'</div></div>';
     if(activeRole==='emp') return '<div class="role-panel gc" style="border-left-color:var(--green);">'
       +'<div class="role-sw-label" style="color:var(--green);">EMPLOYEE VIEW \u2014 MY WORK</div>'
@@ -6283,8 +6415,8 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       view.innerHTML=html;
 
       // Wire actions
-      view.querySelectorAll('[data-approve]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.approve+'/approve').then(function(){toast('Approved');loadToday();});};});
-      view.querySelectorAll('[data-dismiss]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(function(){toast('Dismissed');loadToday();});};});
+      view.querySelectorAll('[data-approve]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.approve+'/approve').then(function(){toast('Approved');loadToday();}).catch(fail);};});
+      view.querySelectorAll('[data-dismiss]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(function(){toast('Dismissed');loadToday();}).catch(fail);};});
       view.querySelectorAll('.home-complete-btn').forEach(function(b){
         b.onclick=function(){
           // optimistic: fade out + disable immediately
@@ -6301,7 +6433,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
           });
         };
       });
-      view.querySelectorAll('.home-snooze-btn').forEach(function(b){b.onclick=function(){post('/api/loops/'+b.dataset.loop+'/snooze',{hours:24}).then(function(){toast('Snoozed 24h');loadToday();});};});
+      view.querySelectorAll('.home-snooze-btn').forEach(function(b){b.onclick=function(){post('/api/loops/'+b.dataset.loop+'/snooze',{hours:24}).then(function(){toast('Snoozed 24h');loadToday();}).catch(fail);};});
       view.querySelectorAll('.home-nudge-btn').forEach(function(b){b.onclick=function(){b.disabled=true;b.textContent='...';post('/api/loops/'+b.dataset.loop+'/snooze',{hours:1}).then(function(){toast('Reminder queued');loadToday();}).catch(function(){b.disabled=false;b.textContent='Nudge';});};});
     }).catch(function(e){
       view.innerHTML='<div class="gc" style="padding:20px;color:var(--muted);">Could not load your dashboard. '+(e&&e.message?esc(e.message):'')+' <button class="btn-ghost" onclick="loadToday()" style="margin-left:8px;">Retry</button></div>';
@@ -6349,12 +6481,12 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       view.innerHTML=html;
 
       view.querySelectorAll('[data-bm]').forEach(function(b){b.onclick=function(){briefMode=b.dataset.bm;loadLoops();};});
-      view.querySelectorAll('[data-close]').forEach(function(b){b.onclick=function(){post('/api/loops/'+b.dataset.close+'/close').then(function(){toast('Loop closed',function(){/* undo placeholder */});loadLoops();});};});
-      view.querySelectorAll('[data-snooze]').forEach(function(b){b.onclick=function(){post('/api/loops/'+b.dataset.snooze+'/snooze',{hours:24}).then(function(){toast('Snoozed 24h');loadLoops();});};});
+      view.querySelectorAll('[data-close]').forEach(function(b){b.onclick=function(){post('/api/loops/'+b.dataset.close+'/close').then(function(){toast('Loop closed');loadLoops();}).catch(fail);};});
+      view.querySelectorAll('[data-snooze]').forEach(function(b){b.onclick=function(){post('/api/loops/'+b.dataset.snooze+'/snooze',{hours:24}).then(function(){toast('Snoozed 24h');loadLoops();}).catch(fail);};});
       view.querySelectorAll('[data-assign-loop]').forEach(function(b){b.onclick=function(){openAssignPicker(b.dataset.assignLoop);};});
       var sw=document.getElementById('sweep-btn');
       if(sw) sw.onclick=function(){sw.disabled=true;toast('Sweeping channels\u2026');loadLoops();};
-    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load loops: '+(e&&e.message||e)+'</div>';});
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load loops: '+esc(e&&e.message||e)+'</div>';});
   }
   function loopCol(label,hint,dotColor,items){
     var cards=items.length?items.map(function(l){
@@ -6439,10 +6571,10 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       var nt=document.getElementById('new-task-btn'); if(nt) nt.onclick=function(){openNewTaskModal();};
       view.querySelectorAll('[data-scope]').forEach(function(b){b.onclick=function(){taskScope=b.dataset.scope;loadTasks();};});
       ['today','tomorrow','upcoming'].forEach(function(d){var btn=document.getElementById('kadd-'+d);if(btn)btn.onclick=function(){openNewTaskModal(d);};});
-      view.querySelectorAll('[data-done]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.done+'/complete').then(function(){toast('Task completed');loadTasks();});};});
-      view.querySelectorAll('[data-move]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.move+'/move',{day:b.dataset.day}).then(function(){toast('Task moved');loadTasks();});};});
+      view.querySelectorAll('[data-done]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.done+'/complete').then(function(){toast('Task completed');loadTasks();}).catch(fail);};});
+      view.querySelectorAll('[data-move]').forEach(function(b){b.onclick=function(){post('/api/tasks/'+b.dataset.move+'/move',{day:b.dataset.day}).then(function(){toast('Task moved');loadTasks();}).catch(fail);};});
       wireTaskDragAndDrop();
-    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load tasks: '+(e&&e.message||e)+'</div>';});
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load tasks: '+esc(e&&e.message||e)+'</div>';});
   }
   function kanbanCol(label,dotColor,items,colDay){
     var cards=items.length?items.map(function(t){
@@ -6479,7 +6611,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         var taskId=dragged?dragged.dataset.taskId:(e.dataTransfer?e.dataTransfer.getData('text/plain'):null);
         var day=col.dataset.colDay;
         if(!taskId||!day)return;
-        post('/api/tasks/'+taskId+'/move',{day:day}).then(function(){toast('Task moved');loadTasks();});
+        post('/api/tasks/'+taskId+'/move',{day:day}).then(function(){toast('Task moved');loadTasks();}).catch(function(e){fail(e);loadTasks();});
       });
     });
   }
@@ -6491,11 +6623,11 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     api('/api/leads').then(function(leads){
       leads=leads||[];
       view.innerHTML='<div class="sec-head"><div><div class="sec-title">Leads</div><div class="sec-sub">Pipeline \u2014 move each contact toward a close.</div></div><div class="head-actions"><button class="btn-primary" id="new-lead-btn">+ New lead</button></div></div><div class="pipeline-board">'
-        +LEAD_STAGES.map(function(stage){var stageLeads=leads.filter(function(l){return(l.stage||'new')===stage.id;});var stageValue=stageLeads.reduce(function(s,l){return s+((typeof l.value==='number')?l.value:0);},0);return '<div class="pipeline-col"><div class="pipeline-col-head"><span class="pipeline-stage-dot" style="background:'+stage.dot+'"></span><span class="pipeline-stage-label">'+stage.label+'</span><span class="pipeline-col-count">'+stageLeads.length+(stageValue>0?' \xB7 '+inr(stageValue):'')+'</span></div><div class="pipeline-col-body" data-stage="'+stage.id+'">'+(stageLeads.length?stageLeads.map(function(l){var initials=(l.name||'?').trim().split(/s+/).slice(0,2).map(function(w){return w[0]?w[0].toUpperCase():'';}).join('');var hue=((l.name||'A').charCodeAt(0)*37)%360;var canAdv=stage.id!=='won'&&stage.id!=='lost';var valBadge=(typeof l.value==='number'&&l.value>0)?'<span style="font-size:10px;font-weight:700;color:var(--green);font-family:&quot;JetBrains Mono&quot;,monospace;">'+inr(l.value)+'</span>':'';return '<div class="pipeline-lead-card gc" draggable="true" data-lead-id="'+l.id+'"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><div class="pipeline-lead-avatar" style="background:hsl('+hue+',35%,52%)">'+initials+'</div><div style="flex:1;min-width:0;"><div class="pipeline-lead-name">'+esc(l.name)+'</div>'+(l.company?'<div class="pipeline-lead-sub">'+esc(l.company)+'</div>':'')+'</div>'+valBadge+'</div><div class="pipeline-lead-foot">'+(canAdv?'<button class="plead-adv-btn" data-advance="'+l.id+'">Advance \u2192</button>':'<span class="stage-pill lead-stage-'+stage.id+'">'+stage.label+'</span>')+(l.phone?'<a class="plead-adv-btn" href="https://wa.me/'+esc(l.phone.replace(/[^0-9]/g,''))+'" target="_blank" onclick="event.stopPropagation()">WA</a>':'')+'</div></div>';}).join(''):'<div style="font-size:11px;color:var(--faint);padding:10px 2px;">No leads here.</div>')+'</div></div>';}).join('')+'</div>';
+        +LEAD_STAGES.map(function(stage){var stageLeads=leads.filter(function(l){return(l.stage||'new')===stage.id;});var stageValue=stageLeads.reduce(function(s,l){return s+((typeof l.value==='number')?l.value:0);},0);return '<div class="pipeline-col"><div class="pipeline-col-head"><span class="pipeline-stage-dot" style="background:'+stage.dot+'"></span><span class="pipeline-stage-label">'+stage.label+'</span><span class="pipeline-col-count">'+stageLeads.length+(stageValue>0?' \xB7 '+inr(stageValue):'')+'</span></div><div class="pipeline-col-body" data-stage="'+stage.id+'">'+(stageLeads.length?stageLeads.map(function(l){var initials=(l.name||'?').trim().split(/\\s+/).slice(0,2).map(function(w){return w[0]?w[0].toUpperCase():'';}).join('');var hue=((l.name||'A').charCodeAt(0)*37)%360;var canAdv=stage.id!=='won'&&stage.id!=='lost';var valBadge=(typeof l.value==='number'&&l.value>0)?'<span style="font-size:10px;font-weight:700;color:var(--green);font-family:&quot;JetBrains Mono&quot;,monospace;">'+inr(l.value)+'</span>':'';return '<div class="pipeline-lead-card gc" draggable="true" data-lead-id="'+l.id+'"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><div class="pipeline-lead-avatar" style="background:hsl('+hue+',35%,52%)">'+esc(initials)+'</div><div style="flex:1;min-width:0;"><div class="pipeline-lead-name">'+esc(l.name)+'</div>'+(l.company?'<div class="pipeline-lead-sub">'+esc(l.company)+'</div>':'')+'</div>'+valBadge+'</div><div class="pipeline-lead-foot">'+(canAdv?'<button class="plead-adv-btn" data-advance="'+l.id+'">Advance \u2192</button>':'<span class="stage-pill lead-stage-'+stage.id+'">'+stage.label+'</span>')+(l.phone?'<a class="plead-adv-btn" href="https://wa.me/'+esc(l.phone.replace(/[^0-9]/g,''))+'" target="_blank" onclick="event.stopPropagation()">WA</a>':'')+'</div></div>';}).join(''):'<div style="font-size:11px;color:var(--faint);padding:10px 2px;">No leads here.</div>')+'</div></div>';}).join('')+'</div>';
       document.getElementById('new-lead-btn').onclick=function(){openNewLeadModal();};
-      view.querySelectorAll('[data-advance]').forEach(function(b){b.onclick=function(e){e.stopPropagation();post('/api/leads/'+b.dataset.advance+'/advance').then(function(){toast('Advanced');loadLeads();});};});
+      view.querySelectorAll('[data-advance]').forEach(function(b){b.onclick=function(e){e.stopPropagation();post('/api/leads/'+b.dataset.advance+'/advance').then(function(){toast('Advanced');loadLeads();}).catch(fail);};});
       wireLeadDragAndDrop();
-    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load leads: '+(e&&e.message||e)+'</div>';});
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load leads: '+esc(e&&e.message||e)+'</div>';});
   }
   function wireLeadDragAndDrop(){
     var dragged=null;
@@ -6525,7 +6657,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         var leadId=dragged?dragged.dataset.leadId:(e.dataTransfer?e.dataTransfer.getData('text/plain'):null);
         var stage=col.dataset.stage;
         if(!leadId||!stage)return;
-        post('/api/leads/'+leadId+'/stage',{stage:stage},'PUT').then(function(){toast('Lead moved');loadLeads();});
+        post('/api/leads/'+leadId+'/stage',{stage:stage},'PUT').then(function(){toast('Lead moved');loadLeads();}).catch(function(e){fail(e);loadLeads();});
       });
     });
   }
@@ -6584,13 +6716,13 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         +'<div class="sec-sub">Your autonomous workforce \u2014 scoped, logged, fully reversible.</div></div></div>';
       var wrap=document.createElement('div');
       function agentCardHtml(a,isCustom){
-        var done=a.done||0,pending=a.pending||0,total=done+pending;
-        return '<div class="agent-card gc'+(isCustom?' custom':'')+'"'+(isCustom?' data-agent-id="'+a.id+'" style="cursor:pointer;"':'')+'>'
+        var done=num(a.done),pending=num(a.pending),total=done+pending;
+        return '<div class="agent-card gc'+(isCustom?' custom':'')+'"'+(isCustom?' data-agent-id="'+esc(a.id)+'" style="cursor:pointer;"':'')+'>'
           +'<div style="display:flex;align-items:center;gap:13px;">'
           +'<div style="width:42px;height:42px;flex-shrink:0;border-radius:13px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 6px 16px var(--accentGlow);">'+esc(a.emoji||'\u{1F916}')+'</div>'
           +'<div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:8px;"><span class="agent-name">'+esc(a.name)+'</span>'+autoBadge(a.autonomy)+'</div>'
           +'<div class="agent-role">'+esc(a.role)+'</div></div>'
-          +(isCustom?'<button class="agent-remove-btn" data-remove-agent="'+a.id+'" title="Remove agent">\u2715</button>':'<span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:var(--green);flex-shrink:0;"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(55,192,138,.18);"></span>online</span>')
+          +(isCustom?'<button class="agent-remove-btn" data-remove-agent="'+esc(a.id)+'" title="Remove agent">\u2715</button>':'<span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:var(--green);flex-shrink:0;"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(55,192,138,.18);"></span>online</span>')
           +'</div>'+progBar(done,total)+'</div>';
       }
       var cards=agents.map(function(a){return agentCardHtml(a,false);}).join('');
@@ -6615,7 +6747,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
           loadAgents();
         };
       });
-    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load agents: '+(e&&e.message||e)+'</div>';});
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load agents: '+esc(e&&e.message||e)+'</div>';});
   }
   function openAgentModal(agentId){
     var m=document.getElementById('agent-modal');
@@ -6661,8 +6793,8 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
               +'<button class="approve-btn ok" data-approve="'+ap.id+'">Approve</button>'
               +'<button class="approve-btn no" data-dismiss="'+ap.id+'" style="margin-left:6px">Dismiss</button></div>';
           }).join('');
-        apWrap.querySelectorAll('[data-approve]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.approve+'/approve').then(function(){toast('Approved');loadAuto();});};});
-        apWrap.querySelectorAll('[data-dismiss]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(function(){toast('Dismissed');loadAuto();});};});
+        apWrap.querySelectorAll('[data-approve]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.approve+'/approve').then(function(){toast('Approved');loadAuto();}).catch(fail);};});
+        apWrap.querySelectorAll('[data-dismiss]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(function(){toast('Dismissed');loadAuto();}).catch(fail);};});
         view.appendChild(apWrap);
       }
       var autoWrap=document.createElement('div');
@@ -6674,9 +6806,9 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
           }).join('');
           return '<div class="auto-card gc"><div class="auto-info"><div class="auto-label">'+a.label+'</div><div class="auto-desc">'+a.desc+'</div></div><div class="lvls">'+lvls+'</div></div>';
         }).join('');
-      autoWrap.querySelectorAll('.lvl').forEach(function(b){b.onclick=function(){post('/api/autonomy',{action:b.dataset.act,level:b.dataset.lvl},'PUT').then(function(){toast('Autonomy updated');loadAuto();});};});
+      autoWrap.querySelectorAll('.lvl').forEach(function(b){b.onclick=function(){post('/api/autonomy',{action:b.dataset.act,level:b.dataset.lvl},'PUT').then(function(){toast('Autonomy updated');loadAuto();}).catch(fail);};});
       view.appendChild(autoWrap);
-    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load autonomy: '+(e&&e.message||e)+'</div>';});
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load autonomy: '+esc(e&&e.message||e)+'</div>';});
   }
 
 
@@ -6708,8 +6840,8 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         wrap.innerHTML=rows;
       }
       view.appendChild(wrap);
-      view.querySelectorAll('[data-undo]').forEach(function(b){b.onclick=function(){post('/api/events/'+b.dataset.undo+'/undo').then(function(){toast('Undone');loadEvents();});};});
-    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load events: '+(e&&e.message||e)+'</div>';});
+      view.querySelectorAll('[data-undo]').forEach(function(b){b.onclick=function(){post('/api/events/'+b.dataset.undo+'/undo').then(function(){toast('Undone');loadEvents();}).catch(fail);};});
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load events: '+esc(e&&e.message||e)+'</div>';});
   }
 
   // \u2500\u2500 notifications panel \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -6747,18 +6879,16 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   var cmdSearch=document.getElementById('cmd-search');
   var cmdResults=document.getElementById('cmd-results');
   var cmdSel=0;
-  var CMD_ITEMS=[
-    {group:'Go to', ic:'\u{1F501}', label:'Loops',    hint:'1', fn:function(){switchTab('loops');}},
-    {group:'Go to', ic:'\u2705',   label:'Tasks',    hint:'2', fn:function(){switchTab('tasks');}},
-    {group:'Go to', ic:'\u{1F91D}', label:'Leads',    hint:'3', fn:function(){switchTab('leads');}},
-    {group:'Go to', ic:'\u{1F916}', label:'Agents',   hint:'4', fn:function(){switchTab('agents');}},
-    {group:'Go to', ic:'\u2699\uFE0F',label:'Autonomy', hint:'5', fn:function(){switchTab('auto');}},
-    {group:'Go to', ic:'\u{1F4DC}', label:'Activity', hint:'6', fn:function(){switchTab('events');}},
+  // Go-to entries follow the real nav, so the number hints match the 1-8 shortcuts.
+  var CMD_ITEMS=TABS.map(function(t,i){return {group:'Go to',ic:t.ic,label:t.label,hint:String(i+1),fn:function(){switchTab(t.id);}};}).concat([
+    {group:'Go to', ic:'\u{1F916}', label:'AI Agents', hint:'', fn:function(){switchTab('agents');}},
+    {group:'Go to', ic:'\u2699\uFE0F', label:'Autonomy',  hint:'', fn:function(){switchTab('auto');}},
+    {group:'Go to', ic:'\u{1F4DC}', label:'Activity',  hint:'', fn:function(){switchTab('events');}},
     {group:'Actions',ic:'\u{1F501}',label:'Add loop',    hint:'', fn:function(){switchTab('loops');setTimeout(function(){qfield.focus();},80);}},
     {group:'Actions',ic:'\u2705',  label:'Add task',    hint:'', fn:function(){switchTab('tasks');setTimeout(function(){qfield.focus();},80);}},
     {group:'Actions',ic:'\u{1F91D}',label:'Add lead',    hint:'', fn:function(){switchTab('leads');setTimeout(function(){qfield.focus();},80);}},
     {group:'Actions',ic:'\u21BB',  label:'Sweep loops', hint:'', fn:function(){switchTab('loops');setTimeout(function(){var s=document.getElementById('sweep-btn');if(s) s.click();},300);}},
-  ];
+  ]);
   function switchTab(t){tab=t;buildNav();buildBotNav();render();closePalette();}
   function openPalette(){cmdOverlay.classList.add('open');cmdSearch.value='';cmdSearch.focus();renderPalette('');}
   function closePalette(){cmdOverlay.classList.remove('open');}
@@ -6797,23 +6927,27 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   document.getElementById('qbar').onsubmit=function(e){
     e.preventDefault();
     var v=qfield.value.trim(); if(!v) return;
-    qfield.value='';
-    if(tab==='loops') post('/api/loops',{title:v,side:side}).then(function(){toast('Loop captured');render();});
-    else if(tab==='tasks'||tab==='home') post('/api/tasks',{title:v,day:taskDay}).then(function(){toast('Task added');render();});
+    var req=null,msg='';
+    if(tab==='loops'){req=post('/api/loops',{title:v,side:side});msg='Loop captured';}
+    else if(tab==='tasks'||tab==='home'){req=post('/api/tasks',{title:v,day:taskDay});msg='Task added';}
     else if(tab==='leads'){
-      if(v.length>24||/[,@]/.test(v)) post('/api/leads/quick-add',{note:v}).then(function(){toast('Lead created from note');render();});
-      else post('/api/leads',{name:v}).then(function(){toast('Lead created');render();});
+      if(v.length>24||/[,@]/.test(v)){req=post('/api/leads/quick-add',{note:v});msg='Lead created from note';}
+      else{req=post('/api/leads',{name:v});msg='Lead created';}
     }
+    if(!req) return;
+    // Keep what was typed until the server has it, so a failed save loses nothing.
+    req.then(function(){if(qfield.value.trim()===v)qfield.value='';toast(msg);render();}).catch(fail);
   };
 
   // FAB (mobile) \u2014 focus the quick-add input
   var fab=document.getElementById('fab');
-  if(fab) fab.onclick=function(){qfield.focus();};
+  if(fab) fab.onclick=function(){if(qbar.style.display!=='none')qfield.focus();else openNewTaskModal();};
 
   // \u2500\u2500 keyboard shortcuts \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   document.addEventListener('keydown',function(ev){
-    var tag=(document.activeElement||{}).tagName||'';
-    var inInput=tag==='INPUT'||tag==='TEXTAREA';
+    var ae=document.activeElement||{};
+    var tag=ae.tagName||'';
+    var inInput=tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||!!ae.isContentEditable;
     if((ev.metaKey||ev.ctrlKey)&&ev.key==='k'){
       ev.preventDefault();
       if(cmdOverlay.classList.contains('open')){closePalette();}
@@ -6822,8 +6956,11 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     }
     if(inInput) return;
     if(ev.key==='Escape'){closePalette();notifPanel.classList.remove('open');if(document.activeElement)document.activeElement.blur();return;}
-    var idx='123456'.indexOf(ev.key);
-    if(idx>=0&&idx<TABS.length){tab=TABS[idx].id;buildNav();buildBotNav();render();}
+    if(ev.metaKey||ev.ctrlKey||ev.altKey) return;
+    // Number shortcuts only when nothing is open on top of the page.
+    if(document.querySelector('.modal-backdrop.open,#cmd-overlay.open,#notif-panel.open,#auth-modal.open,#invite-modal.open')) return;
+    var idx='12345678'.indexOf(ev.key);
+    if(ev.key.length===1&&idx>=0&&idx<TABS.length){tab=TABS[idx].id;buildNav();buildBotNav();render();}
   });
 
   // \u2500\u2500 sidebar search \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -6835,9 +6972,12 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     });
   };}
 
+  var sseSource=null;
   function setupSSE(){
+    if(sseSource){try{sseSource.close();}catch(_e){}sseSource=null;}
     var es;
     try{es=new EventSource('/api/stream');}catch(e){return;}
+    sseSource=es;
     es.onmessage=function(ev){
       try{
         var evt=JSON.parse(ev.data);
@@ -6863,18 +7003,30 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   function saveProjects(list){
     saveShared('projects',list);
   }
+  function safeCssBg(v){
+    v=String(v==null?'':v).trim();
+    return /^(#[0-9a-f]{3,8}|(?:linear|radial)-gradient[(][#0-9a-z ,.%()-]{1,300}[)]|rgba?[(][0-9 ,.%]{1,40}[)]|[a-z]{3,20})$/i.test(v)?v:'';
+  }
+  function safeImgUrl(v){
+    v=String(v==null?'':v);
+    if(/^data:image[/](png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(v)) return v;
+    if(/^https:[/][/][^'"()<>\\ ]{1,500}$/.test(v)) return v;
+    return '';
+  }
+  function num(v){v=Number(v);return isFinite(v)?v:0;}
   function projectCardBg(p){
-    if(p.img) return 'url('+p.img+') center/cover no-repeat';
-    return p.bg||PROJECT_PALETTES[0];
+    var img=safeImgUrl(p.img);
+    if(img) return 'url('+img+') center/cover no-repeat';
+    return safeCssBg(p.bg)||PROJECT_PALETTES[0];
   }
   function loadProjects(){
     var projects=getProjects();
     var html='<div class="sec-head"><div><div class="sec-title">Projects</div><div class="sec-sub">Everything your team is building.</div></div><div class="head-actions"><button class="btn-primary" id="new-proj-btn">+ New project</button></div></div><div class="bento-grid">';
     projects.forEach(function(p,i){
       var bg=projectCardBg(p);
-      var done=p.done||0;var total=p.total||0;
+      var done=num(p.done);var total=num(p.total);
       var pct=total>0?Math.round(done/total*100):0;
-      html+='<div class="bento-card'+(i===0?' bento-hero':'')+'" data-project-id="'+p.id+'" style="background:'+bg+';"><div class="bento-card-emoji">'+esc(p.emoji||'\u{1F4E6}')+'</div><div class="bento-card-name">'+esc(p.name)+'</div>'+(p.desc?'<div class="bento-card-desc">'+esc(p.desc)+'</div>':'')+'<div class="bento-card-foot">'+(total?'<div class="bento-prog-bar"><div class="bento-prog-fill" style="width:'+pct+'%"></div></div><span class="bento-pct">'+pct+'%</span>':'')+'<span class="bento-status">'+esc(p.status||'active')+'</span></div></div>';
+      html+='<div class="bento-card'+(i===0?' bento-hero':'')+'" data-project-id="'+esc(p.id)+'" style="background:'+bg+';"><div class="bento-card-emoji">'+esc(p.emoji||'\u{1F4E6}')+'</div><div class="bento-card-name">'+esc(p.name)+'</div>'+(p.desc?'<div class="bento-card-desc">'+esc(p.desc)+'</div>':'')+'<div class="bento-card-foot">'+(total?'<div class="bento-prog-bar"><div class="bento-prog-fill" style="width:'+pct+'%"></div></div><span class="bento-pct">'+pct+'%</span>':'')+'<span class="bento-status">'+esc(p.status||'active')+'</span></div></div>';
     });
     html+='<button class="bento-new-card" id="bento-new-card-btn"><div style="font-size:28px;">+</div><div style="font-size:13px;font-weight:600;">New project</div></button></div>';
     view.innerHTML=html;
@@ -6976,7 +7128,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     var m=document.getElementById('proj-detail-modal');
     if(!m)return;
     var bg=projectCardBg(p);
-    var done=p.done||0,total=p.total||0;
+    var done=num(p.done),total=num(p.total);
     var body=document.getElementById('proj-detail-body');
     body.innerHTML='<div class="proj-detail-hero" style="background:'+bg+';"><div class="proj-detail-emoji">'+esc(p.emoji||'\u{1F4E6}')+'</div><div class="proj-detail-name">'+esc(p.name)+'</div></div>'
       +(p.desc?'<div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5;">'+esc(p.desc)+'</div>':'')
@@ -7019,6 +7171,9 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     if(!m)return;
     document.getElementById('task-modal-title').value='';
     document.getElementById('task-modal-when').value=day||'today';
+    document.getElementById('task-modal-priority').value='';
+    document.getElementById('task-modal-list').value='';
+    var rp=document.getElementById('task-modal-repeat');if(rp)rp.value='';
     m.classList.add('open');
     document.getElementById('task-modal-title').focus();
   }
@@ -7054,8 +7209,15 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
   }
   function processCardFile(file){
     var uploadArea=document.getElementById('lead-upload-area');
-    uploadArea.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px;">Extracting fields...<span class="spin" style="display:inline-block;margin:0 8px;vertical-align:middle;"></span></div>';
+    // Show progress without replacing the area's contents (the file input lives inside it).
+    var status=document.getElementById('lead-upload-status');
+    if(!status){status=document.createElement('div');status.id='lead-upload-status';status.style.cssText='font-size:13px;color:var(--muted);padding:8px 0 0;';uploadArea.appendChild(status);}
+    status.innerHTML='Extracting fields\u2026<span class="spin" style="display:inline-block;margin:0 8px;vertical-align:middle;"></span>';
+    uploadArea.style.pointerEvents='none';
+    function doneUpload(){status.remove();uploadArea.style.pointerEvents='';var fi=document.getElementById('lead-card-file');if(fi)fi.value='';}
+    if(file.size>6*1024*1024){doneUpload();toast('That image is too large. Use one under 6 MB.');return;}
     var reader=new FileReader();
+    reader.onerror=function(){doneUpload();toast('Could not read that file');};
     reader.onload=function(e){
       var base64=e.target.result.split(',')[1];
       post('/api/leads/extract-card',{imageBase64:base64}).then(function(data){
@@ -7066,8 +7228,9 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         if(data.email)document.getElementById('lead-email').value=data.email;
         if(data.company)document.getElementById('lead-company').value=data.company;
         if(data.title)document.getElementById('lead-title').value=data.title;
+        doneUpload();
         toast('Card scanned - review and save');
-      }).catch(function(){toast('Could not extract - please type details');showTab('type');});
+      }).catch(function(){doneUpload();toast('Could not extract - please type details');showTab('type');});
     };
     reader.readAsDataURL(file);
   }
@@ -7083,7 +7246,10 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         var day=document.getElementById('task-modal-when').value;
         var priority=document.getElementById('task-modal-priority').value;
         var list=document.getElementById('task-modal-list').value.trim();
-        post('/api/tasks',{title:title,day:day,priority:priority||undefined,list:list||undefined}).then(function(){closeNewTaskModal();toast('Task added');loadTasks();});
+        var rpt=document.getElementById('task-modal-repeat');
+        var recur={daily:'Daily',weekly:'Weekly',monthly:'Monthly'}[rpt&&rpt.value]||undefined;
+        var sv=this;sv.disabled=true;
+        post('/api/tasks',{title:title,day:day,priority:priority||undefined,list:list||undefined,recur:recur,recurring:!!recur}).then(function(){closeNewTaskModal();toast(recur?'Repeating task added':'Task added');render();}).catch(fail).then(function(){sv.disabled=false;});
       };
     }
     var ml=document.getElementById('lead-modal');
@@ -7101,7 +7267,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         var name=document.getElementById('lead-name').value.trim();
         if(!name){document.getElementById('lead-name').focus();return;}
         var lv=document.getElementById('lead-value');
-        post('/api/leads',{name:name,phone:document.getElementById('lead-phone').value.trim()||undefined,email:document.getElementById('lead-email').value.trim()||undefined,company:document.getElementById('lead-company').value.trim()||undefined,title:document.getElementById('lead-title').value.trim()||undefined,value:lv&&lv.value?Number(lv.value):undefined,what:document.getElementById('lead-notes').value.trim()||undefined}).then(function(){closeNewLeadModal();toast('Lead created');loadLeads();});
+        post('/api/leads',{name:name,phone:document.getElementById('lead-phone').value.trim()||undefined,email:document.getElementById('lead-email').value.trim()||undefined,company:document.getElementById('lead-company').value.trim()||undefined,title:document.getElementById('lead-title').value.trim()||undefined,value:lv&&lv.value?Number(lv.value):undefined,what:document.getElementById('lead-notes').value.trim()||undefined}).then(function(){closeNewLeadModal();toast('Lead created');render();}).catch(fail);
       };
     }
     var mp=document.getElementById('proj-modal');
@@ -7231,7 +7397,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     var isManager=role==='ceo'||role==='manager';
     var subViews=[{id:'ceo',label:'CEO'},{id:'mgr',label:'Manager'},{id:'emp',label:'Employee'},{id:'client',label:'Client'},{id:'agents',label:'AI Agents'}];
     var html='<div class="sec-head"><div><div class="sec-title">Team</div><div class="sec-sub">Per-employee performance from time tracking.</div></div></div>';
-    if(teamView==='agents'){loadAgents();return;}
+    if(teamView==='agents'){teamView='ceo';loadAgents();return;}
     // Access guard: only managers/CEOs see team performance dashboards
     if(!isManager){
       html+='<div class="gc" style="padding:40px 24px;border-radius:16px;text-align:center;">'
@@ -7277,7 +7443,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         detail+='<div class="gc" style="padding:18px 20px;border-radius:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;letter-spacing:.5px;margin-bottom:12px;">'+(teamView==='emp'?'YOUR STATS':'TEAM MEMBERS')+'</div>';
         if(people.length){
           detail+=people.map(function(p){
-            var initials=(p.name||'?').trim().split(/s+/).slice(0,2).map(function(w){return w[0].toUpperCase();}).join('');
+            var initials=(p.name||'?').trim().split(/\\s+/).slice(0,2).map(function(w){return (w[0]||'').toUpperCase();}).join('');
             var hue=((p.name||'A').charCodeAt(0)*37)%360;
             return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--glassBorder);">'
               +'<div style="width:36px;height:36px;border-radius:50%;background:hsl('+hue+',35%,52%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">'+esc(initials)+'</div>'
@@ -7296,7 +7462,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       view.innerHTML=html+detail;
       view.querySelectorAll('[data-sv]').forEach(function(b){b.onclick=function(){teamView=b.dataset.sv;loadTeam();};});
     }).catch(function(e){
-      view.innerHTML=html+'<div class="empty">Failed to load team data: '+(e&&e.message||e)+'</div>';
+      view.innerHTML=html+'<div class="empty">Failed to load team data: '+esc(e&&e.message||e)+'</div>';
       view.querySelectorAll('[data-sv]').forEach(function(b){b.onclick=function(){teamView=b.dataset.sv;loadTeam();};});
     });
   }
@@ -7477,10 +7643,10 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
           api('/api/methods/'+c.dataset.method).then(function(r){
             r=r||{};
             renderMethodResult(c.dataset.method, r.result, r.meta||{id:c.dataset.method});
-          }).catch(function(e){view.innerHTML='<div class="empty">Failed to run method: '+(e&&e.message||e)+'</div>';});
+          }).catch(function(e){view.innerHTML='<div class="empty">Failed to run method: '+esc(e&&e.message||e)+'</div>';});
         };
       });
-    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load methods: '+(e&&e.message||e)+'</div>';});
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load methods: '+esc(e&&e.message||e)+'</div>';});
   }
   function loadReports(){
     view.innerHTML='<div class="spin"></div>';
@@ -7530,7 +7696,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
         }).join(''):'<div class="empty-dashed">No leaderboard data yet \u2014 start closing loops and tasks.</div>')
         +'</div>';
       view.innerHTML=html;
-    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load reports: '+(e&&e.message||e)+'</div>';});
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load reports: '+esc(e&&e.message||e)+'</div>';});
   }
   function velocitySparkline(trend){
     trend=trend||[];
@@ -7551,6 +7717,10 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     return '<div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--text);">'+label+'</span><span style="color:'+color+';font-family:\\'JetBrains Mono\\',monospace;font-weight:600;">'+pct+'%</span></div>'
       +'<div style="height:5px;border-radius:5px;background:var(--bg2);overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:5px;"></div></div></div>';
   }
+  // Inline onclick="" attributes run in the page scope, not inside this closure.
+  window.loadToday=loadToday;
+  window.toast=toast;
+  window.applyTheme=function(id){applyTheme(id);if(tab==='settings')loadSettings();};
   function loadSettings(){
     Promise.all([api('/api/autonomy'),api('/api/approvals'),api('/api/connections')]).then(function(res){
       var settings=res[0]||{};
@@ -7647,9 +7817,9 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
           loadSettings();
         }).catch(function(e){toast(e.message||'Failed');ksb.disabled=false;ksb.textContent=nextPause?'Pause all':'Resume autonomy';});
       };
-      view.querySelectorAll('.lvl').forEach(function(b){b.onclick=function(){post('/api/autonomy',{action:b.dataset.act,level:b.dataset.lvl},'PUT').then(function(){toast('Saved');loadSettings();});};});
-      view.querySelectorAll('[data-approve]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.approve+'/approve').then(function(){toast('Approved');loadSettings();});};});
-      view.querySelectorAll('[data-dismiss]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(function(){toast('Dismissed');loadSettings();});};});
+      view.querySelectorAll('.lvl').forEach(function(b){b.onclick=function(){post('/api/autonomy',{action:b.dataset.act,level:b.dataset.lvl},'PUT').then(function(){toast('Saved');loadSettings();}).catch(fail);};});
+      view.querySelectorAll('[data-approve]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.approve+'/approve').then(function(){toast('Approved');loadSettings();}).catch(fail);};});
+      view.querySelectorAll('[data-dismiss]').forEach(function(b){b.onclick=function(){post('/api/approvals/'+b.dataset.dismiss+'/dismiss').then(function(){toast('Dismissed');loadSettings();}).catch(fail);};});
 
       // WhatsApp Cloud \u2014 save credentials
       view.querySelectorAll('.conn-save-btn').forEach(function(btn){
@@ -7693,12 +7863,12 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       view.querySelectorAll('.conn-disconnect-btn').forEach(function(btn){
         btn.onclick=function(){
           if(!confirm('Disconnect this integration?')) return;
-          post('/api/connections/'+btn.dataset.channel+'/disconnect',{}).then(function(){toast('Disconnected');loadSettings();});
+          post('/api/connections/'+btn.dataset.channel+'/disconnect',{}).then(function(){toast('Disconnected');loadSettings();}).catch(fail);
         };
       });
 
       bindAdminUserUi();
-    });
+    }).catch(function(e){view.innerHTML='<div class="empty">Failed to load settings: '+esc(e&&e.message||e)+'</div>';});
   }
 
   function adminUsersPanelHtml(){
@@ -7764,7 +7934,7 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     var roles=['client','employee','manager','ceo','agent'];
     return users.map(function(u){
       var roleOpts=roles.map(function(r){return '<option value="'+r+'" '+(u.role===r?'selected':'')+'>'+roleLabel(r)+'</option>';}).join('');
-      return '<div class="admin-user-row" data-user-id="'+esc(u.userId)+'" style="border-top:1px solid var(--glassBorder);padding:12px 0;display:grid;grid-template-columns:minmax(180px,1fr) 140px 120px 1fr auto;gap:8px;align-items:center;">'
+      return '<div class="admin-user-row" data-user-id="'+esc(u.userId)+'" style="border-top:1px solid var(--glassBorder);padding:12px 0;">'
         +'<div><div style="font-size:13px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:11px;color:var(--muted);">'+esc(isPendingEmail(u.email)?'no email yet':(u.email||''))+(u.username?' \xB7 '+esc(u.username):'')+'</div></div>'
         +'<select class="modal-select admin-role" style="min-height:34px;">'+roleOpts+'</select>'
         +'<select class="modal-select admin-active" style="min-height:34px;"><option value="true" '+(u.active===false?'':'selected')+'>Active</option><option value="false" '+(u.active===false?'selected':'')+'>Disabled</option></select>'
@@ -7868,19 +8038,30 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
 
 // packages/server/src/server.ts
 init_middleware();
+var INSTALL_ORG_ID = process.env.COMPANYBRAIN_ORG_ID?.trim() || LOCAL_ORG_ID;
 function buildServer(deps) {
   const { core, auth } = deps;
+  const hopsEnv = Number(process.env.COMPANYBRAIN_TRUST_PROXY_HOPS ?? 1);
+  const TRUST_PROXY_HOPS = Number.isInteger(hopsEnv) && hopsEnv >= 0 ? hopsEnv : 1;
   const shouldSecureCookieForApp = ["1", "true", "yes"].includes((process.env.COMPANYBRAIN_SECURE_COOKIE ?? "").trim().toLowerCase()) || process.env.NODE_ENV === "production";
   const app2 = Fastify({
     logger: {
       level: process.env.COMPANYBRAIN_LOG_LEVEL ?? "info",
+      // Invite tokens travel in URLs; keep them out of the logs.
+      serializers: {
+        req(req) {
+          return { method: req.method, url: (req.url ?? "").replace(/([?&](?:invite|token)=)[^&]+/gi, "$1[redacted]"), ip: req.ip };
+        }
+      },
       ...process.env.NODE_ENV !== "production" && {
         transport: { target: "pino-pretty", options: { colorize: true, translateTime: "SYS:HH:MM:ss" } }
       }
     },
     bodyLimit: 10 * 1024 * 1024,
     // 10MB for image uploads
-    trustProxy: true
+    // Trust only the proxy hops in front of us (Hostinger: 1). `true` would let any client pick
+    // its own IP with an X-Forwarded-For header and dodge the login rate limit.
+    trustProxy: ((_addr, hop) => hop < TRUST_PROXY_HOPS)
   });
   if (process.env.SENTRY_DSN) initSentry();
   app2.addHook("onResponse", async (request, reply) => {
@@ -7924,7 +8105,7 @@ function buildServer(deps) {
     try {
       const raw = body.toString("utf8");
       req.rawBody = raw;
-      done(null, JSON.parse(raw));
+      done(null, raw.trim() === "" ? void 0 : JSON.parse(raw));
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
       e.statusCode = 400;
@@ -7940,10 +8121,12 @@ function buildServer(deps) {
       decorateReply: false
     });
   }
-  const sseClients = /* @__PURE__ */ new Set();
+  const sseClients = /* @__PURE__ */ new Map();
   function broadcast(event) {
     const line = "data: " + JSON.stringify(event) + "\n\n";
-    for (const res of sseClients) {
+    const eventOrg = typeof event.orgId === "string" ? event.orgId : null;
+    for (const [res, client] of sseClients) {
+      if (eventOrg && client.orgId !== eventOrg) continue;
       try {
         res.write(line);
       } catch {
@@ -8010,6 +8193,11 @@ function buildServer(deps) {
     const entryId = req.params.entryId;
     const entry = await core.ctx.db.timeEntries.get(entryId);
     if (!entry || entry.orgId !== p.orgId) throw notFound("time entry not found");
+    if (entry.userId !== p.userId && !["manager", "ceo"].includes(p.role)) {
+      const e = new Error("Only the person who started this timer, or a manager, can stop it");
+      e.statusCode = 403;
+      throw e;
+    }
     return entry;
   };
   app2.get("/health", async () => ({
@@ -8029,6 +8217,7 @@ function buildServer(deps) {
     const url = req.raw.url ?? "";
     if (!url.startsWith("/api/")) return;
     if (url.startsWith("/api/auth/")) return;
+    if (url.startsWith("/api/connections/gmail/callback")) return;
     if (url.startsWith("/api/stream")) return;
     if (!authRequiresSession) {
       req.principal = await auth.current();
@@ -8040,6 +8229,9 @@ function buildServer(deps) {
       return reply.code(401).send({ error: "unauthorized" });
     }
     req.principal = principal;
+    if (principal.role === "client" && req.method !== "GET" && req.method !== "HEAD") {
+      return reply.code(403).send({ error: "Your account is read-only" });
+    }
   });
   app2.get("/api/auth/users", async () => {
     return { authMode: resolvedAuthMode, requiresAuth: authRequiresSession };
@@ -8063,13 +8255,13 @@ function buildServer(deps) {
     }
     const body = req.validatedBody ?? (req.body ?? {});
     const userId = body.userId?.trim();
-    const key = body.key?.trim();
+    const key = body.key;
     if (!userId || !key) {
       throw badRequest("userId and key are required");
     }
     const login = await authWithSessions.login(userId, key);
     if (!login) {
-      logger.warn({ userId }, "Failed login attempt");
+      logger.warn({ ip: req.ip }, "Failed login attempt");
       return reply.code(401).send({ error: "Invalid email/username or password" });
     }
     logger.info({ userId: login.user.userId }, "Successful login");
@@ -8190,11 +8382,22 @@ function buildServer(deps) {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       "Connection": "keep-alive",
-      "X-Accel-Buffering": "no"
+      "X-Accel-Buffering": "no",
+      "X-Content-Type-Options": "nosniff",
+      "X-Robots-Tag": "noindex, nofollow, noarchive, nosnippet"
     });
     reply.raw.write(": connected\n\n");
-    sseClients.add(reply.raw);
-    const ping = setInterval(() => {
+    sseClients.set(reply.raw, { orgId: principal.orgId });
+    const ping = setInterval(async () => {
+      if (authRequiresSession && !await auth.authenticate(token).catch(() => null)) {
+        clearInterval(ping);
+        sseClients.delete(reply.raw);
+        try {
+          reply.raw.end();
+        } catch {
+        }
+        return;
+      }
       try {
         reply.raw.write(": ping\n\n");
       } catch {
@@ -8219,6 +8422,36 @@ function buildServer(deps) {
       return { userId: shown2.userId, name: shown2.name, role: shown2.role, initials: shown2.initials };
     });
   });
+  const CSS_BG = /^(#[0-9a-f]{3,8}|(?:linear|radial)-gradient\([#0-9a-z\s.,%()-]{1,300}\)|rgba?\([0-9\s.,%]{1,40}\)|[a-z]{3,20})$/i;
+  const IMG_URL = /^(data:image\/(?:png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]{1,3000000}|https:\/\/[A-Za-z0-9._~:/?#[\]@!$&*+,;=%-]{1,500})$/;
+  function sanitizeSharedItem(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const src = raw;
+    const id = typeof src.id === "string" ? src.id : typeof src.id === "number" ? String(src.id) : "";
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) return null;
+    const out = { id };
+    for (const [k, v] of Object.entries(src)) {
+      if (k === "id" || !/^[A-Za-z][A-Za-z0-9_]{0,40}$/.test(k)) continue;
+      if (k === "img") {
+        if (typeof v === "string" && IMG_URL.test(v) && !/['"()\\\s]/.test(v.replace(/^data:[^,]*,/, ""))) out.img = v;
+        continue;
+      }
+      if (k === "bg" || k === "color") {
+        if (typeof v === "string" && CSS_BG.test(v.trim())) out[k] = v.trim();
+        continue;
+      }
+      if (k === "done" || k === "total" || k === "pending" || k === "createdAt") {
+        const n = Number(v);
+        if (Number.isFinite(n)) out[k] = n;
+        continue;
+      }
+      if (typeof v === "string") out[k] = v.slice(0, 2e3);
+      else if (typeof v === "number") {
+        if (Number.isFinite(v)) out[k] = v;
+      } else if (typeof v === "boolean" || v === null) out[k] = v;
+    }
+    return out;
+  }
   const SHARED_KEYS = /* @__PURE__ */ new Set(["projects", "agents"]);
   app2.get("/api/shared/:key", async (req, reply) => {
     const p = await principalOf(req);
@@ -8239,10 +8472,12 @@ function buildServer(deps) {
     if (p.role === "client" || p.role === "agent") return reply.code(403).send({ error: "Insufficient permissions" });
     const body = req.body ?? {};
     if (!Array.isArray(body.items) || body.items.length > 500) throw badRequest("items must be an array (max 500)");
+    const items = body.items.map(sanitizeSharedItem);
+    if (items.some((it) => it === null)) throw badRequest("each item must be an object with an id");
     const repo = core.ctx.db.settings;
     if (typeof repo.setDoc !== "function") return reply.code(501).send({ error: "not supported" });
-    await repo.setDoc(p.orgId, key, body.items);
-    broadcast({ type: "shared.updated", key });
+    await repo.setDoc(p.orgId, key, items);
+    broadcast({ type: "shared.updated", key, orgId: p.orgId });
     return { ok: true };
   });
   app2.get("/api/loops", async (req) => {
@@ -8270,7 +8505,7 @@ function buildServer(deps) {
     const p = await principalOf(req);
     await ownedLoop(req);
     const result = await core.loops.close(params(req).id, p.userId);
-    broadcast({ type: "loop.closed" });
+    broadcast({ type: "loop.closed", orgId: p.orgId });
     return result;
   });
   app2.post("/api/loops/:id/snooze", {
@@ -8281,7 +8516,7 @@ function buildServer(deps) {
     const b = req.validatedBody;
     const untilAt = Date.now() + Math.max(1, b.hours ?? 24) * 60 * 60 * 1e3;
     const result = await core.loops.snooze(params(req).id, p.userId, untilAt);
-    broadcast({ type: "loop.snoozed" });
+    broadcast({ type: "loop.snoozed", orgId: p.orgId });
     return result;
   });
   app2.post("/api/loops/:id/assign", {
@@ -8299,14 +8534,14 @@ function buildServer(deps) {
     const p = await principalOf(req);
     const b = req.validatedBody;
     const result = await core.tasks.create({ orgId: p.orgId, actorId: p.userId, ...b });
-    broadcast({ type: "task.created" });
+    broadcast({ type: "task.created", orgId: p.orgId });
     return result;
   });
   app2.post("/api/tasks/:id/complete", async (req) => {
     const p = await principalOf(req);
     await ownedTask(req);
     const result = await core.tasks.complete(params(req).id, p.userId);
-    broadcast({ type: "task.completed" });
+    broadcast({ type: "task.completed", orgId: p.orgId });
     return result;
   });
   app2.post("/api/tasks/:id/move", {
@@ -8316,7 +8551,7 @@ function buildServer(deps) {
     await ownedTask(req);
     const b = req.validatedBody;
     const result = await core.tasks.move(params(req).id, b.day ?? "today", p.userId);
-    broadcast({ type: "task.moved" });
+    broadcast({ type: "task.moved", orgId: p.orgId });
     return result;
   });
   app2.post("/api/tasks/:id/assign", {
@@ -8331,22 +8566,23 @@ function buildServer(deps) {
     const p = await principalOf(req);
     await ownedTask(req);
     const entry = await core.timeTracking.start({ orgId: p.orgId, taskId: params(req).id, userId: p.userId });
-    broadcast({ type: "time.started" });
+    broadcast({ type: "time.started", orgId: p.orgId });
     return entry;
   });
   app2.post("/api/time/:entryId/stop", async (req) => {
     await ownedTimeEntry(req);
     const entryId = req.params.entryId;
     const entry = await core.timeTracking.stop(entryId);
-    broadcast({ type: "time.stopped" });
+    broadcast({ type: "time.stopped", orgId: (await principalOf(req)).orgId });
     return entry;
   });
   app2.get("/api/tasks/:id/time", async (req) => {
     await ownedTask(req);
+    const p = await principalOf(req);
     const taskId = params(req).id;
     const entries = await core.timeTracking.listByTask(taskId);
     const total = await core.timeTracking.getTotalTime(taskId);
-    const active = await core.timeTracking.getActive(taskId);
+    const active = await core.timeTracking.getActive(taskId, p.userId);
     return { entries, total, active };
   });
   app2.get("/api/time/today", async (req) => {
@@ -8361,13 +8597,14 @@ function buildServer(deps) {
     const p = await principalOf(req);
     const b = req.validatedBody;
     const result = await core.leads.create({ orgId: p.orgId, actorId: p.userId, ...b });
-    broadcast({ type: "lead.created" });
+    broadcast({ type: "lead.created", orgId: p.orgId });
     return result;
   });
   app2.post("/api/leads/:id/advance", async (req) => {
     await ownedLead(req);
-    const result = await core.leads.advance(params(req).id, (await principalOf(req)).userId);
-    broadcast({ type: "lead.advanced" });
+    const lp = await principalOf(req);
+    const result = await core.leads.advance(params(req).id, lp.userId);
+    broadcast({ type: "lead.advanced", orgId: lp.orgId });
     return result;
   });
   app2.put("/api/leads/:id/stage", {
@@ -8377,7 +8614,7 @@ function buildServer(deps) {
     await ownedLead(req);
     const b = req.validatedBody;
     const result = await core.leads.setStage(params(req).id, b.stage, p.userId);
-    broadcast({ type: "lead.advanced" });
+    broadcast({ type: "lead.advanced", orgId: p.orgId });
     return result;
   });
   app2.post("/api/leads/:id/assign", {
@@ -8397,7 +8634,7 @@ function buildServer(deps) {
       { orgId: p.orgId, actorId: p.userId, phone: b.phone ?? "", note: b.note },
       llm?.extractLead
     );
-    broadcast({ type: "lead.created" });
+    broadcast({ type: "lead.created", orgId: p.orgId });
     return result;
   });
   app2.post("/api/leads/extract-card", {
@@ -8433,53 +8670,65 @@ function buildServer(deps) {
     }
     return { name: "", title: "", company: "", email: "", phone: "" };
   });
-  app2.post("/api/bulk/loops/close", { preHandler: requireMinRole("manager") }, async (req) => {
+  const bulkRepo = (kind) => kind === "loop" ? core.ctx.db.loops : kind === "task" ? core.ctx.db.tasks : core.ctx.db.leads;
+  const bulkIds = async (req, kind) => {
     const p = await principalOf(req);
-    const { ids } = req.body;
-    if (!ids?.length) throw badRequest("ids required");
+    const body = req.body ?? {};
+    if (kind !== "loop" && kind !== "task" && kind !== "lead") throw badRequest("entityType must be loop, task or lead");
+    if (!Array.isArray(body.ids) || !body.ids.length || body.ids.length > 500 || body.ids.some((id) => typeof id !== "string")) {
+      throw badRequest("ids must be a list of 1 to 500 ids");
+    }
+    const repo = bulkRepo(kind);
+    const ids = [];
+    for (const id of new Set(body.ids)) {
+      const row = await repo.get(id);
+      if (row && row.orgId === p.orgId) ids.push(id);
+    }
+    if (!ids.length) throw notFound("none of those items were found");
+    return { p, ids, kind };
+  };
+  app2.post("/api/bulk/loops/close", { preHandler: requireMinRole("manager") }, async (req) => {
+    const { p, ids } = await bulkIds(req, "loop");
     return core.bulk.closeLoops(ids, p.userId);
   });
   app2.post("/api/bulk/loops/snooze", { preHandler: requireMinRole("manager") }, async (req) => {
-    const p = await principalOf(req);
-    const { ids, hours } = req.body;
-    if (!ids?.length) throw badRequest("ids required");
-    return core.bulk.snoozeLoops(ids, hours ?? 24, p.userId);
+    const { p, ids } = await bulkIds(req, "loop");
+    const hours = Number(req.body.hours ?? 24);
+    if (!Number.isFinite(hours) || hours <= 0 || hours > 24 * 365) throw badRequest("hours must be between 0 and 8760");
+    return core.bulk.snoozeLoops(ids, hours, p.userId);
   });
   app2.post("/api/bulk/tasks/move", { preHandler: requireMinRole("manager") }, async (req) => {
-    const p = await principalOf(req);
-    const { ids, day } = req.body;
-    if (!ids?.length) throw badRequest("ids required");
+    const { p, ids } = await bulkIds(req, "task");
+    const day = req.body.day;
+    if (day !== "today" && day !== "tomorrow" && day !== "upcoming") throw badRequest("day must be today, tomorrow or upcoming");
     return core.bulk.moveTasks(ids, day, p.userId);
   });
   app2.post("/api/bulk/tasks/complete", { preHandler: requireMinRole("manager") }, async (req) => {
-    const p = await principalOf(req);
-    const { ids } = req.body;
-    if (!ids?.length) throw badRequest("ids required");
+    const { p, ids } = await bulkIds(req, "task");
     return core.bulk.completeTasks(ids, p.userId);
   });
   app2.post("/api/bulk/tasks/delete", { preHandler: requireMinRole("manager") }, async (req) => {
-    const p = await principalOf(req);
-    const { ids } = req.body;
-    if (!ids?.length) throw badRequest("ids required");
+    const { p, ids } = await bulkIds(req, "task");
     return core.bulk.deleteTasks(ids, p.userId);
   });
   app2.post("/api/bulk/leads/advance", { preHandler: requireMinRole("manager") }, async (req) => {
-    const p = await principalOf(req);
-    const { ids } = req.body;
-    if (!ids?.length) throw badRequest("ids required");
+    const { p, ids } = await bulkIds(req, "lead");
     return core.bulk.advanceLeads(ids, p.userId);
   });
   app2.post("/api/bulk/assign", { preHandler: requireMinRole("manager") }, async (req) => {
-    const p = await principalOf(req);
-    const { entityType, ids, userIds } = req.body;
-    if (!ids?.length || !entityType) throw badRequest("ids and entityType required");
-    return core.bulk.assignMany(entityType, ids, userIds ?? [p.userId], p.userId);
+    const body = req.body ?? {};
+    const { p, ids, kind } = await bulkIds(req, body.entityType);
+    let userIds = [p.userId];
+    if (body.userIds !== void 0) {
+      if (!Array.isArray(body.userIds) || body.userIds.some((u) => typeof u !== "string")) throw badRequest("userIds must be a list of user ids");
+      const team = new Set((await listUsers()).filter((u) => u.orgId === p.orgId).map((u) => u.userId));
+      userIds = body.userIds.filter((u) => team.has(u));
+    }
+    return core.bulk.assignMany(kind, ids, userIds, p.userId);
   });
   app2.post("/api/bulk/delete", { preHandler: requireMinRole("manager") }, async (req) => {
-    const p = await principalOf(req);
-    const { entityType, ids } = req.body;
-    if (!ids?.length || !entityType) throw badRequest("ids and entityType required");
-    return core.bulk.deleteMany(entityType, ids, p.userId);
+    const { p, ids, kind } = await bulkIds(req, req.body?.entityType);
+    return core.bulk.deleteMany(kind, ids, p.userId);
   });
   app2.post("/api/recurring/process", async (req) => {
     const p = await principalOf(req);
@@ -8534,8 +8783,14 @@ function buildServer(deps) {
     return events.slice(0, 50);
   });
   app2.post("/api/events/:id/undo", { preHandler: requireMinRole("manager") }, async (req) => {
-    await principalOf(req);
-    return core.events.undo(params(req).id);
+    const p = await principalOf(req);
+    const ev = await core.ctx.db.events.get(params(req).id);
+    if (!ev || ev.orgId !== p.orgId) throw notFound("event not found");
+    try {
+      return await core.events.undo(ev.id, p.userId);
+    } catch (error) {
+      throw badRequest(error instanceof Error ? error.message : "This action cannot be undone");
+    }
   });
   app2.get("/api/connections", async (req) => {
     const p = await principalOf(req);
@@ -8576,9 +8831,9 @@ function buildServer(deps) {
     preHandler: requireMinRole("ceo")
   }, async (req) => {
     const p = await principalOf(req);
-    const body = req.body;
-    if (!body.phoneNumberId || !body.accessToken) {
-      return { error: "phone_number_id and access_token are required" };
+    const body = req.body ?? {};
+    if (typeof body.phoneNumberId !== "string" || typeof body.accessToken !== "string" || !body.phoneNumberId || !body.accessToken) {
+      throw badRequest("phone_number_id and access_token are required");
     }
     const conn = await core.ctx.db.connections.upsert(p.orgId, "whatsapp_cloud", {
       status: "connected",
@@ -8589,8 +8844,8 @@ function buildServer(deps) {
         appSecret: body.appSecret ?? ""
       }
     });
-    broadcast({ type: "connections.changed" });
-    return { ok: true, connection: conn };
+    broadcast({ type: "connections.changed", orgId: p.orgId });
+    return { ok: true, connection: { channel: "whatsapp_cloud", status: conn.status } };
   });
   app2.post("/api/connections/whatsapp_baileys/start", {
     preHandler: requireMinRole("ceo")
@@ -8600,7 +8855,7 @@ function buildServer(deps) {
       status: "connecting",
       credentials: {}
     });
-    broadcast({ type: "connections.changed" });
+    broadcast({ type: "connections.changed", orgId: p.orgId });
     return { ok: true, message: "QR code will appear in server console. Scan with WhatsApp." };
   });
   app2.get("/api/connections/gmail/auth-url", {
@@ -8621,21 +8876,29 @@ function buildServer(deps) {
       access_type: "offline",
       prompt: "consent"
     });
+    const state = `${p.orgId}.${randomBytes6(18).toString("base64url")}`;
+    params2.set("state", state);
     await core.ctx.db.connections.upsert(p.orgId, "gmail", {
       status: "connecting",
-      credentials: { redirectUri: redirectBase }
+      credentials: { redirectUri: redirectBase, state, stateExpiresAt: Date.now() + 15 * 60 * 1e3 }
     });
     return { authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params2.toString()}` };
   });
   app2.get("/api/connections/gmail/callback", async (req, reply) => {
-    const { code } = req.query;
+    const { code, state } = req.query;
     if (!code) {
       return reply.redirect("/?error=gmail_no_code");
+    }
+    const orgId = typeof state === "string" && state.includes(".") ? state.slice(0, state.lastIndexOf(".")) : "";
+    const pending = orgId ? (await core.ctx.db.connections.list(orgId)).find((c) => c.channel === "gmail") : void 0;
+    const creds = pending?.credentials ?? {};
+    if (!pending || !creds.state || creds.state !== state || (creds.stateExpiresAt ?? 0) < Date.now()) {
+      return reply.redirect("/?error=gmail_state_mismatch");
     }
     try {
       const clientId = process.env.GMAIL_CLIENT_ID;
       const clientSecret = process.env.GMAIL_CLIENT_SECRET;
-      const redirectBase = process.env.GMAIL_REDIRECT_URI || `http://localhost:4317/api/connections/gmail/callback`;
+      const redirectBase = creds.redirectUri || process.env.GMAIL_REDIRECT_URI || `http://localhost:4317/api/connections/gmail/callback`;
       const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -8655,7 +8918,7 @@ function buildServer(deps) {
         headers: { Authorization: `Bearer ${tokens.access_token}` }
       });
       const profile = await profileRes.json();
-      await core.ctx.db.connections.upsert(LOCAL_ORG_ID, "gmail", {
+      await core.ctx.db.connections.upsert(orgId, "gmail", {
         status: "connected",
         credentials: {
           accessToken: tokens.access_token,
@@ -8664,7 +8927,7 @@ function buildServer(deps) {
           email: profile.emailAddress ?? ""
         }
       });
-      broadcast({ type: "connections.changed" });
+      broadcast({ type: "connections.changed", orgId });
       return reply.redirect("/?connected=gmail");
     } catch (err) {
       logger.error({ err }, "Gmail OAuth callback failed");
@@ -8676,11 +8939,12 @@ function buildServer(deps) {
   }, async (req) => {
     const p = await principalOf(req);
     const { channel } = req.params;
+    if (!["whatsapp_cloud", "whatsapp_baileys", "gmail", "slack", "telegram", "github", "calendar"].includes(channel)) throw notFound("unknown channel");
     await core.ctx.db.connections.upsert(p.orgId, channel, {
       status: "disconnected",
       credentials: {}
     });
-    broadcast({ type: "connections.changed" });
+    broadcast({ type: "connections.changed", orgId: p.orgId });
     return { ok: true };
   });
   const getKillSwitch = async (orgId) => {
@@ -8710,23 +8974,32 @@ function buildServer(deps) {
   });
   app2.put("/api/autonomy/kill-switch", { preHandler: requireMinRole("manager") }, async (req) => {
     const p = await principalOf(req);
-    const { paused } = req.body;
-    await setKillSwitch(p.orgId, paused !== false);
-    broadcast({ type: "autonomy.changed" });
+    const { paused } = req.body ?? {};
+    if (typeof paused !== "boolean") throw badRequest("paused must be true or false");
+    await setKillSwitch(p.orgId, paused);
+    broadcast({ type: "autonomy.changed", orgId: p.orgId });
     logger.warn({ orgId: p.orgId, paused }, "Kill switch toggled");
-    return { paused: paused !== false };
+    return { paused };
   });
   app2.get("/api/approvals", async (req) => core.approvals.list((await principalOf(req)).orgId, "pending"));
+  const ownedApproval = async (req) => {
+    const p = await principalOf(req);
+    const a = await core.ctx.db.approvals.get(params(req).id);
+    if (!a || a.orgId !== p.orgId) throw notFound("approval not found");
+    return { p, a };
+  };
   app2.post("/api/approvals/:id/approve", { preHandler: requireMinRole("manager") }, async (req) => {
-    await principalOf(req);
-    const r = await core.approvals.approve(params(req).id);
-    broadcast({ type: "agent.action" });
+    const { p, a } = await ownedApproval(req);
+    if (a.status !== "pending") throw badRequest(`This approval was already ${a.status}`);
+    const r = await core.approvals.approve(a.id, p.userId);
+    broadcast({ type: "agent.action", orgId: p.orgId });
     return r;
   });
   app2.post("/api/approvals/:id/dismiss", { preHandler: requireMinRole("manager") }, async (req) => {
-    await principalOf(req);
-    const r = await core.approvals.dismiss(params(req).id);
-    broadcast({ type: "agent.action" });
+    const { p, a } = await ownedApproval(req);
+    if (a.status !== "pending") throw badRequest(`This approval was already ${a.status}`);
+    const r = await core.approvals.dismiss(a.id, p.userId);
+    broadcast({ type: "agent.action", orgId: p.orgId });
     return r;
   });
   const wa2 = cloud_api_exports.whatsappConfigFromEnv();
@@ -8740,11 +9013,11 @@ function buildServer(deps) {
     config: { rateLimit: webhookRateLimitConfig },
     preHandler: whatsappSignatureVerify()
   }, async (req, reply) => {
-    const messages = cloud_api_exports.parseInbound(LOCAL_ORG_ID, req.body);
+    const messages = cloud_api_exports.parseInbound(INSTALL_ORG_ID, req.body);
     for (const m of messages) await ingest(core, m);
     if (messages.length) {
       logger.info({ count: messages.length }, "WhatsApp messages processed");
-      broadcast({ type: "loop.created" });
+      broadcast({ type: "loop.created", orgId: INSTALL_ORG_ID });
     }
     return reply.code(200).send("ok");
   });
@@ -8759,14 +9032,14 @@ function buildServer(deps) {
     }
     const b = req.validatedBody;
     const loopId = await ingest(core, {
-      orgId: LOCAL_ORG_ID,
+      orgId: INSTALL_ORG_ID,
       channel,
       from: b.from ?? "unknown",
       text: b.text,
       ref: b.ref
     });
-    logger.info({ channel, from: b.from }, "Webhook received");
-    broadcast({ type: "loop.created" });
+    logger.info({ channel }, "Webhook received");
+    broadcast({ type: "loop.created", orgId: INSTALL_ORG_ID });
     return reply.send({ captured: loopId });
   });
   const pushSubscriptions = /* @__PURE__ */ new Map();
@@ -8822,7 +9095,11 @@ function buildServer(deps) {
     return leads;
   });
   app2.get("/api/ai/suggestions/:entityType/:entityId", async (req) => {
+    const p = await principalOf(req);
     const { entityType, entityId } = req.params;
+    if (entityType !== "loop" && entityType !== "task" && entityType !== "lead") throw badRequest("entityType must be loop, task or lead");
+    const row = await bulkRepo(entityType).get(entityId);
+    if (!row || row.orgId !== p.orgId) throw notFound(`${entityType} not found`);
     return core.ai.getSuggestions(entityType, entityId);
   });
   app2.post("/api/ai/assign/:taskId", async (req) => {
@@ -8844,7 +9121,7 @@ function buildServer(deps) {
   });
   app2.get("/api/today", async (req) => {
     const p = await principalOf(req);
-    const now2 = Date.now();
+    const now3 = Date.now();
     const STALE_MS = 3 * 24 * 60 * 60 * 1e3;
     const DAY_START = /* @__PURE__ */ new Date();
     DAY_START.setHours(0, 0, 0, 0);
@@ -8855,8 +9132,8 @@ function buildServer(deps) {
       core.leads.list(p.orgId),
       core.approvals.list(p.orgId, "pending")
     ]);
-    const overdueTasks = tasks.filter((t) => !t.completed && t.dueAt && t.dueAt < now2);
-    const staleLoops = loops.filter((l) => l.status !== "closed" && l.side === "yours" && now2 - l.updatedAt > STALE_MS);
+    const overdueTasks = tasks.filter((t) => !t.completed && t.dueAt && t.dueAt < now3);
+    const staleLoops = loops.filter((l) => l.status !== "closed" && l.side === "yours" && now3 - l.updatedAt > STALE_MS);
     const needsAttention = [
       ...overdueTasks.map((t) => ({ id: t.id, kind: "task", title: t.title, dueAt: t.dueAt ?? null })),
       ...staleLoops.map((l) => ({ id: l.id, kind: "loop", title: l.title, why: l.why ?? "", updatedAt: l.updatedAt }))
@@ -8913,7 +9190,9 @@ function buildServer(deps) {
     const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     const todayTasks = tasks.filter((t) => t.day === "today");
     const openLoops = loops.filter((l) => l.status === "open");
-    const completedTasks = tasks.filter((t) => t.subtasks?.every((s) => s.done));
+    const startOfDay = /* @__PURE__ */ new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const completedTasks = tasks.filter((t) => isTaskDone(t) && (t.completedAt ?? 0) >= startOfDay.getTime());
     return {
       loops: {
         total: loops.length,
@@ -8925,7 +9204,7 @@ function buildServer(deps) {
         total: tasks.length,
         today: todayTasks.length,
         completedToday: completedTasks.length,
-        overdue: tasks.filter((t) => t.dueAt && t.dueAt < Date.now() && t.subtasks?.some((s) => !s.done)).length
+        overdue: tasks.filter((t) => t.dueAt && t.dueAt < Date.now() && !isTaskDone(t)).length
       },
       leads: {
         total: leads.length,
@@ -8940,15 +9219,15 @@ function buildServer(deps) {
   app2.get("/api/methods/:methodId", async (req) => {
     const p = await principalOf(req);
     const { methodId } = req.params;
-    const entry = methods_exports.METHODS[methodId];
-    if (!entry) return { error: "Unknown method" };
+    const entry = Object.prototype.hasOwnProperty.call(methods_exports.METHODS, methodId) ? methods_exports.METHODS[methodId] : null;
+    if (!entry) throw notFound("Unknown method");
     const tasks = await core.tasks.list(p.orgId);
     const result = entry.run(tasks);
     return { result, meta: entry.meta };
   });
   app2.get("/api/reports", async (req) => {
     const p = await principalOf(req);
-    const days = Math.min(365, Math.max(1, Number(req.query?.days ?? 30)));
+    const days = Math.min(365, Math.max(1, Math.round(Number(req.query?.days ?? 30)) || 30));
     const [loops, tasks, leads] = await Promise.all([
       core.loops.list(p.orgId),
       core.tasks.list(p.orgId),
@@ -8971,7 +9250,7 @@ function buildServer(deps) {
       return userStats.get(uid);
     };
     for (const t of tasks) {
-      const done = t.subtasks && t.subtasks.length > 0 && t.subtasks.every((s) => s.done);
+      const done = isTaskDone(t);
       for (const uid of t.assignees || []) {
         const s = ensure(uid);
         if (done) {
@@ -9017,9 +9296,16 @@ function buildServer(deps) {
   });
   app2.post("/api/input/calendar-import", async (req) => {
     const p = await principalOf(req);
-    const body = req.body;
-    const icsText = body.ics ?? (body.url ? await input_exports.downloadIcsFromUrl(body.url) : "");
-    if (!icsText) return { error: "No .ics content or URL provided" };
+    const body = req.body ?? {};
+    let icsText = typeof body.ics === "string" ? body.ics : "";
+    if (!icsText && typeof body.url === "string" && body.url) {
+      try {
+        icsText = await input_exports.downloadIcsFromUrl(body.url);
+      } catch (error) {
+        throw badRequest(error instanceof Error ? error.message : "Could not download that calendar");
+      }
+    }
+    if (!icsText) throw badRequest("No .ics content or URL provided");
     const events = input_exports.parseIcs(icsText);
     const taskShapes = input_exports.icsToTasks(events, p.orgId, p.userId);
     const created = [];
@@ -9028,21 +9314,36 @@ function buildServer(deps) {
     }
     return { eventsFound: events.length, created };
   });
-  app2.post("/api/input/attachments", async (req) => {
+  const SAFE_ID = /^[A-Za-z0-9_-]{1,100}$/;
+  const taskInOrg = async (req, taskId) => {
     const p = await principalOf(req);
-    const body = req.body;
-    if (!body.taskId || !body.filename || !body.data) return { error: "taskId, filename, and data are required" };
+    if (typeof taskId !== "string" || !SAFE_ID.test(taskId)) throw badRequest("invalid task id");
+    const task = await core.ctx.db.tasks.get(taskId);
+    if (!task || task.orgId !== p.orgId) throw notFound("task not found");
+    return { p, task };
+  };
+  app2.post("/api/input/attachments", async (req) => {
+    const body = req.body ?? {};
+    if (!body.taskId || typeof body.filename !== "string" || typeof body.data !== "string" || !body.filename || !body.data) {
+      throw badRequest("taskId, filename, and data are required");
+    }
+    const { p } = await taskInOrg(req, body.taskId);
     const buf = Buffer.from(body.data, "base64");
-    const record2 = await input_exports.saveAttachment({ taskId: body.taskId, filename: body.filename, mimeType: body.mimeType ?? "application/octet-stream", data: buf, orgId: p.orgId });
+    if (buf.length > 8 * 1024 * 1024) throw badRequest("Attachments can be at most 8 MB");
+    const mimeType = typeof body.mimeType === "string" && body.mimeType.length < 120 ? body.mimeType : "application/octet-stream";
+    const record2 = await input_exports.saveAttachment({ taskId: body.taskId, filename: body.filename, mimeType, data: buf, orgId: p.orgId });
     return { ok: true, attachment: record2 };
   });
   app2.get("/api/input/attachments/:taskId", async (req) => {
     const { taskId } = req.params;
-    return { attachments: await input_exports.listAttachments(taskId) };
+    const { p } = await taskInOrg(req, taskId);
+    return { attachments: await input_exports.listAttachments(taskId, p.orgId) };
   });
   app2.delete("/api/input/attachments/:orgId/:attachmentId", async (req) => {
-    const { orgId, attachmentId } = req.params;
-    await input_exports.deleteAttachment(orgId, attachmentId);
+    const p = await principalOf(req);
+    const { attachmentId } = req.params;
+    if (!SAFE_ID.test(attachmentId)) throw badRequest("invalid attachment id");
+    await input_exports.deleteAttachment(p.orgId, attachmentId);
     return { ok: true };
   });
   app2.get("/", async (_req, reply) => reply.type("text/html").send(renderUi()));
@@ -9113,12 +9414,9 @@ function initialsFor2(name) {
   return parts.map((p) => p.charAt(0).toUpperCase()).join("");
 }
 function readAuthToken(req) {
-  const cookieToken = readCookie(req.headers.cookie, "cb_session");
-  if (cookieToken) return cookieToken;
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return void 0;
-  const m = authHeader.match(/^Bearer\s+(.+)$/i);
-  return m?.[1]?.trim();
+  const m = req.headers.authorization?.match(/^Bearer\s+(.+)$/i);
+  if (m?.[1]?.trim()) return m[1].trim();
+  return readCookie(req.headers.cookie, "cb_session");
 }
 function readCookie(cookieHeader, name) {
   if (!cookieHeader) return void 0;
@@ -9183,6 +9481,10 @@ function escapeCsvField(val) {
   }
   return str2;
 }
+function isTaskDone(t) {
+  if (t.completed) return true;
+  return !!t.subtasks && t.subtasks.length > 0 && t.subtasks.every((s) => s.done);
+}
 function arrayToCsv(headers, rows) {
   const lines = [headers.join(",")];
   for (const row of rows) {
@@ -9191,16 +9493,17 @@ function arrayToCsv(headers, rows) {
   return lines.join("\n");
 }
 function loopsToCsv(loops) {
-  const headers = ["id", "channel", "from", "subject", "body", "status", "assignee", "createdAt"];
+  const headers = ["id", "channel", "title", "why", "side", "status", "assignedTo", "dueAt", "createdAt"];
   const rows = loops.map((l) => [
     l.id,
     l.channel,
-    l.from,
-    l.subject,
-    l.body,
+    l.title,
+    l.why,
+    l.side,
     l.status,
-    l.assignee,
-    l.createdAt
+    (l.assignedTo ?? []).join("; "),
+    l.dueAt ? new Date(l.dueAt).toISOString() : "",
+    new Date(l.createdAt).toISOString()
   ]);
   return arrayToCsv(headers, rows);
 }
@@ -9215,21 +9518,23 @@ function tasksToCsv(tasks) {
     t.recurring ? "yes" : "no",
     t.dueAt ? new Date(t.dueAt).toISOString() : "",
     (t.assignees ?? []).join("; "),
-    (t.subtasks ?? []).every((s) => s.done) ? "yes" : "no"
+    isTaskDone(t) ? "yes" : "no"
   ]);
   return arrayToCsv(headers, rows);
 }
 function leadsToCsv(leads) {
-  const headers = ["id", "name", "company", "title", "stage", "value", "notes", "createdAt"];
+  const headers = ["id", "name", "company", "title", "phone", "email", "stage", "value", "notes", "createdAt"];
   const rows = leads.map((l) => [
     l.id,
     l.name,
     l.company,
     l.title,
+    l.phone,
+    l.email,
     l.stage,
-    l.value,
-    l.notes,
-    l.createdAt
+    l.value ?? "",
+    l.what,
+    new Date(l.createdAt).toISOString()
   ]);
   return arrayToCsv(headers, rows);
 }
@@ -9239,6 +9544,8 @@ init_middleware();
 var mcpArgs = process.argv.slice(2);
 if (mcpArgs[0] === "mcp" || process.argv.includes("mcp")) {
   await Promise.resolve().then(() => (init_mcp(), mcp_exports));
+  await new Promise((resolve) => process.stdin.once("close", resolve));
+  process.exit(0);
 }
 process.on("unhandledRejection", (reason) => {
   console.error("[companybrain] unhandledRejection:", reason);

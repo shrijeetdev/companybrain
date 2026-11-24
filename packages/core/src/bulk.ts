@@ -1,7 +1,15 @@
 // Bulk operations service — perform batch actions on multiple entities.
 // Supports loops, tasks, and leads with common operations.
 
-import type { TaskDay } from '@companybrain/types';
+import type { LeadStage, TaskDay } from '@companybrain/types';
+
+/** The stage after this one, or null when the deal is already closed (won or lost). */
+export function nextLeadStage(stage: LeadStage): LeadStage | null {
+  const order: LeadStage[] = ['new', 'contacted', 'meeting', 'proposal', 'won'];
+  const idx = order.indexOf(stage);
+  if (idx < 0 || stage === 'won') return null;
+  return order[idx + 1] ?? null;
+}
 import { type Context, record } from './context';
 
 export interface BulkActionResult {
@@ -19,8 +27,10 @@ export function makeBulkOps(ctx: Context) {
       const result: BulkActionResult = { succeeded: [], failed: [], total: ids.length };
       for (const id of ids) {
         try {
-          await ctx.db.loops.update(id, { status: 'closed', updatedAt: Date.now() });
-          await record(ctx, { orgId: (await ctx.db.loops.get(id))?.orgId ?? '', type: 'loop.closed', entityId: id, actorId });
+          const prev = await ctx.db.loops.get(id);
+          if (!prev) throw new Error('loop not found');
+          await ctx.db.loops.update(id, { status: 'closed' });
+          await record(ctx, { orgId: prev.orgId, type: 'loop.closed', entityId: id, actorId, undo: { restoreStatus: prev.status } });
           result.succeeded.push(id);
         } catch (e: any) {
           result.failed.push({ id, error: e.message });
@@ -37,7 +47,10 @@ export function makeBulkOps(ctx: Context) {
       const untilAt = Date.now() + Math.max(1, hours) * 60 * 60 * 1000;
       for (const id of ids) {
         try {
-          await ctx.db.loops.update(id, { status: 'snoozed', updatedAt: untilAt });
+          // Same as a single snooze: set the wake time and queue the reminder.
+          const loop = await ctx.db.loops.update(id, { status: 'snoozed', dueAt: untilAt });
+          await record(ctx, { orgId: loop.orgId, type: 'loop.snoozed', entityId: id, actorId });
+          await ctx.queue.enqueue('sendReminder', { loopId: id, orgId: loop.orgId }, { delayMs: Math.max(0, untilAt - Date.now()) });
           result.succeeded.push(id);
         } catch (e: any) {
           result.failed.push({ id, error: e.message });
@@ -74,8 +87,8 @@ export function makeBulkOps(ctx: Context) {
         try {
           const task = await ctx.db.tasks.get(id);
           if (!task) throw new Error('task not found');
-          await ctx.db.tasks.update(id, { day: 'today' });
-          await record(ctx, { orgId: task.orgId, type: 'task.completed', entityId: id, actorId });
+          await ctx.db.tasks.update(id, { completed: true, completedAt: Date.now() });
+          await record(ctx, { orgId: task.orgId, type: 'task.completed', entityId: id, actorId, undo: { restoreCompleted: task.completed ?? false, restoreCompletedAt: task.completedAt ?? null } });
           result.succeeded.push(id);
         } catch (e: any) {
           result.failed.push({ id, error: e.message });
@@ -107,15 +120,14 @@ export function makeBulkOps(ctx: Context) {
      */
     async advanceLeads(ids: string[], actorId: string): Promise<BulkActionResult> {
       const result: BulkActionResult = { succeeded: [], failed: [], total: ids.length };
-      const stageOrder = ['new', 'contacted', 'meeting', 'proposal', 'won'];
       for (const id of ids) {
         try {
           const lead = await ctx.db.leads.get(id);
           if (!lead) throw new Error('lead not found');
-          const currentIdx = stageOrder.indexOf(lead.stage);
-          const nextStage = stageOrder[Math.min(currentIdx + 1, stageOrder.length - 1)];
-          await ctx.db.leads.update(id, { stage: nextStage as any });
-          await record(ctx, { orgId: lead.orgId, type: 'lead.advanced', entityId: id, actorId });
+          const nextStage = nextLeadStage(lead.stage);
+          if (!nextStage) throw new Error(`lead is already ${lead.stage}`);
+          await ctx.db.leads.update(id, { stage: nextStage });
+          await record(ctx, { orgId: lead.orgId, type: 'lead.advanced', entityId: id, actorId, undo: { restoreStage: lead.stage } });
           result.succeeded.push(id);
         } catch (e: any) {
           result.failed.push({ id, error: e.message });

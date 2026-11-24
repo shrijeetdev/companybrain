@@ -1,3 +1,5 @@
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 // .ics (iCalendar) import — turn a calendar export into task shells.
 //
 // Deliberately dependency-free: the .ics spec is sprawling, but the subset we care
@@ -228,11 +230,51 @@ export function icsToTasks(
  * error worth reporting.
  */
 export async function downloadIcsFromUrl(url: string): Promise<string> {
-  const response = await fetch(url, {
+  // Only public https calendars: a signed-in user must not be able to make the server
+  // fetch internal addresses (cloud metadata, localhost admin ports, the LAN).
+  let parsed: URL;
+  try {
+    parsed = new URL(url.trim().replace(/^webcal:/i, 'https:'));
+  } catch {
+    throw new Error('That calendar link is not a valid URL');
+  }
+  if (parsed.protocol !== 'https:') throw new Error('Calendar links must start with https://');
+  if (parsed.username || parsed.password) throw new Error('Calendar links cannot contain a username or password');
+  const host = parsed.hostname.replace(/^\[|\]$/g, '');
+  const addrs = isIP(host) ? [{ address: host }] : await lookup(host, { all: true }).catch(() => []);
+  if (!addrs.length) throw new Error('Could not find that calendar host');
+  if (addrs.some((a) => isPrivateAddress(a.address))) throw new Error('That calendar host is not allowed');
+
+  const response = await fetch(parsed, {
     headers: { Accept: 'text/calendar, application/octet-stream, text/plain, */*' },
+    redirect: 'error',
+    signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) {
-    throw new Error(`Failed to download .ics from ${url}: HTTP ${response.status}`);
+    throw new Error(`Failed to download the calendar: HTTP ${response.status}`);
   }
-  return response.text();
+  const text = await response.text();
+  if (text.length > 2 * 1024 * 1024) throw new Error('That calendar file is too large (over 2 MB)');
+  return text;
+}
+
+/** True for loopback, private, link-local, CGNAT, multicast and other non-public ranges. */
+export function isPrivateAddress(address: string): boolean {
+  const ip = address.toLowerCase();
+  if (isIP(ip) === 6) {
+    if (ip === '::' || ip === '::1') return true;
+    const mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (mapped) return isPrivateAddress(mapped[1]!);
+    return /^(fc|fd|fe8|fe9|fea|feb|ff)/.test(ip);
+  }
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) return true;
+  const a = parts[0]!;
+  const b = parts[1]!;
+  return a === 0 || a === 10 || a === 127 || a >= 224
+    || (a === 100 && b >= 64 && b <= 127)
+    || (a === 169 && b === 254)
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168)
+    || (a === 198 && (b === 18 || b === 19));
 }

@@ -60,6 +60,8 @@ export class PasswordAuth implements Auth {
   private readonly orgId: string;
   private readonly sessionTtlMs: number;
   private readonly sessions = new Map<string, Session>();
+  private readonly failedLogins = new Map<string, { count: number; lockedUntil: number }>();
+  private lastCleanup = 0;
 
   constructor() {
     this.orgId = process.env.COMPANYBRAIN_ORG_ID?.trim() || LOCAL_ORG_ID;
@@ -281,9 +283,21 @@ export class PasswordAuth implements Auth {
     const pw = password ?? '';
     if (!id || !pw) return null;
 
+    // Lock an account name for 15 minutes after 8 wrong passwords, whatever IP they come from.
+    const key = id.toLowerCase();
+    const fail = this.failedLogins.get(key);
+    if (fail && fail.lockedUntil > Date.now()) return null;
+
     const row = this.findByIdentifier(id);
-    if (!row || row.active !== 1) return null;
-    if (!verifyPassword(pw, row.password_hash)) return null;
+    // Unknown users still pay for a hash, so response time doesn't reveal which accounts exist.
+    const ok = row ? verifyPassword(pw, row.password_hash) : (verifyPassword(pw, DUMMY_HASH), false);
+    if (!row || row.active !== 1 || !ok) {
+      const count = (fail && fail.lockedUntil <= Date.now() && fail.count >= 8 ? 0 : fail?.count ?? 0) + 1;
+      this.failedLogins.set(key, { count, lockedUntil: count >= 8 ? Date.now() + 15 * 60 * 1000 : 0 });
+      if (this.failedLogins.size > 5000) this.failedLogins.clear();
+      return null;
+    }
+    this.failedLogins.delete(key);
 
     return this.startSession(row);
   }
@@ -295,6 +309,9 @@ export class PasswordAuth implements Auth {
 
   private cleanupExpired() {
     const now = Date.now();
+    // Runs on every request, so only sweep once a minute.
+    if (now - this.lastCleanup < 60_000) return;
+    this.lastCleanup = now;
     for (const [token, sess] of this.sessions) {
       if (sess.expiresAt <= now) this.sessions.delete(token);
     }
@@ -339,9 +356,9 @@ export class PasswordAuth implements Auth {
     const active = patch.active !== undefined ? (patch.active ? 1 : 0) : row.active;
     const initials = patch.name ? initialsFor(name) : row.initials;
 
-    if (role !== 'ceo' && normalizeRole(row.role) === 'ceo') {
+    if ((role !== 'ceo' || active !== 1) && normalizeRole(row.role) === 'ceo' && row.active === 1) {
       const otherAdmins = this.db.prepare("SELECT COUNT(*) as c FROM users WHERE role='ceo' AND active=1 AND id!=?").get(id) as { c: number };
-      if (otherAdmins.c === 0) throw new Error('cannot demote the last admin');
+      if (otherAdmins.c === 0) throw new Error(role !== 'ceo' ? 'cannot demote the last admin' : 'cannot disable the last admin');
     }
 
     this.db.prepare(`
@@ -376,3 +393,6 @@ export class PasswordAuth implements Auth {
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
+
+// A real scrypt hash of a random string, used only to make unknown-user logins as slow as real ones.
+const DUMMY_HASH = hashPassword(randomBytes(16).toString('hex'));

@@ -40,6 +40,10 @@ export function registerWorkers(ctx: Context): void {
   ctx.queue.on<LoopJob>('sendReminder', async ({ loopId, orgId }) => {
     const loop = await ctx.db.loops.get(loopId);
     if (!loop || loop.status === 'closed') return;
+    // A timer from an older snooze may fire after the loop was snoozed again for longer.
+    if (loop.status === 'snoozed' && loop.dueAt && loop.dueAt > Date.now() + 60_000) return;
+    // The snooze is over: bring the loop back into view.
+    if (loop.status === 'snoozed') await ctx.db.loops.update(loopId, { status: 'open' });
     await record(ctx, { orgId, type: 'reminder.sent', entityId: loopId, actorId: 'agent_scout' });
     console.log(`[worker] reminder fired for loop ${loopId}`);
   });

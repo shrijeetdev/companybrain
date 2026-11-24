@@ -26,6 +26,10 @@ if (mcpArgs[0] === 'mcp' || process.argv.includes('mcp')) {
   // The process stays alive because stdin keeps the event loop busy, and exits on its
   // own when stdin closes. A process.exit() here would kill it before any line is read.
   await import('./mcp.js');
+  // Stop here: the web app below must not also boot (it would print to stdout and corrupt
+  // the MCP stream). Wait for the host to close stdin, then exit.
+  await new Promise<void>((resolve) => process.stdin.once('close', resolve));
+  process.exit(0);
 }
 
 // --- Process error handlers: catch what would otherwise be silent crashes (H6) ---

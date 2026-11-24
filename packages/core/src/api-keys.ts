@@ -2,7 +2,7 @@
 // create and never stored; only the sha256 hash is persisted. verify() resolves the
 // { orgId, actorId, scopes } identity a caller (e.g. the MCP server) needs.
 
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import type { ApiKeyRow } from '@companybrain/db';
 import { type Context, newId } from './context';
 
@@ -29,7 +29,8 @@ export function makeApiKeys(ctx: Context) {
     scopes: string[] = ['read'],
     actorId?: string,
   ): Promise<{ raw: string; row: SafeApiKey }> {
-    const raw = `cb_${newId('key')}`;
+    // 192 random bits; the old 8-hex-char id was guessable.
+    const raw = `cb_${randomBytes(24).toString('base64url')}`;
     const row: ApiKeyRow = {
       id: newId('apikey'),
       orgId,
@@ -48,6 +49,7 @@ export function makeApiKeys(ctx: Context) {
   async function verify(rawKey: string): Promise<ApiKeyIdentity | null> {
     const row = await db.apiKeys.findByHash(hash(rawKey));
     if (!row) return null;
+    if (row.expiresAt && row.expiresAt <= Date.now()) return null;
     await db.apiKeys.touch(row.id, Date.now());
     return { orgId: row.orgId, actorId: row.actorId, scopes: row.scopes };
   }

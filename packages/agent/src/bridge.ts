@@ -179,12 +179,14 @@ function safeRisk(reason: string): CommandRisk {
 async function createTaskInCore(intent: ClassifiedIntent, deps: BridgeDeps): Promise<unknown> {
   try {
     const principal = await deps.core.ctx.auth.current();
-    return deps.core.tasks.create({
+    const day = ['today', 'tomorrow', 'upcoming'].includes(String(intent.args.day)) ? intent.args.day : 'today';
+    const priority = ['high', 'med', 'low'].includes(String(intent.args.priority)) ? intent.args.priority : null;
+    return await deps.core.tasks.create({
       orgId: principal.orgId,
       actorId: principal.userId,
-      title: String(intent.args.title ?? 'Untitled task'),
-      day: intent.args.day,
-      priority: intent.args.priority ?? null,
+      title: String(intent.args.title ?? 'Untitled task').slice(0, 300),
+      day,
+      priority,
     });
   } catch (err) {
     // Surface the failure as a non-fatal result — the bridge never throws.

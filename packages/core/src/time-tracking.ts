@@ -33,8 +33,8 @@ export function makeTimeTracking(ctx: Context) {
      * If there's already an active entry for this task, stop it first.
      */
     async start(input: StartTimeInput): Promise<TimeEntry> {
-      // Stop any existing active entry for this task
-      const active = await this.getActive(input.taskId);
+      // Stop this person's running timer on the task (a teammate's timer keeps running)
+      const active = await this.getActive(input.taskId, input.userId);
       if (active) {
         await this.stop(active.id);
       }
@@ -72,9 +72,9 @@ export function makeTimeTracking(ctx: Context) {
     /**
      * Get active (running) time entry for a task.
      */
-    async getActive(taskId: string): Promise<TimeEntry | null> {
+    async getActive(taskId: string, userId?: string): Promise<TimeEntry | null> {
       const entries = await ctx.db.timeEntries.listByTask(taskId);
-      return entries.find(e => !e.endedAt) ?? null;
+      return entries.find(e => !e.endedAt && (!userId || e.userId === userId)) ?? null;
     },
 
     /**
