@@ -107,10 +107,16 @@ export const LoginSchema = z.object({
 });
 
 export const CreateUserSchema = z.object({
-  email: z.string().trim().email().max(200),
-  username: z.string().trim().min(3).max(50).optional(),
+  email: z.string().trim().email().max(200).optional(),
+  username: z.string().trim().min(3).max(50).regex(/^[a-zA-Z0-9._-]+$/, 'username can use letters, numbers, dot, dash and underscore').optional(),
   name: z.string().trim().min(1).max(200),
   role: z.enum(['ceo', 'manager', 'employee', 'client', 'agent']),
+  // Optional: leave it out and send the person an invite link to set their own.
+  password: z.string().min(8, 'password must be at least 8 characters').max(200).optional(),
+}).refine((v) => !!v.email || !!v.username, { message: 'email or username is required', path: ['email'] });
+
+export const AcceptInviteSchema = z.object({
+  token: z.string().min(16).max(200),
   password: z.string().min(8, 'password must be at least 8 characters').max(200),
 });
 

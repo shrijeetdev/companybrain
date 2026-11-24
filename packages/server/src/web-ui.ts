@@ -658,6 +658,19 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     </div>
   </div>
 
+  <div class="modal-backdrop" id="invite-modal">
+    <div class="modal-box" style="max-width:430px;">
+      <div class="modal-head"><span style="font-size:20px;">👋</span><span class="modal-title" id="invite-title">Welcome to the team</span></div>
+      <div class="modal-body">
+        <div id="invite-intro" style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:12px;">Choose a password for your account. Only you will know it.</div>
+        <div class="modal-field"><label class="modal-label">New password</label><input class="modal-input" id="invite-password" type="password" placeholder="At least 8 characters" autocomplete="new-password"/></div>
+        <div class="modal-field"><label class="modal-label">Type it again</label><input class="modal-input" id="invite-password2" type="password" placeholder="Same password" autocomplete="new-password"/></div>
+        <div id="invite-error" style="display:none;font-size:12px;color:var(--red);margin-top:4px;"></div>
+      </div>
+      <div class="modal-foot"><button class="btn-primary" id="invite-accept-btn">Set password and sign in</button></div>
+    </div>
+  </div>
+
   <!-- command palette -->
   <div id="cmd-overlay">
     <div id="cmd-box">
@@ -2661,10 +2674,10 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       +'<div style="font-size:13.5px;font-weight:700;margin-bottom:10px;">Create user</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;">'
       +'<input class="modal-input" id="admin-new-name" placeholder="Full name" autocomplete="off"/>'
-      +'<input class="modal-input" id="admin-new-email" placeholder="Email" autocomplete="off"/>'
-      +'<input class="modal-input" id="admin-new-username" placeholder="Username optional" autocomplete="off"/>'
+      +'<input class="modal-input" id="admin-new-email" placeholder="Email (optional)" autocomplete="off"/>'
+      +'<input class="modal-input" id="admin-new-username" placeholder="Username" autocomplete="off"/>'
       +'<select class="modal-select" id="admin-new-role">'+roleOpts+'</select>'
-      +'<input class="modal-input" id="admin-new-password" type="password" placeholder="Temporary password" autocomplete="new-password"/>'
+      +'<input class="modal-input" id="admin-new-password" type="password" placeholder="Password (blank = invite link)" autocomplete="new-password"/>'
       +'<button class="btn-primary" id="admin-create-user">Create</button>'
       +'</div><div id="admin-user-msg" style="font-size:12px;color:var(--muted);margin-top:8px;"></div></div>'
       +'<div class="gc" style="padding:14px 16px;border-radius:14px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;"><div style="font-size:13.5px;font-weight:700;">Users</div><button class="btn-ghost" id="admin-refresh-users">Refresh</button></div><div id="admin-users-list"><div class="spin"></div></div></div>';
@@ -2684,14 +2697,15 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     if(create) create.onclick=function(){
       var body={
         name:(document.getElementById('admin-new-name').value||'').trim(),
-        email:(document.getElementById('admin-new-email').value||'').trim(),
+        email:(document.getElementById('admin-new-email').value||'').trim()||undefined,
         username:(document.getElementById('admin-new-username').value||'').trim()||undefined,
         role:document.getElementById('admin-new-role').value,
-        password:document.getElementById('admin-new-password').value||''
+        password:document.getElementById('admin-new-password').value||undefined
       };
-      if(!body.name||!body.email||!body.password){adminMsg('Name, email, and password are required',true);return;}
-      post('/api/admin/users',body).then(function(){
-        adminMsg('User created',false);
+      if(!body.name||(!body.email&&!body.username)){adminMsg('Name and an email or username are required',true);return;}
+      post('/api/admin/users',body).then(function(res){
+        if(!body.password&&res&&res.user){makeInviteLink(res.user.userId,res.user.name);}
+        else adminMsg('User created',false);
         ['admin-new-name','admin-new-email','admin-new-username','admin-new-password'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
         loadAdminUsers();
       }).catch(function(e){adminMsg(e&&e.message?e.message:'Could not create user',true);});
@@ -2713,11 +2727,11 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     return users.map(function(u){
       var roleOpts=roles.map(function(r){return '<option value="'+r+'" '+(u.role===r?'selected':'')+'>'+roleLabel(r)+'</option>';}).join('');
       return '<div class="admin-user-row" data-user-id="'+esc(u.userId)+'" style="border-top:1px solid var(--glassBorder);padding:12px 0;display:grid;grid-template-columns:minmax(180px,1fr) 140px 120px 1fr auto;gap:8px;align-items:center;">'
-        +'<div><div style="font-size:13px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:11px;color:var(--muted);">'+esc(u.email||'')+(u.username?' · '+esc(u.username):'')+'</div></div>'
+        +'<div><div style="font-size:13px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:11px;color:var(--muted);">'+esc(isPendingEmail(u.email)?'no email yet':(u.email||''))+(u.username?' · '+esc(u.username):'')+'</div></div>'
         +'<select class="modal-select admin-role" style="min-height:34px;">'+roleOpts+'</select>'
         +'<select class="modal-select admin-active" style="min-height:34px;"><option value="true" '+(u.active===false?'':'selected')+'>Active</option><option value="false" '+(u.active===false?'selected':'')+'>Disabled</option></select>'
         +'<div style="display:flex;gap:6px;"><input class="modal-input admin-password" type="password" placeholder="New password" autocomplete="new-password" style="min-height:34px;"/><button class="btn-ghost admin-set-password">Set</button></div>'
-        +'<div style="display:flex;gap:6px;"><button class="btn-ghost admin-save-user">Save</button><button class="btn-danger admin-delete-user">Delete</button></div>'
+        +'<div style="display:flex;gap:6px;"><button class="btn-ghost admin-invite-user" title="Make a one-time link this person opens to set their own password">Invite link</button><button class="btn-ghost admin-save-user">Save</button><button class="btn-danger admin-delete-user">Delete</button></div>'
         +'</div>';
     }).join('');
   }
@@ -2727,6 +2741,11 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       var save=row.querySelector('.admin-save-user');
       var del=row.querySelector('.admin-delete-user');
       var setPw=row.querySelector('.admin-set-password');
+      var inv=row.querySelector('.admin-invite-user');
+      if(inv) inv.onclick=function(){
+        var nm=row.querySelector('div div');
+        makeInviteLink(uid,nm?nm.textContent:'');
+      };
       if(save) save.onclick=function(){
         var role=row.querySelector('.admin-role').value;
         var active=row.querySelector('.admin-active').value==='true';
@@ -2745,9 +2764,59 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     });
   }
 
+  function isPendingEmail(e){ return !!e && e.slice(-16)==='@pending.invalid'; }
+  function makeInviteLink(uid,name){
+    post('/api/admin/users/'+encodeURIComponent(uid)+'/invite',{}).then(function(res){
+      var link=location.origin+res.path;
+      var done=function(copied){
+        adminMsg((copied?'Invite link copied':'Invite link')+' for '+(name||'this user')+'. It works once and expires in 3 days: '+link,false);
+        toast(copied?'Invite link copied':'Invite link ready');
+      };
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(link).then(function(){done(true);},function(){done(false);});
+      } else done(false);
+    }).catch(function(e){toast(e&&e.message?e.message:'Could not make invite link');});
+  }
+  function inviteErr(msg){
+    var el=document.getElementById('invite-error');
+    if(!el) return;
+    el.style.display=msg?'block':'none';
+    el.textContent=msg||'';
+  }
+  function openInvite(token){
+    var m=document.getElementById('invite-modal');
+    api('/api/auth/invite?token='+encodeURIComponent(token)).then(function(res){
+      var first=(res&&res.name?res.name:'').split(' ')[0];
+      document.getElementById('invite-title').textContent=first?'Welcome, '+first:'Welcome to the team';
+      m.classList.add('open');
+      setTimeout(function(){var p=document.getElementById('invite-password');if(p)p.focus();},20);
+    }).catch(function(){
+      openAuthModal('That invite link has expired or was already used. Ask your admin for a new one, or sign in.');
+    });
+    var btn=document.getElementById('invite-accept-btn');
+    btn.onclick=function(){
+      var p1=document.getElementById('invite-password').value||'';
+      var p2=document.getElementById('invite-password2').value||'';
+      if(p1.length<8){inviteErr('Use at least 8 characters');return;}
+      if(p1!==p2){inviteErr('The two passwords do not match');return;}
+      btn.disabled=true;btn.textContent='Setting up…';
+      post('/api/auth/invite',{token:token,password:p1}).then(function(res){
+        history.replaceState(null,'',location.pathname);
+        m.classList.remove('open');
+        applySessionUser(res&&res.user?res.user:null);
+        startApp();
+      }).catch(function(e){
+        inviteErr(e&&e.message?e.message:'Could not use this invite');
+      }).finally(function(){btn.disabled=false;btn.textContent='Set password and sign in';});
+    };
+  }
+
   // ── boot ──────────────────────────────────────────────────────────────────
   updateSessionUi();
-  ensureSession().then(function(ok){
+  var inviteToken=new URLSearchParams(location.search).get('invite');
+  if(inviteToken){
+    openInvite(inviteToken);
+  } else ensureSession().then(function(ok){
     if(ok) startApp();
   }).catch(function(e){
     showErr(e);

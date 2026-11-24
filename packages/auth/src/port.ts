@@ -27,11 +27,13 @@ export interface LoginResult {
 
 /** Input for admin-created accounts (PasswordAuth). */
 export interface CreateUserInput {
-  email: string;
+  /** Optional when a username is given. */
+  email?: string;
   username?: string;
   name: string;
   role: string;
-  password: string;
+  /** Omit to let the person set their own password through an invite link. */
+  password?: string;
 }
 
 export interface UpdateUserInput {
@@ -69,4 +71,7 @@ export interface Auth {
   updateUser?(userId: string, patch: UpdateUserInput): Promise<AuthUser> | AuthUser;
   deleteUser?(userId: string): Promise<void> | void;
   setPassword?(userId: string, newPassword: string): Promise<void> | void;
+  createInvite?(userId: string, ttlHours?: number): { token: string; expiresAt: number };
+  peekInvite?(token: string): { name: string } | null;
+  acceptInvite?(token: string, newPassword: string): LoginResult | null;
 }

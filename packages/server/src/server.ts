@@ -148,6 +148,9 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     updateUser?: (userId: string, patch: UpdateUserInput) => Promise<AuthUser> | AuthUser;
     deleteUser?: (userId: string) => Promise<void> | void;
     setPassword?: (userId: string, newPassword: string) => Promise<void> | void;
+    createInvite?: (userId: string, ttlHours?: number) => { token: string; expiresAt: number };
+    peekInvite?: (token: string) => { name: string } | null;
+    acceptInvite?: (token: string, newPassword: string) => { token: string; user: AuthUser; expiresAt: number } | null;
   };
   const authRequiresSession = typeof authWithSessions.login === 'function';
   const authSupportsUserManagement = typeof authWithSessions.createUser === 'function';
@@ -372,6 +375,43 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     } catch (error) {
       throw badRequest(error instanceof Error ? error.message : 'Could not set password');
     }
+  });
+
+  // --- Invite links: the admin never sets or sees a teammate's password ---
+  app.post('/api/admin/users/:id/invite', {
+    preHandler: requireMinRole('ceo'),
+  }, async (req) => {
+    requireUserManagement();
+    if (typeof authWithSessions.createInvite !== 'function') throw badRequest('Invites are not available in this auth mode');
+    try {
+      const invite = authWithSessions.createInvite(params(req).id, 72);
+      return { ok: true, path: `/?invite=${invite.token}`, expiresAt: invite.expiresAt };
+    } catch (error) {
+      throw badRequest(error instanceof Error ? error.message : 'Could not create invite');
+    }
+  });
+
+  app.get('/api/auth/invite', {
+    config: { rateLimit: authRateLimitConfig },
+  }, async (req, reply) => {
+    const token = String((req.query as Record<string, unknown> | undefined)?.token ?? '');
+    const info = typeof authWithSessions.peekInvite === 'function' ? authWithSessions.peekInvite(token) : null;
+    if (!info) return reply.code(404).send({ error: 'This invite link has expired or was already used' });
+    return { ok: true, name: info.name };
+  });
+
+  app.post('/api/auth/invite', {
+    config: { rateLimit: authRateLimitConfig },
+    preHandler: validateBody(schemas.AcceptInviteSchema),
+  }, async (req, reply) => {
+    if (typeof authWithSessions.acceptInvite !== 'function') return reply.code(404).send({ error: 'Invites are not available' });
+    const body = (req as any).validatedBody as { token: string; password: string };
+    const login = authWithSessions.acceptInvite(body.token, body.password);
+    if (!login) return reply.code(404).send({ error: 'This invite link has expired or was already used' });
+    logger.info({ userId: login.user.userId }, 'Invite accepted');
+    const maxAge = Math.max(60, Math.floor((login.expiresAt - Date.now()) / 1000));
+    reply.header('Set-Cookie', makeSessionCookie('cb_session', login.token, maxAge, shouldSecureCookie(req)));
+    return { ok: true, authMode: resolvedAuthMode, authenticated: true, user: presentUser(login.user), expiresAt: login.expiresAt };
   });
 
   app.delete('/api/admin/users/:id', {

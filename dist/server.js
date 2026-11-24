@@ -1258,7 +1258,7 @@ var init_hash = __esm({
 });
 
 // packages/auth/src/password.ts
-import { randomBytes as randomBytes4, randomUUID } from "node:crypto";
+import { createHash, randomBytes as randomBytes4, randomUUID } from "node:crypto";
 import { homedir as homedir2 } from "node:os";
 import { join as join2 } from "node:path";
 import { mkdirSync as mkdirSync2 } from "node:fs";
@@ -1275,6 +1275,9 @@ function rowToUser(row) {
     active: row.active === 1,
     createdAt: row.created_at
   };
+}
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
 }
 var PasswordAuth;
 var init_password = __esm({
@@ -1315,6 +1318,19 @@ var init_password = __esm({
         updated_at INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_users_org ON users(org_id);
+      -- Sessions survive restarts and redeploys (only a hash of the token is stored).
+      CREATE TABLE IF NOT EXISTS auth_sessions (
+        token_hash TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        org_id TEXT NOT NULL,
+        expires_at INTEGER NOT NULL
+      );
+      -- One-time "set your password" invites (only a hash of the token is stored).
+      CREATE TABLE IF NOT EXISTS auth_invites (
+        token_hash TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        expires_at INTEGER NOT NULL
+      );
     `);
       }
       async init() {
@@ -1343,14 +1359,15 @@ var init_password = __esm({
         const now2 = Date.now();
         const role = normalizeRole(input.role);
         const initials = initialsFor(input.name);
-        const passwordHash = hashPassword(input.password);
+        const passwordHash = hashPassword(input.password || randomBytes4(32).toString("base64url"));
+        const email = (input.email?.trim() || `${input.username.trim().toLowerCase()}@pending.invalid`).toLowerCase();
         this.db.prepare(`
       INSERT INTO users (id, org_id, email, username, name, initials, role, password_hash, active, created_at, created_by, updated_at)
       VALUES (?,?,?,?,?,?,?,?,1,?,?,?)
     `).run(
           id,
           this.orgId,
-          input.email.trim().toLowerCase(),
+          email,
           input.username?.trim().toLowerCase() || null,
           input.name.trim(),
           initials,
@@ -1372,13 +1389,74 @@ var init_password = __esm({
       async authenticate(token) {
         this.cleanupExpired();
         if (!token) return null;
-        const sess = this.sessions.get(token);
-        if (!sess) return null;
+        let sess = this.sessions.get(token);
+        if (!sess) {
+          const row = this.db.prepare("SELECT user_id, org_id, expires_at FROM auth_sessions WHERE token_hash=?").get(sha256(token));
+          if (!row) return null;
+          sess = { token, userId: row.user_id, orgId: row.org_id, role: "employee", expiresAt: row.expires_at };
+          this.sessions.set(token, sess);
+        }
         if (sess.expiresAt <= Date.now()) {
-          this.sessions.delete(token);
+          this.dropSession(token);
           return null;
         }
+        const user = this.getRow(sess.userId);
+        if (!user || user.active !== 1) {
+          this.dropSession(token);
+          return null;
+        }
+        sess.role = normalizeRole(user.role);
         return { userId: sess.userId, orgId: sess.orgId, role: sess.role };
+      }
+      dropSession(token) {
+        this.sessions.delete(token);
+        this.db.prepare("DELETE FROM auth_sessions WHERE token_hash=?").run(sha256(token));
+      }
+      dropSessionsForUser(userId) {
+        for (const [token, sess] of this.sessions) {
+          if (sess.userId === userId) this.sessions.delete(token);
+        }
+        this.db.prepare("DELETE FROM auth_sessions WHERE user_id=?").run(userId);
+      }
+      startSession(row) {
+        const token = randomBytes4(32).toString("base64url");
+        const expiresAt = Date.now() + this.sessionTtlMs;
+        const role = normalizeRole(row.role);
+        this.sessions.set(token, { token, userId: row.id, orgId: row.org_id, role, expiresAt });
+        this.db.prepare("INSERT INTO auth_sessions (token_hash, user_id, org_id, expires_at) VALUES (?,?,?,?)").run(sha256(token), row.id, row.org_id, expiresAt);
+        return {
+          token,
+          user: rowToUser(row),
+          principal: { userId: row.id, orgId: row.org_id, role },
+          expiresAt
+        };
+      }
+      // --- invites: admin makes a one-time link, the teammate sets their own password ---
+      createInvite(userId, ttlHours = 72) {
+        const row = this.getRow(userId);
+        if (!row) throw new Error("user not found");
+        this.db.prepare("DELETE FROM auth_invites WHERE user_id=?").run(userId);
+        const token = randomBytes4(24).toString("base64url");
+        const expiresAt = Date.now() + ttlHours * 60 * 60 * 1e3;
+        this.db.prepare("INSERT INTO auth_invites (token_hash, user_id, expires_at) VALUES (?,?,?)").run(sha256(token), userId, expiresAt);
+        return { token, expiresAt };
+      }
+      peekInvite(token) {
+        const inv = this.db.prepare("SELECT user_id, expires_at FROM auth_invites WHERE token_hash=?").get(sha256(token ?? ""));
+        if (!inv || inv.expires_at <= Date.now()) return null;
+        const row = this.getRow(inv.user_id);
+        if (!row || row.active !== 1) return null;
+        return { name: row.name };
+      }
+      acceptInvite(token, newPassword) {
+        const hash2 = sha256(token ?? "");
+        const inv = this.db.prepare("SELECT user_id, expires_at FROM auth_invites WHERE token_hash=?").get(hash2);
+        if (!inv || inv.expires_at <= Date.now()) return null;
+        const row = this.getRow(inv.user_id);
+        if (!row || row.active !== 1) return null;
+        this.setPassword(row.id, newPassword);
+        this.db.prepare("DELETE FROM auth_invites WHERE user_id=?").run(row.id);
+        return this.startSession(this.getRow(row.id));
       }
       async current() {
         const row = this.db.prepare("SELECT * FROM users WHERE org_id=? ORDER BY created_at ASC LIMIT 1").get(this.orgId);
@@ -1404,26 +1482,19 @@ var init_password = __esm({
         const row = this.findByIdentifier(id);
         if (!row || row.active !== 1) return null;
         if (!verifyPassword(pw, row.password_hash)) return null;
-        const token = randomBytes4(32).toString("base64url");
-        const expiresAt = Date.now() + this.sessionTtlMs;
-        const role = normalizeRole(row.role);
-        this.sessions.set(token, { token, userId: row.id, orgId: row.org_id, role, expiresAt });
-        return {
-          token,
-          user: rowToUser(row),
-          principal: { userId: row.id, orgId: row.org_id, role },
-          expiresAt
-        };
+        return this.startSession(row);
       }
       async logout(token) {
         if (!token) return;
-        this.sessions.delete(token);
+        this.dropSession(token);
       }
       cleanupExpired() {
         const now2 = Date.now();
         for (const [token, sess] of this.sessions) {
           if (sess.expiresAt <= now2) this.sessions.delete(token);
         }
+        this.db.prepare("DELETE FROM auth_sessions WHERE expires_at<=?").run(now2);
+        this.db.prepare("DELETE FROM auth_invites WHERE expires_at<=?").run(now2);
       }
       // --- admin-only user management (feature-detected by the server layer) ---
       emailTaken(email, excludeId) {
@@ -1435,7 +1506,8 @@ var init_password = __esm({
         return !!row && row.id !== excludeId;
       }
       createUser(input, createdBy) {
-        if (this.emailTaken(input.email)) throw new Error("a user with this email already exists");
+        if (!input.email?.trim() && !input.username?.trim()) throw new Error("email or username is required");
+        if (input.email?.trim() && this.emailTaken(input.email)) throw new Error("a user with this email already exists");
         if (input.username && this.usernameTaken(input.username)) throw new Error("a user with this username already exists");
         return this.insertUser(input, createdBy);
       }
@@ -1460,6 +1532,7 @@ var init_password = __esm({
         this.db.prepare(`
       UPDATE users SET name=?, email=?, username=?, role=?, active=?, initials=?, updated_at=? WHERE id=?
     `).run(name, email, username, role, active, initials, Date.now(), id);
+        if (active !== 1) this.dropSessionsForUser(id);
         return rowToUser(this.getRow(id));
       }
       setPassword(id, newPassword) {
@@ -1467,9 +1540,7 @@ var init_password = __esm({
         if (!row) throw new Error("user not found");
         const passwordHash = hashPassword(newPassword);
         this.db.prepare("UPDATE users SET password_hash=?, updated_at=? WHERE id=?").run(passwordHash, Date.now(), id);
-        for (const [token, sess] of this.sessions) {
-          if (sess.userId === id) this.sessions.delete(token);
-        }
+        this.dropSessionsForUser(id);
       }
       deleteUser(id) {
         const row = this.getRow(id);
@@ -1479,9 +1550,8 @@ var init_password = __esm({
           if (otherAdmins.c === 0) throw new Error("cannot delete the last admin user");
         }
         this.db.prepare("DELETE FROM users WHERE id=?").run(id);
-        for (const [token, sess] of this.sessions) {
-          if (sess.userId === id) this.sessions.delete(token);
-        }
+        this.db.prepare("DELETE FROM auth_invites WHERE user_id=?").run(id);
+        this.dropSessionsForUser(id);
       }
     };
   }
@@ -2657,9 +2727,9 @@ var init_ai = __esm({
 });
 
 // packages/core/src/api-keys.ts
-import { createHash } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 function hash(raw) {
-  return createHash("sha256").update(raw).digest("hex");
+  return createHash2("sha256").update(raw).digest("hex");
 }
 function makeApiKeys(ctx) {
   const db = ctx.db;
@@ -3356,6 +3426,7 @@ var init_src4 = __esm({
 // packages/server/src/middleware/validation.ts
 var validation_exports = {};
 __export(validation_exports, {
+  AcceptInviteSchema: () => AcceptInviteSchema,
   AssignSchema: () => AssignSchema,
   AutonomySchema: () => AutonomySchema,
   CreateLeadSchema: () => CreateLeadSchema,
@@ -3404,7 +3475,7 @@ function validateQuery(schema) {
     req.validatedQuery = result.data;
   };
 }
-var ValidationError, CreateLoopSchema, SnoozeLoopSchema, AssignSchema, CreateTaskSchema, MoveTaskSchema, CreateLeadSchema, SetLeadStageSchema, QuickAddLeadSchema, ExtractCardSchema, AutonomySchema, LoginSchema, CreateUserSchema, UpdateUserSchema, SetPasswordSchema, WebhookFanInSchema;
+var ValidationError, CreateLoopSchema, SnoozeLoopSchema, AssignSchema, CreateTaskSchema, MoveTaskSchema, CreateLeadSchema, SetLeadStageSchema, QuickAddLeadSchema, ExtractCardSchema, AutonomySchema, LoginSchema, CreateUserSchema, AcceptInviteSchema, UpdateUserSchema, SetPasswordSchema, WebhookFanInSchema;
 var init_validation = __esm({
   "packages/server/src/middleware/validation.ts"() {
     "use strict";
@@ -3470,10 +3541,15 @@ var init_validation = __esm({
       key: z.string().trim().min(1)
     });
     CreateUserSchema = z.object({
-      email: z.string().trim().email().max(200),
-      username: z.string().trim().min(3).max(50).optional(),
+      email: z.string().trim().email().max(200).optional(),
+      username: z.string().trim().min(3).max(50).regex(/^[a-zA-Z0-9._-]+$/, "username can use letters, numbers, dot, dash and underscore").optional(),
       name: z.string().trim().min(1).max(200),
       role: z.enum(["ceo", "manager", "employee", "client", "agent"]),
+      // Optional: leave it out and send the person an invite link to set their own.
+      password: z.string().min(8, "password must be at least 8 characters").max(200).optional()
+    }).refine((v) => !!v.email || !!v.username, { message: "email or username is required", path: ["email"] });
+    AcceptInviteSchema = z.object({
+      token: z.string().min(16).max(200),
       password: z.string().min(8, "password must be at least 8 characters").max(200)
     });
     UpdateUserSchema = z.object({
@@ -5620,6 +5696,19 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     </div>
   </div>
 
+  <div class="modal-backdrop" id="invite-modal">
+    <div class="modal-box" style="max-width:430px;">
+      <div class="modal-head"><span style="font-size:20px;">\u{1F44B}</span><span class="modal-title" id="invite-title">Welcome to the team</span></div>
+      <div class="modal-body">
+        <div id="invite-intro" style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:12px;">Choose a password for your account. Only you will know it.</div>
+        <div class="modal-field"><label class="modal-label">New password</label><input class="modal-input" id="invite-password" type="password" placeholder="At least 8 characters" autocomplete="new-password"/></div>
+        <div class="modal-field"><label class="modal-label">Type it again</label><input class="modal-input" id="invite-password2" type="password" placeholder="Same password" autocomplete="new-password"/></div>
+        <div id="invite-error" style="display:none;font-size:12px;color:var(--red);margin-top:4px;"></div>
+      </div>
+      <div class="modal-foot"><button class="btn-primary" id="invite-accept-btn">Set password and sign in</button></div>
+    </div>
+  </div>
+
   <!-- command palette -->
   <div id="cmd-overlay">
     <div id="cmd-box">
@@ -7623,10 +7712,10 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       +'<div style="font-size:13.5px;font-weight:700;margin-bottom:10px;">Create user</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;">'
       +'<input class="modal-input" id="admin-new-name" placeholder="Full name" autocomplete="off"/>'
-      +'<input class="modal-input" id="admin-new-email" placeholder="Email" autocomplete="off"/>'
-      +'<input class="modal-input" id="admin-new-username" placeholder="Username optional" autocomplete="off"/>'
+      +'<input class="modal-input" id="admin-new-email" placeholder="Email (optional)" autocomplete="off"/>'
+      +'<input class="modal-input" id="admin-new-username" placeholder="Username" autocomplete="off"/>'
       +'<select class="modal-select" id="admin-new-role">'+roleOpts+'</select>'
-      +'<input class="modal-input" id="admin-new-password" type="password" placeholder="Temporary password" autocomplete="new-password"/>'
+      +'<input class="modal-input" id="admin-new-password" type="password" placeholder="Password (blank = invite link)" autocomplete="new-password"/>'
       +'<button class="btn-primary" id="admin-create-user">Create</button>'
       +'</div><div id="admin-user-msg" style="font-size:12px;color:var(--muted);margin-top:8px;"></div></div>'
       +'<div class="gc" style="padding:14px 16px;border-radius:14px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;"><div style="font-size:13.5px;font-weight:700;">Users</div><button class="btn-ghost" id="admin-refresh-users">Refresh</button></div><div id="admin-users-list"><div class="spin"></div></div></div>';
@@ -7646,14 +7735,15 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     if(create) create.onclick=function(){
       var body={
         name:(document.getElementById('admin-new-name').value||'').trim(),
-        email:(document.getElementById('admin-new-email').value||'').trim(),
+        email:(document.getElementById('admin-new-email').value||'').trim()||undefined,
         username:(document.getElementById('admin-new-username').value||'').trim()||undefined,
         role:document.getElementById('admin-new-role').value,
-        password:document.getElementById('admin-new-password').value||''
+        password:document.getElementById('admin-new-password').value||undefined
       };
-      if(!body.name||!body.email||!body.password){adminMsg('Name, email, and password are required',true);return;}
-      post('/api/admin/users',body).then(function(){
-        adminMsg('User created',false);
+      if(!body.name||(!body.email&&!body.username)){adminMsg('Name and an email or username are required',true);return;}
+      post('/api/admin/users',body).then(function(res){
+        if(!body.password&&res&&res.user){makeInviteLink(res.user.userId,res.user.name);}
+        else adminMsg('User created',false);
         ['admin-new-name','admin-new-email','admin-new-username','admin-new-password'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
         loadAdminUsers();
       }).catch(function(e){adminMsg(e&&e.message?e.message:'Could not create user',true);});
@@ -7675,11 +7765,11 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     return users.map(function(u){
       var roleOpts=roles.map(function(r){return '<option value="'+r+'" '+(u.role===r?'selected':'')+'>'+roleLabel(r)+'</option>';}).join('');
       return '<div class="admin-user-row" data-user-id="'+esc(u.userId)+'" style="border-top:1px solid var(--glassBorder);padding:12px 0;display:grid;grid-template-columns:minmax(180px,1fr) 140px 120px 1fr auto;gap:8px;align-items:center;">'
-        +'<div><div style="font-size:13px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:11px;color:var(--muted);">'+esc(u.email||'')+(u.username?' \xB7 '+esc(u.username):'')+'</div></div>'
+        +'<div><div style="font-size:13px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:11px;color:var(--muted);">'+esc(isPendingEmail(u.email)?'no email yet':(u.email||''))+(u.username?' \xB7 '+esc(u.username):'')+'</div></div>'
         +'<select class="modal-select admin-role" style="min-height:34px;">'+roleOpts+'</select>'
         +'<select class="modal-select admin-active" style="min-height:34px;"><option value="true" '+(u.active===false?'':'selected')+'>Active</option><option value="false" '+(u.active===false?'selected':'')+'>Disabled</option></select>'
         +'<div style="display:flex;gap:6px;"><input class="modal-input admin-password" type="password" placeholder="New password" autocomplete="new-password" style="min-height:34px;"/><button class="btn-ghost admin-set-password">Set</button></div>'
-        +'<div style="display:flex;gap:6px;"><button class="btn-ghost admin-save-user">Save</button><button class="btn-danger admin-delete-user">Delete</button></div>'
+        +'<div style="display:flex;gap:6px;"><button class="btn-ghost admin-invite-user" title="Make a one-time link this person opens to set their own password">Invite link</button><button class="btn-ghost admin-save-user">Save</button><button class="btn-danger admin-delete-user">Delete</button></div>'
         +'</div>';
     }).join('');
   }
@@ -7689,6 +7779,11 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
       var save=row.querySelector('.admin-save-user');
       var del=row.querySelector('.admin-delete-user');
       var setPw=row.querySelector('.admin-set-password');
+      var inv=row.querySelector('.admin-invite-user');
+      if(inv) inv.onclick=function(){
+        var nm=row.querySelector('div div');
+        makeInviteLink(uid,nm?nm.textContent:'');
+      };
       if(save) save.onclick=function(){
         var role=row.querySelector('.admin-role').value;
         var active=row.querySelector('.admin-active').value==='true';
@@ -7707,9 +7802,59 @@ button:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--accent
     });
   }
 
+  function isPendingEmail(e){ return !!e && e.slice(-16)==='@pending.invalid'; }
+  function makeInviteLink(uid,name){
+    post('/api/admin/users/'+encodeURIComponent(uid)+'/invite',{}).then(function(res){
+      var link=location.origin+res.path;
+      var done=function(copied){
+        adminMsg((copied?'Invite link copied':'Invite link')+' for '+(name||'this user')+'. It works once and expires in 3 days: '+link,false);
+        toast(copied?'Invite link copied':'Invite link ready');
+      };
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(link).then(function(){done(true);},function(){done(false);});
+      } else done(false);
+    }).catch(function(e){toast(e&&e.message?e.message:'Could not make invite link');});
+  }
+  function inviteErr(msg){
+    var el=document.getElementById('invite-error');
+    if(!el) return;
+    el.style.display=msg?'block':'none';
+    el.textContent=msg||'';
+  }
+  function openInvite(token){
+    var m=document.getElementById('invite-modal');
+    api('/api/auth/invite?token='+encodeURIComponent(token)).then(function(res){
+      var first=(res&&res.name?res.name:'').split(' ')[0];
+      document.getElementById('invite-title').textContent=first?'Welcome, '+first:'Welcome to the team';
+      m.classList.add('open');
+      setTimeout(function(){var p=document.getElementById('invite-password');if(p)p.focus();},20);
+    }).catch(function(){
+      openAuthModal('That invite link has expired or was already used. Ask your admin for a new one, or sign in.');
+    });
+    var btn=document.getElementById('invite-accept-btn');
+    btn.onclick=function(){
+      var p1=document.getElementById('invite-password').value||'';
+      var p2=document.getElementById('invite-password2').value||'';
+      if(p1.length<8){inviteErr('Use at least 8 characters');return;}
+      if(p1!==p2){inviteErr('The two passwords do not match');return;}
+      btn.disabled=true;btn.textContent='Setting up\u2026';
+      post('/api/auth/invite',{token:token,password:p1}).then(function(res){
+        history.replaceState(null,'',location.pathname);
+        m.classList.remove('open');
+        applySessionUser(res&&res.user?res.user:null);
+        startApp();
+      }).catch(function(e){
+        inviteErr(e&&e.message?e.message:'Could not use this invite');
+      }).finally(function(){btn.disabled=false;btn.textContent='Set password and sign in';});
+    };
+  }
+
   // \u2500\u2500 boot \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   updateSessionUi();
-  ensureSession().then(function(ok){
+  var inviteToken=new URLSearchParams(location.search).get('invite');
+  if(inviteToken){
+    openInvite(inviteToken);
+  } else ensureSession().then(function(ok){
     if(ok) startApp();
   }).catch(function(e){
     showErr(e);
@@ -7990,6 +8135,39 @@ function buildServer(deps) {
     } catch (error) {
       throw badRequest(error instanceof Error ? error.message : "Could not set password");
     }
+  });
+  app2.post("/api/admin/users/:id/invite", {
+    preHandler: requireMinRole("ceo")
+  }, async (req) => {
+    requireUserManagement();
+    if (typeof authWithSessions.createInvite !== "function") throw badRequest("Invites are not available in this auth mode");
+    try {
+      const invite = authWithSessions.createInvite(params(req).id, 72);
+      return { ok: true, path: `/?invite=${invite.token}`, expiresAt: invite.expiresAt };
+    } catch (error) {
+      throw badRequest(error instanceof Error ? error.message : "Could not create invite");
+    }
+  });
+  app2.get("/api/auth/invite", {
+    config: { rateLimit: authRateLimitConfig }
+  }, async (req, reply) => {
+    const token = String(req.query?.token ?? "");
+    const info = typeof authWithSessions.peekInvite === "function" ? authWithSessions.peekInvite(token) : null;
+    if (!info) return reply.code(404).send({ error: "This invite link has expired or was already used" });
+    return { ok: true, name: info.name };
+  });
+  app2.post("/api/auth/invite", {
+    config: { rateLimit: authRateLimitConfig },
+    preHandler: validateBody(validation_exports.AcceptInviteSchema)
+  }, async (req, reply) => {
+    if (typeof authWithSessions.acceptInvite !== "function") return reply.code(404).send({ error: "Invites are not available" });
+    const body = req.validatedBody;
+    const login = authWithSessions.acceptInvite(body.token, body.password);
+    if (!login) return reply.code(404).send({ error: "This invite link has expired or was already used" });
+    logger.info({ userId: login.user.userId }, "Invite accepted");
+    const maxAge = Math.max(60, Math.floor((login.expiresAt - Date.now()) / 1e3));
+    reply.header("Set-Cookie", makeSessionCookie("cb_session", login.token, maxAge, shouldSecureCookie(req)));
+    return { ok: true, authMode: resolvedAuthMode, authenticated: true, user: presentUser(login.user), expiresAt: login.expiresAt };
   });
   app2.delete("/api/admin/users/:id", {
     preHandler: requireMinRole("ceo")
