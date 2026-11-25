@@ -4,7 +4,7 @@
 
 A team operating system that watches every channel (Email, Slack, WhatsApp, Telegram, Calendar, meetings), turns anything needing a human into a tracked **open loop**, and never lets it slip. AI agents do real work alongside people; every action is **scoped, logged, and reversible**.
 
-The clickable design spec lives in the prototype (`../Liquid Glass Design System (1)/Company Brain.dc.html`). This repo turns it into a real product.
+The product started as a clickable design prototype. This repo turns it into a real, self-hostable app.
 
 ## One app, one command
 
